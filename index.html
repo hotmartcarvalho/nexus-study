@@ -1203,11 +1203,11 @@ SAÍDA (JSON puro):
 {"front":"...","back":"...","type":"...","tags":["..."],"score":85}`;
 
 /* API */
+// Chamadas passam pelo proxy /api/generate (Vercel) que adiciona a chave Anthropic
+// no servidor. Assim a chave nunca é exposta ao cliente.
 async function callAPI(system, msgs, opts){
   const content = buildContent();
   if(!content)throw new Error('no-content');
-  const key = DATA.config.apiKey.trim();
-  if(!key)throw new Error('no-key');
   // Build system as array with cache_control on the content block.
   // The system instructions change between methods but the content block is reused
   // between chat turns of the same method — so caching it saves ~90% on repeated calls.
@@ -1216,19 +1216,17 @@ async function callAPI(system, msgs, opts){
     {type:'text',text:'CONTEÚDO DO CANDIDATO:\n\n'+content,cache_control:{type:'ephemeral'}}
   ];
   const finalMsgs = msgs; // user messages ficam limpos, sem conteúdo duplicado
-  const headers = {
-    'Content-Type':'application/json',
-    'x-api-key':key,
-    'anthropic-version':'2023-06-01',
-    'anthropic-dangerous-direct-browser-access':'true'
-  };
   const modelOverride = opts&&opts.model;
   const body = {model:modelOverride||DATA.config.model,max_tokens:2500,system:systemArr,messages:finalMsgs};
   let r;
   try{
-    r = await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers,body:JSON.stringify(body)});
+    r = await fetch('/api/generate',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
   }catch(netErr){
-    console.error('Network/CORS error:',netErr);
+    console.error('Network error:',netErr);
     throw new Error('network: '+(netErr.message||'falha de rede'));
   }
   if(!r.ok){
@@ -1429,7 +1427,8 @@ const warnBox = msg => {const d=mk('div','alert alert-warn');d.innerHTML=msg;ret
 const infoBox = msg => {const d=mk('div','alert alert-info');d.innerHTML=msg;return d;};
 
 function needsSetup(){return !DATA.setup}
-function needsAPIKey(){return DATA.setup&&!DATA.config.apiKey}
+// No proxy model, the API key is kept on the server, so the client never needs one.
+function needsAPIKey(){return false;}
 
 /* MODAL */
 function showModal(content){
@@ -1602,22 +1601,13 @@ function renderSetup(){
   }
 
   const card = mk('div','card');
-  const h = mk('h2');h.textContent='Conecte sua chave API';
+  const h = mk('h2');h.textContent='Pronto para começar';
   const sub = mk('p','txt2');sub.style.marginBottom='1rem';
-  sub.textContent='Esta ferramenta roda 100% no seu navegador e usa a API da Anthropic para gerar questões adaptativas. Sua chave fica armazenada apenas localmente, neste dispositivo.';
-  const lbl1 = mk('label');lbl1.textContent='Chave API Anthropic';
-  const inp = mk('input');inp.type='password';inp.placeholder='sk-ant-api03-...';
-  inp.value=DATA.config.apiKey;
-  inp.addEventListener('input',e=>{DATA.config.apiKey=e.target.value;});
-  const hint = mk('p','hint');
-  hint.innerHTML='Obtenha uma chave em <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com/settings/keys</a>. É necessário criar conta e adicionar crédito (mínimo $5). O custo por questão é irrisório (frações de centavo).';
-  const proceedBtn = mkBtn('Continuar →','btn btn-p btn-lg');proceedBtn.style.marginTop='1rem';
+  sub.textContent='A inteligência artificial que alimenta os métodos já está conectada no servidor — você não precisa configurar chave nenhuma. Basta adicionar seu material de estudo e começar.';
+  const proceedBtn = mkBtn('Adicionar minhas fontes →','btn btn-p btn-lg');proceedBtn.style.marginTop='1rem';
   proceedBtn.addEventListener('click',()=>{DATA.setup=true;save();ST.view='sources';render();});
-  const skip = mk('p','hint');skip.style.marginTop='.75rem';
-  skip.innerHTML='<a href="#" id="skipLink" style="color:var(--text2)">Pular por enquanto (você pode adicionar depois em Configurações)</a>';
-  [h,sub,lbl1,inp,hint,proceedBtn,skip].forEach(el=>card.appendChild(el));
+  [h,sub,proceedBtn].forEach(el=>card.appendChild(el));
   wrap.appendChild(card);
-  setTimeout(()=>{const s=$('skipLink');if(s)s.addEventListener('click',e=>{e.preventDefault();DATA.setup=true;save();ST.view='sources';render();});},0);
   return wrap;
 }
 
@@ -2837,7 +2827,7 @@ function logError(ctx){
   // When user clicks "Criar flashcard", it'll be ready. If they don't click,
   // the cache entry is discarded on next error or page navigation.
   try{
-    if(DATA.config.apiKey&&err.explanation&&err.correctAnswer){
+    if(err.explanation&&err.correctAnswer){
       prefetchErrorCard(err);
     }
   }catch(e){/* swallow — prefetch is best-effort */}
@@ -7689,8 +7679,6 @@ async function extractPdfText(file,onProgress){
 // the text the user provided, to avoid double-content-injection.
 async function smartOrganizeContent(rawText,opts){
   opts = opts||{};
-  const key = DATA.config.apiKey.trim();
-  if(!key)throw new Error('no-key');
   const discNames = DATA.disciplines.map(d=>`${d.id}: ${d.name}`).join(', ');
   const contentTypes = Object.entries(CONTENT_TYPES).map(([k,v])=>`${k}: ${v.label}`).join(', ');
   const sys = `Organize o texto fornecido em formato estruturado para estudo.
@@ -7720,14 +7708,9 @@ SAÍDA (JSON puro, sem markdown):
     system:sys,
     messages:[{role:'user',content:userMsg}]
   };
-  const r = await fetch('https://api.anthropic.com/v1/messages',{
+  const r = await fetch('/api/generate',{
     method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'x-api-key':key,
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
-    },
+    headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body)
   });
   if(!r.ok){
@@ -8014,9 +7997,6 @@ SAÍDA (JSON puro, sem markdown):
   ]
 }`;
   // Use the method API but with a very small payload (not the full content)
-  // We call raw API without content injection to avoid wasting tokens
-  const key = DATA.config.apiKey.trim();
-  if(!key)throw new Error('no-key');
   const model = DATA.config.model||'claude-haiku-4-5-20251001';
   const body = {
     model,
@@ -8024,14 +8004,9 @@ SAÍDA (JSON puro, sem markdown):
     system:sys,
     messages:[{role:'user',content:`MÉTRICAS DE HOJE (${dk}):\n${JSON.stringify(payload,null,2)}`}]
   };
-  const r = await fetch('https://api.anthropic.com/v1/messages',{
+  const r = await fetch('/api/generate',{
     method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'x-api-key':key,
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
-    },
+    headers:{'Content-Type':'application/json'},
     body:JSON.stringify(body)
   });
   if(!r.ok){
@@ -8545,30 +8520,12 @@ function renderSettings(){
   wrap.appendChild(usgCard);
 
   const apiCard = mk('div','card');apiCard.style.marginTop='1rem';
-  apiCard.appendChild(sLabel('Chave API Anthropic'));
+  apiCard.appendChild(sLabel('Configurações da IA'));
   const desc = mk('p','txt2');desc.style.marginBottom='.875rem';
-  desc.innerHTML='Necessária para os métodos com IA. <a href="https://console.anthropic.com/settings/keys" target="_blank">Gerar chave</a> (requer conta com crédito).';
+  desc.innerHTML='A conexão com a IA é gerenciada pelo servidor — você não precisa configurar chave nenhuma.';
   apiCard.appendChild(desc);
 
-  const row = mk('div','flex');row.style.alignItems='stretch';row.style.gap='8px';
-  const inp = mk('input');inp.type=ST.setKeyVisible?'text':'password';inp.placeholder='sk-ant-...';
-  inp.value=DATA.config.apiKey;inp.style.flex='1';
-  // Disable browser autofill — prevents the browser from suggesting other values
-  inp.autocomplete='new-password';
-  inp.setAttribute('autocorrect','off');
-  inp.setAttribute('autocapitalize','off');
-  inp.setAttribute('spellcheck','false');
-  inp.setAttribute('data-lpignore','true'); // LastPass
-  inp.setAttribute('data-1p-ignore','true'); // 1Password
-  inp.name='nexus-api-key-'+Date.now(); // unique name prevents autofill matching
-  inp.addEventListener('input',e=>{DATA.config.apiKey=e.target.value;});
-  inp.addEventListener('blur',()=>save());
-  const tgl = mkBtn(ST.setKeyVisible?'Ocultar':'Ver','btn btn-sm');
-  tgl.addEventListener('click',()=>{ST.setKeyVisible=!ST.setKeyVisible;render();});
-  row.appendChild(inp);row.appendChild(tgl);
-  apiCard.appendChild(row);
-
-  const h2 = mk('label');h2.textContent='Modelo';h2.style.marginTop='.875rem';
+  const h2 = mk('label');h2.textContent='Modelo padrão';
   const sel = mk('select');
   const MODELS = [
     ['claude-haiku-4-5-20251001','Haiku 4.5 (rápido e barato, recomendado)'],
@@ -8598,21 +8555,15 @@ function renderSettings(){
   const testOut = mk('span','txt2');testOut.style.flex='1';
   testBtn.addEventListener('click',async()=>{
     testOut.textContent='';testOut.style.color='var(--text2)';
-    if(!DATA.config.apiKey.trim()){testOut.textContent='⚠ Cole a chave primeiro.';testOut.style.color='var(--red-text)';return;}
     testBtn.disabled=true;testBtn.textContent='Testando...';
     try{
-      const r = await fetch('https://api.anthropic.com/v1/messages',{
+      const r = await fetch('/api/generate',{
         method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'x-api-key':DATA.config.apiKey.trim(),
-          'anthropic-version':'2023-06-01',
-          'anthropic-dangerous-direct-browser-access':'true'
-        },
+        headers:{'Content-Type':'application/json'},
         body:JSON.stringify({model:DATA.config.model,max_tokens:20,messages:[{role:'user',content:'oi'}]})
       });
       if(r.ok){
-        testOut.textContent='✓ Conexão OK. Chave e modelo válidos.';
+        testOut.textContent='✓ Conexão OK. Servidor e modelo respondendo.';
         testOut.style.color='var(--accent-text)';
       } else {
         const t = await r.text();
