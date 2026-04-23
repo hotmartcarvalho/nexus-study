@@ -1,39 +1,34 @@
 // api/generate.js
-// Endpoint serverless para Vercel que intermedia chamadas ao Anthropic.
-// Frontend envia { prompt, model } via POST e recebe { output: "..." }.
+// Endpoint serverless que repassa chamadas à Anthropic preservando a interface original.
+// Recebe o mesmo body que a API Anthropic aceita (system, messages, model, max_tokens)
+// e retorna a resposta completa (content, usage, etc). Esconde apenas a chave do cliente.
 
 export default async function handler(req, res) {
-  // CORS básico — ajuste a origin se quiser restringir a um domínio específico
+  // CORS — ajuste a origin se quiser restringir
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, anthropic-version');
 
-  // Pré-flight CORS
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  // Aceita apenas POST
+  if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido. Use POST.' });
   }
 
-  // Verifica se a chave está configurada no ambiente
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: 'Chave da API não configurada no servidor.' });
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY não configurada no servidor.' });
   }
 
-  // Extrai e valida o corpo
-  const { prompt, model } = req.body || {};
-  if (!prompt || typeof prompt !== 'string') {
-    return res.status(400).json({ error: 'Campo "prompt" é obrigatório e deve ser string.' });
+  const { model, system, messages, max_tokens } = req.body || {};
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: 'Campo "messages" é obrigatório (array).' });
   }
-
-  const selectedModel = model || 'claude-haiku-4-5-20251001';
+  if (!model) {
+    return res.status(400).json({ error: 'Campo "model" é obrigatório.' });
+  }
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -41,30 +36,20 @@ export default async function handler(req, res) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: selectedModel,
-        max_tokens: 2500,
-        messages: [{ role: 'user', content: prompt }]
+        model,
+        max_tokens: max_tokens || 2500,
+        system,
+        messages
       })
     });
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '');
-      return res.status(response.status).json({
-        error: `Erro na API Anthropic (${response.status}): ${errText.slice(0, 200)}`
-      });
+    // Repassa o status e corpo da Anthropic de forma transparente
+    const data = await upstream.json().catch(() => null);
+    if (!upstream.ok) {
+      const msg = (data && (data.error?.message || data.message)) || 'Erro na API Anthropic';
+      return res.status(upstream.status).json({ error: `${upstream.status}: ${msg}` });
     }
-
-    const data = await response.json();
-    const output = (data.content || [])
-      .filter(block => block.type === 'text')
-      .map(block => block.text)
-      .join('');
-
-    if (!output) {
-      return res.status(502).json({ error: 'Resposta vazia da API.' });
-    }
-
-    return res.status(200).json({ output });
+    return res.status(200).json(data);
   } catch (err) {
     return res.status(500).json({ error: 'Falha ao chamar a API: ' + (err.message || 'erro desconhecido') });
   }
