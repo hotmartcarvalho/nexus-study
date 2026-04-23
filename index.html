@@ -1092,7 +1092,7 @@ const SYS_QUICK_CE = `Professor Cebraspe. Baseie-se APENAS no conteúdo fornecid
 
 ${CEBRASPE_RULES}
 
-SAÍDA (JSON puro, sem markdown):
+SAÍDA: retorne APENAS o JSON, sem markdown, sem backticks, sem comentários, sem texto antes ou depois. Sua resposta deve começar com { e terminar com }.
 Questão nova: {"type":"question","topic":"tópico curto","question":"enunciado","correct_answer":"C|E","trap_type":0-5}
 Feedback+próxima: {"type":"feedback","is_correct":true,"trap_type":0-5,"explanation":"2 frases objetivas","trap":"qual armadilha foi usada (se errada)","keyword":"palavra-gatilho que denuncia","next":{"topic":"...","question":"...","correct_answer":"E","trap_type":1}}`;
 
@@ -1248,9 +1248,44 @@ async function callAPI(system, msgs, opts){
       cacheRead:d.usage.cache_read_input_tokens||0
     };
   }
-  const clean = txt.replace(/```json\n?|\n?```/g,'').trim();
+  // Robust JSON extraction. The model sometimes wraps output in ```json ... ``` and
+  // adds trailing narration after the block. We try, in order:
+  // 1. Stripped backticks around the whole thing (happy path)
+  // 2. Content between the first ```json ... ``` fence (if present)
+  // 3. First balanced {...} object in the text (fallback)
+  function extractJSON(raw){
+    if(!raw||typeof raw!=='string')throw new Error('empty');
+    // Strategy 1: strip fences and trim
+    let s = raw.trim();
+    const fence = s.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if(fence){s = fence[1].trim();}
+    // Strategy 2: try direct parse
+    try{return JSON.parse(s);}catch(_){}
+    // Strategy 3: find first balanced JSON object in raw text.
+    // Walks character by character tracking brace depth, respecting strings/escapes.
+    const findBalanced = str=>{
+      const start = str.indexOf('{');
+      if(start<0)return null;
+      let depth=0, inStr=false, esc=false;
+      for(let i=start;i<str.length;i++){
+        const ch = str[i];
+        if(esc){esc=false;continue;}
+        if(ch==='\\'){esc=true;continue;}
+        if(ch==='"'){inStr=!inStr;continue;}
+        if(inStr)continue;
+        if(ch==='{')depth++;
+        else if(ch==='}'){depth--;if(depth===0)return str.slice(start,i+1);}
+      }
+      return null;
+    };
+    const found = findBalanced(raw);
+    if(found){
+      try{return JSON.parse(found);}catch(_){}
+    }
+    throw new Error('no valid JSON found');
+  }
   try{
-    return JSON.parse(clean);
+    return extractJSON(txt);
   }catch(e){
     console.error('Parse error. Raw text:',txt);
     throw new Error('JSON inválido da IA: '+txt.slice(0,150));
