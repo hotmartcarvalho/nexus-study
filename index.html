@@ -628,6 +628,7 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 .account-lbl{color:var(--text3);font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
 .account-val{color:var(--text);font-weight:500;word-break:break-all;text-align:right}
 .account-row.error .account-val{color:var(--red-text)}
+.account-row.warn .account-val{color:var(--amber)}
 
 /* ====== AUTENTICAÇÃO (Supabase) ====== */
 .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem 1rem;background:var(--bg)}
@@ -657,6 +658,13 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 .sync-dot.syncing::before{background:var(--amber);animation:pulse 1.2s ease-in-out infinite}
 .sync-dot.error::before{background:var(--red)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Credits chip — shows remaining API quota in topbar */
+.credits-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--accent-text);padding:4px 10px;border-radius:10px;background:var(--accent-light);border:1px solid var(--accent);cursor:default;transition:all .15s}
+.credits-chip::before{content:'⚡';font-size:10px}
+.credits-chip.low{color:var(--amber);background:rgba(245,158,11,.12);border-color:var(--amber)}
+.credits-chip.empty{color:var(--red-text);background:var(--red-light);border-color:var(--red);animation:credit-pulse 2s ease-in-out infinite}
+@keyframes credit-pulse{0%,100%{opacity:1}50%{opacity:.65}}
 
 /* ====== WELCOME v2 — landing page enxuta e impactante ====== */
 .welcome-v2{max-width:900px !important;margin:0 auto;padding:0 1.25rem 4rem}
@@ -1335,6 +1343,103 @@ ${SYS_COMPLETE_EVAL}
 SAÍDA (JSON puro):
 {"front":"...","back":"...","type":"...","tags":["..."],"score":85}`;
 
+// Quota state — populated by /api/generate responses (header X-Credits-Remaining)
+const QUOTA = {
+  remaining: null,    // integer, null if not fetched yet
+  plan: 'trial',
+  lastFetchedAt: null
+};
+
+// Fetch initial quota state (called after login)
+async function fetchQuota(){
+  if(!isAuthed())return;
+  try{
+    const {data,error} = await supa.from('user_quota')
+      .select('credits_remaining, plan, credits_used_total')
+      .eq('user_id',AUTH.user.id)
+      .maybeSingle();
+    if(error)throw error;
+    if(data){
+      QUOTA.remaining = data.credits_remaining;
+      QUOTA.plan = data.plan;
+      QUOTA.lastFetchedAt = Date.now();
+    }
+  }catch(e){
+    console.warn('[NEXUS] Falha ao buscar quota:',e.message);
+  }
+}
+
+// Central helper for /api/generate calls.
+// Adds Bearer token from current Supabase session, handles quota errors.
+async function apiGenerate(body){
+  const headers = {'Content-Type':'application/json'};
+  if(isAuthed()&&AUTH.session?.access_token){
+    headers['Authorization'] = 'Bearer '+AUTH.session.access_token;
+  }
+  const r = await fetch('/api/generate',{
+    method:'POST',
+    headers,
+    body:JSON.stringify(body)
+  });
+  // Update quota from response header (backend sends after successful call)
+  const remaining = r.headers.get('X-Credits-Remaining');
+  if(remaining!==null){
+    QUOTA.remaining = parseInt(remaining,10);
+    QUOTA.lastFetchedAt = Date.now();
+    const chip = document.getElementById('credits-chip');
+    if(chip)updateCreditsChip(chip);
+  }
+  // Detect quota exhaustion (HTTP 402 Payment Required)
+  if(r.status===402){
+    // Clone the response so we can both peek and return
+    try{
+      const clone = r.clone();
+      const d = await clone.json();
+      if(d.code==='NO_CREDITS'){
+        handleNoCreditsError();
+      }
+    }catch(_){}
+  }
+  return r;
+}
+
+// Update the credits chip in the topbar based on QUOTA state
+function updateCreditsChip(chip){
+  if(!chip)return;
+  if(QUOTA.remaining===null){
+    chip.textContent='...';
+    chip.className='credits-chip';
+    return;
+  }
+  const r = QUOTA.remaining;
+  chip.textContent = r+' créd.';
+  chip.className = 'credits-chip';
+  if(r===0)chip.classList.add('empty');
+  else if(r<=5)chip.classList.add('low');
+  chip.title = `Plano ${QUOTA.plan} · ${r} créditos restantes`;
+}
+
+// Central handler for "no credits" errors — shown on all generation methods
+function handleNoCreditsError(){
+  QUOTA.remaining = 0;
+  const modal = mk('div');
+  modal.style.cssText='max-width:400px;padding:1.5rem;text-align:center';
+  const emoji = mk('div');emoji.style.cssText='font-size:44px;margin-bottom:.75rem';emoji.textContent='⏳';
+  modal.appendChild(emoji);
+  const title = mk('h2');title.style.cssText='margin:0 0 .75rem;font-size:18px';title.textContent='Seus créditos acabaram';
+  modal.appendChild(title);
+  const desc = mk('p','txt2');desc.style.cssText='line-height:1.55;margin-bottom:1.25rem';
+  desc.innerHTML = 'Você usou todos os créditos do seu plano <b>'+QUOTA.plan+'</b>. Em breve teremos planos de assinatura para continuar usando a plataforma sem limites.';
+  modal.appendChild(desc);
+  const note = mk('p','txt3');note.style.cssText='font-size:12px;margin-bottom:1.25rem';
+  note.textContent = 'Seus dados ficam salvos. Assim que os planos forem lançados, basta assinar para continuar de onde parou.';
+  modal.appendChild(note);
+  const closeBtn = mkBtn('Entendi','btn btn-p');
+  closeBtn.addEventListener('click',()=>closeModal());
+  modal.appendChild(closeBtn);
+  showModal(modal);
+}
+
 /* API */
 // Chamadas passam pelo proxy /api/generate (Vercel) que adiciona a chave Anthropic
 // no servidor. Assim a chave nunca é exposta ao cliente.
@@ -1353,11 +1458,7 @@ async function callAPI(system, msgs, opts){
   const body = {model:modelOverride||DATA.config.model,max_tokens:2500,system:systemArr,messages:finalMsgs};
   let r;
   try{
-    r = await fetch('/api/generate',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(body)
-    });
+    r = await apiGenerate(body);
   }catch(netErr){
     console.error('Network error:',netErr);
     throw new Error('network: '+(netErr.message||'falha de rede'));
@@ -1819,6 +1920,13 @@ function renderTopbar(){
   bar.appendChild(brand);bar.appendChild(tabs);
   // Sync indicator — only when auth is active
   if(isAuthed()){
+    // Credits chip — visible when quota is known
+    if(QUOTA.remaining!==null){
+      const chip = mk('span','credits-chip');
+      chip.id='credits-chip';
+      updateCreditsChip(chip);
+      bar.appendChild(chip);
+    }
     const sync = mk('span','sync-dot');
     sync.id='sync-indicator';
     sync.textContent='Sincronizado';
@@ -7910,11 +8018,7 @@ SAÍDA (JSON puro, sem markdown):
     system:sys,
     messages:[{role:'user',content:userMsg}]
   };
-  const r = await fetch('/api/generate',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(body)
-  });
+  const r = await apiGenerate(body);
   if(!r.ok){
     const errText = await r.text().catch(()=>'');
     throw new Error('api-'+r.status+': '+errText.slice(0,150));
@@ -8206,11 +8310,7 @@ SAÍDA (JSON puro, sem markdown):
     system:sys,
     messages:[{role:'user',content:`MÉTRICAS DE HOJE (${dk}):\n${JSON.stringify(payload,null,2)}`}]
   };
-  const r = await fetch('/api/generate',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(body)
-  });
+  const r = await apiGenerate(body);
   if(!r.ok){
     const errText = await r.text().catch(()=>'');
     throw new Error('api-'+r.status+': '+errText.slice(0,200));
@@ -8729,6 +8829,15 @@ function renderSettings(){
     const emailRow = mk('div','account-row');
     emailRow.innerHTML = `<span class="account-lbl">Email</span><span class="account-val">${escapeHTML(AUTH.user.email||'—')}</span>`;
     accInfo.appendChild(emailRow);
+    // Credits row — shows remaining/plan
+    if(QUOTA.remaining!==null){
+      const creditsRow = mk('div','account-row');
+      const planLabel = QUOTA.plan==='trial'?'Plano de teste':QUOTA.plan==='basic'?'Plano básico':QUOTA.plan==='pro'?'Plano pro':QUOTA.plan;
+      const colorClass = QUOTA.remaining===0?'error':QUOTA.remaining<=5?'warn':'';
+      creditsRow.className = 'account-row '+colorClass;
+      creditsRow.innerHTML = `<span class="account-lbl">Créditos (${escapeHTML(planLabel)})</span><span class="account-val"><b>${QUOTA.remaining}</b> restantes</span>`;
+      accInfo.appendChild(creditsRow);
+    }
     if(AUTH.lastSyncAt){
       const syncRow = mk('div','account-row');
       const mins = Math.round((Date.now()-AUTH.lastSyncAt)/60000);
@@ -8802,11 +8911,7 @@ function renderSettings(){
     testOut.textContent='';testOut.style.color='var(--text2)';
     testBtn.disabled=true;testBtn.textContent='Testando...';
     try{
-      const r = await fetch('/api/generate',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:DATA.config.model,max_tokens:20,messages:[{role:'user',content:'oi'}]})
-      });
+      const r = await apiGenerate({model:DATA.config.model,max_tokens:20,messages:[{role:'user',content:'oi'}]});
       if(r.ok){
         testOut.textContent='✓ Conexão OK. Servidor e modelo respondendo.';
         testOut.style.color='var(--accent-text)';
@@ -9350,12 +9455,17 @@ async function initAuth(){
       save();
       // First login of this session — merge data
       await handleFirstLoginMerge();
+      // Load quota in background (non-blocking)
+      fetchQuota().then(()=>render()).catch(()=>{});
     }
     if(event==='SIGNED_OUT'){
       // Clear sync state. Keep DATA as-is — user may log in to another account
       AUTH.syncError = null;
       AUTH.lastSyncAt = null;
       ST.showAuth = false;
+      // Reset quota
+      QUOTA.remaining = null;
+      QUOTA.plan = 'trial';
     }
     render();
   });
@@ -9376,6 +9486,8 @@ async function initAuth(){
       }).catch(err=>{
         console.warn('[NEXUS] Initial syncDown failed (non-blocking):',err.message);
       });
+      // Fetch quota (also non-blocking)
+      fetchQuota().then(()=>render()).catch(()=>{});
     }
   }catch(e){
     console.warn('[NEXUS] getSession timeout or error:',e.message);
