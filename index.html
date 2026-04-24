@@ -9054,6 +9054,14 @@ function scheduleSync(){
   _syncTimer = setTimeout(()=>{syncUp().catch(e=>console.warn('Sync falhou:',e.message));},SYNC_DEBOUNCE_MS);
 }
 
+// Helper: wraps a promise with a timeout so a hung request can't block forever
+function withTimeout(promise, ms, label){
+  return Promise.race([
+    promise,
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout: '+(label||'request'))),ms))
+  ]);
+}
+
 // Sobe o DATA atual pra Supabase (upsert)
 async function syncUp(){
   if(!isAuthed())return;
@@ -9067,17 +9075,21 @@ async function syncUp(){
     // config.apiKey é legado do BYOK; não faz sentido sincronizar
     if(payload.config)delete payload.config.apiKey;
 
-    const {error} = await supa.from('user_data').upsert({
-      user_id:AUTH.user.id,
-      data:payload,
-      updated_at:new Date().toISOString()
-    },{onConflict:'user_id'});
+    const {error} = await withTimeout(
+      supa.from('user_data').upsert({
+        user_id:AUTH.user.id,
+        data:payload,
+        updated_at:new Date().toISOString()
+      },{onConflict:'user_id'}),
+      10000,
+      'syncUp'
+    );
     if(error)throw error;
     AUTH.lastSyncAt = Date.now();
     AUTH.syncError = null;
   }catch(e){
     AUTH.syncError = e.message||'erro desconhecido';
-    console.error('syncUp error:',e);
+    console.error('[NEXUS] syncUp error:',e);
   }finally{
     AUTH.syncing = false;
     if(indicator)indicator.classList.remove('syncing');
@@ -9091,17 +9103,21 @@ async function syncDown(){
   AUTH.syncing = true;
   updateSyncIndicator();
   try{
-    const {data,error} = await supa.from('user_data')
-      .select('data,updated_at')
-      .eq('user_id',AUTH.user.id)
-      .maybeSingle();
+    const {data,error} = await withTimeout(
+      supa.from('user_data')
+        .select('data,updated_at')
+        .eq('user_id',AUTH.user.id)
+        .maybeSingle(),
+      10000,
+      'syncDown'
+    );
     if(error)throw error;
     AUTH.lastSyncAt = Date.now();
     AUTH.syncError = null;
     return data?.data||null;
   }catch(e){
     AUTH.syncError = e.message||'erro desconhecido';
-    console.error('syncDown error:',e);
+    console.error('[NEXUS] syncDown error:',e);
     return null;
   }finally{
     AUTH.syncing = false;
@@ -9345,19 +9361,24 @@ async function initAuth(){
   });
 
   // Restore existing session (if any)
-  const {data:{session}} = await client.auth.getSession();
-  if(session){
-    AUTH.session = session;
-    AUTH.user = session.user;
-    // handleFirstLoginMerge ainda será chamado via onAuthStateChange com event SIGNED_IN? Não.
-    // getSession não dispara SIGNED_IN. Fazemos download manual:
-    try{
-      const remote = await syncDown();
-      if(remote){
-        Object.assign(DATA,remote);
-        save();
-      }
-    }catch(_){}
+  try{
+    const {data:{session}} = await withTimeout(client.auth.getSession(),5000,'getSession');
+    if(session){
+      AUTH.session = session;
+      AUTH.user = session.user;
+      // getSession doesn't fire SIGNED_IN; do a manual download (but don't block boot if it hangs)
+      syncDown().then(remote=>{
+        if(remote){
+          Object.assign(DATA,remote);
+          save();
+          render();
+        }
+      }).catch(err=>{
+        console.warn('[NEXUS] Initial syncDown failed (non-blocking):',err.message);
+      });
+    }
+  }catch(e){
+    console.warn('[NEXUS] getSession timeout or error:',e.message);
   }
   AUTH.loading = false;
   AUTH.authReady = true;
