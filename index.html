@@ -821,8 +821,25 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 <body>
 <div id="app"></div>
 <div id="modal-root"></div>
-<!-- Supabase client — loaded from CDN, initialized in app script below -->
-<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<!-- Supabase client — CDN com fallback automático (se uma falhar, tenta a próxima) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+// Fallback: se jsdelivr falhou, tenta outras CDNs antes de desistir
+if(typeof window.supabase==='undefined'){
+  const fallbacks = [
+    'https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
+    'https://esm.sh/@supabase/supabase-js@2.45.4'
+  ];
+  (function tryNext(i){
+    if(i>=fallbacks.length||typeof window.supabase!=='undefined')return;
+    const s = document.createElement('script');
+    s.src = fallbacks[i];
+    s.onerror = ()=>tryNext(i+1);
+    s.onload = ()=>{if(typeof window.supabase==='undefined')tryNext(i+1);};
+    document.head.appendChild(s);
+  })(0);
+}
+</script>
 <script>
 /* CONSTANTS */
 // Default exam date — can be overridden in Config (stored in DATA.config.examDate)
@@ -846,8 +863,16 @@ const SUPABASE_CONFIG = {
 let supa = null;
 function initSupabase(){
   if(supa)return supa;
-  if(!window.supabase||!SUPABASE_CONFIG.url.startsWith('https://')||SUPABASE_CONFIG.url.includes('SEU-PROJETO')){
-    console.warn('Supabase não configurado. Auth e sync ficam desativados.');
+  if(typeof window.supabase==='undefined'){
+    console.warn('[NEXUS] window.supabase ainda não disponível.');
+    return null;
+  }
+  if(!SUPABASE_CONFIG.url.startsWith('https://')){
+    console.warn('[NEXUS] URL inválida no SUPABASE_CONFIG:',SUPABASE_CONFIG.url);
+    return null;
+  }
+  if(SUPABASE_CONFIG.url.includes('SEU-PROJETO')||SUPABASE_CONFIG.anonKey.includes('SUA-ANON-KEY')){
+    console.warn('[NEXUS] SUPABASE_CONFIG ainda está com placeholders. Substitua pelos valores reais.');
     return null;
   }
   try{
@@ -859,9 +884,10 @@ function initSupabase(){
         storageKey:'nexus_sb_session'
       }
     });
+    console.log('[NEXUS] Supabase inicializado com sucesso.');
     return supa;
   }catch(e){
-    console.error('Falha ao inicializar Supabase:',e);
+    console.error('[NEXUS] Falha ao inicializar Supabase:',e);
     return null;
   }
 }
@@ -9248,10 +9274,25 @@ function renderAuthScreen(){
    AUTH INIT — roda no boot
    ============================================================ */
 async function initAuth(){
-  const client = initSupabase();
-  if(!client){
+  // Wait up to 5s for Supabase CDN to load (may take a few hundred ms after fallbacks)
+  const startWait = Date.now();
+  while(typeof window.supabase==='undefined' && Date.now()-startWait<5000){
+    await new Promise(r=>setTimeout(r,100));
+  }
+  if(typeof window.supabase==='undefined'){
+    console.error('[NEXUS] Supabase SDK não carregou após 5s. Verifique sua conexão ou bloqueadores de script.');
     AUTH.loading = false;
     AUTH.authReady = true;
+    render();
+    return;
+  }
+
+  const client = initSupabase();
+  if(!client){
+    console.warn('[NEXUS] Supabase client não inicializou. Verifique SUPABASE_CONFIG.');
+    AUTH.loading = false;
+    AUTH.authReady = true;
+    render();
     return;
   }
 
