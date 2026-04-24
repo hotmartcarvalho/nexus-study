@@ -621,6 +621,41 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 @media(max-width:520px){.cmp-cells{grid-template-columns:1fr}}
 
 /* Welcome / onboarding */
+/* Account card in Settings */
+.account-info{background:var(--surface2);border-radius:var(--rs);padding:.75rem 1rem;margin-top:.25rem}
+.account-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0;font-size:13px;flex-wrap:wrap}
+.account-row + .account-row{border-top:1px dashed var(--border)}
+.account-lbl{color:var(--text3);font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.account-val{color:var(--text);font-weight:500;word-break:break-all;text-align:right}
+.account-row.error .account-val{color:var(--red-text)}
+
+/* ====== AUTENTICAÇÃO (Supabase) ====== */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem 1rem;background:var(--bg)}
+.auth-card{max-width:420px;width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2.25rem 1.75rem;box-shadow:0 4px 24px rgba(0,0,0,.04)}
+.auth-logo{font-size:26px;font-weight:900;letter-spacing:-1px;color:var(--text);text-align:center;margin-bottom:.5rem}
+.auth-logo em{color:var(--accent);font-style:normal}
+.auth-eyebrow{font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);text-align:center;margin-bottom:1.75rem}
+.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface2);border-radius:var(--rs);padding:4px;margin-bottom:1.5rem}
+.auth-tab{background:transparent;border:none;padding:.625rem;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;border-radius:var(--rs);font-family:inherit;transition:all .15s}
+.auth-tab.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.auth-form label{display:block;font-size:12px;color:var(--text2);font-weight:600;margin-bottom:4px}
+.auth-form input{width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--surface);color:var(--text)}
+.auth-form input:focus{outline:none;border-color:var(--accent)}
+.auth-submit{width:100%;justify-content:center;margin-top:1.25rem}
+.auth-error{background:var(--red-light);color:var(--red-text);padding:.625rem .75rem;border-radius:var(--rs);font-size:12.5px;margin-top:.875rem;border:1px solid var(--red)}
+.auth-ok{background:var(--accent-light);color:var(--accent-text);padding:.625rem .75rem;border-radius:var(--rs);font-size:12.5px;margin-top:.875rem;border:1px solid var(--accent)}
+.auth-note{font-size:11.5px;color:var(--text3);text-align:center;margin:1.25rem 0 0;line-height:1.5}
+.auth-loading{text-align:center;padding:1.5rem 0;color:var(--text2)}
+.auth-loading .spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+.auth-loading p{margin-top:.75rem;font-size:13px}
+
+/* Sync indicator — small dot in topbar */
+.sync-dot{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);padding:4px 8px;border-radius:10px;background:var(--surface2);cursor:default}
+.sync-dot::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.sync-dot.syncing::before{background:var(--amber);animation:pulse 1.2s ease-in-out infinite}
+.sync-dot.error::before{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
 /* ====== WELCOME v2 — landing page enxuta e impactante ====== */
 .welcome-v2{max-width:900px !important;margin:0 auto;padding:0 1.25rem 4rem}
 
@@ -786,10 +821,76 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 <body>
 <div id="app"></div>
 <div id="modal-root"></div>
+<!-- Supabase client — loaded from CDN, initialized in app script below -->
+<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 /* CONSTANTS */
 // Default exam date — can be overridden in Config (stored in DATA.config.examDate)
 const DEFAULT_EXAM_DATE = '2026-04-26T13:00:00-03:00';
+
+/* ============================================================
+   SUPABASE — Autenticação e sincronização de dados
+   ============================================================
+   Como configurar:
+   1. Crie um projeto em https://supabase.com
+   2. Em Settings → API copie URL e anon public key
+   3. Substitua abaixo pelos seus valores REAIS
+   4. No editor SQL rode o script em /docs/supabase-schema.sql
+*/
+const SUPABASE_CONFIG = {
+  url: 'https://drltrcoflmfrezmrwymm.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRybHRyY29mbG1mcmV6bXJ3eW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5OTU2MzMsImV4cCI6MjA5MjU3MTYzM30.dP221PCV3b8joTCd212_f81Iktj3olv2AhBX5mGm8ZI'
+};
+
+// Global Supabase client — initialized once, reused everywhere
+let supa = null;
+function initSupabase(){
+  if(supa)return supa;
+  if(!window.supabase||!SUPABASE_CONFIG.url.startsWith('https://')||SUPABASE_CONFIG.url.includes('SEU-PROJETO')){
+    console.warn('Supabase não configurado. Auth e sync ficam desativados.');
+    return null;
+  }
+  try{
+    supa = window.supabase.createClient(SUPABASE_CONFIG.url,SUPABASE_CONFIG.anonKey,{
+      auth:{
+        persistSession:true,
+        autoRefreshToken:true,
+        storage:window.localStorage,
+        storageKey:'nexus_sb_session'
+      }
+    });
+    return supa;
+  }catch(e){
+    console.error('Falha ao inicializar Supabase:',e);
+    return null;
+  }
+}
+
+// Auth state — tracked here, syncs with UI via onAuthStateChange
+const AUTH = {
+  user:null,           // Supabase user object
+  session:null,        // JWT + refresh token
+  loading:true,        // true during initial session restore
+  syncing:false,       // true during active upload/download
+  lastSyncAt:null,     // ms timestamp of last successful sync
+  syncError:null,      // last error message from sync
+  authReady:false      // flips true after onAuthStateChange fires for the first time
+};
+
+// Get current access token (JWT) — used in /api/generate calls
+function authToken(){
+  return AUTH.session?.access_token || null;
+}
+
+// Is Supabase configured and user logged in?
+function isAuthed(){
+  return !!(supa&&AUTH.user);
+}
+
+// Does the deployment have Supabase credentials set up?
+function supabaseConfigured(){
+  return !!supa;
+}
 const DEFAULT_EXAM_NAME = 'Prova';
 function examDate(){
   const d = (DATA&&DATA.config&&DATA.config.examDate)||DEFAULT_EXAM_DATE;
@@ -889,7 +990,11 @@ function load(){
     return Object.assign(def,parsed);
   }catch(e){return defaultData()}
 }
-function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(DATA))}catch(e){}}
+function save(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(DATA))}catch(e){}
+  // Debounced sync to Supabase when logged in
+  if(typeof scheduleSync==='function')scheduleSync();
+}
 let DATA = load();
 
 const ST = {
@@ -1484,6 +1589,21 @@ function closeModal(){ST.modal=null;$('modal-root').innerHTML='';}
 const APP = $('app');
 function render(){
   APP.innerHTML='';
+  // Loading state while we restore session on first boot
+  if(AUTH.loading){
+    const load = mk('div','auth-wrap fade');
+    const card = mk('div','auth-card');
+    const spin = mk('div','auth-loading');spin.innerHTML='<span class="spinner"></span><p>Carregando...</p>';
+    card.appendChild(spin);
+    load.appendChild(card);
+    APP.appendChild(load);
+    return;
+  }
+  // If Supabase is configured AND user isn't authenticated → auth screen
+  if(supabaseConfigured()&&!isAuthed()){
+    APP.appendChild(renderAuthScreen());
+    return;
+  }
   if(!DATA.welcomeShown){APP.appendChild(renderWelcome());return;}
   if(needsSetup()){APP.appendChild(renderSetup());return;}
   APP.appendChild(renderTopbar());
@@ -1659,7 +1779,17 @@ function renderTopbar(){
   const days = Math.ceil((examDate()-new Date())/(1000*60*60*24));
   const pill = mk('div','countdown-pill');
   pill.textContent=days>0?(days===1?'1 dia':days+' dias'):(days===0?'Prova hoje':'Pós-prova');
-  bar.appendChild(brand);bar.appendChild(tabs);bar.appendChild(pill);
+  bar.appendChild(brand);bar.appendChild(tabs);
+  // Sync indicator — only when auth is active
+  if(isAuthed()){
+    const sync = mk('span','sync-dot');
+    sync.id='sync-indicator';
+    sync.textContent='Sincronizado';
+    if(AUTH.syncing){sync.classList.add('syncing');sync.textContent='Sincronizando...';}
+    else if(AUTH.syncError){sync.classList.add('error');sync.textContent='Erro';}
+    bar.appendChild(sync);
+  }
+  bar.appendChild(pill);
   return bar;
 }
 
@@ -8554,6 +8684,49 @@ function renderSettings(){
   usgCard.appendChild(usgBtn);
   wrap.appendChild(usgCard);
 
+  // ===== MINHA CONTA — only if auth is active =====
+  if(isAuthed()){
+    const accCard = mk('div','card');accCard.style.marginTop='1rem';
+    accCard.appendChild(sLabel('Minha conta'));
+    const accInfo = mk('div','account-info');
+    const emailRow = mk('div','account-row');
+    emailRow.innerHTML = `<span class="account-lbl">Email</span><span class="account-val">${escapeHTML(AUTH.user.email||'—')}</span>`;
+    accInfo.appendChild(emailRow);
+    if(AUTH.lastSyncAt){
+      const syncRow = mk('div','account-row');
+      const mins = Math.round((Date.now()-AUTH.lastSyncAt)/60000);
+      const label = mins<1?'agora mesmo':mins===1?'1 min atrás':mins<60?mins+' min atrás':Math.round(mins/60)+'h atrás';
+      syncRow.innerHTML = `<span class="account-lbl">Última sincronização</span><span class="account-val">${label}</span>`;
+      accInfo.appendChild(syncRow);
+    }
+    if(AUTH.syncError){
+      const errRow = mk('div','account-row error');
+      errRow.innerHTML = `<span class="account-lbl">Erro ao sincronizar</span><span class="account-val">${escapeHTML(AUTH.syncError)}</span>`;
+      accInfo.appendChild(errRow);
+    }
+    accCard.appendChild(accInfo);
+
+    const accBtns = mk('div','flex');accBtns.style.cssText='gap:8px;margin-top:1rem;flex-wrap:wrap';
+    const forceSyncBtn = mkBtn('🔄 Sincronizar agora','btn btn-sm');
+    forceSyncBtn.addEventListener('click',async()=>{
+      forceSyncBtn.disabled=true;forceSyncBtn.textContent='Sincronizando...';
+      await syncUp();
+      forceSyncBtn.disabled=false;forceSyncBtn.textContent='🔄 Sincronizar agora';
+      render();
+    });
+    accBtns.appendChild(forceSyncBtn);
+    const logoutBtn = mkBtn('Sair da conta','btn btn-sm');
+    logoutBtn.style.color='var(--red-text)';
+    logoutBtn.addEventListener('click',async()=>{
+      if(!confirm('Deseja sair da sua conta? Seus dados permanecem salvos na nuvem.'))return;
+      logoutBtn.disabled=true;logoutBtn.textContent='Saindo...';
+      await authSignOut();
+    });
+    accBtns.appendChild(logoutBtn);
+    accCard.appendChild(accBtns);
+    wrap.appendChild(accCard);
+  }
+
   const apiCard = mk('div','card');apiCard.style.marginTop='1rem';
   apiCard.appendChild(sLabel('Configurações da IA'));
   const desc = mk('p','txt2');desc.style.marginBottom='.875rem';
@@ -8828,14 +9001,310 @@ function showShortcutsOverlay(){
   document.getElementById('sk-close').addEventListener('click',()=>overlay.remove());
 }
 
+/* ============================================================
+   SYNC LAYER — sobe/baixa DATA (JSONB) via Supabase
+   ============================================================ */
+
+// Timer de debounce pro autoSync
+let _syncTimer = null;
+const SYNC_DEBOUNCE_MS = 3000; // Aguarda 3s de inatividade antes de subir
+
+// Salva DATA no Supabase. Debounced — múltiplas chamadas em sequência
+// viram uma única requisição ao servidor.
+function scheduleSync(){
+  if(!isAuthed())return;
+  if(_syncTimer)clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(()=>{syncUp().catch(e=>console.warn('Sync falhou:',e.message));},SYNC_DEBOUNCE_MS);
+}
+
+// Sobe o DATA atual pra Supabase (upsert)
+async function syncUp(){
+  if(!isAuthed())return;
+  AUTH.syncing = true;
+  // Não chama render imediatamente — a UI atualiza o indicador via CSS
+  const indicator = document.getElementById('sync-indicator');
+  if(indicator)indicator.classList.add('syncing');
+  try{
+    // Clona o DATA e remove campos que não queremos sincronizar
+    const payload = JSON.parse(JSON.stringify(DATA));
+    // config.apiKey é legado do BYOK; não faz sentido sincronizar
+    if(payload.config)delete payload.config.apiKey;
+
+    const {error} = await supa.from('user_data').upsert({
+      user_id:AUTH.user.id,
+      data:payload,
+      updated_at:new Date().toISOString()
+    },{onConflict:'user_id'});
+    if(error)throw error;
+    AUTH.lastSyncAt = Date.now();
+    AUTH.syncError = null;
+  }catch(e){
+    AUTH.syncError = e.message||'erro desconhecido';
+    console.error('syncUp error:',e);
+  }finally{
+    AUTH.syncing = false;
+    if(indicator)indicator.classList.remove('syncing');
+    updateSyncIndicator();
+  }
+}
+
+// Baixa DATA do Supabase. Retorna null se usuário novo sem dados.
+async function syncDown(){
+  if(!isAuthed())return null;
+  AUTH.syncing = true;
+  updateSyncIndicator();
+  try{
+    const {data,error} = await supa.from('user_data')
+      .select('data,updated_at')
+      .eq('user_id',AUTH.user.id)
+      .maybeSingle();
+    if(error)throw error;
+    AUTH.lastSyncAt = Date.now();
+    AUTH.syncError = null;
+    return data?.data||null;
+  }catch(e){
+    AUTH.syncError = e.message||'erro desconhecido';
+    console.error('syncDown error:',e);
+    return null;
+  }finally{
+    AUTH.syncing = false;
+    updateSyncIndicator();
+  }
+}
+
+// Atualiza o pequeno indicador visual de sync
+function updateSyncIndicator(){
+  const el = document.getElementById('sync-indicator');
+  if(!el)return;
+  el.classList.toggle('syncing',AUTH.syncing);
+  el.classList.toggle('error',!!AUTH.syncError);
+  if(AUTH.syncError){
+    el.title='Erro ao sincronizar: '+AUTH.syncError;
+  } else if(AUTH.syncing){
+    el.title='Sincronizando...';
+  } else if(AUTH.lastSyncAt){
+    const mins = Math.round((Date.now()-AUTH.lastSyncAt)/60000);
+    el.title='Sincronizado '+(mins<1?'agora':'há '+mins+' min');
+  }
+}
+
+// Merge inteligente: decide o que fazer no primeiro login
+// - Local vazio + remoto com dados → usa remoto
+// - Local com dados + remoto vazio → pergunta se quer subir
+// - Local com dados + remoto com dados → usa o mais recente (simple last-write-wins por ora)
+async function handleFirstLoginMerge(){
+  const hasLocalData = (DATA.errors||[]).length>0||(DATA.srs?.cards||[]).length>0||(DATA.sources||[]).length>0;
+  const remote = await syncDown();
+
+  if(!remote&&!hasLocalData){
+    // Usuário novo, nada para fazer
+    return;
+  }
+  if(!remote&&hasLocalData){
+    // Subir dados locais para a conta nova
+    const confirmed = confirm('Encontramos dados locais neste dispositivo (questões, erros, flashcards). Deseja enviá-los para sua conta na nuvem? Clique OK para sincronizar ou Cancelar para manter a conta vazia.');
+    if(confirmed){
+      await syncUp();
+      showToast('✓ Dados enviados para sua conta.');
+    }
+    return;
+  }
+  if(remote&&!hasLocalData){
+    // Conta tem dados, local não → carrega remoto
+    Object.assign(DATA,remote);
+    save();
+    showToast('✓ Dados da sua conta carregados.');
+    render();
+    return;
+  }
+  // Ambos com dados: usa o mais recente baseado no updated_at remoto e timestamp local
+  // Por enquanto, simples: pergunta ao usuário
+  const useRemote = confirm('Você tem dados tanto neste dispositivo quanto na sua conta. Qual versão deseja manter?\n\nOK = Usar dados da conta (substitui o local)\nCancelar = Usar dados locais (substitui o da conta)');
+  if(useRemote){
+    Object.assign(DATA,remote);
+    save();
+    showToast('✓ Dados da conta carregados.');
+  } else {
+    await syncUp();
+    showToast('✓ Dados locais enviados para a conta.');
+  }
+  render();
+}
+
+/* ============================================================
+   AUTH UI — signup, login, logout, profile
+   ============================================================ */
+
+// Signup with email + password
+async function authSignUp(email,password){
+  if(!supa)throw new Error('Supabase não configurado');
+  const {data,error} = await supa.auth.signUp({email,password});
+  if(error)throw error;
+  return data;
+}
+
+// Login
+async function authSignIn(email,password){
+  if(!supa)throw new Error('Supabase não configurado');
+  const {data,error} = await supa.auth.signInWithPassword({email,password});
+  if(error)throw error;
+  return data;
+}
+
+// Logout
+async function authSignOut(){
+  if(!supa)return;
+  // Sync before logout to preserve latest state
+  try{await syncUp();}catch(_){}
+  await supa.auth.signOut();
+  // State reset happens in onAuthStateChange callback
+}
+
+// Render login/signup screen
+function renderAuthScreen(){
+  const wrap = mk('div','auth-wrap fade');
+  const card = mk('div','auth-card');
+
+  const logo = mk('div','auth-logo');logo.innerHTML='NEX<em>US</em>';
+  card.appendChild(logo);
+  const eyebrow = mk('div','auth-eyebrow');eyebrow.textContent='Preparação adaptativa para concursos';
+  card.appendChild(eyebrow);
+
+  const mode = ST.authMode||'login';
+  const tabs = mk('div','auth-tabs');
+  [['login','Entrar'],['signup','Criar conta']].forEach(([v,lbl])=>{
+    const t = mk('button','auth-tab'+(mode===v?' on':''));
+    t.textContent=lbl;
+    t.addEventListener('click',()=>{ST.authMode=v;ST.authError=null;render();});
+    tabs.appendChild(t);
+  });
+  card.appendChild(tabs);
+
+  const form = mk('div','auth-form');
+  const emailLbl = mk('label');emailLbl.textContent='Email';
+  const email = mk('input');email.type='email';email.autocomplete='email';email.placeholder='voce@email.com';
+  email.value=ST.authEmail||'';email.addEventListener('input',e=>{ST.authEmail=e.target.value;});
+  form.appendChild(emailLbl);form.appendChild(email);
+
+  const passLbl = mk('label');passLbl.textContent='Senha';passLbl.style.marginTop='.75rem';
+  const pass = mk('input');pass.type='password';pass.autocomplete=mode==='signup'?'new-password':'current-password';
+  pass.placeholder='mínimo 6 caracteres';
+  pass.value=ST.authPass||'';pass.addEventListener('input',e=>{ST.authPass=e.target.value;});
+  form.appendChild(passLbl);form.appendChild(pass);
+
+  if(ST.authError){
+    const err = mk('div','auth-error');err.textContent=ST.authError;
+    form.appendChild(err);
+  }
+
+  const submitBtn = mkBtn(mode==='signup'?'Criar conta':'Entrar','btn btn-p btn-lg auth-submit');
+  submitBtn.addEventListener('click',async()=>{
+    const em = (ST.authEmail||'').trim();
+    const pw = ST.authPass||'';
+    if(!em||!pw){ST.authError='Preencha email e senha.';render();return;}
+    if(mode==='signup'&&pw.length<6){ST.authError='Senha deve ter ao menos 6 caracteres.';render();return;}
+    submitBtn.disabled=true;submitBtn.textContent='Aguarde...';
+    ST.authError=null;
+    try{
+      if(mode==='signup'){
+        await authSignUp(em,pw);
+        ST.authSuccess='Conta criada! Verifique seu email para ativar (se configurado) e faça login.';
+        ST.authMode='login';ST.authPass='';
+      } else {
+        await authSignIn(em,pw);
+        // onAuthStateChange triggers the session + first render
+        ST.authPass='';
+      }
+    }catch(e){
+      ST.authError = (e.message||'').includes('Invalid login')?'Email ou senha incorretos.':
+                     (e.message||'').includes('User already')?'Este email já está cadastrado.':
+                     e.message||'Falha na autenticação.';
+    }
+    submitBtn.disabled=false;submitBtn.textContent=mode==='signup'?'Criar conta':'Entrar';
+    render();
+  });
+  form.appendChild(submitBtn);
+
+  if(ST.authSuccess){
+    const ok = mk('div','auth-ok');ok.textContent=ST.authSuccess;
+    form.appendChild(ok);
+    ST.authSuccess=null;
+  }
+
+  card.appendChild(form);
+
+  // Micro-note
+  const note = mk('p','auth-note');
+  note.textContent = mode==='signup'
+    ? 'Ao criar conta, você concorda com os termos de uso. Seus dados ficam armazenados com segurança.'
+    : 'Login requer conexão com internet.';
+  card.appendChild(note);
+
+  wrap.appendChild(card);
+  return wrap;
+}
+
+/* ============================================================
+   AUTH INIT — roda no boot
+   ============================================================ */
+async function initAuth(){
+  const client = initSupabase();
+  if(!client){
+    AUTH.loading = false;
+    AUTH.authReady = true;
+    return;
+  }
+
+  // Listen for auth changes
+  client.auth.onAuthStateChange(async(event,session)=>{
+    const wasAuthed = !!AUTH.user;
+    AUTH.session = session;
+    AUTH.user = session?.user||null;
+    AUTH.loading = false;
+    AUTH.authReady = true;
+
+    if(event==='SIGNED_IN'&&!wasAuthed){
+      // First login of this session — merge data
+      await handleFirstLoginMerge();
+    }
+    if(event==='SIGNED_OUT'){
+      // Clear sync state. Keep DATA as-is — user may log in to another account
+      AUTH.syncError = null;
+      AUTH.lastSyncAt = null;
+    }
+    render();
+  });
+
+  // Restore existing session (if any)
+  const {data:{session}} = await client.auth.getSession();
+  if(session){
+    AUTH.session = session;
+    AUTH.user = session.user;
+    // handleFirstLoginMerge ainda será chamado via onAuthStateChange com event SIGNED_IN? Não.
+    // getSession não dispara SIGNED_IN. Fazemos download manual:
+    try{
+      const remote = await syncDown();
+      if(remote){
+        Object.assign(DATA,remote);
+        save();
+      }
+    }catch(_){}
+  }
+  AUTH.loading = false;
+  AUTH.authReady = true;
+  render();
+}
+
 /* INIT */
 applyTheme();
 applyFocusMode();
 // Fetch exchange rates in background if not cached (non-blocking)
 ensureRates().then(r=>{
-  // Optional: re-render if rates changed while app was running
   if(document.querySelector('.usage-card'))render();
 }).catch(()=>{});
+// Initialize Supabase auth — this renders the auth screen if user isn't logged in
+initAuth();
+// Initial render (may show loading state if auth still resolving)
 render();
 </script>
 </body>
