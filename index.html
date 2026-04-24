@@ -645,6 +645,8 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 .auth-error{background:var(--red-light);color:var(--red-text);padding:.625rem .75rem;border-radius:var(--rs);font-size:12.5px;margin-top:.875rem;border:1px solid var(--red)}
 .auth-ok{background:var(--accent-light);color:var(--accent-text);padding:.625rem .75rem;border-radius:var(--rs);font-size:12.5px;margin-top:.875rem;border:1px solid var(--accent)}
 .auth-note{font-size:11.5px;color:var(--text3);text-align:center;margin:1.25rem 0 0;line-height:1.5}
+.auth-back-link{display:block;text-align:center;margin-top:.875rem;font-size:12px;color:var(--text3);text-decoration:none;padding:6px}
+.auth-back-link:hover{color:var(--accent);text-decoration:underline}
 .auth-loading{text-align:center;padding:1.5rem 0;color:var(--text2)}
 .auth-loading .spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
 .auth-loading p{margin-top:.75rem;font-size:13px}
@@ -1625,11 +1627,20 @@ function render(){
     APP.appendChild(load);
     return;
   }
-  // If Supabase is configured AND user isn't authenticated → auth screen
-  if(supabaseConfigured()&&!isAuthed()){
+  // Flow order: welcome (landing) → auth (when user clicks CTA) → setup → app
+  // Welcome is ALWAYS shown to new visitors so they understand the product first.
+  // Authenticated users skip welcome (they already know it).
+  if(!isAuthed() && !ST.showAuth && !DATA.welcomeShown){
+    APP.appendChild(renderWelcome());
+    return;
+  }
+  // Auth screen — only shown after user clicks a welcome CTA (ST.showAuth=true)
+  // or if they're returning and Supabase is configured but session expired.
+  if(supabaseConfigured() && !isAuthed()){
     APP.appendChild(renderAuthScreen());
     return;
   }
+  // Returning non-authed users (when Supabase not configured locally): show welcome if not shown
   if(!DATA.welcomeShown){APP.appendChild(renderWelcome());return;}
   if(needsSetup()){APP.appendChild(renderSetup());return;}
   APP.appendChild(renderTopbar());
@@ -1670,7 +1681,7 @@ function renderWelcome(){
   subheadline.textContent='Plataforma de estudos que transforma seus erros em flashcards, detecta suas armadilhas mais frequentes, e te prepara como a banca Cebraspe pensa.';
   hero.appendChild(subheadline);
   const heroCta = mkBtn('Começar agora →','btn btn-p btn-lg wel-hero-cta');
-  heroCta.addEventListener('click',()=>{DATA.welcomeShown=true;save();render();});
+  heroCta.addEventListener('click',()=>{DATA.welcomeShown=true;save();if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;}render();});
   hero.appendChild(heroCta);
   const heroNote = mk('p','wel-hero-note');
   heroNote.textContent='Seus dados ficam no seu navegador. Não precisa criar conta.';
@@ -1757,7 +1768,7 @@ function renderWelcome(){
   fcSub.textContent='Leva menos de 2 minutos para configurar — depois é só estudar.';
   finalCta.appendChild(fcSub);
   const fcBtn = mkBtn('Começar a estudar →','btn btn-p btn-lg wel-final-btn');
-  fcBtn.addEventListener('click',()=>{DATA.welcomeShown=true;save();render();});
+  fcBtn.addEventListener('click',()=>{DATA.welcomeShown=true;save();if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;}render();});
   finalCta.appendChild(fcBtn);
   wrap.appendChild(finalCta);
 
@@ -9266,6 +9277,18 @@ function renderAuthScreen(){
     : 'Login requer conexão com internet.';
   card.appendChild(note);
 
+  // "Back to welcome" link — useful if user wants to reread the landing
+  const backLink = mk('a','auth-back-link');
+  backLink.href='#';
+  backLink.textContent='← Voltar e ler mais sobre a plataforma';
+  backLink.addEventListener('click',e=>{
+    e.preventDefault();
+    ST.showAuth=false;
+    DATA.welcomeShown=false;save();
+    render();
+  });
+  card.appendChild(backLink);
+
   wrap.appendChild(card);
   return wrap;
 }
@@ -9305,6 +9328,10 @@ async function initAuth(){
     AUTH.authReady = true;
 
     if(event==='SIGNED_IN'&&!wasAuthed){
+      // Reset auth-flow state and ensure welcome is marked as seen
+      ST.showAuth = false;
+      DATA.welcomeShown = true;
+      save();
       // First login of this session — merge data
       await handleFirstLoginMerge();
     }
@@ -9312,6 +9339,7 @@ async function initAuth(){
       // Clear sync state. Keep DATA as-is — user may log in to another account
       AUTH.syncError = null;
       AUTH.lastSyncAt = null;
+      ST.showAuth = false;
     }
     render();
   });
