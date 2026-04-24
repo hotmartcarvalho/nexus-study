@@ -30,8 +30,15 @@ export default async function handler(req, res) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!apiKey || !supabaseUrl || !supabaseServiceKey) {
-    return res.status(500).json({ error: 'Servidor mal configurado. Contate o administrador.' });
+  const missing = [];
+  if (!apiKey) missing.push('ANTHROPIC_API_KEY');
+  if (!supabaseUrl) missing.push('SUPABASE_URL');
+  if (!supabaseServiceKey) missing.push('SUPABASE_SERVICE_ROLE_KEY');
+  if (missing.length > 0) {
+    console.error('Missing env vars:', missing);
+    return res.status(500).json({
+      error: 'Servidor mal configurado. Env vars ausentes: ' + missing.join(', ')
+    });
   }
 
   // 1. Extrai e valida JWT
@@ -64,27 +71,50 @@ export default async function handler(req, res) {
     });
   }
 
-  // 3. Checa quota
+  // 3. Checa quota — se não existir, cria automaticamente (fallback do trigger)
   try {
-    const { data: quota, error: qErr } = await supabaseAdmin
+    let { data: quota, error: qErr } = await supabaseAdmin
       .from('user_quota')
       .select('credits_remaining, plan')
       .eq('user_id', user.id)
       .maybeSingle();
 
     if (qErr) {
-      console.error('Quota check error:', qErr);
-      return res.status(500).json({ error: 'Erro ao verificar créditos.' });
+      console.error('Quota SELECT error:', JSON.stringify(qErr));
+      return res.status(500).json({
+        error: 'Erro ao verificar créditos: ' + (qErr.message || qErr.code || 'desconhecido')
+      });
     }
+
+    // Auto-create quota if missing (user existed before trigger, or backfill não rodou)
     if (!quota) {
-      return res.status(403).json({ error: 'Quota não configurada para este usuário.' });
+      console.warn('Quota missing for user', user.id, '- creating automatically');
+      const { data: created, error: insErr } = await supabaseAdmin
+        .from('user_quota')
+        .insert({
+          user_id: user.id,
+          plan: 'trial',
+          credits_remaining: 50
+        })
+        .select('credits_remaining, plan')
+        .single();
+      if (insErr) {
+        console.error('Quota INSERT error:', JSON.stringify(insErr));
+        return res.status(500).json({
+          error: 'Erro ao criar quota: ' + (insErr.message || insErr.code || 'desconhecido')
+        });
+      }
+      quota = created;
     }
+
     if (quota.credits_remaining <= 0) {
       return res.status(402).json({ error: 'Créditos esgotados', code: 'NO_CREDITS', plan: quota.plan });
     }
   } catch (err) {
-    console.error('Quota check exception:', err);
-    return res.status(500).json({ error: 'Erro ao verificar créditos.' });
+    console.error('Quota check exception:', err.message, err.stack);
+    return res.status(500).json({
+      error: 'Erro ao verificar créditos: ' + (err.message || 'exceção desconhecida')
+    });
   }
 
   // 4. Valida body
