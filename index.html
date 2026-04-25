@@ -177,8 +177,8 @@ a{color:var(--accent)}
 
 .activity-v2-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:1.25rem;padding-bottom:.875rem;border-bottom:1px solid var(--border)}
 .activity-v2-title{margin:0 0 2px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--text);letter-spacing:.01em}
-.av2-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-light);animation:av2-dot-pulse 1.6s ease-out 1}
-@keyframes av2-dot-pulse{0%{box-shadow:0 0 0 3px var(--accent-light);transform:scale(1)}40%{box-shadow:0 0 0 7px transparent;transform:scale(1.15)}100%{box-shadow:0 0 0 3px var(--accent-light);transform:scale(1)}}
+.av2-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-light);animation:av2-dot-pulse 1.4s ease-out 3 forwards}
+@keyframes av2-dot-pulse{0%{box-shadow:0 0 0 3px var(--accent-light);transform:scale(1)}40%{box-shadow:0 0 0 7px transparent;transform:scale(1.18)}100%{box-shadow:0 0 0 3px var(--accent-light);transform:scale(1)}}
 .activity-v2-sub{margin:0;font-size:11.5px;color:var(--text3);font-weight:500}
 
 .activity-v2-body{display:flex;flex-direction:column;gap:2px}
@@ -270,10 +270,12 @@ a{color:var(--accent)}
 .usage-credits-lbl b{color:var(--accent-text);font-weight:700;font-size:13.5px}
 
 /* Topic profile section in map */
-.profile-section{background:linear-gradient(135deg,var(--purple-light) 0%,var(--surface) 100%);border-left:4px solid var(--purple) !important}
-.profile-preview{font-size:13px;line-height:1.55;color:var(--text);padding:.5rem .75rem;background:var(--surface);border-radius:var(--rs);max-height:80px;overflow:hidden;position:relative}
-.profile-preview::after{content:'';position:absolute;bottom:0;left:0;right:0;height:24px;background:linear-gradient(to bottom,transparent,var(--surface))}
+.profile-section{background:linear-gradient(135deg,var(--purple-light) 0%,var(--surface) 100%);border-left:4px solid var(--purple) !important;padding:1rem 1.125rem !important;margin-top:.875rem;border-radius:var(--rs)}
+.profile-section .section-label{margin-bottom:.625rem !important;font-weight:700;color:var(--purple-text)}
+.profile-preview{font-size:13px;line-height:1.55;color:var(--text);padding:.625rem .875rem;background:var(--surface);border-radius:var(--rs);max-height:84px;overflow:hidden;position:relative;border:1px solid var(--border)}
+.profile-preview::after{content:'';position:absolute;bottom:0;left:0;right:0;height:28px;background:linear-gradient(to bottom,transparent,var(--surface))}
 .profile-preview p{margin:0}
+.profile-preview p + p{margin-top:.4rem}
 
 /* Cost hint badge inside button */
 .btn-cost-hint{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;margin-left:6px;background:rgba(255,255,255,.25);color:inherit;letter-spacing:.2px;opacity:.95}
@@ -304,6 +306,61 @@ a{color:var(--accent)}
 .profile-edit-ta:focus{border-color:var(--accent);outline:none}
 .suggest-chip{font-size:11px;padding:4px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-family:inherit;transition:all .15s}
 .suggest-chip:hover{background:var(--accent-light);color:var(--accent-text);border-color:var(--accent)}
+
+/* Pomodoro flutuante — visível em todas as páginas durante sessão ativa */
+.pomo-float{position:fixed;bottom:20px;left:20px;z-index:850;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.18);overflow:hidden;animation:pomo-float-in .25s ease;min-width:230px}
+@keyframes pomo-float-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.pomo-float .pf-progress{height:3px;background:var(--surface2);position:relative;overflow:hidden}
+.pomo-float .pf-progress-fill{height:100%;background:var(--accent);transition:width 1s linear,background-color .3s}
+.pomo-float.sbreak .pf-progress-fill{background:var(--blue)}
+.pomo-float.lbreak .pf-progress-fill{background:var(--purple)}
+.pomo-float .pf-row{display:flex;align-items:center;gap:10px;padding:10px 12px}
+.pomo-float .pf-emoji{font-size:20px;line-height:1;flex-shrink:0}
+.pomo-float .pf-info{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.pomo-float .pf-time{font-size:16px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:-.5px;line-height:1}
+.pomo-float .pf-phase{font-size:10.5px;color:var(--text3);font-weight:500;line-height:1.2;text-transform:uppercase;letter-spacing:.4px}
+.pomo-float .pf-btn{background:transparent;border:none;width:28px;height:28px;border-radius:8px;font-size:13px;color:var(--text2);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0;font-family:inherit}
+.pomo-float .pf-btn:hover{background:var(--surface2);color:var(--text)}
+.pomo-float .pf-toggle{font-size:14px}
+.pomo-float .pf-hide{font-size:18px;color:var(--text3)}
+.pomo-float.paused{opacity:.85}
+.pomo-float.paused::before{content:'PAUSADO';position:absolute;top:6px;right:8px;font-size:9px;font-weight:700;color:var(--amber-text);background:var(--amber-light);padding:1px 5px;border-radius:3px;letter-spacing:.6px}
+@media (max-width:600px){
+  .pomo-float{bottom:14px;left:14px;right:14px;min-width:0}
+}
+/* Modo foco esconde o widget também (zen total) */
+html.focus-mode .pomo-float{display:none}
+
+/* Map profile badge — 🧠 ao lado do nome do tópico */
+.map-profile-tag{display:inline-flex;align-items:center;justify-content:center;width:22px;height:20px;font-size:13px;background:var(--purple-light);border:1px solid var(--purple);border-radius:5px;margin-left:6px;cursor:pointer;line-height:1;padding:0;transition:transform .15s}
+.map-profile-tag:hover{transform:scale(1.15);background:var(--purple);color:#fff}
+
+/* Compare modal — lado a lado */
+.revgen-compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:.75rem}
+.revgen-compare-col{display:flex;flex-direction:column;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:.75rem}
+.revgen-compare-col.current{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-light)}
+.revgen-compare-body{flex:1;max-height:480px;overflow-y:auto;padding:.5rem;background:var(--surface);border-radius:var(--rs);font-size:12.5px;line-height:1.55}
+.revgen-compare-body h2{font-size:13.5px;color:var(--accent);margin:.875rem 0 .375rem;padding-bottom:.25rem;border-bottom:1px solid var(--accent-light)}
+.revgen-compare-body h2:first-child{margin-top:0}
+.revgen-compare-body h3{font-size:12.5px;margin:.625rem 0 .25rem}
+.revgen-compare-body p{margin:.25rem 0 .375rem}
+.revgen-compare-body ul,.revgen-compare-body ol{margin:.125rem 0 .375rem;padding-left:1.125rem}
+.revgen-compare-body li{margin-bottom:.2rem;font-size:12px}
+.revgen-compare-body b{color:var(--accent-text);font-weight:700}
+.rcc-tag{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:999px;margin-bottom:.5rem;width:fit-content;background:var(--surface);border:1px solid var(--border)}
+.rcc-tag.premium{background:var(--purple-light);color:var(--purple-text);border-color:var(--purple)}
+.rcc-tag.econ{background:var(--accent-light);color:var(--accent-text);border-color:var(--accent)}
+.rcc-tag .rmt-icon{font-size:12px}
+@media (max-width:760px){
+  .revgen-compare-grid{grid-template-columns:1fr}
+}
+
+/* Tag indicador de modelo no resultado do revgen */
+.revgen-model-tag{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:4px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);margin-bottom:.75rem;color:var(--text2);font-weight:500;width:fit-content}
+.revgen-model-tag.premium{background:var(--purple-light);color:var(--purple-text);border-color:var(--purple)}
+.revgen-model-tag.econ{background:var(--accent-light);color:var(--accent-text);border-color:var(--accent)}
+.revgen-model-tag b{font-weight:700}
+.revgen-model-tag .rmt-icon{font-size:13px}
 
 /* Dashboard greeting — saudação personalizada */
 .dash-greeting{margin-bottom:1.25rem;animation:route-in .35s ease}
@@ -447,7 +504,7 @@ h3{font-size:15px;font-weight:600}
 .card+.card{margin-top:.75rem}
 .card-pad{padding:1.1rem 1.25rem}
 
-.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;font-size:13.5px;font-weight:500;border-radius:var(--rs);border:1px solid var(--border2);background:var(--surface);color:var(--text)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 16px;font-size:13.5px;font-weight:500;border-radius:var(--rs);border:1px solid var(--border2);background:var(--surface);color:var(--text)}
 .btn:hover:not(:disabled){background:var(--surface2)}
 .btn:disabled{opacity:.38;cursor:not-allowed}
 .btn-p{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -637,7 +694,9 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 
 /* Modal */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:center;justify-content:center;padding:1rem;animation:fd .15s ease}
-.modal{background:var(--surface);border-radius:var(--r);max-width:560px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem 1.5rem}
+.modal{background:var(--surface);border-radius:var(--r);max-width:560px;width:auto;min-width:280px;max-height:90vh;overflow-y:auto;padding:1.25rem 1.25rem}
+.modal > *:first-child{margin-top:0}
+.modal > *:last-child{margin-bottom:0}
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
 .modal-close{background:transparent;border:none;font-size:22px;color:var(--text2);cursor:pointer;line-height:1}
 
@@ -1269,6 +1328,7 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 <body>
 <div id="app"></div>
 <div id="modal-root"></div>
+<div id="pomo-float-root"></div>
 <!-- Supabase client — CDN com fallback automático (se uma falhar, tenta a próxima) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
@@ -2306,6 +2366,9 @@ function render(){
   focusBtn.innerHTML = isFocusMode()?'✕':'🧘';
   focusBtn.addEventListener('click',()=>{toggleFocusMode();render();});
   APP.appendChild(focusBtn);
+  // Reset hidden state quando navega — pomo float reaparece se rodando
+  if(ST.view==='pomodoro')ST.pomoFloatHidden = false;
+  renderPomoFloat();
 }
 
 /* SETUP */
@@ -5098,7 +5161,8 @@ function renderMapa(){
     ['all','Todos'],
     ['with_errors','Com erros'],
     ['weak','Fracos (vermelho)'],
-    ['with_cards','Com flashcards']
+    ['with_cards','Com flashcards'],
+    ['with_profile','🧠 Com perfil']
   ].forEach(([val,lbl])=>{
     const b = mk('button','filter-chip'+(filter===val?' on':''));
     b.textContent=lbl;
@@ -5172,19 +5236,20 @@ function renderMapa(){
     return arr;
   };
 
-  // Apply content filter
-  const applyTopicFilter = (entry)=>{
+  // Apply content filter (recebe disciplineId pra filtros que precisam dele)
+  const applyTopicFilter = (entry, discId)=>{
     // Scope filter — "studied" exclui tópicos sem fonte cadastrada
     if(scope==='studied' && !entry.hasFonte)return false;
     if(filter==='with_errors')return entry.errors.length>0;
     if(filter==='weak')return masteryLevel(topicMastery(entry))==='low';
     if(filter==='with_cards')return entry.cards.length>0;
+    if(filter==='with_profile')return !!getTopicProfile(discId, entry.name);
     return true;
   };
 
   let anyShown = false;
   discList.forEach(m=>{
-    const topics = Object.values(m.topics).filter(applyTopicFilter);
+    const topics = Object.values(m.topics).filter(e=>applyTopicFilter(e, m.discipline.id));
     if(topics.length===0)return;
     anyShown = true;
     const discWrap = mk('div','map-disc');
@@ -5245,6 +5310,19 @@ function renderMapa(){
           mergeTag.textContent = `↻${entry.variants.length}`;
           mergeTag.title = 'Agrupado com variações:\n· ' + entry.variants.join('\n· ');
           left.appendChild(mergeTag);
+        }
+        // Indicador de perfil gerado (🧠) — clicável pra abrir direto
+        const hasProfile = !!getTopicProfile(m.discipline.id, entry.name);
+        if(hasProfile){
+          const profTag = mk('button','map-profile-tag');
+          profTag.type='button';
+          profTag.innerHTML = '🧠';
+          profTag.title = 'Perfil completo gerado — clique para visualizar';
+          profTag.addEventListener('click',(e)=>{
+            e.stopPropagation();
+            showTopicProfileModal(m.discipline.id, entry.name);
+          });
+          left.appendChild(profTag);
         }
         row.appendChild(left);
         // Inline stats
@@ -5433,11 +5511,19 @@ function renderMapTopicDetail(map){
     desc.textContent='Estudo profundo deste tópico no formato Cebraspe: conceitos, pegadinhas, mnemônicos, tabelas comparativas e checklists. Gerado uma vez, fica salvo pra consulta.';
     profileSec.appendChild(desc);
 
+    // Model picker — usuário escolhe entre econômico (Haiku) e premium (Sonnet)
+    const modelPicker = buildModelPicker('topic-profile', ()=>{
+      // Re-render quando troca de modelo pra atualizar custo do botão
+      render();
+    });
+    profileSec.appendChild(modelPicker);
+
     // Botão de gerar com indicador de consumo
     const model = getMethodModel('topic-profile');
     const cost = estimateProfileCredits(model);
     const genBtn = mkBtn('','btn btn-p');
-    const credText = isAdminMode()?`~${cost.min}-${cost.max} créditos`:`usa ~${cost.min}-${cost.max} créditos`;
+    genBtn.style.marginTop='.5rem';
+    const credText = `usa ~${cost.min}-${cost.max} créditos`;
     genBtn.innerHTML = `🧠 Gerar perfil completo <span class="btn-cost-hint ${cost.tier}">${credText}</span>`;
     genBtn.addEventListener('click',()=>{
       showConfirmModal({
@@ -5495,12 +5581,16 @@ function renderMapTopicDetail(map){
       const more = mk('p','txt3');more.style.fontSize='11px';more.textContent=`+${entry.cards.length-5} outros`;
       sec.appendChild(more);
     }
-    const reviewBtn = mkBtn('🎴 Revisar flashcards deste tópico','btn btn-sm');reviewBtn.style.marginTop='.5rem';
+    const reviewBtn = mkBtn('🎴 Ver flashcards deste tópico','btn btn-sm');reviewBtn.style.marginTop='.5rem';
     reviewBtn.addEventListener('click',()=>{
-      ST.view='srs';
-      ST.srsSubview='study';
-      ST.srsStudyDisc = sel.disciplineId;
-      render();
+      // Vai pra Todos (manage) com highlight do primeiro card do tópico
+      const firstCard = entry.cards[0];
+      if(firstCard){
+        navigateToCard(firstCard.id, {label:'Mapa: '+(getDiscipline(sel.disciplineId)?.name||'')});
+      } else {
+        ST.srsSubview = 'manage';
+        navigateTo('srs',{label:'Mapa: '+(getDiscipline(sel.disciplineId)?.name||'')});
+      }
     });
     sec.appendChild(reviewBtn);
     panel.appendChild(sec);
@@ -7190,8 +7280,32 @@ function renderRevgen(){
     const newBtn = mkBtn('✨ Novo','btn btn-sm');
     newBtn.addEventListener('click',()=>{s.result=null;render();});
     actions.appendChild(newBtn);
+
+    // Comparar com versão anterior — só aparece quando existe
+    if(s.previousResult){
+      const cmpBtn = mkBtn('⇄ Comparar com anterior','btn btn-sm');
+      cmpBtn.title = 'Compara o resultado atual com a versão gerada anteriormente';
+      cmpBtn.addEventListener('click',()=>showRevgenCompareModal(s));
+      actions.appendChild(cmpBtn);
+    }
+
     resHead.appendChild(actions);
     resCard.appendChild(resHead);
+
+    // Indicador de qual modelo gerou
+    if(s.modelUsed){
+      const tag = mk('div','revgen-model-tag');
+      if(s.modelUsed==='compiled'){
+        tag.innerHTML = `<span class="rmt-icon">📚</span><span>Compilado de perfis salvos · <b>sem custo de IA</b></span>`;
+        tag.classList.add('econ');
+      } else {
+        const modelLbl = shortModelName(s.modelUsed);
+        const isPrem = s.modelUsed.includes('sonnet');
+        tag.innerHTML = `<span class="rmt-icon">${isPrem?'💎':'⚡'}</span><span>Gerado com <b>${modelLbl}</b></span>`;
+        tag.classList.add(isPrem?'premium':'econ');
+      }
+      resCard.appendChild(tag);
+    }
 
     if(s.mode==='caderno'){
       // Render markdown simples
@@ -7305,7 +7419,112 @@ function renderRevgen(){
   genBtn.addEventListener('click',()=>runRevgen());
   wrap.appendChild(genBtn);
 
+  // Botão alternativo: compilar perfis salvos (apenas modo caderno + zero custo)
+  if(s.mode==='caderno'){
+    const compileInfo = previewProfilesAvailable(s);
+    if(compileInfo.count>0){
+      const cBtn = mkBtn('','btn btn-lg');cBtn.style.cssText='width:100%;margin-top:.5rem';
+      cBtn.innerHTML = `📚 Compilar perfis salvos <span class="btn-cost-hint econ">${compileInfo.count} perfis · sem custo</span>`;
+      cBtn.title = 'Concatena perfis que você já gerou pros tópicos do escopo selecionado. Não consome créditos.';
+      cBtn.addEventListener('click',()=>compileProfilesIntoCaderno(s));
+      wrap.appendChild(cBtn);
+
+      const note = mk('p','txt3');note.style.cssText='font-size:11px;margin-top:.4rem;text-align:center;line-height:1.5';
+      note.innerHTML = `Vai juntar <b>${compileInfo.count}</b> perfil${compileInfo.count===1?'':'s'} já gerado${compileInfo.count===1?'':'s'} (de <b>${compileInfo.totalTopics}</b> tópicos no escopo). Sem chamada de IA.`;
+      wrap.appendChild(note);
+    }
+  }
+
   return wrap;
+}
+
+// Quantos perfis salvos cabem no escopo atual?
+function previewProfilesAvailable(s){
+  const data = collectRevgenData(s);
+  if(!data || data.topics.length===0)return {count:0, totalTopics:0};
+  let count = 0;
+  // Pra cada tópico no escopo, vê se há perfil salvo (em qualquer disciplina relevante)
+  data.topics.forEach(topic=>{
+    let relevantDiscIds = [];
+    if(s.scope==='discipline' && s.disciplineId){
+      relevantDiscIds = [s.disciplineId];
+    } else {
+      relevantDiscIds = DATA.disciplines.filter(d=>d.active).map(d=>d.id);
+    }
+    for(const did of relevantDiscIds){
+      if(getTopicProfile(did, topic)){
+        count++;
+        break;
+      }
+    }
+  });
+  return {count, totalTopics:data.topics.length};
+}
+
+// Compila perfis salvos sem chamar IA
+function compileProfilesIntoCaderno(s){
+  const data = collectRevgenData(s);
+  if(!data || data.topics.length===0){
+    alert('Sem dados suficientes pra compilar.');return;
+  }
+
+  let relevantDiscIds = [];
+  if(s.scope==='discipline' && s.disciplineId){
+    relevantDiscIds = [s.disciplineId];
+  } else {
+    relevantDiscIds = DATA.disciplines.filter(d=>d.active).map(d=>d.id);
+  }
+
+  // Coleta perfis correspondentes
+  const collected = [];
+  data.topics.forEach(topic=>{
+    for(const did of relevantDiscIds){
+      const p = getTopicProfile(did, topic);
+      if(p){
+        collected.push({disc:getDiscipline(did), topic, profile:p});
+        break;
+      }
+    }
+  });
+
+  if(collected.length===0){
+    alert('Nenhum dos tópicos no escopo tem perfil salvo. Use "✨ Gerar agora" pra criar via IA, ou abra um tópico no Mapa pra gerar perfil específico.');
+    return;
+  }
+
+  // Agrupa por disciplina
+  const byDisc = {};
+  collected.forEach(item=>{
+    const dn = item.disc?.name || 'Geral';
+    if(!byDisc[dn])byDisc[dn]=[];
+    byDisc[dn].push(item);
+  });
+
+  let md = '';
+  Object.keys(byDisc).forEach(dn=>{
+    md += `# 📘 ${dn}\n\n`;
+    byDisc[dn].forEach(item=>{
+      md += `## 🧠 ${item.topic}\n\n`;
+      // Remove o primeiro H2 do markdown do perfil (já temos o título acima)
+      // Mas mantém estrutura interna — converte H2 internos pra H3 pra hierarquia ficar limpa
+      const adjusted = item.profile.markdown.replace(/^## /gm,'### ');
+      md += adjusted + '\n\n---\n\n';
+    });
+  });
+
+  // Preserva versão anterior pra comparação
+  if(s.result){
+    s.previousResult = s.result;
+    s.previousModel = s.modelUsed;
+    s.previousMode = s.modeUsed || s.mode;
+    s.previousAt = s.resultAt || Date.now();
+  }
+  s.result = md;
+  s.modelUsed = 'compiled';  // sinal especial — sem custo
+  s.modeUsed = 'caderno';
+  s.resultAt = Date.now();
+  save();render();
+  showToast(`✓ Compilado ${collected.length} perfis sem custo de IA`);
 }
 
 // Prevê quantos tópicos/erros vão entrar
@@ -7427,7 +7646,18 @@ async function runRevgen(){
     }
     const text = d.content?.[0]?.text || '';
     if(!text || text.length<100)throw new Error('A IA retornou um conteúdo vazio. Tente de novo.');
+    // Preserva versão anterior para comparação
+    if(s.result){
+      s.previousResult = s.result;
+      s.previousModel = s.previousModelOfResult || s.modelUsed || null;
+      s.previousMode = s.modeUsed || s.mode;
+      s.previousAt = s.resultAt || Date.now();
+    }
     s.result = text;
+    s.modelUsed = model;
+    s.modeUsed = s.mode;
+    s.previousModelOfResult = model;
+    s.resultAt = Date.now();
     s.loading=false;
     save();render();
   }catch(err){
@@ -7494,6 +7724,116 @@ function simpleMarkdownToHtml(md){
 }
 
 // Abre o caderno em uma janela de impressão (pra exportar como PDF via Ctrl+P/Cmd+P)
+// Modal lado-a-lado para comparar resultado atual com versão anterior
+function showRevgenCompareModal(state){
+  if(!state.previousResult){alert('Nenhuma versão anterior pra comparar.');return;}
+  const m = mk('div');
+  m.style.cssText='max-width:1100px;width:96vw';
+
+  // Header
+  const head = mk('div','flex');
+  head.style.cssText='justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:.875rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)';
+  const title = mk('h2');title.style.cssText='margin:0;font-size:18px;font-weight:700';
+  title.textContent = '⇄ Comparar versões';
+  head.appendChild(title);
+  const closeBtn = mkBtn('×','icon-btn');closeBtn.style.cssText='font-size:22px;width:32px;height:32px';
+  closeBtn.addEventListener('click',()=>closeModal());
+  head.appendChild(closeBtn);
+  m.appendChild(head);
+
+  const desc = mk('p','txt2');desc.style.cssText='font-size:12.5px;line-height:1.5;margin:0 0 .875rem';
+  desc.textContent = 'Compare lado a lado e escolha qual versão manter como definitiva. A outra será descartada.';
+  m.appendChild(desc);
+
+  // Grid 2 colunas
+  const grid = mk('div','revgen-compare-grid');
+
+  // Coluna A — versão anterior
+  const colA = mk('div','revgen-compare-col');
+  const tagA = mk('div','rcc-tag');
+  const modelA = state.previousModel ? shortModelName(state.previousModel) : 'IA';
+  const isPremA = (state.previousModel||'').includes('sonnet');
+  tagA.innerHTML = `<span class="rmt-icon">${isPremA?'💎':'⚡'}</span><span>Anterior · <b>${modelA}</b></span>`;
+  tagA.classList.add(isPremA?'premium':'econ');
+  colA.appendChild(tagA);
+
+  const bodyA = mk('div','revgen-compare-body');
+  if(state.previousMode==='caderno'){
+    bodyA.innerHTML = simpleMarkdownToHtml(state.previousResult);
+  } else {
+    const ta = mk('textarea');ta.style.cssText='width:100%;min-height:380px;font-family:ui-monospace,monospace;font-size:11.5px;line-height:1.55;padding:.75rem;border:1px solid var(--border);border-radius:var(--rs);resize:none';
+    ta.value = state.previousResult;ta.readOnly = true;
+    bodyA.appendChild(ta);
+  }
+  colA.appendChild(bodyA);
+
+  const keepA = mkBtn('✓ Manter este','btn btn-sm btn-p');
+  keepA.style.marginTop='.5rem';
+  keepA.style.width='100%';
+  keepA.addEventListener('click',()=>{
+    showConfirmModal({
+      title:'Manter versão anterior?',
+      message:'A versão atual será descartada. Esta ação não pode ser desfeita.',
+      confirmText:'Manter anterior',
+      onConfirm:()=>{
+        // Troca: previous vira current
+        state.result = state.previousResult;
+        state.modelUsed = state.previousModel;
+        state.modeUsed = state.previousMode;
+        state.mode = state.previousMode || state.mode;  // mantém UX consistente
+        state.resultAt = state.previousAt;
+        state.previousResult = null;
+        state.previousModel = null;
+        state.previousMode = null;
+        state.previousAt = null;
+        save();
+        closeModal();closeModal();  // fecha confirm + compare
+        render();
+      }
+    });
+  });
+  colA.appendChild(keepA);
+  grid.appendChild(colA);
+
+  // Coluna B — versão atual
+  const colB = mk('div','revgen-compare-col current');
+  const tagB = mk('div','rcc-tag');
+  const modelB = state.modelUsed ? shortModelName(state.modelUsed) : 'IA';
+  const isPremB = (state.modelUsed||'').includes('sonnet');
+  tagB.innerHTML = `<span class="rmt-icon">${isPremB?'💎':'⚡'}</span><span>Atual · <b>${modelB}</b></span>`;
+  tagB.classList.add(isPremB?'premium':'econ');
+  colB.appendChild(tagB);
+
+  const bodyB = mk('div','revgen-compare-body');
+  if(state.modeUsed==='caderno' || state.mode==='caderno'){
+    bodyB.innerHTML = simpleMarkdownToHtml(state.result);
+  } else {
+    const ta = mk('textarea');ta.style.cssText='width:100%;min-height:380px;font-family:ui-monospace,monospace;font-size:11.5px;line-height:1.55;padding:.75rem;border:1px solid var(--border);border-radius:var(--rs);resize:none';
+    ta.value = state.result;ta.readOnly = true;
+    bodyB.appendChild(ta);
+  }
+  colB.appendChild(bodyB);
+
+  const keepB = mkBtn('✓ Manter este','btn btn-sm btn-p');
+  keepB.style.marginTop='.5rem';
+  keepB.style.width='100%';
+  keepB.addEventListener('click',()=>{
+    // Atual já é o atual, só descarta o anterior
+    state.previousResult = null;
+    state.previousModel = null;
+    state.previousMode = null;
+    state.previousAt = null;
+    save();
+    closeModal();
+    render();
+  });
+  colB.appendChild(keepB);
+  grid.appendChild(colB);
+
+  m.appendChild(grid);
+  showModal(m);
+}
+
 function printRevisionNotebook(markdown){
   const w = window.open('','_blank','width=800,height=900');
   if(!w){alert('Permita popups deste site para exportar o PDF.');return;}
@@ -10646,14 +10986,14 @@ function viewLabel(view){
 // Navigate to map — used by "Ver na matéria" buttons
 function mapNavigate(disciplineId,topic,origin){
   const originInfo = origin||{label:viewLabel(ST.view)};
-  navigateTo('mapa',originInfo);
+  // IMPORTANTE: setar state ANTES do navigateTo (que chama render)
   ST.mapDiscipline = disciplineId||'all';
   if(disciplineId&&topic){
     if(!ST.mapExpandedDiscs)ST.mapExpandedDiscs={};
     ST.mapExpandedDiscs[disciplineId] = true;
     ST.mapSelectedTopic = {disciplineId,topic:normTopic(topic),rawTopic:topic};
   }
-  render();
+  navigateTo('mapa',originInfo);
 }
 // Generate topic summary via AI (cached permanently)
 /* ==================================================
@@ -10936,6 +11276,124 @@ Aplique a instrução, mantendo as 8 seções e o que estava bom. Devolva o perf
 
 // Modal para exibir o perfil completo
 // Estados: 'view' (default), 'edit' (textarea), 'improve' (instrução pra IA), 'compare' (revert)
+function estimateAudioFromProfileCredits(model){
+  // Áudio é mais leve — não precisa pesquisar, só reformular o perfil em diálogo
+  if((model||'').includes('sonnet'))return {min:4,max:7,tier:'premium'};
+  return {min:1,max:3,tier:'econ'};
+}
+
+const SYS_AUDIO_FROM_PROFILE = `Você converte um PERFIL DE ESTUDO escrito em markdown em um ROTEIRO DE DIÁLOGO estilo podcast educativo (formato Google NotebookLM).
+
+REGRAS RÍGIDAS:
+1. Duas vozes alternadas: ANFITRIÃ (curiosa, pergunta) e ESPECIALISTA (técnico, explica direto).
+2. Formato: linhas alternadas "ANFITRIÃ:" e "ESPECIALISTA:" (letras maiúsculas, sem negrito).
+3. Duração alvo: 3-5 minutos falados (cerca de 600-900 palavras totais).
+4. Tom natural, conversacional. Use conectivos brasileiros ("é que", "olha", "não é?", "sabe").
+5. NÃO leia o markdown literalmente. EXTRAIA o conteúdo essencial e RECONTE em conversa.
+6. Cubra o que está no perfil: conceito central, pontos-chave, erros fatais, pegadinhas, mnemônicos. Pode pular tabelas se forem muito visuais.
+7. Inclua 1-2 exemplos práticos ("imagina que cai uma questão assim na prova...").
+8. Comece com cumprimento natural ("oi pessoal", "boa, gente") e termine com encerramento breve.
+9. Português brasileiro, registro de podcast de concurso (sério mas leve).
+
+SAÍDA: APENAS o roteiro. Sem preâmbulo, sem fecho, sem instruções extras.`;
+
+async function runAudioFromProfile(disciplineId, topic){
+  const profile = getTopicProfile(disciplineId, topic);
+  if(!profile){alert('Perfil não encontrado.');return;}
+  const disc = getDiscipline(disciplineId);
+
+  // Modal de loading
+  const loadM = mk('div');
+  loadM.style.cssText='max-width:380px;text-align:center;padding:1.25rem 1rem';
+  const sp = mk('span','spinner');sp.style.margin='0 auto .75rem';
+  const lt = mk('p');lt.style.cssText='margin:0;font-weight:600';
+  lt.textContent='Gerando roteiro de áudio...';
+  const ld = mk('p','txt3');ld.style.marginTop='4px';
+  ld.textContent='Pode levar 15-30s.';
+  loadM.appendChild(sp);loadM.appendChild(lt);loadM.appendChild(ld);
+  showModal(loadM);
+
+  try{
+    const model = getMethodModel('topic-profile');
+    const userMsg = `Tópico: ${topic}\nDisciplina: ${disc?disc.name:''}\n\nPERFIL EM MARKDOWN:\n"""\n${profile.markdown}\n"""\n\nConverta o perfil acima em roteiro de diálogo seguindo o formato.`;
+    const r = await apiGenerate({
+      model,
+      max_tokens:3500,
+      system:SYS_AUDIO_FROM_PROFILE,
+      messages:[{role:'user',content:userMsg}]
+    });
+    if(!r.ok){
+      const t = await r.text().catch(()=>'');
+      throw new Error('api-'+r.status+': '+t.slice(0,150));
+    }
+    const d = await r.json();
+    if(d.usage){
+      logUsage({model,kind:'topic-profile',action:'audio',input:d.usage.input_tokens||0,output:d.usage.output_tokens||0,cacheRead:d.usage.cache_read_input_tokens||0,cacheCreation:d.usage.cache_creation_input_tokens||0});
+    }
+    const text = d.content?.[0]?.text || '';
+    if(!text || text.length<100)throw new Error('A IA retornou conteúdo vazio.');
+
+    // Modal final com o roteiro
+    closeModal();
+    showAudioFromProfileResult(disciplineId, topic, text);
+  }catch(err){
+    console.error('Audio from profile error:',err);
+    closeModal();
+    alert('Erro ao gerar roteiro: '+(err.message||err));
+  }
+}
+
+function showAudioFromProfileResult(disciplineId, topic, scriptText){
+  const disc = getDiscipline(disciplineId);
+  const m = mk('div');
+  m.style.cssText='max-width:680px;width:96vw';
+
+  const head = mk('div','flex');
+  head.style.cssText='justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:.875rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)';
+  const headLeft = mk('div');
+  const title = mk('h2');title.style.cssText='margin:0 0 4px;font-size:17px;font-weight:700';
+  title.textContent='🎙️ Roteiro de áudio: '+topic;
+  headLeft.appendChild(title);
+  if(disc){
+    const subt = mk('div','txt3');subt.style.cssText='font-size:11.5px';
+    subt.textContent = disc.name+' · pronto pra NotebookLM';
+    headLeft.appendChild(subt);
+  }
+  head.appendChild(headLeft);
+  const closeBtn = mkBtn('×','icon-btn');closeBtn.style.cssText='font-size:22px;width:32px;height:32px';
+  closeBtn.addEventListener('click',()=>closeModal());
+  head.appendChild(closeBtn);
+  m.appendChild(head);
+
+  const info = mk('p','txt3');info.style.cssText='font-size:12px;margin-bottom:.5rem;padding:.625rem .875rem;background:var(--accent-light);color:var(--accent-text);border-radius:var(--rs);line-height:1.5';
+  info.innerHTML = '💡 Copie o roteiro e cole em <b>Google NotebookLM → Fontes → Texto colado</b>. Depois clique em <b>Áudio Overview</b> pra gerar o podcast.';
+  m.appendChild(info);
+
+  const ta = mk('textarea');
+  ta.style.cssText='width:100%;min-height:380px;font-family:ui-monospace,monospace;font-size:12px;line-height:1.6;padding:.75rem;border:1px solid var(--border);border-radius:var(--rs);resize:vertical';
+  ta.value = scriptText;
+  ta.readOnly = true;
+  m.appendChild(ta);
+
+  const footer = mk('div','flex');footer.style.cssText='gap:6px;margin-top:.75rem;justify-content:flex-end';
+  const copyBtn = mkBtn('📋 Copiar tudo','btn btn-sm btn-p');
+  copyBtn.addEventListener('click',()=>{
+    navigator.clipboard.writeText(scriptText).then(()=>{
+      copyBtn.textContent='✓ Copiado';
+      setTimeout(()=>{copyBtn.textContent='📋 Copiar tudo';},1500);
+    });
+  });
+  footer.appendChild(copyBtn);
+  const backBtn = mkBtn('Voltar ao perfil','btn btn-sm');
+  backBtn.addEventListener('click',()=>{
+    closeModal();
+    showTopicProfileModal(disciplineId, topic);
+  });
+  footer.appendChild(backBtn);
+  m.appendChild(footer);
+  showModal(m);
+}
+
 function showTopicProfileModal(disciplineId, topic, mode){
   const profile = getTopicProfile(disciplineId, topic);
   if(!profile){alert('Perfil não encontrado.');return;}
@@ -11025,6 +11483,24 @@ function showTopicProfileModal(disciplineId, topic, mode){
       printRevisionNotebook(fakeNotebook);
     });
     footer.appendChild(printBtn);
+
+    // Gerar roteiro de áudio NotebookLM a partir do perfil
+    const audioBtn = mkBtn('','btn btn-sm');
+    const audioCost = estimateAudioFromProfileCredits(getMethodModel('topic-profile'));
+    audioBtn.innerHTML = `🎙️ Gerar áudio NotebookLM <span class="btn-cost-hint ${audioCost.tier}">${audioCost.min}-${audioCost.max} créd.</span>`;
+    audioBtn.title = 'Converte o perfil em diálogo de 2 vozes pra colar no Google NotebookLM e gerar áudio de 3-5 min';
+    audioBtn.addEventListener('click',()=>{
+      showConfirmModal({
+        title:'Gerar roteiro de áudio?',
+        message:`A IA vai converter este perfil num diálogo de 2 vozes (estilo podcast educativo, 3-5 min) pronto pra colar no Google NotebookLM. Custo estimado: ${audioCost.min}-${audioCost.max} créditos.`,
+        confirmText:'Gerar roteiro',
+        onConfirm:async()=>{
+          closeModal();
+          await runAudioFromProfile(disciplineId, topic);
+        }
+      });
+    });
+    footer.appendChild(audioBtn);
 
     const copyBtn = mkBtn('📋 Copiar','btn btn-sm');
     copyBtn.addEventListener('click',()=>{
@@ -11698,6 +12174,7 @@ function pomoStart(){
     ST.pomoRun.secLeft-=1;
     if(ST.pomoRun.secLeft<=0){pomoBell();pomoNext(true);}
     if(ST.view==='pomodoro')render();
+    renderPomoFloat();  // atualiza widget flutuante a cada segundo
   },1000);
   render();
 }
@@ -11707,6 +12184,70 @@ function pomoPause(){
   render();
 }
 function pomoReset(){pomoPause();ST.pomoRun.secLeft=currentPhaseDuration()*60;render();}
+
+// Widget flutuante do Pomodoro — visível em qualquer página enquanto rodando
+// (também aparece pausado se houver sessão em andamento mas não-zerada)
+function renderPomoFloat(){
+  const root = document.getElementById('pomo-float-root');
+  if(!root)return;
+  const p = ST.pomoRun;
+  if(!p)return;
+  // Só mostra se: rodando OU pausado com tempo já consumido (sessão em andamento)
+  const phaseDur = currentPhaseDuration()*60;
+  const consumed = phaseDur - p.secLeft;
+  const inProgress = p.running || (consumed>0 && p.secLeft<phaseDur);
+  // Não mostra na própria página do Pomodoro (já tem o display lá)
+  if(!inProgress || ST.view==='pomodoro' || ST.pomoFloatHidden){
+    root.innerHTML='';
+    return;
+  }
+  const phaseLabels = {focus:'Foco',sbreak:'Pausa curta',lbreak:'Pausa longa'};
+  const phaseEmoji = {focus:'🎯',sbreak:'☕',lbreak:'🌿'};
+  const mins = Math.floor(p.secLeft/60);
+  const secs = p.secLeft%60;
+  const timeStr = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  const pct = phaseDur>0 ? ((phaseDur-p.secLeft)/phaseDur)*100 : 0;
+
+  // Reaproveita estrutura existente se possível pra evitar reflicker
+  let widget = root.querySelector('.pomo-float');
+  if(!widget){
+    widget = document.createElement('div');
+    widget.className = 'pomo-float';
+    widget.innerHTML = `
+      <div class="pf-progress"><div class="pf-progress-fill"></div></div>
+      <div class="pf-row">
+        <span class="pf-emoji"></span>
+        <div class="pf-info">
+          <span class="pf-time"></span>
+          <span class="pf-phase"></span>
+        </div>
+        <button class="pf-btn pf-toggle" title="Pausar/Continuar">⏸</button>
+        <button class="pf-btn pf-goto" title="Ir pro Pomodoro">↗</button>
+        <button class="pf-btn pf-hide" title="Ocultar (volta ao reabrir)">×</button>
+      </div>
+    `;
+    root.appendChild(widget);
+    widget.querySelector('.pf-toggle').addEventListener('click',()=>{
+      if(p.running)pomoPause();else pomoStart();
+    });
+    widget.querySelector('.pf-goto').addEventListener('click',()=>{
+      ST.view='pomodoro';render();
+    });
+    widget.querySelector('.pf-hide').addEventListener('click',()=>{
+      ST.pomoFloatHidden = true;
+      renderPomoFloat();
+    });
+  }
+  // Atualiza só o conteúdo dinâmico — sem destruir o DOM (evita flicker)
+  widget.querySelector('.pf-time').textContent = timeStr;
+  widget.querySelector('.pf-emoji').textContent = phaseEmoji[p.phase]||'⏱';
+  widget.querySelector('.pf-phase').textContent = phaseLabels[p.phase]||'';
+  widget.querySelector('.pf-toggle').textContent = p.running?'⏸':'▶';
+  widget.querySelector('.pf-progress-fill').style.width = pct+'%';
+  widget.classList.toggle('paused',!p.running);
+  widget.classList.remove('focus','sbreak','lbreak');
+  widget.classList.add(p.phase);
+}
 function pomoNext(auto){
   pomoPause();
   const p = ST.pomoRun;
@@ -12116,7 +12657,86 @@ function renderSettings(){
   adminCard.appendChild(adminLbl);
   wrap.appendChild(adminCard);
 
+  // ==== Exportar Perfis ====
+  const profileCount = Object.keys(DATA.topicProfiles||{}).length;
+  if(profileCount>0){
+    const expCard = mk('div','card');expCard.style.marginTop='1rem';
+    expCard.appendChild(sLabel('Exportar perfis de matéria'));
+    const expDesc = mk('p','txt2');expDesc.style.marginBottom='.875rem';
+    expDesc.innerHTML = `Você tem <b>${profileCount}</b> perfil${profileCount===1?'':'s'} gerado${profileCount===1?'':'s'}. Exporte tudo num único arquivo markdown para imprimir, fazer backup ou estudar offline.`;
+    expCard.appendChild(expDesc);
+    const expBtn = mkBtn('📦 Baixar todos os perfis (.md)','btn btn-p');
+    expBtn.addEventListener('click',()=>exportAllTopicProfiles());
+    expCard.appendChild(expBtn);
+    wrap.appendChild(expCard);
+  }
+
   return wrap;
+}
+
+// Export todos os perfis em um único arquivo markdown concatenado
+function exportAllTopicProfiles(){
+  const profiles = DATA.topicProfiles||{};
+  const keys = Object.keys(profiles);
+  if(keys.length===0){alert('Você ainda não tem perfis gerados.');return;}
+
+  // Agrupa por disciplina
+  const byDisc = {};
+  keys.forEach(key=>{
+    const [discId, ...rest] = key.split(':');
+    const normTopic = rest.join(':');
+    if(!byDisc[discId])byDisc[discId] = [];
+    byDisc[discId].push({normTopic, profile:profiles[key]});
+  });
+
+  let md = '# 📚 Perfis de Matéria — NEXUS\n\n';
+  md += `_Exportado em ${new Date().toLocaleString('pt-BR')}_\n\n`;
+  md += `Total: ${keys.length} perfis · Concurso: ${DATA.config?.examName||'-'}\n\n`;
+  md += '---\n\n';
+
+  // Sumário
+  md += '## 📑 Sumário\n\n';
+  Object.keys(byDisc).forEach(discId=>{
+    const disc = getDiscipline(discId);
+    md += `### ${disc?disc.name:discId}\n\n`;
+    byDisc[discId].forEach(({profile})=>{
+      // Tenta extrair título do markdown — primeiro H2 ou usa normTopic
+      const firstH2 = profile.markdown.match(/##\s*(.+)/);
+      const titleHint = firstH2 ? firstH2[1].replace(/[💡📋⚠️🎯📊🧠✅🔥]/g,'').trim() : null;
+      md += `- ${titleHint || '(perfil)'}\n`;
+    });
+    md += '\n';
+  });
+  md += '\n---\n\n';
+
+  // Conteúdo
+  Object.keys(byDisc).forEach(discId=>{
+    const disc = getDiscipline(discId);
+    md += `\n# 📘 ${disc?disc.name:discId}\n\n`;
+    byDisc[discId].forEach(({profile})=>{
+      md += `\n${profile.markdown}\n\n---\n\n`;
+    });
+  });
+
+  // Download via blob
+  try{
+    const blob = new Blob([md],{type:'text/markdown;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const dateStr = new Date().toISOString().slice(0,10);
+    a.download = `nexus-perfis-${dateStr}.md`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },100);
+    showToast(`✓ ${keys.length} perfis exportados`);
+  }catch(err){
+    console.error('Export error:',err);
+    alert('Erro ao exportar: '+(err.message||err));
+  }
 }
 
 // Modal de feedback / sugestões
@@ -12250,12 +12870,37 @@ function applyFocusMode(){
 }
 function toggleFocusMode(){
   const enabled = localStorage.getItem('nexus_focus')==='1';
-  localStorage.setItem('nexus_focus',enabled?'0':'1');
+  const newState = !enabled;
+  localStorage.setItem('nexus_focus',newState?'1':'0');
   applyFocusMode();
-  // Brief toast
-  showToast(enabled?'Modo foco desativado':'🧘 Modo foco ativado — atalhos: F para sair');
+  // Tela cheia real do navegador (esconde barra de URL, abas, etc.)
+  if(newState){
+    try{
+      if(document.documentElement.requestFullscreen){
+        document.documentElement.requestFullscreen().catch(err=>{
+          console.warn('Fullscreen request rejected:',err.message);
+        });
+      }
+    }catch(_){/* navegador pode bloquear se não vier de gesto direto */}
+    showToast('🧘 Modo foco ativado — atalho F para sair');
+  } else {
+    try{
+      if(document.fullscreenElement && document.exitFullscreen){
+        document.exitFullscreen().catch(()=>{});
+      }
+    }catch(_){}
+    showToast('Modo foco desativado');
+  }
 }
 function isFocusMode(){return localStorage.getItem('nexus_focus')==='1';}
+
+// Detecta saída do fullscreen (ESC do navegador) e desliga o modo foco também
+document.addEventListener('fullscreenchange',()=>{
+  if(!document.fullscreenElement && isFocusMode()){
+    localStorage.setItem('nexus_focus','0');
+    applyFocusMode();
+  }
+});
 
 // --- Toast notifications ---
 function showToast(msg){
