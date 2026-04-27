@@ -68,7 +68,7 @@ button,textarea,input,select{font-family:inherit;font-size:inherit;color:inherit
 button{cursor:pointer;transition:background .15s,border-color .15s,color .15s,opacity .15s}
 a{color:var(--accent)}
 
-.topbar{position:sticky;top:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);height:88px;display:flex;align-items:center;padding:0;gap:0}
+.topbar{position:sticky;top:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);height:64px;display:flex;align-items:center;padding:0;gap:0}
 .topbar-inner{
   max-width:1200px;width:100%;margin:0 auto;padding:0 1.25rem;height:100%;
   display:grid;
@@ -83,7 +83,7 @@ a{color:var(--accent)}
 /* Coluna direita: info alinhada à ESQUERDA da coluna (após o conteúdo) */
 .topbar-col-right{display:flex;align-items:center;gap:10px;min-width:0;justify-content:flex-start}
 .brand{display:flex;align-items:center;gap:6px;white-space:nowrap;font-weight:700;letter-spacing:-.5px}
-.brand-bird{height:80px;width:auto;display:block;flex-shrink:0;margin-right:-2px}
+.brand-bird{height:54px;width:auto;display:block;flex-shrink:0;margin-right:-2px}
 .brand-bird-dark{display:none}
 :root[data-theme="dark"] .brand-bird-light{display:none}
 :root[data-theme="dark"] .brand-bird-dark{display:block}
@@ -184,7 +184,7 @@ a{color:var(--accent)}
   .topbar-col-right{flex:0 0 auto;justify-content:flex-end}
   .mobile-hamb{display:inline-flex}
   .tabs{
-    position:fixed;top:88px;left:0;right:0;bottom:0;
+    position:fixed;top:64px;left:0;right:0;bottom:0;
     background:var(--surface);
     flex-direction:column;
     align-items:stretch;
@@ -200,7 +200,7 @@ a{color:var(--accent)}
   .mobile-nav-overlay{
     display:none;
     position:fixed;
-    inset:88px 0 0 0;
+    inset:64px 0 0 0;
     background:rgba(0,0,0,.4);
     z-index:280;
     animation:fade-in .18s ease;
@@ -1531,7 +1531,7 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 .wel-hero-note-v3 b{color:var(--text2);font-weight:600}
 .wel-hero-visual{display:flex;justify-content:center;align-items:center;position:relative}
 .wel-hero-brand{display:flex;align-items:center;gap:14px;filter:drop-shadow(0 8px 28px rgba(124,92,255,.18))}
-.wel-hero-bird{height:280px;width:auto;display:block;flex-shrink:0;margin-right:-10px}
+.wel-hero-bird{height:180px;width:auto;display:block;flex-shrink:0;margin-right:-10px}
 .wel-hero-bird-dark{display:none}
 :root[data-theme="dark"] .wel-hero-bird-light{display:none}
 :root[data-theme="dark"] .wel-hero-bird-dark{display:block}
@@ -1546,7 +1546,7 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
   .wel-hero-headline-v3{font-size:30px}
   .wel-hero-cta-row{justify-content:center}
   .wel-hero-visual{order:-1}
-  .wel-hero-bird{height:180px;margin-right:-6px}
+  .wel-hero-bird{height:130px;margin-right:-6px}
   .wel-hero-name{font-size:56px;letter-spacing:-2.5px}
 }
 
