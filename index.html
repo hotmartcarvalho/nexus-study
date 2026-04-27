@@ -639,6 +639,71 @@ html.focus-mode .pomo-float{display:none}
 
 /* === USER PROFILE PAGE === */
 .user-profile-page{}
+
+/* === DISCOVER PAGE === */
+.discover-page{}
+.discover-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:1rem;flex-wrap:wrap}
+.discover-filters{padding:.875rem 1rem;margin-bottom:1rem}
+.df-row{display:flex;align-items:center;gap:10px;margin-bottom:.625rem}
+.df-row:last-child{margin-bottom:0}
+.df-lbl{font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;width:60px}
+.df-seg{display:flex;gap:6px;flex-wrap:wrap}
+.df-seg-opt{padding:.5rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text2);font-family:inherit;transition:all .15s}
+.df-seg-opt:hover{border-color:var(--gralia-purple-soft,#c4aeff)}
+.df-seg-opt.on{background:var(--gralia-purple);color:#fff;border-color:var(--gralia-purple)}
+.df-search-row{display:flex;gap:8px}
+.df-search-row input{flex:1;padding:.5rem .75rem;font-size:13.5px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit;outline:none}
+.df-search-row input:focus{border-color:var(--gralia-purple);box-shadow:0 0 0 3px rgba(128,66,250,.12)}
+.df-sort{padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer}
+
+.discover-list{display:flex;flex-direction:column;gap:10px}
+.discover-empty{padding:2rem 1rem;text-align:center}
+.discover-empty .de-icon{font-size:36px;margin-bottom:.5rem;opacity:.7}
+.discover-empty h2{margin:0 0 .25rem;font-size:16px}
+.discover-empty p{margin:0;font-size:13px;color:var(--text3)}
+
+/* Card de recurso na descoberta */
+.resource-card{padding:1rem 1.125rem;transition:border-color .2s}
+.resource-card:hover{border-color:rgba(128,66,250,.3)}
+.rc-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:.5rem}
+.rc-title{font-size:15.5px;font-weight:700;letter-spacing:-.2px;margin:0;line-height:1.3;color:var(--text)}
+.rc-type-icon{margin-right:6px}
+.rc-meta{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--text3);margin-bottom:.625rem;flex-wrap:wrap}
+.rc-author{display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;padding:0;cursor:pointer;font-family:inherit;color:var(--text2);font-size:12px}
+.rc-author:hover{color:var(--gralia-purple)}
+.rca-avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;letter-spacing:-.3px}
+.rca-name{font-weight:600}
+.rca-username{color:var(--text3);font-size:11px}
+.rc-date{margin-left:auto;color:var(--text3)}
+.rc-desc{font-size:13px;color:var(--text2);line-height:1.5;margin:.25rem 0 .625rem}
+.rc-stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:.75rem}
+.rc-stat{font-size:11.5px;padding:3px 9px;background:var(--surface2);border-radius:999px;color:var(--text2)}
+.rc-stat b{color:var(--text);font-weight:700}
+.rc-stat.useful-good{background:rgba(73,197,137,.12);color:var(--accent-text)}
+.rc-stat.useful-mid{background:rgba(232,164,60,.12);color:var(--amber-text)}
+.rc-stat.useful-low{background:var(--surface2);color:var(--text3)}
+.rc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rc-mine-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(128,66,250,.12);color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.3px}
+
+/* Estrelas modal */
+.stars-row{display:flex;gap:6px;margin:1rem 0 .25rem;justify-content:center}
+.star-btn{font-size:30px;background:transparent;border:none;cursor:pointer;padding:6px;border-radius:6px;filter:grayscale(.7);opacity:.4;transition:all .15s;font-family:inherit;line-height:1}
+.star-btn:hover,.star-btn.preview{filter:grayscale(0);opacity:1;transform:scale(1.15)}
+
+/* My published modal rows */
+.my-pub-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:.75rem .25rem;border-bottom:1px solid var(--border)}
+.my-pub-row:last-child{border-bottom:none}
+.mpr-info{flex:1;min-width:0}
+.mpr-title{font-size:13.5px;font-weight:700;color:var(--text);margin-bottom:2px}
+.mpr-meta{font-size:11.5px;color:var(--text3)}
+.mpr-actions{display:flex;gap:6px;flex-shrink:0;align-items:center}
+.mpr-tag{font-size:10.5px;padding:3px 9px;background:var(--surface2);border-radius:999px;color:var(--text3);font-weight:600}
+
+/* Inline link button (usado em "importado de @user") */
+.link-btn{background:none;border:none;color:var(--gralia-purple);text-decoration:underline;cursor:pointer;font-family:inherit;font-size:inherit;padding:0;font-weight:600}
+.link-btn:hover{opacity:.8}
+
+/* === USER PROFILE PAGE === */
 .up-header{display:flex;align-items:flex-start;gap:18px;padding:1.5rem;flex-wrap:wrap;position:relative}
 .up-avatar{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;letter-spacing:-1px;flex-shrink:0;box-shadow:0 4px 14px rgba(0,0,0,.15);font-family:'Sora',system-ui,sans-serif}
 .up-head-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
@@ -2084,6 +2149,190 @@ async function fetchPublicProfile(username){
     return {error: err.message || 'Erro ao buscar'};
   }
 }
+
+// === ESTÁGIO 3: MATERIAIS COMPARTILHADOS ===
+
+// Publica um caderno como recurso público
+// notebookData: {id, name, description, questions: [{...}]}
+async function publishNotebook(notebookData, opts){
+  if(!supa || !AUTH.user) throw new Error('Não autenticado');
+  if(!AUTH.profile) throw new Error('Crie seu perfil em Configurações antes de publicar');
+  const title = (opts.title || notebookData.name || '').trim().slice(0, 120);
+  if(title.length < 3) throw new Error('Título precisa ter ao menos 3 caracteres');
+  const description = (opts.description || '').trim().slice(0, 500);
+  const discipline = (opts.discipline || '').trim().slice(0, 80) || null;
+  // Payload completo do caderno (questões e metadados)
+  const payload = {
+    notebook_name: notebookData.name,
+    questions: (notebookData.questions || []).map(q => ({
+      enunciado: q.enunciado || q.statement || '',
+      alternativas: q.alternativas || q.alternatives || null,
+      gabarito: q.gabarito || q.answer || null,
+      tipo: q.tipo || q.type || 'CE',
+      comentario: q.comentario || q.commentary || '',
+      disciplineId: q.disciplineId || null,
+      topic: q.topic || null
+    }))
+  };
+  const questionCount = payload.questions.length;
+  if(questionCount === 0) throw new Error('Caderno vazio — adicione questões antes de publicar');
+
+  const { data, error } = await supa.from('shared_resources').insert({
+    owner_id: AUTH.user.id,
+    resource_type: 'caderno',
+    title,
+    description: description || null,
+    discipline,
+    payload,
+    question_count: questionCount,
+    is_public: true
+  }).select().single();
+  if(error) throw new Error(error.message);
+  return data;
+}
+
+// Despublica um recurso (volta a ser privado)
+async function unpublishResource(resourceId){
+  if(!supa || !AUTH.user) throw new Error('Não autenticado');
+  const { error } = await supa.from('shared_resources')
+    .update({is_public: false}).eq('id', resourceId).eq('owner_id', AUTH.user.id);
+  if(error) throw new Error(error.message);
+}
+
+// Deleta um recurso publicado
+async function deletePublishedResource(resourceId){
+  if(!supa || !AUTH.user) throw new Error('Não autenticado');
+  const { error } = await supa.from('shared_resources')
+    .delete().eq('id', resourceId).eq('owner_id', AUTH.user.id);
+  if(error) throw new Error(error.message);
+}
+
+// Busca recursos públicos com filtros
+// filters: {type, discipline, search, sort, limit, offset}
+async function searchPublicResources(filters){
+  if(!supa) return {error: 'Supabase não configurado', items: []};
+  if(!AUTH.user) return {error: 'Faça login pra ver materiais públicos', items: []};
+  filters = filters || {};
+  try{
+    const { data, error } = await supa.rpc('search_public_resources', {
+      p_type: filters.type || null,
+      p_discipline: filters.discipline || null,
+      p_search: filters.search || null,
+      p_sort: filters.sort || 'newest',
+      p_limit: filters.limit || 20,
+      p_offset: filters.offset || 0
+    });
+    if(error) return {error: error.message, items: []};
+    return {items: data || []};
+  }catch(err){
+    return {error: err.message || 'Erro', items: []};
+  }
+}
+
+// Busca recurso completo com payload (pra importar)
+async function fetchResourceFull(resourceId){
+  if(!supa) return {error: 'Supabase não configurado'};
+  if(!AUTH.user) return {error: 'Não autenticado'};
+  try{
+    const { data, error } = await supa.rpc('get_resource_with_payload', {p_resource_id: resourceId});
+    if(error) return {error: error.message};
+    if(!data || data.length === 0) return {error: 'Recurso não encontrado'};
+    return {resource: data[0]};
+  }catch(err){
+    return {error: err.message};
+  }
+}
+
+// Lista recursos próprios (publicados pelo usuário atual)
+async function fetchMyPublishedResources(){
+  if(!supa || !AUTH.user) return {items: []};
+  try{
+    const { data, error } = await supa.from('shared_resources')
+      .select('id, resource_type, title, description, discipline, question_count, is_public, created_at')
+      .eq('owner_id', AUTH.user.id)
+      .order('created_at', {ascending: false});
+    if(error) return {error: error.message, items: []};
+    return {items: data || []};
+  }catch(err){
+    return {error: err.message, items: []};
+  }
+}
+
+// Importa caderno: clona pra DATA local + registra uso no servidor
+async function importNotebookToLocal(resourceId){
+  const result = await fetchResourceFull(resourceId);
+  if(result.error) throw new Error(result.error);
+  const r = result.resource;
+  if(r.resource_type !== 'caderno') throw new Error('Esse recurso não é um caderno');
+  if(!r.payload || !r.payload.questions) throw new Error('Caderno sem questões');
+  // Cria novo caderno local
+  if(!DATA.notebooks) DATA.notebooks = [];
+  const newId = 'nb_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+  const importedQuestions = r.payload.questions.map(q => ({
+    id: 'q_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    enunciado: q.enunciado,
+    alternativas: q.alternativas,
+    gabarito: q.gabarito,
+    tipo: q.tipo,
+    comentario: q.comentario,
+    disciplineId: q.disciplineId,
+    topic: q.topic,
+    importedAt: Date.now(),
+    importedFromResource: resourceId,
+    importedFromUser: r.owner_username
+  }));
+  // Adiciona questões ao banco geral
+  if(!DATA.imported) DATA.imported = [];
+  importedQuestions.forEach(q => DATA.imported.push(q));
+  // Cria o caderno apontando pra essas questões
+  const notebook = {
+    id: newId,
+    name: r.title,
+    description: r.description || '',
+    questionIds: importedQuestions.map(q => q.id),
+    createdAt: Date.now(),
+    importedFromResource: resourceId,
+    importedFromUser: r.owner_username,
+    importedFromDisplayName: r.owner_display_name
+  };
+  DATA.notebooks.push(notebook);
+  save();
+  // Registra uso no servidor (não bloqueia se der erro)
+  try{
+    await supa.rpc('record_resource_import', {p_resource_id: resourceId});
+  }catch(e){
+    console.warn('[import] falha ao registrar:', e);
+  }
+  return {notebook, importedCount: importedQuestions.length};
+}
+
+// Avalia recurso (👍/👎 + estrelas opcionais)
+async function rateResource(resourceId, wasUseful, stars){
+  if(!supa || !AUTH.user) throw new Error('Não autenticado');
+  try{
+    const { error } = await supa.rpc('rate_resource', {
+      p_resource_id: resourceId,
+      p_was_useful: wasUseful,
+      p_stars: stars || null
+    });
+    if(error) throw new Error(error.message);
+  }catch(err){
+    throw new Error(err.message || 'Erro ao avaliar');
+  }
+}
+
+// Busca a avaliação atual do usuário pra um recurso
+async function fetchMyRating(resourceId){
+  if(!supa || !AUTH.user) return null;
+  try{
+    const { data, error } = await supa.from('resource_uses')
+      .select('was_useful, star_rating, imported_at, rated_at')
+      .eq('resource_id', resourceId).eq('user_id', AUTH.user.id).maybeSingle();
+    if(error || !data) return null;
+    return data;
+  }catch(err){ return null; }
+}
+
 const DEFAULT_EXAM_NAME = 'Prova';
 function examDate(){
   const d = (DATA&&DATA.config&&DATA.config.examDate)||DEFAULT_EXAM_DATE;
@@ -2489,7 +2738,13 @@ const ST = {
   profileUsername:null,       // username sendo visualizado
   profileData:null,           // dados do perfil carregado
   profileLoading:false,
-  profileError:null
+  profileError:null,
+  // Discover (Estágio 3 social)
+  discoverFilter:{type:'caderno', discipline:'', search:'', sort:'newest'},
+  discoverItems:[],
+  discoverLoading:false,
+  discoverPage:0,
+  discoverHasMore:true
 };
 
 /* CONTENT & DISCIPLINES */
@@ -3246,7 +3501,7 @@ function render(){
     pomodoro:renderPomodoro,settings:renderSettings,history:renderHistory,turbo:renderTurbo,eve:renderEve,imported:renderImported,review:renderReview,revgen:renderRevgen,
     calibration:renderCalibration,examiner:renderExaminer,drill:renderDrill,
     elaborative:renderElaborative,practice:renderPractice,simulado:renderSimulado,
-    interleaving:renderInterleaving,srs:renderSRS,mapa:renderMapa,usage:renderUsage,goals:renderGoals,userProfile:renderUserProfile
+    interleaving:renderInterleaving,srs:renderSRS,mapa:renderMapa,usage:renderUsage,goals:renderGoals,userProfile:renderUserProfile,discover:renderDiscover
   };
   // Contextual breadcrumb — shows where user came from
   if(ST.navStack.length>0){
@@ -3555,7 +3810,8 @@ function renderTopbar(){
     {type:'tab',view:'dashboard',label:'Painel',icon:'🏠'},
     {type:'group',key:'study',label:'Estudar',icon:'📘',children:[
       {view:'methods',label:'Métodos de Estudo',icon:'🎯',desc:'8 técnicas de prática adaptativa'},
-      {view:'imported',label:'Banco de Questões',icon:'📝',desc:'Questões importadas do TEC'}
+      {view:'imported',label:'Banco de Questões',icon:'📝',desc:'Questões importadas do TEC'},
+      {view:'discover',label:'Descobrir',icon:'🌐',desc:'Materiais públicos da comunidade'}
     ]},
     {type:'group',key:'review',label:'Revisar',icon:'🔄',children:[
       {view:'srs',label:'Flashcards',icon:'🎴',desc:'Revisão espaçada (SRS)'},
@@ -9246,9 +9502,26 @@ function renderNotebookManage(wrap){
   wrap.appendChild(back);
 
   const head = mk('div');head.style.marginBottom='1rem';
+  const titleRow = mk('div');titleRow.style.cssText='display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap';
+  const titleWrap = mk('div');titleWrap.style.flex='1';
   const title = mk('h2');title.style.marginBottom='4px';title.textContent='📒 '+nb.name;
-  head.appendChild(title);
-  if(nb.description){const d = mk('p','txt2');d.style.margin='0';d.textContent=nb.description;head.appendChild(d);}
+  titleWrap.appendChild(title);
+  if(nb.description){const d = mk('p','txt2');d.style.margin='0';d.textContent=nb.description;titleWrap.appendChild(d);}
+  // Mostra origem se importado
+  if(nb.importedFromUser){
+    const origin = mk('div','txt3');origin.style.cssText='font-size:11.5px;margin-top:6px';
+    origin.innerHTML = `📥 Importado de <button class="link-btn" onclick="navigateToProfile('${escapeHTML(nb.importedFromUser)}')">@${escapeHTML(nb.importedFromUser)}</button>`;
+    titleWrap.appendChild(origin);
+  }
+  titleRow.appendChild(titleWrap);
+  // Botão publicar (só se autenticado e tem questões)
+  if(isAuthed() && (nb.questionIds||[]).length > 0 && !nb.importedFromResource){
+    const pubBtn = mkBtn('🌐 Publicar','btn btn-sm');
+    pubBtn.title = 'Compartilhar este caderno com a comunidade';
+    pubBtn.addEventListener('click',()=>showPublishNotebookModal(nb));
+    titleRow.appendChild(pubBtn);
+  }
+  head.appendChild(titleRow);
   wrap.appendChild(head);
 
   // Toggle: questões já no caderno OU adicionar do banco
@@ -12129,7 +12402,7 @@ function viewLabel(view){
     history:'Histórico', practice:'Questões', simulado:'Simulado',
     calibration:'Calibração', drill:'Drill', examiner:'Examinador',
     elaborative:'Elaboração', interleaving:'Interleaving', usage:'Uso da IA',
-    review:'Revisão', turbo:'Revisão Turbo', revgen:'Gerador de Revisão', goals:'Metas', userProfile:'Perfil'
+    review:'Revisão', turbo:'Revisão Turbo', revgen:'Gerador de Revisão', goals:'Metas', userProfile:'Perfil', discover:'Descobrir'
   };
   return labels[view]||view;
 }
@@ -13631,6 +13904,549 @@ function renderUserProfile(){
   }
 
   return wrap;
+}
+
+// === Página Descobrir — materiais públicos da comunidade ===
+function renderDiscover(){
+  const wrap = mk('div','fade discover-page');
+
+  // Acesso só pra logado
+  if(!isAuthed()){
+    const box = mk('div','card');box.style.cssText='text-align:center;padding:2.5rem 1.5rem';
+    box.innerHTML = '<h2 style="margin:0 0 .5rem">🔒 Acesso restrito</h2><p class="txt2" style="margin:0">Crie uma conta ou faça login pra explorar materiais da comunidade.</p>';
+    wrap.appendChild(box);
+    return wrap;
+  }
+
+  const head = mk('div','discover-head');
+  const ttl = mk('h1','page-h1');ttl.style.margin='0';
+  ttl.innerHTML = '🌐 Descobrir <span class="page-h1-tag">materiais da comunidade</span>';
+  head.appendChild(ttl);
+  // Botão "meus materiais publicados"
+  const mineBtn = mkBtn('📚 Meus publicados','btn btn-sm');
+  mineBtn.addEventListener('click',()=>showMyPublishedModal());
+  head.appendChild(mineBtn);
+  wrap.appendChild(head);
+
+  // Aviso se sem perfil
+  if(!AUTH.profile){
+    const noProfile = mk('div','card');noProfile.style.cssText='padding:1rem 1.25rem;background:linear-gradient(135deg,rgba(128,66,250,.05),var(--surface));border:1px dashed rgba(128,66,250,.25)';
+    noProfile.innerHTML = '<p class="txt2" style="margin:0;font-size:13.5px">⚡ Pra publicar materiais, primeiro <b>crie seu perfil</b> em Configurações.</p>';
+    wrap.appendChild(noProfile);
+  }
+
+  // Filtros
+  const filters = mk('div','discover-filters card');
+  // Tipo
+  const typeRow = mk('div','df-row');
+  typeRow.innerHTML = '<label class="df-lbl">Tipo</label>';
+  const typeSeg = mk('div','df-seg');
+  ['caderno'].forEach(t=>{
+    const opt = mk('button','df-seg-opt'+(ST.discoverFilter.type===t?' on':''));
+    opt.type='button';
+    opt.textContent = t==='caderno' ? '📝 Cadernos' : t;
+    opt.addEventListener('click',()=>{
+      ST.discoverFilter.type = t;
+      ST.discoverPage = 0;
+      ST.discoverItems = [];
+      loadDiscover();
+    });
+    typeSeg.appendChild(opt);
+  });
+  // Futuro: 'fonte', 'perfil_topico'
+  typeRow.appendChild(typeSeg);
+  filters.appendChild(typeRow);
+
+  // Busca + ordenação
+  const searchRow = mk('div','df-row df-search-row');
+  const searchIn = mk('input');searchIn.type='search';searchIn.placeholder='Buscar por título...';searchIn.value=ST.discoverFilter.search||'';
+  searchIn.addEventListener('input',e=>{
+    ST.discoverFilter.search = e.target.value;
+    clearTimeout(searchIn._t);
+    searchIn._t = setTimeout(()=>{
+      ST.discoverPage = 0;
+      ST.discoverItems = [];
+      loadDiscover();
+    }, 350);
+  });
+  searchRow.appendChild(searchIn);
+  const sortSel = mk('select','df-sort');
+  ['newest','most_useful','most_used'].forEach(s=>{
+    const o = document.createElement('option');o.value=s;
+    o.textContent = s==='newest'?'Mais recentes':s==='most_useful'?'Mais úteis':'Mais usados';
+    if(ST.discoverFilter.sort===s)o.selected=true;
+    sortSel.appendChild(o);
+  });
+  sortSel.addEventListener('change',e=>{
+    ST.discoverFilter.sort = e.target.value;
+    ST.discoverPage = 0;
+    ST.discoverItems = [];
+    loadDiscover();
+  });
+  searchRow.appendChild(sortSel);
+  filters.appendChild(searchRow);
+  wrap.appendChild(filters);
+
+  // Lista
+  const listWrap = mk('div','discover-list');
+  wrap.appendChild(listWrap);
+
+  function renderItems(){
+    listWrap.innerHTML = '';
+    if(ST.discoverLoading && ST.discoverItems.length === 0){
+      const ld = mk('div','card');ld.style.cssText='padding:2rem;text-align:center;color:var(--text3)';
+      ld.textContent = 'Buscando materiais...';
+      listWrap.appendChild(ld);
+      return;
+    }
+    if(ST.discoverItems.length === 0){
+      const empty = mk('div','card discover-empty');
+      empty.innerHTML = `
+        <div class="de-icon">🔍</div>
+        <h2>Nenhum material encontrado</h2>
+        <p>Ajuste os filtros ou seja o primeiro a publicar um caderno público.</p>
+      `;
+      listWrap.appendChild(empty);
+      return;
+    }
+    ST.discoverItems.forEach(item=>{
+      listWrap.appendChild(renderResourceCard(item));
+    });
+    // Botão load more
+    if(ST.discoverHasMore){
+      const more = mkBtn(ST.discoverLoading?'Carregando...':'Carregar mais','btn btn-sm');
+      more.style.cssText='margin:.875rem auto;display:block';
+      more.disabled = ST.discoverLoading;
+      more.addEventListener('click',()=>{
+        ST.discoverPage++;
+        loadDiscover(true);
+      });
+      listWrap.appendChild(more);
+    }
+  }
+
+  async function loadDiscover(append){
+    ST.discoverLoading = true;
+    renderItems();
+    const limit = 20;
+    const result = await searchPublicResources({
+      type: ST.discoverFilter.type,
+      discipline: ST.discoverFilter.discipline || null,
+      search: ST.discoverFilter.search || null,
+      sort: ST.discoverFilter.sort,
+      limit,
+      offset: ST.discoverPage * limit
+    });
+    ST.discoverLoading = false;
+    if(result.error){
+      listWrap.innerHTML = '';
+      const err = mk('div','card');err.style.cssText='padding:1rem;color:var(--red-text)';
+      err.textContent = '⚠️ ' + result.error;
+      listWrap.appendChild(err);
+      return;
+    }
+    if(append){
+      ST.discoverItems = ST.discoverItems.concat(result.items);
+    } else {
+      ST.discoverItems = result.items;
+    }
+    ST.discoverHasMore = result.items.length === limit;
+    renderItems();
+  }
+
+  // Carrega na primeira renderização
+  if(ST.discoverItems.length === 0 && !ST.discoverLoading){
+    loadDiscover();
+  } else {
+    renderItems();
+  }
+  return wrap;
+}
+
+// Card individual de recurso na descoberta
+function renderResourceCard(item){
+  const card = mk('div','resource-card card');
+  // Badge de tipo
+  const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : '🧠';
+  // Header: título + tipo
+  const header = mk('div','rc-header');
+  const titleEl = mk('h3','rc-title');
+  titleEl.innerHTML = `<span class="rc-type-icon">${typeIcon}</span>${escapeHTML(item.title)}`;
+  header.appendChild(titleEl);
+  card.appendChild(header);
+
+  // Autor + data
+  const meta = mk('div','rc-meta');
+  const authorBtn = mk('button','rc-author');
+  authorBtn.type='button';
+  authorBtn.innerHTML = `<span class="rca-avatar" style="background:${avatarGradient(item.owner_username)}">${initialsFor(item.owner_display_name||item.owner_username)}</span><span class="rca-name">${escapeHTML(item.owner_display_name||item.owner_username)}</span><span class="rca-username">@${escapeHTML(item.owner_username)}</span>`;
+  authorBtn.addEventListener('click',e=>{e.stopPropagation();navigateToProfile(item.owner_username);});
+  meta.appendChild(authorBtn);
+  const dt = mk('span','rc-date');
+  dt.textContent = formatRelativeDate(item.created_at);
+  meta.appendChild(dt);
+  card.appendChild(meta);
+
+  // Descrição (se tiver)
+  if(item.description){
+    const desc = mk('p','rc-desc');desc.textContent = item.description;
+    card.appendChild(desc);
+  }
+
+  // Stats line
+  const stats = mk('div','rc-stats');
+  const qStat = mk('span','rc-stat');qStat.innerHTML = `<b>${item.question_count||0}</b> questões`;
+  stats.appendChild(qStat);
+  if(item.discipline){
+    const dStat = mk('span','rc-stat');dStat.innerHTML = `<b>${escapeHTML(item.discipline)}</b>`;
+    stats.appendChild(dStat);
+  }
+  if(item.total_uses > 0){
+    const uStat = mk('span','rc-stat');uStat.innerHTML = `<b>${item.total_uses}</b> ${item.total_uses===1?'uso':'usos'}`;
+    stats.appendChild(uStat);
+  }
+  if(item.useful_pct !== null && item.useful_pct !== undefined && item.rated_count > 0){
+    const pStat = mk('span','rc-stat rc-stat-useful');
+    const cls = item.useful_pct >= 75 ? 'good' : item.useful_pct >= 50 ? 'mid' : 'low';
+    pStat.classList.add('useful-'+cls);
+    pStat.innerHTML = `👍 <b>${item.useful_pct}%</b> acharam útil`;
+    stats.appendChild(pStat);
+  }
+  card.appendChild(stats);
+
+  // Actions
+  const actions = mk('div','rc-actions');
+  const isMine = AUTH.user && AUTH.user.id === item.owner_id;
+  if(isMine){
+    const myBadge = mk('span','rc-mine-badge');myBadge.textContent='Seu material';
+    actions.appendChild(myBadge);
+  } else {
+    const importBtn = mkBtn('📥 Importar pra minha conta','btn btn-sm btn-p');
+    importBtn.addEventListener('click',()=>showImportConfirmModal(item));
+    actions.appendChild(importBtn);
+  }
+  const previewBtn = mkBtn('👁️ Ver detalhes','btn btn-sm');
+  previewBtn.addEventListener('click',()=>showResourcePreviewModal(item));
+  actions.appendChild(previewBtn);
+  card.appendChild(actions);
+
+  return card;
+}
+
+// Helpers visuais
+function avatarGradient(seed){
+  const hash = (seed||'').split('').reduce((acc,ch)=>acc+ch.charCodeAt(0),0);
+  const h1 = (hash*37) % 360;
+  const h2 = (h1+45) % 360;
+  return `linear-gradient(135deg, hsl(${h1},65%,55%) 0%, hsl(${h2},70%,60%) 100%)`;
+}
+function initialsFor(name){
+  return (name||'?').split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase().slice(0,2);
+}
+function formatRelativeDate(iso){
+  if(!iso)return '';
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  const days = Math.floor(diff/(1000*60*60*24));
+  if(days < 1) return 'hoje';
+  if(days < 7) return `${days} ${days===1?'dia':'dias'} atrás`;
+  if(days < 30) return `${Math.floor(days/7)} ${Math.floor(days/7)===1?'semana':'semanas'} atrás`;
+  return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});
+}
+
+// Modal: confirmar importação
+function showImportConfirmModal(item){
+  const m = mk('div');m.style.maxWidth='460px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .5rem;font-size:18px';
+  h.textContent = '📥 Importar pra sua conta';
+  m.appendChild(h);
+  const p = mk('p','txt2');p.style.cssText='margin:0 0 1rem;font-size:13.5px;line-height:1.55';
+  p.innerHTML = `Vai criar um caderno chamado <b>"${escapeHTML(item.title)}"</b> com <b>${item.question_count}</b> questões na sua conta.<br><br>Você pode editar livremente após importar — o material fica independente do original.`;
+  m.appendChild(p);
+  const credit = mk('div','txt3');credit.style.cssText='font-size:12px;padding:.5rem .75rem;background:var(--surface2);border-radius:8px;margin-bottom:1rem';
+  credit.innerHTML = `Criado por <b>@${escapeHTML(item.owner_username)}</b> · ${item.total_uses||0} pessoa(s) já importaram`;
+  m.appendChild(credit);
+  const actions = mk('div','flex');actions.style.cssText='gap:8px;justify-content:flex-end';
+  const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+  cancelBtn.addEventListener('click',closeModal);
+  actions.appendChild(cancelBtn);
+  const okBtn = mkBtn('Importar agora','btn btn-sm btn-p');
+  actions.appendChild(okBtn);
+  m.appendChild(actions);
+  okBtn.addEventListener('click',async()=>{
+    okBtn.disabled = true;
+    okBtn.textContent = 'Importando...';
+    try{
+      const result = await importNotebookToLocal(item.id);
+      closeModal();
+      showToast(`✓ Caderno importado (${result.importedCount} questões)`);
+      // Atualiza counter de uses local
+      item.total_uses = (item.total_uses||0) + 1;
+      render();
+    }catch(err){
+      okBtn.disabled = false;
+      okBtn.textContent = 'Importar agora';
+      alert('Erro ao importar: ' + err.message);
+    }
+  });
+  showModal(m);
+}
+
+// Modal: preview de recurso
+function showResourcePreviewModal(item){
+  const m = mk('div');m.style.maxWidth='560px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px;line-height:1.3';
+  h.innerHTML = `${item.resource_type==='caderno'?'📝':'📚'} ${escapeHTML(item.title)}`;
+  m.appendChild(h);
+  const sub = mk('div','txt3');sub.style.cssText='font-size:12.5px;margin-bottom:.875rem';
+  sub.innerHTML = `por <b>@${escapeHTML(item.owner_username)}</b> · ${item.question_count} questões${item.discipline?' · '+escapeHTML(item.discipline):''}`;
+  m.appendChild(sub);
+  if(item.description){
+    const desc = mk('p','txt2');desc.style.cssText='font-size:13.5px;line-height:1.55;margin-bottom:1rem;padding:.75rem;background:var(--surface2);border-radius:8px';
+    desc.textContent = item.description;
+    m.appendChild(desc);
+  }
+
+  // Stats
+  const stats = mk('div','flex');stats.style.cssText='gap:.875rem;flex-wrap:wrap;margin-bottom:1rem;padding:.75rem;background:var(--surface2);border-radius:8px';
+  if(item.total_uses > 0) stats.innerHTML += `<div><b>${item.total_uses}</b> usos</div>`;
+  if(item.useful_pct !== null && item.useful_pct !== undefined && item.rated_count > 0){
+    stats.innerHTML += `<div>👍 <b>${item.useful_pct}%</b> acharam útil <small style="color:var(--text3)">(${item.rated_count} avaliações)</small></div>`;
+  }
+  if(stats.children.length === 0 || stats.innerHTML.trim() === ''){
+    stats.innerHTML = '<div class="txt3" style="font-size:12px">Ainda sem usos registrados</div>';
+  }
+  m.appendChild(stats);
+
+  // Avaliar (se já importou e não é dono)
+  const isMine = AUTH.user && AUTH.user.id === item.owner_id;
+  if(!isMine){
+    const ratingArea = mk('div','rating-area');
+    ratingArea.innerHTML = '<div class="ra-loading txt3" style="font-size:12px">Carregando avaliação...</div>';
+    m.appendChild(ratingArea);
+    fetchMyRating(item.id).then(myRating=>{
+      ratingArea.innerHTML = '';
+      const lbl = mk('div');lbl.style.cssText='font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.5rem';
+      lbl.textContent = myRating && myRating.was_useful !== null ? 'Sua avaliação' : 'Avalie este material';
+      ratingArea.appendChild(lbl);
+      const btnRow = mk('div','flex');btnRow.style.cssText='gap:8px';
+      const goodBtn = mkBtn('👍 Foi útil','btn btn-sm'+(myRating && myRating.was_useful===true?' btn-p':''));
+      const badBtn = mkBtn('👎 Não foi útil','btn btn-sm'+(myRating && myRating.was_useful===false?' btn-danger':''));
+      goodBtn.addEventListener('click',async()=>{
+        try{
+          await rateResource(item.id, true);
+          showToast('✓ Avaliado como útil');
+          // Pergunta secundária opcional de estrelas
+          setTimeout(()=>showStarsModal(item),200);
+          closeModal();
+        }catch(err){alert('Erro: '+err.message);}
+      });
+      badBtn.addEventListener('click',async()=>{
+        try{
+          await rateResource(item.id, false);
+          showToast('✓ Avaliação registrada');
+          closeModal();
+        }catch(err){alert('Erro: '+err.message);}
+      });
+      btnRow.appendChild(goodBtn);btnRow.appendChild(badBtn);
+      ratingArea.appendChild(btnRow);
+      if(myRating && myRating.star_rating){
+        const sNote = mk('div','txt3');sNote.style.cssText='font-size:11.5px;margin-top:6px';
+        sNote.textContent = `Você deu ${myRating.star_rating} estrela(s)`;
+        ratingArea.appendChild(sNote);
+      }
+    });
+  }
+
+  // Footer
+  const footer = mk('div','flex');footer.style.cssText='gap:8px;justify-content:flex-end;margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border)';
+  const closeBtn = mkBtn('Fechar','btn btn-sm');
+  closeBtn.addEventListener('click',closeModal);
+  footer.appendChild(closeBtn);
+  if(!isMine){
+    const importBtn = mkBtn('📥 Importar','btn btn-sm btn-p');
+    importBtn.addEventListener('click',()=>{closeModal();showImportConfirmModal(item);});
+    footer.appendChild(importBtn);
+  }
+  m.appendChild(footer);
+  showModal(m);
+}
+
+// Modal de estrelas (após 👍)
+function showStarsModal(item){
+  const m = mk('div');m.style.maxWidth='380px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:17px';
+  h.textContent = '⭐ Quão útil foi?';
+  m.appendChild(h);
+  const p = mk('p','txt3');p.style.cssText='margin:0 0 1rem;font-size:12.5px';
+  p.textContent = 'Opcional — ajuda a destacar materiais excelentes na descoberta.';
+  m.appendChild(p);
+  const starRow = mk('div','stars-row');
+  for(let i=1; i<=5; i++){
+    const sb = mk('button','star-btn');sb.type='button';sb.dataset.value=i;
+    sb.textContent = '⭐';
+    sb.addEventListener('mouseover',()=>{
+      starRow.querySelectorAll('.star-btn').forEach((s,idx)=>{
+        s.classList.toggle('preview', idx < i);
+      });
+    });
+    sb.addEventListener('mouseout',()=>{
+      starRow.querySelectorAll('.star-btn').forEach(s=>s.classList.remove('preview'));
+    });
+    sb.addEventListener('click',async()=>{
+      try{
+        await rateResource(item.id, true, i);
+        showToast(`✓ ${i} estrela(s)`);
+        closeModal();
+      }catch(err){alert('Erro: '+err.message);}
+    });
+    starRow.appendChild(sb);
+  }
+  m.appendChild(starRow);
+  const skipBtn = mkBtn('Pular','btn btn-sm');skipBtn.style.marginTop='.875rem';
+  skipBtn.addEventListener('click',closeModal);
+  m.appendChild(skipBtn);
+  showModal(m);
+}
+
+// Modal: meus materiais publicados
+async function showMyPublishedModal(){
+  const m = mk('div');m.style.cssText='max-width:560px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .75rem;font-size:18px';
+  h.textContent = '📚 Meus materiais publicados';
+  m.appendChild(h);
+  const body = mk('div');body.innerHTML = '<div class="txt3" style="padding:1rem 0">Carregando...</div>';
+  m.appendChild(body);
+  const closeBtn = mkBtn('Fechar','btn btn-sm');closeBtn.style.marginTop='1rem';
+  closeBtn.addEventListener('click',closeModal);
+  m.appendChild(closeBtn);
+  showModal(m);
+
+  const result = await fetchMyPublishedResources();
+  body.innerHTML = '';
+  if(result.error){
+    body.innerHTML = '<div class="txt3" style="color:var(--red-text)">Erro: '+result.error+'</div>';
+    return;
+  }
+  if(!result.items || result.items.length === 0){
+    body.innerHTML = '<div class="txt3" style="padding:.875rem 0;font-size:13px">Você ainda não publicou nenhum material. Vá em <b>Banco de Questões</b>, abra um caderno e clique em "Publicar".</div>';
+    return;
+  }
+  result.items.forEach(it=>{
+    const row = mk('div','my-pub-row');
+    row.innerHTML = `
+      <div class="mpr-info">
+        <div class="mpr-title">${it.is_public?'🌐':'🔒'} ${escapeHTML(it.title)}</div>
+        <div class="mpr-meta">${it.question_count||0} questões${it.discipline?' · '+escapeHTML(it.discipline):''} · ${formatRelativeDate(it.created_at)}</div>
+      </div>
+    `;
+    const acts = mk('div','mpr-actions');
+    if(it.is_public){
+      const unBtn = mkBtn('Despublicar','btn btn-sm');
+      unBtn.addEventListener('click',async()=>{
+        if(!confirm('Despublicar "'+it.title+'"? Volta a ser privado e some da descoberta.'))return;
+        try{
+          await unpublishResource(it.id);
+          showToast('✓ Despublicado');
+          closeModal();
+          showMyPublishedModal();
+        }catch(err){alert('Erro: '+err.message);}
+      });
+      acts.appendChild(unBtn);
+    } else {
+      const tag = mk('span','mpr-tag');tag.textContent='Privado';
+      acts.appendChild(tag);
+    }
+    const delBtn = mkBtn('🗑️','btn btn-sm');
+    delBtn.title='Deletar publicação';
+    delBtn.addEventListener('click',async()=>{
+      if(!confirm('Deletar publicação de "'+it.title+'"? Esta ação não pode ser desfeita. (Não afeta cópias já importadas por outros usuários.)'))return;
+      try{
+        await deletePublishedResource(it.id);
+        showToast('✓ Publicação deletada');
+        closeModal();
+        showMyPublishedModal();
+      }catch(err){alert('Erro: '+err.message);}
+    });
+    acts.appendChild(delBtn);
+    row.appendChild(acts);
+    body.appendChild(row);
+  });
+}
+
+// Modal: publicar caderno
+function showPublishNotebookModal(notebook){
+  if(!AUTH.profile){
+    alert('Crie seu perfil em Configurações antes de publicar materiais.');
+    return;
+  }
+  const m = mk('div');m.style.cssText='max-width:480px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px';
+  h.textContent = '🌐 Publicar caderno';
+  m.appendChild(h);
+  const sub = mk('p','txt3');sub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.5';
+  sub.textContent = 'O caderno ficará visível na descoberta pra outros usuários logados. Você pode despublicar a qualquer momento.';
+  m.appendChild(sub);
+
+  const titleRow = mk('div');titleRow.style.marginBottom='.75rem';
+  titleRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Título público</label>';
+  const titleIn = mk('input');titleIn.type='text';titleIn.maxLength=120;titleIn.value=notebook.name||'';
+  titleRow.appendChild(titleIn);
+  m.appendChild(titleRow);
+
+  const descRow = mk('div');descRow.style.marginBottom='.75rem';
+  descRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Descrição (opcional)</label>';
+  const descIn = mk('textarea');descIn.maxLength=500;descIn.rows=3;
+  descIn.placeholder='Conta o que tem nesse caderno, qual concurso, etc.';
+  descRow.appendChild(descIn);
+  m.appendChild(descRow);
+
+  const discRow = mk('div');discRow.style.marginBottom='.75rem';
+  discRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Disciplina principal (opcional)</label>';
+  const discIn = mk('input');discIn.type='text';discIn.maxLength=80;discIn.placeholder='Ex: Direito Constitucional';
+  discRow.appendChild(discIn);
+  m.appendChild(discRow);
+
+  const info = mk('div','txt3');info.style.cssText='font-size:11.5px;margin:.5rem 0 1rem;padding:.625rem;background:var(--surface2);border-radius:8px';
+  info.innerHTML = `📝 <b>${(notebook.questionIds||[]).length}</b> questões serão publicadas`;
+  m.appendChild(info);
+
+  const actions = mk('div','flex');actions.style.cssText='gap:8px;justify-content:flex-end';
+  const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+  cancelBtn.addEventListener('click',closeModal);
+  actions.appendChild(cancelBtn);
+  const pubBtn = mkBtn('🌐 Publicar agora','btn btn-sm btn-p');
+  actions.appendChild(pubBtn);
+  m.appendChild(actions);
+
+  pubBtn.addEventListener('click',async()=>{
+    pubBtn.disabled = true;
+    pubBtn.textContent = 'Publicando...';
+    try{
+      // Resolver questões
+      const allQs = (DATA.imported||[]);
+      const questions = (notebook.questionIds||[]).map(qid => allQs.find(q=>q.id===qid)).filter(Boolean);
+      if(questions.length === 0) throw new Error('Caderno vazio');
+      const fullData = {
+        id: notebook.id,
+        name: notebook.name,
+        description: notebook.description,
+        questions
+      };
+      await publishNotebook(fullData, {
+        title: titleIn.value,
+        description: descIn.value,
+        discipline: discIn.value
+      });
+      closeModal();
+      showToast('✓ Caderno publicado na descoberta');
+    }catch(err){
+      pubBtn.disabled = false;
+      pubBtn.textContent = '🌐 Publicar agora';
+      alert('Erro: ' + err.message);
+    }
+  });
+  showModal(m);
 }
 
 function renderSocialProfileCard(){
