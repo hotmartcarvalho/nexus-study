@@ -68,22 +68,30 @@ button,textarea,input,select{font-family:inherit;font-size:inherit;color:inherit
 button{cursor:pointer;transition:background .15s,border-color .15s,color .15s,opacity .15s}
 a{color:var(--accent)}
 
-.topbar{position:sticky;top:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);height:54px;display:flex;align-items:center;padding:0;gap:0}
-.topbar-inner{max-width:1100px;width:100%;margin:0 auto;padding:0 1.25rem;height:100%;display:flex;align-items:center;gap:1rem;justify-content:space-between}
-/* Grupo esquerdo: brand + tabs juntos */
-.topbar-left{display:flex;align-items:center;gap:14px;flex-shrink:0;min-width:0}
-/* Grupo direito: info + tema, encostado à direita */
-.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.topbar{position:sticky;top:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);height:64px;display:flex;align-items:center;padding:0;gap:0}
+.topbar-inner{
+  max-width:1200px;width:100%;margin:0 auto;padding:0 1.25rem;height:100%;
+  display:grid;
+  grid-template-columns:1fr 740px 1fr;
+  align-items:center;
+  gap:1rem;
+}
+/* Coluna esquerda: brand alinhada à DIREITA da coluna (próxima ao conteúdo) */
+.topbar-col-left{display:flex;justify-content:flex-end;align-items:center;min-width:0}
+/* Coluna central: tabs alinhadas à ESQUERDA (começo do conteúdo) */
+.topbar-col-center{display:flex;align-items:center;gap:8px;min-width:0;justify-content:flex-start}
+/* Coluna direita: info alinhada à ESQUERDA da coluna (após o conteúdo) */
+.topbar-col-right{display:flex;align-items:center;gap:10px;min-width:0;justify-content:flex-start}
 .brand{display:flex;align-items:center;gap:6px;white-space:nowrap;font-weight:700;letter-spacing:-.5px}
-.brand-bird{height:40px;width:auto;display:block;flex-shrink:0;margin-right:-4px}
+.brand-bird{height:54px;width:auto;display:block;flex-shrink:0;margin-right:-2px}
 .brand-bird-dark{display:none}
 :root[data-theme="dark"] .brand-bird-light{display:none}
 :root[data-theme="dark"] .brand-bird-dark{display:block}
 .brand-name{font-family:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:22px;font-weight:800;letter-spacing:-1px;line-height:1;display:inline-flex;align-items:baseline}
 
 /* Fallback de texto da logo — invisível por padrão; aparece só se imagem falhar (via JS) */
-.brand-fallback{display:none}
-.brand-fallback.show{display:inline-flex}
+.brand-fallback{display:none !important}
+.brand-fallback.show{display:inline-flex !important}
 .brand-name .bn-base{color:#1a2a52}
 .brand-name .bn-accent{background:linear-gradient(135deg,#8042fa 0%,#9255ff 60%,#a571ff 100%);background-clip:text;-webkit-background-clip:text;color:transparent}
 :root[data-theme="dark"] .brand-name .bn-base{color:#e6e9f5}
@@ -139,12 +147,27 @@ a{color:var(--accent)}
 .theme-toggle-btn{background:transparent;border:1px solid var(--border);width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;padding:0;flex-shrink:0;transition:all .15s}
 .theme-toggle-btn:hover{background:var(--surface2);border-color:var(--border2);transform:rotate(-12deg)}
 
+/* Theme switch elegante (sol/lua) — usado no topbar e na welcome */
+.topbar-theme-switch{position:relative;width:60px;height:28px;border-radius:999px;border:1px solid var(--border);background:linear-gradient(90deg,#fef3c7 0%,#fde68a 100%);padding:0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;transition:background .25s ease,border-color .15s;flex-shrink:0}
+.topbar-theme-switch.dark{background:linear-gradient(90deg,#1e1b4b 0%,#312e81 100%);border-color:#4338ca}
+.topbar-theme-switch:hover{border-color:var(--gralia-purple)}
+.topbar-theme-switch .tts-icon{font-size:10px;line-height:1;width:18px;text-align:center;z-index:2;pointer-events:none}
+.topbar-theme-switch .tts-icon-sun{padding-left:5px;opacity:1;transition:opacity .25s}
+.topbar-theme-switch .tts-icon-moon{padding-right:5px;opacity:.4;transition:opacity .25s}
+.topbar-theme-switch.dark .tts-icon-sun{opacity:.4}
+.topbar-theme-switch.dark .tts-icon-moon{opacity:1}
+.topbar-theme-switch .tts-thumb{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.18);transition:transform .25s cubic-bezier(.4,0,.2,1);z-index:1}
+.topbar-theme-switch.dark .tts-thumb{transform:translateX(32px);background:#fef3c7}
+
 /* ===== Mobile/Tablet responsive: slide-out menu (1000px é onde o menu desktop começa a sobrepor) ===== */
 @media (max-width:1000px){
-  .topbar-inner{padding:0 .875rem;gap:.625rem}
+  .topbar-inner{padding:0 .875rem;gap:.625rem;display:flex;justify-content:space-between;grid-template-columns:none}
+  .topbar-col-left{justify-content:flex-start;flex:0 0 auto}
+  .topbar-col-center{flex:1 1 auto;justify-content:flex-end}
+  .topbar-col-right{flex:0 0 auto;justify-content:flex-end}
   .mobile-hamb{display:inline-flex}
   .tabs{
-    position:fixed;top:54px;left:0;right:0;bottom:0;
+    position:fixed;top:64px;left:0;right:0;bottom:0;
     background:var(--surface);
     flex-direction:column;
     align-items:stretch;
@@ -160,24 +183,27 @@ a{color:var(--accent)}
   .mobile-nav-overlay{
     display:none;
     position:fixed;
-    inset:54px 0 0 0;
+    inset:64px 0 0 0;
     background:rgba(0,0,0,.4);
     z-index:280;
     animation:fade-in .18s ease;
   }
   body.mobile-nav-open .mobile-nav-overlay{display:block}
   @keyframes fade-in{from{opacity:0}to{opacity:1}}
-  .tab{padding:10px 12px;font-size:14px;justify-content:flex-start;width:100%}
-  .tab-caret{margin-left:auto}
+  .tab{padding:14px 16px;font-size:16px;font-weight:600;justify-content:flex-start;width:100%}
+  .tab .tab-icon{font-size:18px}
+  .tab-caret{margin-left:auto;font-size:14px}
   .tab-group{width:100%}
-  .tab-dd{position:static;display:none;box-shadow:none;padding:4px 4px 4px 28px;min-width:0;border:none;background:transparent;margin-top:0}
+  .tab-dd{position:static;display:none;box-shadow:none;padding:4px 4px 8px 36px;min-width:0;border:none;background:transparent;margin-top:0}
   .tab-group.open .tab-dd{display:flex;flex-direction:column}
-  .tab-dd-item{padding:.5rem .625rem}
-  .ddi-body span{font-size:11px}
+  .tab-dd-item{padding:.7rem .75rem;font-size:14.5px}
+  .tab-dd-item .ddi-icon{font-size:16px}
+  .ddi-body b{font-size:14.5px}
+  .ddi-body span{font-size:12px}
   /* Mobile: esconde info da barra (vai aparecer dentro do menu) */
-  .topbar-right > .countdown-pill,
-  .topbar-right > .sync-dot,
-  .topbar-right > .credits-chip{display:none}
+  .topbar-col-right > .countdown-pill,
+  .topbar-col-right > .sync-dot,
+  .topbar-col-right > .credits-chip{display:none}
   /* Theme toggle continua à direita do brand pra acesso rápido */
   .theme-toggle-btn{width:32px;height:32px;font-size:13px}
   /* Painel inferior do menu mobile com info contextual */
@@ -3327,14 +3353,19 @@ function renderTopbar(){
   const pill = mk('div','countdown-pill');
   pill.textContent=days>0?(days===1?'1 dia':days+' dias'):(days===0?'Prova hoje':'Pós-prova');
 
-  // Grupo esquerdo: brand + hamburger + tabs (juntos como bloco coeso)
-  const leftGroup = mk('div','topbar-left');
-  leftGroup.appendChild(brand);
-  leftGroup.appendChild(hamb);
-  leftGroup.appendChild(tabs);
+  // Layout em 3 colunas:
+  // [Coluna Esquerda - Brand] [Coluna Central - Tabs] [Coluna Direita - Info]
+  // Brand alinhada na direita da coluna esquerda (próxima ao início do conteúdo)
+  // Tabs alinhadas na esquerda da coluna central (começo do conteúdo)
+  // Info alinhada na esquerda da coluna direita (após fim do conteúdo)
+  const colLeft = mk('div','topbar-col-left');
+  colLeft.appendChild(brand);
 
-  // Grupo direito: info do usuário + tema (alinhado à direita)
-  const rightGroup = mk('div','topbar-right');
+  const colCenter = mk('div','topbar-col-center');
+  colCenter.appendChild(hamb);
+  colCenter.appendChild(tabs);
+
+  const colRight = mk('div','topbar-col-right');
   // Sync indicator — only when auth is active
   if(isAuthed()){
     // Credits chip — visible when quota is known
@@ -3342,29 +3373,33 @@ function renderTopbar(){
       const chip = mk('span','credits-chip');
       chip.id='credits-chip';
       updateCreditsChip(chip);
-      rightGroup.appendChild(chip);
+      colRight.appendChild(chip);
     }
     const sync = mk('span','sync-dot');
     sync.id='sync-indicator';
     sync.textContent='Sincronizado';
     if(AUTH.syncing){sync.classList.add('syncing');sync.textContent='Sincronizando...';}
     else if(AUTH.syncError){sync.classList.add('error');sync.textContent='Erro';}
-    rightGroup.appendChild(sync);
+    colRight.appendChild(sync);
   }
-  rightGroup.appendChild(pill);
+  colRight.appendChild(pill);
 
-  // Theme toggle — ☀/🌙 button in top right
+  // Theme switch — sol/lua estilizado (mesmo da welcome)
   const currentTheme = localStorage.getItem('nexus_theme')||'light';
-  const themeBtn = mk('button','theme-toggle-btn');
-  themeBtn.type='button';
-  themeBtn.setAttribute('aria-label','Alternar tema claro/escuro');
-  themeBtn.title = currentTheme==='dark'?'Mudar para modo claro':'Mudar para modo escuro';
-  themeBtn.innerHTML = currentTheme==='dark'?'☀':'🌙';
-  themeBtn.addEventListener('click',()=>{toggleTheme();render();});
-  rightGroup.appendChild(themeBtn);
+  const themeSwitch = mk('button','topbar-theme-switch'+(currentTheme==='dark'?' dark':''));
+  themeSwitch.type='button';
+  themeSwitch.setAttribute('aria-label', currentTheme==='dark'?'Mudar para modo claro':'Mudar para modo escuro');
+  themeSwitch.innerHTML = `
+    <span class="tts-icon tts-icon-sun">☀</span>
+    <span class="tts-thumb"></span>
+    <span class="tts-icon tts-icon-moon">🌙</span>
+  `;
+  themeSwitch.addEventListener('click',()=>{toggleTheme();render();});
+  colRight.appendChild(themeSwitch);
 
-  inner.appendChild(leftGroup);
-  inner.appendChild(rightGroup);
+  inner.appendChild(colLeft);
+  inner.appendChild(colCenter);
+  inner.appendChild(colRight);
   inner.appendChild(overlay);
 
   bar.appendChild(inner);
