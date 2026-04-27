@@ -68,7 +68,7 @@ button,textarea,input,select{font-family:inherit;font-size:inherit;color:inherit
 button{cursor:pointer;transition:background .15s,border-color .15s,color .15s,opacity .15s}
 a{color:var(--accent)}
 
-.topbar{position:sticky;top:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);height:76px;display:flex;align-items:center;padding:0;gap:0}
+.topbar{position:sticky;top:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);height:88px;display:flex;align-items:center;padding:0;gap:0}
 .topbar-inner{
   max-width:1200px;width:100%;margin:0 auto;padding:0 1.25rem;height:100%;
   display:grid;
@@ -83,7 +83,7 @@ a{color:var(--accent)}
 /* Coluna direita: info alinhada à ESQUERDA da coluna (após o conteúdo) */
 .topbar-col-right{display:flex;align-items:center;gap:10px;min-width:0;justify-content:flex-start}
 .brand{display:flex;align-items:center;gap:6px;white-space:nowrap;font-weight:700;letter-spacing:-.5px}
-.brand-bird{height:68px;width:auto;display:block;flex-shrink:0;margin-right:-2px}
+.brand-bird{height:80px;width:auto;display:block;flex-shrink:0;margin-right:-2px}
 .brand-bird-dark{display:none}
 :root[data-theme="dark"] .brand-bird-light{display:none}
 :root[data-theme="dark"] .brand-bird-dark{display:block}
@@ -184,7 +184,7 @@ a{color:var(--accent)}
   .topbar-col-right{flex:0 0 auto;justify-content:flex-end}
   .mobile-hamb{display:inline-flex}
   .tabs{
-    position:fixed;top:76px;left:0;right:0;bottom:0;
+    position:fixed;top:88px;left:0;right:0;bottom:0;
     background:var(--surface);
     flex-direction:column;
     align-items:stretch;
@@ -200,7 +200,7 @@ a{color:var(--accent)}
   .mobile-nav-overlay{
     display:none;
     position:fixed;
-    inset:76px 0 0 0;
+    inset:88px 0 0 0;
     background:rgba(0,0,0,.4);
     z-index:280;
     animation:fade-in .18s ease;
@@ -630,6 +630,30 @@ html.focus-mode .pomo-float{display:none}
 
 /* Toast de celebração de meta */
 .goal-toast{position:fixed;top:70px;right:20px;z-index:9000;background:var(--surface);border:1px solid var(--gralia-purple);border-radius:14px;box-shadow:0 12px 36px rgba(124,92,255,.28),0 4px 12px rgba(0,0,0,.08);padding:14px 16px 14px 14px;display:flex;align-items:flex-start;gap:12px;max-width:360px;animation:gtoast-in .4s cubic-bezier(.23,1.12,.32,1)}
+
+/* === SOCIAL PROFILE CARD === */
+.social-profile-card{border:1.5px solid rgba(128,66,250,.18);background:linear-gradient(160deg,rgba(128,66,250,.04) 0%,var(--surface) 60%)}
+.sp-username-wrap{display:flex;align-items:center;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .15s}
+.sp-username-wrap:focus-within{border-color:var(--gralia-purple);box-shadow:0 0 0 3px rgba(128,66,250,.12)}
+.sp-username-prefix{padding:0 10px 0 14px;color:var(--text3);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+.sp-username-wrap input{border:none !important;background:transparent !important;padding:.625rem .75rem .625rem 0 !important;font-size:14px !important;font-weight:600;color:var(--text);font-family:'Sora',system-ui,sans-serif;letter-spacing:-.2px;outline:none !important;flex:1;width:100%;box-shadow:none !important}
+.sp-username-wrap input:focus{outline:none !important;box-shadow:none !important}
+.sp-username-wrap input:disabled{opacity:.55;cursor:not-allowed}
+.sp-hint{font-size:11.5px;color:var(--text3);margin-top:6px;line-height:1.45}
+.sp-status{font-size:12px;font-weight:600;margin-top:6px;line-height:1.4;min-height:1em}
+.sp-status.checking{color:var(--text3)}
+.sp-status.ok{color:var(--accent-text)}
+.sp-status.err{color:var(--red-text)}
+.sp-status.warn{color:var(--amber-text)}
+.sp-status.info{color:var(--text3)}
+.sp-edits-info{font-size:10.5px;font-weight:600;color:var(--text3);text-transform:none;letter-spacing:0}
+/* Visibilidade segmented */
+.sp-segmented{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sp-seg-opt{padding:.625rem .75rem;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s;display:flex;flex-direction:column;gap:2px;color:var(--text)}
+.sp-seg-opt:hover{border-color:var(--gralia-purple-soft,#c4aeff)}
+.sp-seg-opt.on{border-color:var(--gralia-purple);background:linear-gradient(135deg,rgba(128,66,250,.06) 0%,var(--surface) 100%);box-shadow:0 0 0 3px rgba(128,66,250,.12)}
+.sp-seg-opt span{font-size:13px;font-weight:700}
+.sp-seg-opt small{font-size:11px;color:var(--text3);font-weight:500;line-height:1.4}
 
 /* Streak contemplativo — sutil, sem cobrança */
 .dash-streak-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:.875rem 1.125rem;display:flex;align-items:center;gap:14px;margin-bottom:14px}
@@ -1507,7 +1531,7 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 .wel-hero-note-v3 b{color:var(--text2);font-weight:600}
 .wel-hero-visual{display:flex;justify-content:center;align-items:center;position:relative}
 .wel-hero-brand{display:flex;align-items:center;gap:14px;filter:drop-shadow(0 8px 28px rgba(124,92,255,.18))}
-.wel-hero-bird{height:220px;width:auto;display:block;flex-shrink:0;margin-right:-10px}
+.wel-hero-bird{height:280px;width:auto;display:block;flex-shrink:0;margin-right:-10px}
 .wel-hero-bird-dark{display:none}
 :root[data-theme="dark"] .wel-hero-bird-light{display:none}
 :root[data-theme="dark"] .wel-hero-bird-dark{display:block}
@@ -1522,7 +1546,7 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
   .wel-hero-headline-v3{font-size:30px}
   .wel-hero-cta-row{justify-content:center}
   .wel-hero-visual{order:-1}
-  .wel-hero-bird{height:150px;margin-right:-6px}
+  .wel-hero-bird{height:180px;margin-right:-6px}
   .wel-hero-name{font-size:56px;letter-spacing:-2.5px}
 }
 
@@ -1871,7 +1895,10 @@ const AUTH = {
   syncing:false,       // true during active upload/download
   lastSyncAt:null,     // ms timestamp of last successful sync
   syncError:null,      // last error message from sync
-  authReady:false      // flips true after onAuthStateChange fires for the first time
+  authReady:false,     // flips true after onAuthStateChange fires for the first time
+  profile:null,        // {id, username, display_name, visibility, username_edits_count, username_last_edit, created_at}
+  profileLoading:false,// true durante fetch do perfil
+  profileLastFetch:null
 };
 
 // Get current access token (JWT) — used in /api/generate calls
@@ -1887,6 +1914,122 @@ function isAuthed(){
 // Does the deployment have Supabase credentials set up?
 function supabaseConfigured(){
   return !!supa;
+}
+
+// === SOCIAL PROFILE HELPERS ===
+// Busca o perfil do usuário logado (table 'profiles')
+async function fetchUserProfile(force){
+  if(!supa || !AUTH.user) return null;
+  // Cache: não busca de novo dentro de 30s
+  if(!force && AUTH.profile && AUTH.profileLastFetch && (Date.now() - AUTH.profileLastFetch < 30000)){
+    return AUTH.profile;
+  }
+  AUTH.profileLoading = true;
+  try{
+    const { data, error } = await supa
+      .from('profiles')
+      .select('id, username, display_name, visibility, username_edits_count, username_last_edit, created_at')
+      .eq('id', AUTH.user.id)
+      .maybeSingle();
+    AUTH.profileLoading = false;
+    AUTH.profileLastFetch = Date.now();
+    if(error){
+      console.warn('[profile] fetch error:', error.message);
+      return null;
+    }
+    AUTH.profile = data;
+    return data;
+  }catch(err){
+    AUTH.profileLoading = false;
+    console.warn('[profile] fetch exception:', err);
+    return null;
+  }
+}
+
+// Verifica disponibilidade de username (chama RPC `username_available`)
+async function checkUsernameAvailable(username){
+  if(!supa) return {available:false, error:'Supabase não configurado'};
+  const validation = validateUsername(username);
+  if(!validation.ok) return {available:false, error:validation.error};
+  try{
+    const { data, error } = await supa.rpc('username_available', {p_username: validation.value});
+    if(error) return {available:false, error:error.message};
+    return {available: !!data, error: data ? '' : 'Username já está em uso'};
+  }catch(err){
+    return {available:false, error:err.message||'Erro ao verificar'};
+  }
+}
+
+// Cria perfil pela primeira vez
+async function createProfile(username, displayName){
+  if(!supa || !AUTH.user) throw new Error('Não autenticado');
+  const validation = validateUsername(username);
+  if(!validation.ok) throw new Error(validation.error);
+  const dn = (displayName||'').trim().slice(0,40);
+  if(dn.length < 2) throw new Error('Nome exibido precisa ter ao menos 2 caracteres');
+  const { data, error } = await supa.from('profiles').insert({
+    id: AUTH.user.id,
+    username: validation.value,
+    display_name: dn,
+    visibility: 'public',
+    username_edits_count: 0
+  }).select().single();
+  if(error) throw new Error(error.message);
+  AUTH.profile = data;
+  AUTH.profileLastFetch = Date.now();
+  return data;
+}
+
+// Atualiza username (com validação de cooldown)
+async function updateUsername(newUsername){
+  if(!AUTH.profile) throw new Error('Perfil ainda não criado');
+  const validation = validateUsername(newUsername);
+  if(!validation.ok) throw new Error(validation.error);
+  if(validation.value === AUTH.profile.username) return AUTH.profile;
+  const editCheck = canEditUsername(AUTH.profile);
+  if(!editCheck.canEdit) throw new Error(editCheck.reason);
+  const { data, error } = await supa.from('profiles').update({
+    username: validation.value,
+    username_edits_count: (AUTH.profile.username_edits_count||0) + 1,
+    username_last_edit: new Date().toISOString()
+  }).eq('id', AUTH.user.id).select().single();
+  if(error) throw new Error(error.message);
+  AUTH.profile = data;
+  AUTH.profileLastFetch = Date.now();
+  return data;
+}
+
+// Atualiza display name (sem cooldown)
+async function updateDisplayName(name){
+  if(!AUTH.profile) throw new Error('Perfil ainda não criado');
+  const dn = (name||'').trim().slice(0,40);
+  if(dn.length < 2) throw new Error('Nome exibido precisa ter ao menos 2 caracteres');
+  const { data, error } = await supa.from('profiles').update({display_name: dn})
+    .eq('id', AUTH.user.id).select().single();
+  if(error) throw new Error(error.message);
+  AUTH.profile = data;
+  return data;
+}
+
+// Atualiza visibilidade (public/private)
+async function updateVisibility(visibility){
+  if(!AUTH.profile) throw new Error('Perfil ainda não criado');
+  if(!['public','private'].includes(visibility)) throw new Error('Visibilidade inválida');
+  const { data, error } = await supa.from('profiles').update({visibility})
+    .eq('id', AUTH.user.id).select().single();
+  if(error) throw new Error(error.message);
+  AUTH.profile = data;
+  return data;
+}
+
+// Sugere username baseado no email (lowercase, sem partes não-permitidas)
+function suggestUsernameFromEmail(email){
+  if(!email) return '';
+  let base = email.split('@')[0].toLowerCase();
+  base = base.replace(/[^a-z0-9_]/g,'').slice(0,15);
+  if(/^[0-9]/.test(base)) base = 'u'+base;
+  if(base.length < 3) base = 'user_'+Math.random().toString(36).slice(2,7);
+  return base;
 }
 const DEFAULT_EXAM_NAME = 'Prova';
 function examDate(){
@@ -1957,6 +2100,61 @@ const BRAND = {
   fullLogo: '/logo-light.png'
 };
 const STORAGE_KEY = 'nexus_pl_v4';
+
+// === USERNAMES RESERVADOS (não podem ser usados) ===
+const RESERVED_USERNAMES = new Set([
+  // Marca/sistema
+  'gralia','admin','administrator','root','support','help','api','www','mail','ftp',
+  'system','staff','team','official','moderator','mod','dev','developer',
+  // Páginas existentes do app (rotas internas)
+  'dashboard','painel','sources','fontes','methods','metodos','imported','banco',
+  'srs','flashcards','mapa','pomodoro','settings','config','history','historico',
+  'practice','simulado','calibration','drill','examiner','elaborative','interleaving',
+  'usage','review','revisao','turbo','revgen','goals','metas','profile','perfil',
+  'login','signup','register','logout','signin','signout','forgot','reset',
+  'auth','authenticate','signin','sign-in','sign-up','sign-out',
+  // Comuns que confundem
+  'about','contact','privacy','terms','tos','legal','blog','news','docs',
+  'home','user','users','me','you','myself','self','account','accounts',
+  'null','undefined','true','false','test','example','demo','sample',
+  // Vulgares mais comuns (lista mínima — backend deve ter mais)
+  'fuck','shit','porn','sex','xxx','adult','nsfw','nude'
+]);
+
+// Valida formato de username — retorna {ok:true} ou {ok:false, error:'mensagem'}
+function validateUsername(u){
+  if(!u || typeof u !== 'string') return {ok:false, error:'Informe um username'};
+  const s = u.trim().toLowerCase();
+  if(s.length < 3) return {ok:false, error:'Mínimo 3 caracteres'};
+  if(s.length > 20) return {ok:false, error:'Máximo 20 caracteres'};
+  if(!/^[a-z0-9_]+$/.test(s)) return {ok:false, error:'Use apenas letras minúsculas, números e _'};
+  if(/^[0-9]/.test(s)) return {ok:false, error:'Não pode começar com número'};
+  if(/^_+$/.test(s) || /__/.test(s)) return {ok:false, error:'Use _ com moderação'};
+  if(RESERVED_USERNAMES.has(s)) return {ok:false, error:'Esse nome é reservado'};
+  return {ok:true, value:s};
+}
+
+// Calcula se pode editar username agora
+// Regra: primeiras 4 edições com cooldown de 9h cada; depois, 20 dias.
+// Retorna {canEdit:bool, hoursLeft:number, reason:string}
+function canEditUsername(profile){
+  if(!profile) return {canEdit:true, hoursLeft:0, reason:''};
+  const editsCount = profile.username_edits_count || 0;
+  const lastEdit = profile.username_last_edit ? new Date(profile.username_last_edit).getTime() : 0;
+  if(editsCount === 0 || !lastEdit) return {canEdit:true, hoursLeft:0, reason:''};
+  const now = Date.now();
+  const elapsedH = (now - lastEdit) / (1000*60*60);
+  const cooldownH = editsCount < 4 ? 9 : (20 * 24);
+  if(elapsedH >= cooldownH) return {canEdit:true, hoursLeft:0, reason:''};
+  const left = cooldownH - elapsedH;
+  if(left < 24){
+    return {canEdit:false, hoursLeft:Math.ceil(left), reason:`Aguarde ${Math.ceil(left)}h pra trocar de novo`};
+  } else {
+    const daysLeft = Math.ceil(left/24);
+    return {canEdit:false, hoursLeft:left, reason:`Aguarde ${daysLeft} dias pra trocar de novo`};
+  }
+}
+
 
 // === LOGO WORDMARK SVG ===
 // Geometria inspirada na logo original do Gralia:
@@ -13197,10 +13395,261 @@ function pomoNotify(phase){
 }
 
 /* SETTINGS */
+// === Card de perfil social (username + display name + visibilidade) ===
+// Renderiza dentro de Config quando autenticado
+function renderSocialProfileCard(){
+  const card = mk('div','card social-profile-card');card.style.marginTop='1rem';
+  card.appendChild(sLabel('🌐 Perfil público'));
+  const desc = mk('p','txt2');desc.style.marginBottom='.875rem';desc.style.fontSize='13px';desc.style.lineHeight='1.55';
+  desc.textContent='Crie um perfil público pra que outros usuários encontrem você, vejam suas conquistas e (em breve) acessem materiais que você decidir compartilhar.';
+  card.appendChild(desc);
+
+  // Estado: carrega perfil em background; mostra placeholder enquanto carrega
+  const body = mk('div','sp-body');
+  card.appendChild(body);
+
+  function renderState(){
+    body.innerHTML = '';
+    if(AUTH.profileLoading){
+      const ld = mk('div','txt3');ld.style.padding='1rem 0';ld.textContent='Carregando perfil...';
+      body.appendChild(ld);
+      return;
+    }
+    if(!AUTH.profile){
+      // Não tem perfil ainda — mostra criação
+      renderCreateForm();
+    } else {
+      renderEditForm();
+    }
+  }
+
+  function renderCreateForm(){
+    const intro = mk('p','txt2');intro.style.cssText='margin:0 0 .875rem;font-size:12.5px;line-height:1.55;color:var(--text2)';
+    intro.innerHTML = '⚡ Você ainda não tem perfil público. Escolha um <b>username</b> (único, não dá pra mudar à vontade) e um <b>nome exibido</b> (livre pra editar).';
+    body.appendChild(intro);
+
+    // Username
+    const uRow = mk('div');uRow.style.marginBottom='.75rem';
+    const uLbl = mk('label');uLbl.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;letter-spacing:.4px;text-transform:uppercase';
+    uLbl.textContent='Username';
+    uRow.appendChild(uLbl);
+    const uWrap = mk('div','sp-username-wrap');
+    const uPrefix = mk('span','sp-username-prefix');uPrefix.textContent='@';
+    const uIn = mk('input');uIn.type='text';uIn.placeholder='ex: jeanf';uIn.maxLength=20;uIn.autocomplete='off';
+    uIn.value = suggestUsernameFromEmail(AUTH.user.email);
+    uWrap.appendChild(uPrefix);uWrap.appendChild(uIn);
+    uRow.appendChild(uWrap);
+    const uHint = mk('div','sp-hint');uHint.textContent='3-20 caracteres, apenas letras minúsculas, números e _. Não pode começar com número.';
+    uRow.appendChild(uHint);
+    const uStatus = mk('div','sp-status');uRow.appendChild(uStatus);
+    body.appendChild(uRow);
+
+    // Display name
+    const dRow = mk('div');dRow.style.marginBottom='.875rem';
+    const dLbl = mk('label');dLbl.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;letter-spacing:.4px;text-transform:uppercase';
+    dLbl.textContent='Nome exibido';
+    dRow.appendChild(dLbl);
+    const dIn = mk('input');dIn.type='text';dIn.placeholder='ex: Jean Furtado';dIn.maxLength=40;
+    dIn.value = (DATA.config?.userName||'').slice(0,40);
+    dRow.appendChild(dIn);
+    const dHint = mk('div','sp-hint');dHint.textContent='Como seu nome aparece nos seus materiais e perfil. Pode editar quando quiser.';
+    dRow.appendChild(dHint);
+    body.appendChild(dRow);
+
+    // Botão criar
+    const actions = mk('div','flex');actions.style.cssText='gap:8px;margin-top:.875rem';
+    const createBtn = mkBtn('Criar perfil','btn btn-sm btn-p');
+    actions.appendChild(createBtn);
+    body.appendChild(actions);
+
+    // Validação em tempo real (debounce)
+    let availTimer = null;
+    let lastChecked = '';
+    let lastAvailable = false;
+    function checkAvail(){
+      const v = uIn.value.trim().toLowerCase();
+      const validation = validateUsername(v);
+      if(!validation.ok){
+        uStatus.className = 'sp-status err';
+        uStatus.textContent = '✗ ' + validation.error;
+        lastAvailable = false;
+        return;
+      }
+      uStatus.className = 'sp-status checking';
+      uStatus.textContent = 'Verificando disponibilidade...';
+      clearTimeout(availTimer);
+      availTimer = setTimeout(async()=>{
+        if(uIn.value.trim().toLowerCase() !== v) return; // mudou enquanto esperava
+        const result = await checkUsernameAvailable(v);
+        if(uIn.value.trim().toLowerCase() !== v) return;
+        lastChecked = v;
+        if(result.available){
+          uStatus.className = 'sp-status ok';
+          uStatus.textContent = '✓ Disponível';
+          lastAvailable = true;
+        } else {
+          uStatus.className = 'sp-status err';
+          uStatus.textContent = '✗ ' + (result.error || 'Indisponível');
+          lastAvailable = false;
+        }
+      }, 450);
+    }
+    uIn.addEventListener('input',()=>{
+      uIn.value = uIn.value.toLowerCase().replace(/[^a-z0-9_]/g,'');
+      checkAvail();
+    });
+    checkAvail();
+
+    createBtn.addEventListener('click',async()=>{
+      const u = uIn.value.trim().toLowerCase();
+      const dn = dIn.value.trim();
+      if(!lastAvailable || lastChecked !== u){
+        alert('Verifique se o username está disponível antes de criar.');
+        return;
+      }
+      if(dn.length < 2){
+        alert('Informe um nome exibido com pelo menos 2 caracteres.');
+        dIn.focus();
+        return;
+      }
+      createBtn.disabled = true;
+      createBtn.textContent = 'Criando...';
+      try{
+        await createProfile(u, dn);
+        showToast('✓ Perfil criado');
+        renderState();
+      }catch(err){
+        alert('Erro ao criar perfil: ' + (err.message || err));
+        createBtn.disabled = false;
+        createBtn.textContent = 'Criar perfil';
+      }
+    });
+  }
+
+  function renderEditForm(){
+    const p = AUTH.profile;
+
+    // Username com cooldown info
+    const uRow = mk('div');uRow.style.marginBottom='.875rem';
+    const uLbl = mk('label');uLbl.style.cssText='display:flex;justify-content:space-between;align-items:center;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;letter-spacing:.4px;text-transform:uppercase';
+    uLbl.innerHTML = `<span>Username</span><span class="sp-edits-info">${p.username_edits_count||0} edições feitas</span>`;
+    uRow.appendChild(uLbl);
+    const uWrap = mk('div','sp-username-wrap');
+    const uPrefix = mk('span','sp-username-prefix');uPrefix.textContent='@';
+    const uIn = mk('input');uIn.type='text';uIn.maxLength=20;uIn.value = p.username;uIn.autocomplete='off';
+    uWrap.appendChild(uPrefix);uWrap.appendChild(uIn);
+    uRow.appendChild(uWrap);
+
+    const editCheck = canEditUsername(p);
+    const uStatus = mk('div','sp-status');
+    if(!editCheck.canEdit){
+      uIn.disabled = true;
+      uStatus.className = 'sp-status warn';
+      uStatus.textContent = '🔒 ' + editCheck.reason;
+    } else {
+      uStatus.className = 'sp-status info';
+      const cooldownNote = (p.username_edits_count||0) < 3 ? 'Próxima troca em 9h após salvar' : (p.username_edits_count||0) === 3 ? 'Após esta, próximas trocas em 20 dias' : 'Cooldown de 20 dias ativo';
+      uStatus.textContent = 'ℹ️ ' + cooldownNote;
+    }
+    uRow.appendChild(uStatus);
+    body.appendChild(uRow);
+
+    // Display name
+    const dRow = mk('div');dRow.style.marginBottom='.875rem';
+    const dLbl = mk('label');dLbl.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;letter-spacing:.4px;text-transform:uppercase';
+    dLbl.textContent='Nome exibido (livre pra editar)';
+    dRow.appendChild(dLbl);
+    const dIn = mk('input');dIn.type='text';dIn.maxLength=40;dIn.value = p.display_name||'';
+    dRow.appendChild(dIn);
+    body.appendChild(dRow);
+
+    // Visibilidade
+    const vRow = mk('div');vRow.style.marginBottom='.875rem';
+    const vLbl = mk('label');vLbl.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:8px;letter-spacing:.4px;text-transform:uppercase';
+    vLbl.textContent='Visibilidade do perfil';
+    vRow.appendChild(vLbl);
+    const vSeg = mk('div','sp-segmented');
+    const optPub = mk('button','sp-seg-opt'+(p.visibility==='public'?' on':''));optPub.type='button';
+    optPub.innerHTML = '<span>🌐 Público</span><small>Qualquer usuário logado pode ver</small>';
+    const optPriv = mk('button','sp-seg-opt'+(p.visibility==='private'?' on':''));optPriv.type='button';
+    optPriv.innerHTML = '<span>🔒 Privado</span><small>Apenas você acessa o perfil</small>';
+    vSeg.appendChild(optPub);vSeg.appendChild(optPriv);
+    vRow.appendChild(vSeg);
+    body.appendChild(vRow);
+
+    // Botão salvar
+    const actions = mk('div','flex');actions.style.cssText='gap:8px;margin-top:.875rem';
+    const saveBtn = mkBtn('Salvar alterações','btn btn-sm btn-p');
+    actions.appendChild(saveBtn);
+    body.appendChild(actions);
+
+    let pendingVisibility = p.visibility;
+    optPub.addEventListener('click',()=>{
+      pendingVisibility='public';
+      optPub.classList.add('on');optPriv.classList.remove('on');
+    });
+    optPriv.addEventListener('click',()=>{
+      pendingVisibility='private';
+      optPriv.classList.add('on');optPub.classList.remove('on');
+    });
+
+    saveBtn.addEventListener('click',async()=>{
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Salvando...';
+      const newU = uIn.value.trim().toLowerCase();
+      const newD = dIn.value.trim();
+      try{
+        // Salva username se mudou e pode editar
+        if(newU !== p.username && editCheck.canEdit){
+          const validation = validateUsername(newU);
+          if(!validation.ok) throw new Error(validation.error);
+          const avail = await checkUsernameAvailable(newU);
+          if(!avail.available) throw new Error(avail.error || 'Username indisponível');
+          await updateUsername(newU);
+        }
+        if(newD !== (p.display_name||'') && newD.length >= 2){
+          await updateDisplayName(newD);
+        }
+        if(pendingVisibility !== p.visibility){
+          await updateVisibility(pendingVisibility);
+        }
+        showToast('✓ Perfil atualizado');
+        renderState();
+      }catch(err){
+        alert('Erro: ' + (err.message || err));
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Salvar alterações';
+      }
+    });
+  }
+
+  // Inicia: dispara fetch se ainda não tiver perfil em cache
+  if(AUTH.profile === null && !AUTH.profileLoading){
+    AUTH.profileLoading = true;
+    body.innerHTML = '<div class="txt3" style="padding:1rem 0">Carregando perfil...</div>';
+    fetchUserProfile(true).then(()=>{
+      AUTH.profileLoading = false;
+      renderState();
+    }).catch(()=>{
+      AUTH.profileLoading = false;
+      renderState();
+    });
+  } else {
+    renderState();
+  }
+  return card;
+}
+
 function renderSettings(){
   const wrap = mk('div','fade');
   const h = mk('h1');h.textContent='Configurações';
   wrap.appendChild(h);
+
+  // ===== CARD: Perfil social (username, nome exibido, visibilidade) =====
+  if(isAuthed()){
+    const socialCard = renderSocialProfileCard();
+    if(socialCard) wrap.appendChild(socialCard);
+  }
 
   // Perfil + Prova
   const examCard = mk('div','card');examCard.style.marginTop='1rem';
