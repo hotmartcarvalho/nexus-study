@@ -703,6 +703,52 @@ html.focus-mode .pomo-float{display:none}
 .link-btn{background:none;border:none;color:var(--gralia-purple);text-decoration:underline;cursor:pointer;font-family:inherit;font-size:inherit;padding:0;font-weight:600}
 .link-btn:hover{opacity:.8}
 
+/* === ESTÁGIO 4: Contadores de followers/following === */
+.up-counts{display:flex;gap:18px;margin-top:10px}
+.up-count-btn{background:transparent;border:none;padding:0;cursor:pointer;font-family:inherit;color:var(--text2);text-align:left;display:flex;flex-direction:column;gap:1px}
+.up-count-btn b{font-size:15px;font-weight:800;color:var(--text);line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
+.up-count-btn span{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.up-count-btn:hover b{color:var(--gralia-purple)}
+
+/* Botões de ação alternativos */
+.btn-secondary{background:var(--surface2)!important;color:var(--text)!important;border:1px solid var(--border)}
+.btn-outline{background:transparent!important;color:var(--text2)!important;border:1px dashed var(--border2)}
+
+/* Profile list item (usado em modais de seguidores/seguindo/solicitações) */
+.profile-list-item{display:flex;align-items:center;gap:10px;padding:.625rem .5rem;background:transparent;border:none;border-radius:8px;cursor:pointer;font-family:inherit;width:100%;text-align:left;transition:background .15s}
+.profile-list-item:hover{background:var(--surface2)}
+.pli-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;flex-shrink:0;letter-spacing:-.3px}
+.pli-info{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.pli-name{font-size:13.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pli-username{font-size:11.5px;color:var(--text3)}
+.frq-row{display:flex;align-items:center;gap:8px;padding:.5rem 0;border-bottom:1px solid var(--border)}
+.frq-row:last-child{border-bottom:none}
+
+/* === Card de feed no Dashboard === */
+.dash-feed-card{margin-bottom:14px;padding:.875rem 1.125rem}
+.dfc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.dfc-title{font-size:13.5px;font-weight:700;color:var(--text)}
+.dfc-see-all{font-size:11.5px}
+.dfc-body{display:flex;flex-direction:column;gap:6px}
+
+/* Item de marco social */
+.milestone-item{display:flex;gap:10px;padding:.5rem 0;border-bottom:1px solid var(--border)}
+.milestone-item:last-child{border-bottom:none}
+.ms-icon{font-size:18px;flex-shrink:0;width:28px;text-align:center;line-height:1.2}
+.ms-body{flex:1;min-width:0}
+.ms-text{font-size:13px;color:var(--text);line-height:1.4}
+.ms-author{font-weight:700}
+.ms-sub{font-size:11.5px;color:var(--text2);margin-top:1px;line-height:1.3;font-style:italic}
+.ms-when{font-size:10.5px;color:var(--text3);margin-top:2px}
+
+/* Página de feed */
+.feed-page .feed-list{display:flex;flex-direction:column;gap:0}
+.feed-page .milestone-item{padding:.875rem 1rem;background:var(--surface);border:1px solid var(--border);border-bottom:none;margin:0}
+.feed-page .milestone-item:first-child{border-top-left-radius:var(--rs);border-top-right-radius:var(--rs)}
+.feed-page .milestone-item:last-child{border-bottom:1px solid var(--border);border-bottom-left-radius:var(--rs);border-bottom-right-radius:var(--rs)}
+.feed-page .ms-icon{font-size:22px;width:34px}
+.feed-page .ms-text{font-size:14px}
+
 /* === USER PROFILE PAGE === */
 .up-header{display:flex;align-items:flex-start;gap:18px;padding:1.5rem;flex-wrap:wrap;position:relative}
 .up-avatar{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;letter-spacing:-1px;flex-shrink:0;box-shadow:0 4px 14px rgba(0,0,0,.15);font-family:'Sora',system-ui,sans-serif}
@@ -2281,9 +2327,9 @@ async function importNotebookToLocal(resourceId){
     importedFromResource: resourceId,
     importedFromUser: r.owner_username
   }));
-  // Adiciona questões ao banco geral
-  if(!DATA.imported) DATA.imported = [];
-  importedQuestions.forEach(q => DATA.imported.push(q));
+  // Adiciona questões ao banco geral (DATA.importedQuestions é o nome canônico)
+  if(!DATA.importedQuestions) DATA.importedQuestions = [];
+  importedQuestions.forEach(q => DATA.importedQuestions.push(q));
   // Cria o caderno apontando pra essas questões
   const notebook = {
     id: newId,
@@ -2331,6 +2377,242 @@ async function fetchMyRating(resourceId){
     if(error || !data) return null;
     return data;
   }catch(err){ return null; }
+}
+
+// === ESTÁGIO 4 SOCIAL: SEGUIR + FEED ===
+
+// Segue um usuário (cria follow direto se público; cria solicitação se privado)
+// Retorna: 'following' | 'requested' | 'already_following' | 'already_requested'
+async function followUser(targetId){
+  if(!supa || !AUTH.user) throw new Error('Não autenticado');
+  try{
+    const { data, error } = await supa.rpc('follow_user', {p_target_id: targetId});
+    if(error) throw new Error(error.message);
+    return data;
+  }catch(err){ throw err; }
+}
+
+async function unfollowUser(targetId){
+  if(!supa || !AUTH.user) throw new Error('Não autenticado');
+  try{
+    const { error } = await supa.rpc('unfollow_user', {p_target_id: targetId});
+    if(error) throw new Error(error.message);
+    return true;
+  }catch(err){ throw err; }
+}
+
+// Retorna: 'self' | 'following' | 'requested' | 'none'
+async function getFollowStatus(targetId){
+  if(!supa || !AUTH.user) return 'none';
+  try{
+    const { data, error } = await supa.rpc('get_follow_status', {p_target_id: targetId});
+    if(error) return 'none';
+    return data || 'none';
+  }catch(err){ return 'none'; }
+}
+
+// Contadores (followers + following) de um perfil
+async function getProfileCounts(userId){
+  if(!supa || !AUTH.user) return {followers_count:0, following_count:0};
+  try{
+    const { data, error } = await supa.rpc('get_profile_counts', {p_user_id: userId});
+    if(error || !data || data.length===0) return {followers_count:0, following_count:0};
+    return data[0];
+  }catch(err){ return {followers_count:0, following_count:0}; }
+}
+
+// Lista quem o usuário segue (com display_name + username)
+async function fetchFollowing(userId, limit){
+  if(!supa || !AUTH.user) return {items:[]};
+  try{
+    const { data, error } = await supa
+      .from('follows')
+      .select('followed_id, created_at, profiles!follows_followed_id_fkey(username, display_name, visibility)')
+      .eq('follower_id', userId)
+      .order('created_at', {ascending:false})
+      .limit(limit||50);
+    if(error){
+      // Fallback se a relação não existir; busca em 2 passos
+      const { data: rows } = await supa.from('follows')
+        .select('followed_id, created_at').eq('follower_id', userId).limit(limit||50);
+      if(!rows) return {items:[]};
+      const ids = rows.map(r=>r.followed_id);
+      if(ids.length===0) return {items:[]};
+      const { data: profs } = await supa.from('profiles')
+        .select('id, username, display_name, visibility').in('id', ids);
+      const profMap = {};
+      (profs||[]).forEach(p=>profMap[p.id]=p);
+      return {items: rows.map(r=>({
+        followed_id: r.followed_id,
+        created_at: r.created_at,
+        profile: profMap[r.followed_id]
+      })).filter(x=>x.profile)};
+    }
+    return {items: (data||[]).map(r=>({
+      followed_id: r.followed_id,
+      created_at: r.created_at,
+      profile: r.profiles
+    })).filter(x=>x.profile)};
+  }catch(err){ return {items:[], error:err.message}; }
+}
+
+// Lista quem segue o usuário
+async function fetchFollowers(userId, limit){
+  if(!supa || !AUTH.user) return {items:[]};
+  try{
+    const { data: rows } = await supa.from('follows')
+      .select('follower_id, created_at').eq('followed_id', userId)
+      .order('created_at', {ascending:false}).limit(limit||50);
+    if(!rows) return {items:[]};
+    const ids = rows.map(r=>r.follower_id);
+    if(ids.length===0) return {items:[]};
+    const { data: profs } = await supa.from('profiles')
+      .select('id, username, display_name, visibility').in('id', ids);
+    const profMap = {};
+    (profs||[]).forEach(p=>profMap[p.id]=p);
+    return {items: rows.map(r=>({
+      follower_id: r.follower_id,
+      created_at: r.created_at,
+      profile: profMap[r.follower_id]
+    })).filter(x=>x.profile)};
+  }catch(err){ return {items:[], error:err.message}; }
+}
+
+// Solicitações pendentes recebidas (quando perfil é privado)
+async function fetchPendingFollowRequests(){
+  if(!supa || !AUTH.user) return {items:[]};
+  try{
+    const { data: reqs } = await supa.from('follow_requests')
+      .select('id, requester_id, created_at')
+      .eq('target_id', AUTH.user.id).eq('status', 'pending')
+      .order('created_at', {ascending:false}).limit(50);
+    if(!reqs || reqs.length===0) return {items:[]};
+    const ids = reqs.map(r=>r.requester_id);
+    const { data: profs } = await supa.from('profiles')
+      .select('id, username, display_name').in('id', ids);
+    const profMap = {};
+    (profs||[]).forEach(p=>profMap[p.id]=p);
+    return {items: reqs.map(r=>({
+      request_id: r.id,
+      requester_id: r.requester_id,
+      created_at: r.created_at,
+      profile: profMap[r.requester_id]
+    })).filter(x=>x.profile)};
+  }catch(err){ return {items:[]}; }
+}
+
+async function respondFollowRequest(requestId, accept){
+  if(!supa || !AUTH.user) throw new Error('Não autenticado');
+  try{
+    const { error } = await supa.rpc('respond_follow_request', {p_request_id: requestId, p_accept: !!accept});
+    if(error) throw new Error(error.message);
+    return true;
+  }catch(err){ throw err; }
+}
+
+// Busca perfis por nome (autocomplete)
+async function searchProfiles(query, limit){
+  if(!supa || !AUTH.user) return {items:[]};
+  if(!query || query.length<2) return {items:[]};
+  try{
+    const { data, error } = await supa.rpc('search_profiles', {p_query: query, p_limit: limit||10});
+    if(error) return {items:[]};
+    return {items: data||[]};
+  }catch(err){ return {items:[]}; }
+}
+
+// Registra um marco social (idempotente — não duplica)
+async function recordMilestone(kind, subKey, payload){
+  if(!supa || !AUTH.user) return false;
+  try{
+    await supa.rpc('record_milestone', {
+      p_kind: kind,
+      p_sub_key: subKey || '',
+      p_payload: payload || {}
+    });
+    return true;
+  }catch(err){
+    console.warn('[milestone] falha:', err);
+    return false;
+  }
+}
+
+// Busca o feed (marcos dos seguidos)
+async function fetchFeed(limit, offset){
+  if(!supa || !AUTH.user) return {items:[]};
+  try{
+    const { data, error } = await supa.rpc('fetch_feed', {
+      p_limit: limit||20,
+      p_offset: offset||0
+    });
+    if(error) return {items:[], error:error.message};
+    return {items: data||[]};
+  }catch(err){ return {items:[], error:err.message}; }
+}
+
+// === DETECÇÃO DE MARCOS ===
+// Chamada após save() pra registrar marcos quando bater os thresholds
+const QUESTIONS_MILESTONES = [50, 100, 250, 500, 1000, 2500, 5000];
+const POMOS_MILESTONES = [50, 100, 250, 500, 1000];
+const STREAK_MILESTONES = [7, 30, 90, 180, 365];
+
+async function detectAndRecordMilestones(){
+  if(!supa || !AUTH.user || !AUTH.profile) return;
+  try{
+    // 1) Total de questões respondidas
+    let totalQ = 0;
+    (DATA.disciplines||[]).forEach(d=>{
+      (d.sessions||[]).forEach(s=>{ totalQ += (s.total||0); });
+    });
+    for(const m of QUESTIONS_MILESTONES){
+      if(totalQ >= m){
+        await recordMilestone('questions_milestone', String(m), {value: m, total: totalQ});
+      }
+    }
+    // 2) Total de pomodoros
+    const totalP = ((DATA.pomo||{}).sessions||[]).filter(s=>s.phase==='focus').length;
+    for(const m of POMOS_MILESTONES){
+      if(totalP >= m){
+        await recordMilestone('pomos_milestone', String(m), {value: m, total: totalP});
+      }
+    }
+    // 3) Streak (maior já alcançado)
+    try{
+      const streak = computeStreakStats();
+      for(const m of STREAK_MILESTONES){
+        if(streak.longest >= m){
+          await recordMilestone('streak_milestone', String(m), {value: m, longest: streak.longest});
+        }
+      }
+    }catch(e){}
+    // 4) Meta atingida (período atual)
+    if(DATA.goals){
+      try{
+        const view = goalDailyView(DATA.goals);
+        if(view && view.pctQ >= 100 && view.pctP >= 100){
+          // Sub-key é o período atual + tipo, evita duplicar quando já registrou
+          const key = DATA.goals.period + '_' + (DATA.goals.periodStartDate||'');
+          await recordMilestone('goal_completed', key, {
+            period: DATA.goals.period,
+            questions: DATA.goals.questionsTarget,
+            pomos: DATA.goals.pomosTarget
+          });
+        }
+      }catch(e){}
+    }
+  }catch(err){
+    console.warn('[milestones] erro:', err);
+  }
+}
+
+// Registra marco de publicação de material
+async function recordPublishMilestone(resource){
+  if(!resource || !resource.id) return;
+  await recordMilestone('resource_published', resource.id, {
+    title: resource.title,
+    type: resource.resource_type,
+    discipline: resource.discipline
+  });
 }
 
 const DEFAULT_EXAM_NAME = 'Prova';
@@ -2679,10 +2961,16 @@ function load(){
     return Object.assign(def,parsed);
   }catch(e){return defaultData()}
 }
+let _milestoneTimer = null;
 function save(){
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify(DATA))}catch(e){}
   // Debounced sync to Supabase when logged in
   if(typeof scheduleSync==='function')scheduleSync();
+  // Detecta marcos sociais com debounce de 8s pra agrupar saves rápidos
+  if(typeof detectAndRecordMilestones === 'function'){
+    clearTimeout(_milestoneTimer);
+    _milestoneTimer = setTimeout(()=>{ detectAndRecordMilestones(); }, 8000);
+  }
 }
 let DATA = load();
 
@@ -3501,7 +3789,7 @@ function render(){
     pomodoro:renderPomodoro,settings:renderSettings,history:renderHistory,turbo:renderTurbo,eve:renderEve,imported:renderImported,review:renderReview,revgen:renderRevgen,
     calibration:renderCalibration,examiner:renderExaminer,drill:renderDrill,
     elaborative:renderElaborative,practice:renderPractice,simulado:renderSimulado,
-    interleaving:renderInterleaving,srs:renderSRS,mapa:renderMapa,usage:renderUsage,goals:renderGoals,userProfile:renderUserProfile,discover:renderDiscover
+    interleaving:renderInterleaving,srs:renderSRS,mapa:renderMapa,usage:renderUsage,goals:renderGoals,userProfile:renderUserProfile,discover:renderDiscover,feed:renderFeed
   };
   // Contextual breadcrumb — shows where user came from
   if(ST.navStack.length>0){
@@ -4196,6 +4484,39 @@ function renderDashboard(){
       </div>
     `;
     wrap.appendChild(streakCard);
+  }
+
+  // ===== Feed de marcos sociais (sutil) =====
+  // Mostra os últimos 5 marcos das pessoas que você segue
+  if(isAuthed() && AUTH.profile){
+    const feedCard = mk('div','dash-feed-card card');
+    feedCard.innerHTML = `
+      <div class="dfc-head">
+        <div class="dfc-title">📡 Da rede</div>
+        <button class="dfc-see-all link-btn" type="button">Ver todos →</button>
+      </div>
+      <div class="dfc-body"><div class="txt3" style="font-size:12px;padding:.5rem 0">Carregando...</div></div>
+    `;
+    feedCard.querySelector('.dfc-see-all').addEventListener('click',()=>{
+      ST.view='feed';render();
+    });
+    wrap.appendChild(feedCard);
+    // Carrega feed em background
+    fetchFeed(5, 0).then(result=>{
+      const body = feedCard.querySelector('.dfc-body');
+      if(!body) return;
+      body.innerHTML = '';
+      if(!result.items || result.items.length === 0){
+        body.innerHTML = '<div class="txt3" style="font-size:12.5px;padding:.5rem 0;line-height:1.5">Você ainda não segue ninguém — ou as pessoas que segue ainda não atingiram marcos. <button class="link-btn" onclick="ST.view=\'discover\';render()">Descobrir pessoas →</button></div>';
+        return;
+      }
+      result.items.forEach(item=>{
+        body.appendChild(renderMilestoneItem(item));
+      });
+    }).catch(()=>{
+      const body = feedCard.querySelector('.dfc-body');
+      if(body) body.innerHTML = '<div class="txt3" style="font-size:12px">Não foi possível carregar o feed</div>';
+    });
   }
 
   // ===== WARNINGS — empty state or missing config =====
@@ -12402,7 +12723,7 @@ function viewLabel(view){
     history:'Histórico', practice:'Questões', simulado:'Simulado',
     calibration:'Calibração', drill:'Drill', examiner:'Examinador',
     elaborative:'Elaboração', interleaving:'Interleaving', usage:'Uso da IA',
-    review:'Revisão', turbo:'Revisão Turbo', revgen:'Gerador de Revisão', goals:'Metas', userProfile:'Perfil', discover:'Descobrir'
+    review:'Revisão', turbo:'Revisão Turbo', revgen:'Gerador de Revisão', goals:'Metas', userProfile:'Perfil', discover:'Descobrir', feed:'Feed'
   };
   return labels[view]||view;
 }
@@ -13759,6 +14080,302 @@ function navigateToProfile(username){
 }
 
 // === Página de perfil público ===
+// Atualiza estado visual do botão seguir/seguindo/solicitar/cancelar
+function updateFollowButton(btn, status, profile){
+  btn.classList.remove('btn-p','btn-secondary','btn-outline');
+  if(status === 'following'){
+    btn.textContent = '✓ Seguindo';
+    btn.classList.add('btn-secondary');
+    btn.title = 'Clique pra deixar de seguir';
+    btn.onclick = async()=>{
+      if(!confirm('Deixar de seguir @'+profile.username+'?')) return;
+      btn.disabled = true;
+      try{
+        await unfollowUser(profile.id);
+        // Atualiza contador local
+        const ftBtn = document.querySelector('.up-count-btn[data-action="followers"] b');
+        if(ftBtn) ftBtn.textContent = Math.max(0, parseInt(ftBtn.textContent||'0')-1);
+        updateFollowButton(btn, 'none', profile);
+      }catch(err){
+        alert('Erro: ' + err.message);
+      }
+      btn.disabled = false;
+    };
+  } else if(status === 'requested'){
+    btn.textContent = '⏳ Solicitado';
+    btn.classList.add('btn-outline');
+    btn.title = 'Clique pra cancelar solicitação';
+    btn.onclick = async()=>{
+      if(!confirm('Cancelar solicitação?')) return;
+      btn.disabled = true;
+      try{
+        await unfollowUser(profile.id);
+        updateFollowButton(btn, 'none', profile);
+      }catch(err){
+        alert('Erro: ' + err.message);
+      }
+      btn.disabled = false;
+    };
+  } else {
+    btn.textContent = '+ Seguir';
+    btn.classList.add('btn-p');
+    btn.title = profile.visibility === 'private' ? 'Solicitar pra seguir (perfil privado)' : 'Seguir';
+    btn.onclick = async()=>{
+      btn.disabled = true;
+      try{
+        const result = await followUser(profile.id);
+        if(result === 'following'){
+          showToast('Agora você segue @'+profile.username);
+          const ftBtn = document.querySelector('.up-count-btn[data-action="followers"] b');
+          if(ftBtn) ftBtn.textContent = parseInt(ftBtn.textContent||'0')+1;
+          updateFollowButton(btn, 'following', profile);
+        } else if(result === 'requested'){
+          showToast('Solicitação enviada');
+          updateFollowButton(btn, 'requested', profile);
+        }
+      }catch(err){
+        alert('Erro: ' + err.message);
+      }
+      btn.disabled = false;
+    };
+  }
+}
+
+// Modal de lista de seguidores
+async function showFollowersModal(profile){
+  const m = mk('div');m.style.maxWidth='420px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .75rem;font-size:17px';
+  h.textContent = `Seguidores de @${profile.username}`;
+  m.appendChild(h);
+  const body = mk('div');body.innerHTML = '<div class="txt3" style="padding:1rem 0">Carregando...</div>';
+  m.appendChild(body);
+  const close = mkBtn('Fechar','btn btn-sm');close.style.marginTop='1rem';
+  close.addEventListener('click',closeModal);
+  m.appendChild(close);
+  showModal(m);
+  const result = await fetchFollowers(profile.id, 50);
+  body.innerHTML = '';
+  if(!result.items || result.items.length === 0){
+    body.innerHTML = '<div class="txt3" style="padding:.875rem 0;font-size:13px">Nenhum seguidor ainda.</div>';
+    return;
+  }
+  result.items.forEach(it=>body.appendChild(renderProfileListItem(it.profile)));
+}
+
+// Modal de lista de quem segue
+async function showFollowingModal(profile){
+  const m = mk('div');m.style.maxWidth='420px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .75rem;font-size:17px';
+  h.textContent = `@${profile.username} segue`;
+  m.appendChild(h);
+  const body = mk('div');body.innerHTML = '<div class="txt3" style="padding:1rem 0">Carregando...</div>';
+  m.appendChild(body);
+  const close = mkBtn('Fechar','btn btn-sm');close.style.marginTop='1rem';
+  close.addEventListener('click',closeModal);
+  m.appendChild(close);
+  showModal(m);
+  const result = await fetchFollowing(profile.id, 50);
+  body.innerHTML = '';
+  if(!result.items || result.items.length === 0){
+    body.innerHTML = '<div class="txt3" style="padding:.875rem 0;font-size:13px">Não segue ninguém ainda.</div>';
+    return;
+  }
+  result.items.forEach(it=>body.appendChild(renderProfileListItem(it.profile)));
+}
+
+// Modal: solicitações pendentes (recebidas — perfil privado)
+async function showPendingRequestsModal(){
+  const m = mk('div');m.style.maxWidth='420px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .75rem;font-size:17px';
+  h.textContent = '📨 Solicitações pra seguir você';
+  m.appendChild(h);
+  const body = mk('div');body.innerHTML = '<div class="txt3" style="padding:1rem 0">Carregando...</div>';
+  m.appendChild(body);
+  const close = mkBtn('Fechar','btn btn-sm');close.style.marginTop='1rem';
+  close.addEventListener('click',closeModal);
+  m.appendChild(close);
+  showModal(m);
+  const result = await fetchPendingFollowRequests();
+  body.innerHTML = '';
+  if(!result.items || result.items.length === 0){
+    body.innerHTML = '<div class="txt3" style="padding:.875rem 0;font-size:13px">Nenhuma solicitação pendente.</div>';
+    return;
+  }
+  result.items.forEach(req=>{
+    const row = mk('div','frq-row');
+    const info = renderProfileListItem(req.profile);
+    info.style.flex = '1';
+    row.appendChild(info);
+    const actsCol = mk('div');actsCol.style.cssText='display:flex;gap:6px;flex-shrink:0';
+    const acceptBtn = mkBtn('Aceitar','btn btn-sm btn-p');
+    const rejectBtn = mkBtn('Rejeitar','btn btn-sm');
+    acceptBtn.addEventListener('click',async()=>{
+      acceptBtn.disabled = true; rejectBtn.disabled = true;
+      try{
+        await respondFollowRequest(req.request_id, true);
+        showToast('Aceito');
+        row.remove();
+      }catch(err){ alert('Erro: '+err.message); acceptBtn.disabled = false; rejectBtn.disabled = false; }
+    });
+    rejectBtn.addEventListener('click',async()=>{
+      acceptBtn.disabled = true; rejectBtn.disabled = true;
+      try{
+        await respondFollowRequest(req.request_id, false);
+        showToast('Rejeitado');
+        row.remove();
+      }catch(err){ alert('Erro: '+err.message); acceptBtn.disabled = false; rejectBtn.disabled = false; }
+    });
+    actsCol.appendChild(acceptBtn);
+    actsCol.appendChild(rejectBtn);
+    row.appendChild(actsCol);
+    body.appendChild(row);
+  });
+}
+
+// Item de lista de perfil (avatar + nome + username)
+function renderProfileListItem(profile){
+  const item = mk('button','profile-list-item');item.type='button';
+  item.innerHTML = `
+    <span class="pli-avatar" style="background:${avatarGradient(profile.username)}">${initialsFor(profile.display_name||profile.username)}</span>
+    <span class="pli-info">
+      <span class="pli-name">${escapeHTML(profile.display_name||profile.username)}</span>
+      <span class="pli-username">@${escapeHTML(profile.username)}</span>
+    </span>
+  `;
+  item.addEventListener('click',()=>{
+    closeModal();
+    navigateToProfile(profile.username);
+  });
+  return item;
+}
+
+// Item visual de marco social (usado em feed dashboard + página completa)
+function renderMilestoneItem(m){
+  const item = mk('div','milestone-item');
+  // Determina ícone e texto por tipo
+  let icon = '🎯', text = '', subtext = '';
+  const author = `<button class="link-btn ms-author" onclick="navigateToProfile('${escapeHTML(m.username)}')">@${escapeHTML(m.username)}</button>`;
+  switch(m.kind){
+    case 'goal_completed':{
+      icon = '🎯';
+      const period = (m.payload && m.payload.period === 'monthly') ? 'mensal' : 'semanal';
+      text = `${author} completou a meta ${period}`;
+      if(m.payload && m.payload.questions){
+        subtext = `${m.payload.questions} questões + ${m.payload.pomos||0} pomos`;
+      }
+      break;
+    }
+    case 'questions_milestone':{
+      icon = '📝';
+      const v = m.payload?.value || m.sub_key;
+      text = `${author} respondeu ${v} questões no total`;
+      break;
+    }
+    case 'pomos_milestone':{
+      icon = '🍅';
+      const v = m.payload?.value || m.sub_key;
+      text = `${author} completou ${v} pomodoros`;
+      break;
+    }
+    case 'streak_milestone':{
+      icon = '🔥';
+      const v = m.payload?.value || m.sub_key;
+      text = `${author} alcançou ${v} dias de sequência`;
+      break;
+    }
+    case 'resource_published':{
+      icon = '🌐';
+      const title = m.payload?.title || 'um material';
+      text = `${author} publicou um caderno`;
+      subtext = title;
+      break;
+    }
+    case 'resource_useful_milestone':{
+      icon = '⭐';
+      const v = m.payload?.value || m.sub_key;
+      text = `${author} teve um material importado ${v}× pela comunidade`;
+      break;
+    }
+    default:
+      text = `${author} atingiu um marco`;
+  }
+  item.innerHTML = `
+    <div class="ms-icon">${icon}</div>
+    <div class="ms-body">
+      <div class="ms-text">${text}</div>
+      ${subtext ? `<div class="ms-sub">${escapeHTML(subtext)}</div>` : ''}
+      <div class="ms-when">${formatRelativeDate(m.created_at)}</div>
+    </div>
+  `;
+  return item;
+}
+
+// Página completa do feed
+function renderFeed(){
+  const wrap = mk('div','fade feed-page');
+  if(!isAuthed()){
+    const box = mk('div','card');box.style.cssText='text-align:center;padding:2.5rem 1.5rem';
+    box.innerHTML = '<h2 style="margin:0 0 .5rem">🔒 Acesso restrito</h2><p class="txt2" style="margin:0">Faça login pra ver o feed da rede.</p>';
+    wrap.appendChild(box);
+    return wrap;
+  }
+  const head = mk('div');head.style.cssText='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:1rem';
+  const ttl = mk('h1','page-h1');ttl.style.margin='0';ttl.innerHTML = '📡 Da rede <span class="page-h1-tag">marcos das pessoas que você segue</span>';
+  head.appendChild(ttl);
+  const discoverBtn = mkBtn('🌐 Descobrir pessoas','btn btn-sm');
+  discoverBtn.addEventListener('click',()=>{ST.view='discover';render();});
+  head.appendChild(discoverBtn);
+  wrap.appendChild(head);
+
+  const list = mk('div','feed-list');
+  list.innerHTML = '<div class="txt3" style="padding:1rem;text-align:center">Carregando marcos...</div>';
+  wrap.appendChild(list);
+
+  let page = 0;
+  const PAGE_SIZE = 20;
+  let hasMore = true;
+  let loading = false;
+  const items = [];
+
+  function renderList(){
+    list.innerHTML = '';
+    if(items.length === 0 && !loading){
+      const empty = mk('div','card');empty.style.cssText='padding:2rem 1rem;text-align:center';
+      empty.innerHTML = `
+        <div style="font-size:32px;margin-bottom:.5rem;opacity:.7">📡</div>
+        <h2 style="margin:0 0 .25rem;font-size:16px">Sem marcos ainda</h2>
+        <p style="margin:0;font-size:13px;color:var(--text3)">Quando pessoas que você segue atingirem metas, completarem questões ou publicarem materiais, vai aparecer aqui.</p>
+      `;
+      list.appendChild(empty);
+      return;
+    }
+    items.forEach(m=>list.appendChild(renderMilestoneItem(m)));
+    if(hasMore){
+      const more = mkBtn(loading?'Carregando...':'Carregar mais','btn btn-sm');
+      more.style.cssText='margin:.875rem auto;display:block';
+      more.disabled = loading;
+      more.addEventListener('click',()=>{ page++; loadPage(); });
+      list.appendChild(more);
+    }
+  }
+
+  async function loadPage(){
+    loading = true;
+    renderList();
+    const result = await fetchFeed(PAGE_SIZE, page * PAGE_SIZE);
+    loading = false;
+    if(result.error){
+      list.innerHTML = '<div class="txt3" style="padding:1rem;color:var(--red-text)">Erro: '+result.error+'</div>';
+      return;
+    }
+    items.push(...(result.items||[]));
+    hasMore = (result.items||[]).length === PAGE_SIZE;
+    renderList();
+  }
+  loadPage();
+  return wrap;
+}
+
 function renderUserProfile(){
   const wrap = mk('div','fade user-profile-page');
 
@@ -13828,9 +14445,30 @@ function renderUserProfile(){
   }
   header.appendChild(headInfo);
 
-  // Botão compartilhar (link copiável) — só pra próprio perfil
+  // Linha de contadores (followers + following) — embaixo do header info
+  const counts = mk('div','up-counts');
+  counts.innerHTML = `
+    <button class="up-count-btn" data-action="followers"><b>—</b><span>seguidores</span></button>
+    <button class="up-count-btn" data-action="following"><b>—</b><span>seguindo</span></button>
+  `;
+  headInfo.appendChild(counts);
+
+  // Carrega contadores em background
+  getProfileCounts(p.id).then(data=>{
+    if(ST.view !== 'userProfile' || ST.profileUsername !== p.username) return;
+    const ftEl = counts.querySelector('[data-action="followers"] b');
+    const fwEl = counts.querySelector('[data-action="following"] b');
+    if(ftEl) ftEl.textContent = data.followers_count;
+    if(fwEl) fwEl.textContent = data.following_count;
+  });
+  // Click nos contadores abre modais com listas
+  counts.querySelector('[data-action="followers"]').addEventListener('click',()=>showFollowersModal(p));
+  counts.querySelector('[data-action="following"]').addEventListener('click',()=>showFollowingModal(p));
+
+  // Ações no header (compartilhar, seguir, solicitações)
+  const actions = mk('div','up-header-actions');
   if(isMyProfile){
-    const actions = mk('div','up-header-actions');
+    // Compartilhar (próprio perfil)
     const shareBtn = mkBtn('🔗 Copiar link','btn btn-sm');
     shareBtn.addEventListener('click',()=>{
       const url = location.origin + location.pathname + '#u/' + p.username;
@@ -13841,8 +14479,23 @@ function renderUserProfile(){
       });
     });
     actions.appendChild(shareBtn);
-    header.appendChild(actions);
+    // Botão de solicitações pendentes (se perfil privado)
+    if(p.visibility === 'private'){
+      const reqBtn = mkBtn('📨 Solicitações','btn btn-sm');
+      reqBtn.addEventListener('click',()=>showPendingRequestsModal());
+      actions.appendChild(reqBtn);
+    }
+  } else {
+    // Botão seguir (perfil de outra pessoa)
+    const followBtn = mkBtn('Carregando...','btn btn-sm');
+    followBtn.disabled = true;
+    actions.appendChild(followBtn);
+    getFollowStatus(p.id).then(status=>{
+      followBtn.disabled = false;
+      updateFollowButton(followBtn, status, p);
+    });
   }
+  header.appendChild(actions);
   wrap.appendChild(header);
 
   // Cards de estatísticas (visíveis apenas se for o próprio usuário ou perfil público)
@@ -14423,9 +15076,8 @@ function showPublishNotebookModal(notebook){
     pubBtn.disabled = true;
     pubBtn.textContent = 'Publicando...';
     try{
-      // Resolver questões
-      const allQs = (DATA.imported||[]);
-      const questions = (notebook.questionIds||[]).map(qid => allQs.find(q=>q.id===qid)).filter(Boolean);
+      // Usa helper canônico (DATA.importedQuestions é o nome real)
+      const questions = notebookQuestions(notebook.id);
       if(questions.length === 0) throw new Error('Caderno vazio');
       const fullData = {
         id: notebook.id,
@@ -14433,11 +15085,13 @@ function showPublishNotebookModal(notebook){
         description: notebook.description,
         questions
       };
-      await publishNotebook(fullData, {
+      const result = await publishNotebook(fullData, {
         title: titleIn.value,
         description: descIn.value,
         discipline: discIn.value
       });
+      // Marco social: publicou material
+      try{ recordPublishMilestone(result); }catch(e){}
       closeModal();
       showToast('✓ Caderno publicado na descoberta');
     }catch(err){
