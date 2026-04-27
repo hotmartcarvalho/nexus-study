@@ -68,7 +68,7 @@ button,textarea,input,select{font-family:inherit;font-size:inherit;color:inherit
 button{cursor:pointer;transition:background .15s,border-color .15s,color .15s,opacity .15s}
 a{color:var(--accent)}
 
-.topbar{position:sticky;top:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);height:64px;display:flex;align-items:center;padding:0;gap:0}
+.topbar{position:sticky;top:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);height:56px;display:flex;align-items:center;padding:0;gap:0}
 .topbar-inner{
   max-width:1200px;width:100%;margin:0 auto;padding:0 1.25rem;height:100%;
   display:grid;
@@ -78,12 +78,12 @@ a{color:var(--accent)}
 }
 /* Coluna esquerda: brand alinhada à DIREITA da coluna (próxima ao conteúdo) */
 .topbar-col-left{display:flex;justify-content:flex-end;align-items:center;min-width:0}
-/* Coluna central: tabs alinhadas à ESQUERDA (começo do conteúdo) */
-.topbar-col-center{display:flex;align-items:center;gap:8px;min-width:0;justify-content:flex-start}
+/* Coluna central: tabs alinhadas à ESQUERDA (começo do conteúdo). Padding igual .page pra alinhar perfeitamente. */
+.topbar-col-center{display:flex;align-items:center;gap:8px;min-width:0;justify-content:flex-start;padding:0 1.25rem;box-sizing:border-box}
 /* Coluna direita: info alinhada à ESQUERDA da coluna (após o conteúdo) */
 .topbar-col-right{display:flex;align-items:center;gap:10px;min-width:0;justify-content:flex-start}
 .brand{display:flex;align-items:center;gap:6px;white-space:nowrap;font-weight:700;letter-spacing:-.5px}
-.brand-bird{height:54px;width:auto;display:block;flex-shrink:0;margin-right:-2px}
+.brand-bird{height:40px;width:auto;display:block;flex-shrink:0;margin-right:-2px}
 .brand-bird-dark{display:none}
 :root[data-theme="dark"] .brand-bird-light{display:none}
 :root[data-theme="dark"] .brand-bird-dark{display:block}
@@ -118,6 +118,9 @@ a{color:var(--accent)}
 
 /* Aba simples + trigger de grupo */
 .tab{padding:7px 12px;font-size:13px;font-weight:500;border:none;background:transparent;color:var(--text2);border-radius:var(--rs);white-space:nowrap;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:inherit;transition:all .15s}
+/* Primeira aba alinha exatamente com o início do conteúdo da página (sem padding-left interno) */
+.topbar-col-center > .tab:first-child{padding-left:0;margin-left:-2px}
+.topbar-col-center > .tab-group:first-child > .tab{padding-left:0;margin-left:-2px}
 .tab:hover{background:var(--surface2);color:var(--text)}
 .tab.on{background:var(--accent-light);color:var(--accent-text);font-weight:600}
 .tab-icon{font-size:14px;line-height:1}
@@ -184,7 +187,7 @@ a{color:var(--accent)}
   .topbar-col-right{flex:0 0 auto;justify-content:flex-end}
   .mobile-hamb{display:inline-flex}
   .tabs{
-    position:fixed;top:64px;left:0;right:0;bottom:0;
+    position:fixed;top:56px;left:0;right:0;bottom:0;
     background:var(--surface);
     flex-direction:column;
     align-items:stretch;
@@ -200,7 +203,7 @@ a{color:var(--accent)}
   .mobile-nav-overlay{
     display:none;
     position:fixed;
-    inset:64px 0 0 0;
+    inset:56px 0 0 0;
     background:rgba(0,0,0,.4);
     z-index:280;
     animation:fade-in .18s ease;
@@ -633,6 +636,31 @@ html.focus-mode .pomo-float{display:none}
 
 /* === SOCIAL PROFILE CARD === */
 .social-profile-card{border:1.5px solid rgba(128,66,250,.18);background:linear-gradient(160deg,rgba(128,66,250,.04) 0%,var(--surface) 60%)}
+
+/* === USER PROFILE PAGE === */
+.user-profile-page{}
+.up-header{display:flex;align-items:flex-start;gap:18px;padding:1.5rem;flex-wrap:wrap;position:relative}
+.up-avatar{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;letter-spacing:-1px;flex-shrink:0;box-shadow:0 4px 14px rgba(0,0,0,.15);font-family:'Sora',system-ui,sans-serif}
+.up-head-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.up-display-name{font-size:24px;font-weight:800;letter-spacing:-.6px;margin:0;line-height:1.15;color:var(--text)}
+.up-username{font-size:14px;color:var(--text3);font-weight:500;font-family:'Sora',system-ui,sans-serif;letter-spacing:-.2px}
+.up-since{font-size:12px;color:var(--text3);margin-top:4px}
+.up-you-badge{display:inline-block;margin-top:6px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;background:rgba(128,66,250,.12);color:var(--gralia-purple);letter-spacing:.3px;text-transform:uppercase;width:fit-content;align-self:flex-start}
+.up-priv-badge{display:inline-block;margin-top:6px;margin-left:6px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--surface2);color:var(--text2);width:fit-content;align-self:flex-start}
+.up-header-actions{position:absolute;top:1.25rem;right:1.25rem;display:flex;gap:8px}
+.up-stat-card{margin-top:.875rem;padding:1rem 1.125rem;display:flex;align-items:center;gap:14px}
+.ups-icon{font-size:24px;flex-shrink:0;opacity:.85}
+.ups-body{flex:1}
+.ups-main{font-size:15px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.ups-lbl{font-size:13px;font-weight:500;color:var(--text2);letter-spacing:0}
+.ups-sub{font-size:11.5px;color:var(--text3);margin-top:4px;line-height:1.4}
+.ups-sub b{color:var(--text2);font-weight:600}
+@media (max-width:560px){
+  .up-header{padding:1.125rem}
+  .up-header-actions{position:static;margin-top:8px}
+  .up-display-name{font-size:20px}
+  .up-avatar{width:60px;height:60px;font-size:22px}
+}
 .sp-username-wrap{display:flex;align-items:center;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:border-color .15s}
 .sp-username-wrap:focus-within{border-color:var(--gralia-purple);box-shadow:0 0 0 3px rgba(128,66,250,.12)}
 .sp-username-prefix{padding:0 10px 0 14px;color:var(--text3);font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
@@ -2031,6 +2059,31 @@ function suggestUsernameFromEmail(email){
   if(base.length < 3) base = 'user_'+Math.random().toString(36).slice(2,7);
   return base;
 }
+
+// Busca perfil público de um usuário pelo username
+// Retorna {profile} ou {error}
+async function fetchPublicProfile(username){
+  if(!supa) return {error:'Supabase não configurado'};
+  if(!AUTH.user) return {error:'Você precisa estar logado pra ver perfis'};
+  const v = (username||'').trim().toLowerCase();
+  if(!v) return {error:'Username inválido'};
+  try{
+    const { data, error } = await supa
+      .from('profiles')
+      .select('id, username, display_name, visibility, created_at')
+      .eq('username', v)
+      .maybeSingle();
+    if(error) return {error: error.message};
+    if(!data) return {error: 'Perfil não encontrado'};
+    // Se for privado E não for o próprio usuário, bloqueia
+    if(data.visibility === 'private' && data.id !== AUTH.user.id){
+      return {error: 'Esse perfil é privado'};
+    }
+    return {profile: data};
+  }catch(err){
+    return {error: err.message || 'Erro ao buscar'};
+  }
+}
 const DEFAULT_EXAM_NAME = 'Prova';
 function examDate(){
   const d = (DATA&&DATA.config&&DATA.config.examDate)||DEFAULT_EXAM_DATE;
@@ -2431,7 +2484,12 @@ const ST = {
   mapDiscipline:'all',        // 'all' | disciplineId
   mapExpandedDiscs:{},        // {disciplineId: true}
   mapSelectedTopic:null,      // {disciplineId, topic}
-  mapSummaryLoading:false
+  mapSummaryLoading:false,
+  // Public profile view (estágio 2 social)
+  profileUsername:null,       // username sendo visualizado
+  profileData:null,           // dados do perfil carregado
+  profileLoading:false,
+  profileError:null
 };
 
 /* CONTENT & DISCIPLINES */
@@ -3188,7 +3246,7 @@ function render(){
     pomodoro:renderPomodoro,settings:renderSettings,history:renderHistory,turbo:renderTurbo,eve:renderEve,imported:renderImported,review:renderReview,revgen:renderRevgen,
     calibration:renderCalibration,examiner:renderExaminer,drill:renderDrill,
     elaborative:renderElaborative,practice:renderPractice,simulado:renderSimulado,
-    interleaving:renderInterleaving,srs:renderSRS,mapa:renderMapa,usage:renderUsage,goals:renderGoals
+    interleaving:renderInterleaving,srs:renderSRS,mapa:renderMapa,usage:renderUsage,goals:renderGoals,userProfile:renderUserProfile
   };
   // Contextual breadcrumb — shows where user came from
   if(ST.navStack.length>0){
@@ -12071,7 +12129,7 @@ function viewLabel(view){
     history:'Histórico', practice:'Questões', simulado:'Simulado',
     calibration:'Calibração', drill:'Drill', examiner:'Examinador',
     elaborative:'Elaboração', interleaving:'Interleaving', usage:'Uso da IA',
-    review:'Revisão', turbo:'Revisão Turbo', revgen:'Gerador de Revisão', goals:'Metas'
+    review:'Revisão', turbo:'Revisão Turbo', revgen:'Gerador de Revisão', goals:'Metas', userProfile:'Perfil'
   };
   return labels[view]||view;
 }
@@ -13397,19 +13455,211 @@ function pomoNotify(phase){
 /* SETTINGS */
 // === Card de perfil social (username + display name + visibilidade) ===
 // Renderiza dentro de Config quando autenticado
+// === Navega para o perfil público de um usuário ===
+function navigateToProfile(username){
+  const v = (username||'').trim().toLowerCase();
+  if(!v) return;
+  ST.profileUsername = v;
+  ST.profileData = null;
+  ST.profileError = null;
+  ST.profileLoading = true;
+  if(ST.view !== 'userProfile'){
+    ST.navStack.push({view:ST.view, label:viewLabel(ST.view)});
+  }
+  ST.view = 'userProfile';
+  // Atualiza hash do navegador
+  try{ history.replaceState(null, '', '#u/'+v); }catch(e){}
+  render();
+  // Carrega dados em background
+  fetchPublicProfile(v).then(result=>{
+    if(ST.view !== 'userProfile' || ST.profileUsername !== v) return;
+    ST.profileLoading = false;
+    if(result.error){
+      ST.profileError = result.error;
+      ST.profileData = null;
+    } else {
+      ST.profileData = result.profile;
+      ST.profileError = null;
+    }
+    render();
+  });
+}
+
+// === Página de perfil público ===
+function renderUserProfile(){
+  const wrap = mk('div','fade user-profile-page');
+
+  if(!isAuthed()){
+    const box = mk('div','card');box.style.cssText='text-align:center;padding:2.5rem 1.5rem';
+    box.innerHTML = '<h2 style="margin:0 0 .5rem">🔒 Acesso restrito</h2><p class="txt2" style="margin:0">Crie uma conta ou faça login pra ver perfis no Gralia.</p>';
+    wrap.appendChild(box);
+    return wrap;
+  }
+
+  if(ST.profileLoading){
+    const ld = mk('div','card');ld.style.cssText='text-align:center;padding:2rem';
+    ld.textContent = 'Carregando perfil...';
+    wrap.appendChild(ld);
+    return wrap;
+  }
+
+  if(ST.profileError){
+    const err = mk('div','card');err.style.cssText='text-align:center;padding:2rem';
+    err.innerHTML = `<h2 style="margin:0 0 .5rem">⚠️ ${escapeHTML(ST.profileError)}</h2><p class="txt2" style="margin:0">Verifique se o username está correto.</p>`;
+    wrap.appendChild(err);
+    return wrap;
+  }
+
+  const p = ST.profileData;
+  if(!p){
+    const err = mk('div','card');err.style.cssText='text-align:center;padding:2rem';
+    err.innerHTML = '<h2 style="margin:0 0 .5rem">Perfil não encontrado</h2>';
+    wrap.appendChild(err);
+    return wrap;
+  }
+
+  const isMyProfile = (AUTH.user && p.id === AUTH.user.id);
+
+  // Header com avatar (iniciais) + nome + username
+  const header = mk('div','up-header card');
+  // Avatar com gradient determinístico
+  const avatar = mk('div','up-avatar');
+  const initials = (p.display_name||p.username).split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase().slice(0,2);
+  avatar.textContent = initials;
+  // Cor do gradient determinada pelo username
+  const hash = (p.username||'').split('').reduce((acc,ch)=>acc+ch.charCodeAt(0),0);
+  const hue1 = (hash*37) % 360;
+  const hue2 = (hue1+45) % 360;
+  avatar.style.background = `linear-gradient(135deg, hsl(${hue1},65%,55%) 0%, hsl(${hue2},70%,60%) 100%)`;
+  header.appendChild(avatar);
+
+  const headInfo = mk('div','up-head-info');
+  const dispName = mk('h1','up-display-name');dispName.textContent = p.display_name || p.username;
+  headInfo.appendChild(dispName);
+  const usernameEl = mk('div','up-username');usernameEl.textContent = '@'+p.username;
+  headInfo.appendChild(usernameEl);
+  // Data de criação
+  const since = mk('div','up-since');
+  const cd = new Date(p.created_at);
+  since.textContent = `No Gralia desde ${cd.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}`;
+  headInfo.appendChild(since);
+  // Badge "Você" se for próprio perfil
+  if(isMyProfile){
+    const youBadge = mk('span','up-you-badge');youBadge.textContent='Este é seu perfil';
+    headInfo.appendChild(youBadge);
+  }
+  // Badge privacidade (se privado e for próprio)
+  if(isMyProfile && p.visibility === 'private'){
+    const privBadge = mk('span','up-priv-badge');privBadge.textContent='🔒 Privado';
+    headInfo.appendChild(privBadge);
+  }
+  header.appendChild(headInfo);
+
+  // Botão compartilhar (link copiável) — só pra próprio perfil
+  if(isMyProfile){
+    const actions = mk('div','up-header-actions');
+    const shareBtn = mkBtn('🔗 Copiar link','btn btn-sm');
+    shareBtn.addEventListener('click',()=>{
+      const url = location.origin + location.pathname + '#u/' + p.username;
+      navigator.clipboard.writeText(url).then(()=>{
+        showToast('Link copiado');
+      }).catch(()=>{
+        prompt('Copie o link:', url);
+      });
+    });
+    actions.appendChild(shareBtn);
+    header.appendChild(actions);
+  }
+  wrap.appendChild(header);
+
+  // Cards de estatísticas (visíveis apenas se for o próprio usuário ou perfil público)
+  // Por enquanto, mostro apenas para o próprio (estágio futuro: stats agregadas dos materiais)
+  if(isMyProfile){
+    // Streak
+    try{
+      const streak = computeStreakStats();
+      if(streak.totalActiveDays > 0){
+        const sCard = mk('div','up-stat-card card');
+        sCard.innerHTML = `
+          <div class="ups-icon">📚</div>
+          <div class="ups-body">
+            <div class="ups-main">${streak.daysActiveLast30} <span class="ups-lbl">dias estudados nos últimos 30</span></div>
+            <div class="ups-sub">Maior sequência: <b>${streak.longest}</b> dias · Total acumulado: <b>${streak.totalActiveDays}</b></div>
+          </div>
+        `;
+        wrap.appendChild(sCard);
+      }
+    }catch(e){}
+
+    // Meta atual
+    if(DATA.goals){
+      try{
+        const view = goalDailyView(DATA.goals);
+        if(view){
+          const gCard = mk('div','up-stat-card card');
+          const period = DATA.goals.period === 'weekly' ? 'semanal' : 'mensal';
+          gCard.innerHTML = `
+            <div class="ups-icon">🎯</div>
+            <div class="ups-body">
+              <div class="ups-main">Meta ${period} · <span class="ups-lbl">${view.pctQ}% completo</span></div>
+              <div class="ups-sub">${view.doneQ}/${DATA.goals.questionsTarget} questões · ${view.donePomos}/${DATA.goals.pomosTarget} pomodoros</div>
+            </div>
+          `;
+          wrap.appendChild(gCard);
+        }
+      }catch(e){}
+    }
+
+    // CTA para Config (se quer editar)
+    const cta = mk('div','card');cta.style.cssText='padding:1rem;text-align:center';
+    cta.innerHTML = '<p class="txt2" style="margin:0 0 .5rem;font-size:13px">Quer mudar seu username, nome exibido ou visibilidade?</p>';
+    const editBtn = mkBtn('Ir para Configurações','btn btn-sm');
+    editBtn.addEventListener('click',()=>{
+      ST.view = 'settings';
+      render();
+    });
+    cta.appendChild(editBtn);
+    wrap.appendChild(cta);
+  } else {
+    // Perfil de outra pessoa — em estágios futuros mostraremos materiais compartilhados, conquistas etc
+    const placeholder = mk('div','card');placeholder.style.cssText='padding:1.5rem;text-align:center';
+    placeholder.innerHTML = `
+      <p class="txt2" style="margin:0 0 .5rem;font-size:13.5px">📦 Em breve, você verá aqui os materiais públicos, conquistas e estatísticas de @${escapeHTML(p.username)}.</p>
+      <p class="txt3" style="margin:0;font-size:12px">Esta página é parte do Estágio 2 do sistema social do Gralia.</p>
+    `;
+    wrap.appendChild(placeholder);
+  }
+
+  return wrap;
+}
+
 function renderSocialProfileCard(){
   const card = mk('div','card social-profile-card');card.style.marginTop='1rem';
   card.appendChild(sLabel('🌐 Perfil público'));
   const desc = mk('p','txt2');desc.style.marginBottom='.875rem';desc.style.fontSize='13px';desc.style.lineHeight='1.55';
-  desc.textContent='Crie um perfil público pra que outros usuários encontrem você, vejam suas conquistas e (em breve) acessem materiais que você decidir compartilhar.';
   card.appendChild(desc);
 
   // Estado: carrega perfil em background; mostra placeholder enquanto carrega
   const body = mk('div','sp-body');
   card.appendChild(body);
 
+  function updateDescription(){
+    if(AUTH.profileLoading){
+      desc.textContent = 'Carregando seu perfil...';
+    } else if(!AUTH.profile){
+      desc.textContent = 'Crie um perfil público pra que outros usuários encontrem você, vejam suas conquistas e (em breve) acessem materiais que você decidir compartilhar.';
+    } else {
+      const visTxt = AUTH.profile.visibility === 'public'
+        ? 'Seu perfil está público — outros usuários logados podem te encontrar.'
+        : 'Seu perfil está privado — apenas você acessa.';
+      desc.textContent = `Gerencie como outros usuários veem você no Gralia. ${visTxt}`;
+    }
+  }
+  updateDescription();
+
   function renderState(){
     body.innerHTML = '';
+    updateDescription();
     if(AUTH.profileLoading){
       const ld = mk('div','txt3');ld.style.padding='1rem 0';ld.textContent='Carregando perfil...';
       body.appendChild(ld);
@@ -13577,10 +13827,15 @@ function renderSocialProfileCard(){
     vRow.appendChild(vSeg);
     body.appendChild(vRow);
 
-    // Botão salvar
-    const actions = mk('div','flex');actions.style.cssText='gap:8px;margin-top:.875rem';
+    // Botão salvar + Ver meu perfil
+    const actions = mk('div','flex');actions.style.cssText='gap:8px;margin-top:.875rem;flex-wrap:wrap';
     const saveBtn = mkBtn('Salvar alterações','btn btn-sm btn-p');
     actions.appendChild(saveBtn);
+    const viewBtn = mkBtn('🌐 Ver meu perfil público','btn btn-sm');
+    viewBtn.addEventListener('click',()=>{
+      navigateToProfile(p.username);
+    });
+    actions.appendChild(viewBtn);
     body.appendChild(actions);
 
     let pendingVisibility = p.visibility;
@@ -16200,6 +16455,17 @@ document.addEventListener('error', function(ev){
 }, true);
 // Initial render (may show loading state if auth still resolving)
 render();
+
+// Detecta hash #u/username pra abrir página de perfil
+function checkProfileHash(){
+  const m = (location.hash||'').match(/^#u\/([a-z0-9_]{3,20})$/i);
+  if(m && isAuthed()){
+    navigateToProfile(m[1]);
+  }
+}
+// Quando autenticação concluir, checa hash
+setTimeout(()=>{ if(isAuthed()) checkProfileHash(); }, 300);
+window.addEventListener('hashchange', checkProfileHash);
 </script>
 </body>
 </html>
