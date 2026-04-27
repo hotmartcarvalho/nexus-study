@@ -68,7 +68,7 @@ button,textarea,input,select{font-family:inherit;font-size:inherit;color:inherit
 button{cursor:pointer;transition:background .15s,border-color .15s,color .15s,opacity .15s}
 a{color:var(--accent)}
 
-.topbar{position:sticky;top:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);height:64px;display:flex;align-items:center;padding:0;gap:0}
+.topbar{position:sticky;top:0;z-index:200;background:var(--surface);border-bottom:1px solid var(--border);height:76px;display:flex;align-items:center;padding:0;gap:0}
 .topbar-inner{
   max-width:1200px;width:100%;margin:0 auto;padding:0 1.25rem;height:100%;
   display:grid;
@@ -83,7 +83,7 @@ a{color:var(--accent)}
 /* Coluna direita: info alinhada à ESQUERDA da coluna (após o conteúdo) */
 .topbar-col-right{display:flex;align-items:center;gap:10px;min-width:0;justify-content:flex-start}
 .brand{display:flex;align-items:center;gap:6px;white-space:nowrap;font-weight:700;letter-spacing:-.5px}
-.brand-bird{height:54px;width:auto;display:block;flex-shrink:0;margin-right:-2px}
+.brand-bird{height:68px;width:auto;display:block;flex-shrink:0;margin-right:-2px}
 .brand-bird-dark{display:none}
 :root[data-theme="dark"] .brand-bird-light{display:none}
 :root[data-theme="dark"] .brand-bird-dark{display:block}
@@ -143,9 +143,26 @@ a{color:var(--accent)}
 /* Mobile hamburger (hidden on desktop) */
 .mobile-hamb{display:none;background:transparent;border:none;font-size:20px;width:34px;height:34px;align-items:center;justify-content:center;color:var(--text);cursor:pointer;padding:0;flex-shrink:0}
 
-.countdown-pill{background:var(--red-light);color:var(--red-text);padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.countdown-pill{background:var(--red-light);color:var(--red-text);padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;transition:opacity .2s}
+.countdown-pill.countdown-today{background:var(--gralia-purple);color:#fff;animation:pulse-soft 2s ease-in-out infinite}
+.countdown-pill.countdown-past{background:var(--surface2);color:var(--text2);border:1px dashed var(--border2)}
+@keyframes pulse-soft{0%,100%{opacity:1}50%{opacity:.7}}
+/* Pills do mobile menu também */
+.mmi-pill.urgent{background:var(--gralia-purple);color:#fff}
+.mmi-pill.past{background:var(--surface2);color:var(--text2);border:1px dashed var(--border)}
 .theme-toggle-btn{background:transparent;border:1px solid var(--border);width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;padding:0;flex-shrink:0;transition:all .15s}
 .theme-toggle-btn:hover{background:var(--surface2);border-color:var(--border2);transform:rotate(-12deg)}
+
+/* Auto-fade dos elementos passivos da topbar (sync + credits) */
+/* Visíveis no carregamento, depois esmaecem; voltam ao hover */
+.credits-chip,.sync-dot{transition:opacity .6s ease}
+.topbar-col-right.faded .credits-chip,
+.topbar-col-right.faded .sync-dot{opacity:.22}
+.topbar-col-right:hover .credits-chip,
+.topbar-col-right:hover .sync-dot{opacity:1 !important}
+/* Quando o sync está em andamento OU em erro, força visível */
+.topbar-col-right.faded .sync-dot.syncing,
+.topbar-col-right.faded .sync-dot.error{opacity:1}
 
 /* Theme switch elegante (sol/lua) — usado no topbar e na welcome */
 .topbar-theme-switch{position:relative;width:60px;height:28px;border-radius:999px;border:1px solid var(--border);background:linear-gradient(90deg,#fef3c7 0%,#fde68a 100%);padding:0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;transition:background .25s ease,border-color .15s;flex-shrink:0}
@@ -167,7 +184,7 @@ a{color:var(--accent)}
   .topbar-col-right{flex:0 0 auto;justify-content:flex-end}
   .mobile-hamb{display:inline-flex}
   .tabs{
-    position:fixed;top:64px;left:0;right:0;bottom:0;
+    position:fixed;top:76px;left:0;right:0;bottom:0;
     background:var(--surface);
     flex-direction:column;
     align-items:stretch;
@@ -183,7 +200,7 @@ a{color:var(--accent)}
   .mobile-nav-overlay{
     display:none;
     position:fixed;
-    inset:64px 0 0 0;
+    inset:76px 0 0 0;
     background:rgba(0,0,0,.4);
     z-index:280;
     animation:fade-in .18s ease;
@@ -1490,7 +1507,7 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 .wel-hero-note-v3 b{color:var(--text2);font-weight:600}
 .wel-hero-visual{display:flex;justify-content:center;align-items:center;position:relative}
 .wel-hero-brand{display:flex;align-items:center;gap:14px;filter:drop-shadow(0 8px 28px rgba(124,92,255,.18))}
-.wel-hero-bird{height:170px;width:auto;display:block;flex-shrink:0;margin-right:-10px}
+.wel-hero-bird{height:220px;width:auto;display:block;flex-shrink:0;margin-right:-10px}
 .wel-hero-bird-dark{display:none}
 :root[data-theme="dark"] .wel-hero-bird-light{display:none}
 :root[data-theme="dark"] .wel-hero-bird-dark{display:block}
@@ -1505,7 +1522,7 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
   .wel-hero-headline-v3{font-size:30px}
   .wel-hero-cta-row{justify-content:center}
   .wel-hero-visual{order:-1}
-  .wel-hero-bird{height:120px;margin-right:-6px}
+  .wel-hero-bird{height:150px;margin-right:-6px}
   .wel-hero-name{font-size:56px;letter-spacing:-2.5px}
 }
 
@@ -1883,6 +1900,53 @@ function formatExamDate(){
   const d = examDate();
   const pad = n=>String(n).padStart(2,'0');
   return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+}
+// Retorna info estruturada do countdown da prova (compara dias inteiros, não horas)
+// {days, status:'before'|'today'|'past', label, needsUpdate}
+function examCountdown(){
+  const exam = examDate();
+  // Normaliza ambas as datas pra meia-noite local pra comparar dias inteiros
+  const examMidnight = new Date(exam.getFullYear(), exam.getMonth(), exam.getDate());
+  const today = new Date();
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const diffDays = Math.round((examMidnight - todayMidnight) / (1000*60*60*24));
+
+  if(diffDays > 0){
+    return {
+      days: diffDays,
+      status: 'before',
+      label: diffDays === 1 ? '1 dia' : diffDays + ' dias',
+      shortLabel: diffDays + 'd',
+      needsUpdate: false
+    };
+  } else if(diffDays === 0){
+    return {
+      days: 0,
+      status: 'today',
+      label: '🎯 Prova hoje',
+      shortLabel: 'Hoje',
+      needsUpdate: false
+    };
+  } else {
+    // Pós-prova
+    const daysAfter = Math.abs(diffDays);
+    let label, needsUpdate = false;
+    if(daysAfter === 1){
+      label = '📋 Prova foi ontem';
+    } else if(daysAfter <= 7){
+      label = `📋 ${daysAfter} dias após a prova`;
+    } else {
+      label = '🎯 Definir próxima prova';
+      needsUpdate = true;
+    }
+    return {
+      days: -daysAfter,
+      status: 'past',
+      label,
+      shortLabel: needsUpdate ? 'Atualizar' : `+${daysAfter}d`,
+      needsUpdate
+    };
+  }
 }
 const BRAND = {
   name: 'Gralia',
@@ -3201,12 +3265,12 @@ function renderSetup(){
   const eye = mk('div','setup-eyebrow');eye.textContent='Preparação Adaptativa com IA';
   wrap.appendChild(logo);wrap.appendChild(eye);
 
-  const days = Math.ceil((examDate()-new Date())/(1000*60*60*24));
-  if(days>0){
+  const ec = examCountdown();
+  if(ec.status === 'before'){
     const cd = mk('div','countdown');cd.style.marginBottom='1.5rem';
-    const big = mk('div','countdown-big');big.textContent=days;
+    const big = mk('div','countdown-big');big.textContent=ec.days;
     const body = mk('div','countdown-body');
-    const lbl = mk('div','countdown-lbl');lbl.textContent=days===1?'DIA ATÉ A PROVA':'DIAS ATÉ A PROVA';
+    const lbl = mk('div','countdown-lbl');lbl.textContent=ec.days===1?'DIA ATÉ A PROVA':'DIAS ATÉ A PROVA';
     const sub = mk('div','countdown-sub');sub.textContent=formatExamDate();
     body.appendChild(lbl);body.appendChild(sub);
     cd.appendChild(big);cd.appendChild(body);wrap.appendChild(cd);
@@ -3295,12 +3359,13 @@ function renderTopbar(){
   // Painel de informações dentro do menu mobile (countdown, sync, créditos, tagline)
   // CSS controla visibilidade — aparece só em mobile, ignorado em desktop
   const mobileInfo = mk('div','mobile-menu-info');
-  const examDays = Math.ceil((examDate()-new Date())/(1000*60*60*24));
-  const daysText = examDays>0?(examDays===1?'1 dia':examDays+' dias'):(examDays===0?'Hoje':'Pós-prova');
-  const daysPillClass = examDays>30?'ok':(examDays>7?'warn':'');
+  const ec2 = examCountdown();
+  const daysText = ec2.label;
+  const daysPillClass = ec2.status==='before' ? (ec2.days>30?'ok':(ec2.days>7?'warn':'urgent')) : (ec2.status==='today'?'urgent':'past');
+  const mmiLabel = ec2.status==='before' ? 'Faltam para a prova' : (ec2.status==='today' ? 'Sua prova é hoje' : 'Próxima prova');
   mobileInfo.innerHTML = `
     <div class="mobile-menu-info-row">
-      <span class="mmi-label">Faltam para a prova</span>
+      <span class="mmi-label">${mmiLabel}</span>
       <span class="mmi-value mmi-pill ${daysPillClass}">${daysText}</span>
     </div>
   `;
@@ -3349,9 +3414,26 @@ function renderTopbar(){
     document.body.style.overflow = '';
   });
 
-  const days = Math.ceil((examDate()-new Date())/(1000*60*60*24));
-  const pill = mk('div','countdown-pill');
-  pill.textContent=days>0?(days===1?'1 dia':days+' dias'):(days===0?'Prova hoje':'Pós-prova');
+  const ec = examCountdown();
+  const pill = mk('div','countdown-pill countdown-'+ec.status);
+  if(ec.needsUpdate){
+    // Pós-prova há mais de 7 dias — pill vira botão de atualização
+    pill.textContent = ec.shortLabel;
+    pill.style.cursor = 'pointer';
+    pill.title = 'Definir nova prova';
+    pill.addEventListener('click',()=>{
+      ST.view='settings';
+      render();
+      // Foca o campo de data
+      setTimeout(()=>{
+        const dateInput = document.querySelector('input[type="date"]');
+        if(dateInput){ dateInput.focus(); dateInput.scrollIntoView({behavior:'smooth',block:'center'}); }
+      }, 200);
+    });
+  } else {
+    pill.textContent = ec.shortLabel;
+    pill.title = ec.label;
+  }
 
   // Layout em 3 colunas:
   // [Coluna Esquerda - Brand] [Coluna Central - Tabs] [Coluna Direita - Info]
@@ -3397,6 +3479,11 @@ function renderTopbar(){
   themeSwitch.addEventListener('click',()=>{toggleTheme();render();});
   colRight.appendChild(themeSwitch);
 
+  // Após 5s, esmaece sincronizado/créditos (passivos). Volta ao hover.
+  setTimeout(()=>{
+    if(colRight.isConnected) colRight.classList.add('faded');
+  }, 5000);
+
   inner.appendChild(colLeft);
   inner.appendChild(colCenter);
   inner.appendChild(colRight);
@@ -3414,7 +3501,7 @@ function renderDashboard(){
   const overconf = s.calibration.certain.t>0?Math.round((s.calibration.certain.t-s.calibration.certain.c)/s.calibration.certain.t*100):null;
   const dueSrs = DATA.srs.cards.filter(c=>(c.nextReview||0)<=Date.now()).length;
   const errorsNoCard = DATA.errors.filter(e=>!e.hasCard).length;
-  const days = Math.ceil((examDate()-new Date())/(1000*60*60*24));
+  const ec = examCountdown();
 
   // Today's focus time (Pomodoro sessions today)
   const todayStart = new Date();todayStart.setHours(0,0,0,0);
@@ -3465,11 +3552,45 @@ function renderDashboard(){
   // ===== HERO — countdown + exam info =====
   const hero = mk('div','dash-hero');
   const heroLeft = mk('div','dash-hero-left');
-  const big = mk('div','dash-hero-big');big.textContent=days>0?days:'0';
-  heroLeft.appendChild(big);
-  const heroLabel = mk('div','dash-hero-label');
-  heroLabel.innerHTML = `<div class="dhl-main">${days===1?'DIA':'DIAS'} ATÉ A PROVA</div><div class="dhl-sub">${examName()} · ${formatExamDate()}</div>`;
-  heroLeft.appendChild(heroLabel);
+  if(ec.status === 'before'){
+    const big = mk('div','dash-hero-big');big.textContent=ec.days;
+    heroLeft.appendChild(big);
+    const heroLabel = mk('div','dash-hero-label');
+    heroLabel.innerHTML = `<div class="dhl-main">${ec.days===1?'DIA':'DIAS'} ATÉ A PROVA</div><div class="dhl-sub">${examName()} · ${formatExamDate()}</div>`;
+    heroLeft.appendChild(heroLabel);
+  } else if(ec.status === 'today'){
+    const big = mk('div','dash-hero-big');big.textContent='🎯';big.style.fontSize='52px';
+    heroLeft.appendChild(big);
+    const heroLabel = mk('div','dash-hero-label');
+    heroLabel.innerHTML = `<div class="dhl-main">PROVA HOJE — BOA SORTE!</div><div class="dhl-sub">${examName()} · ${formatExamDate()}</div>`;
+    heroLeft.appendChild(heroLabel);
+  } else {
+    // Pós-prova
+    const daysAfter = Math.abs(ec.days);
+    if(daysAfter <= 7){
+      const big = mk('div','dash-hero-big');big.textContent='📋';big.style.fontSize='52px';
+      heroLeft.appendChild(big);
+      const heroLabel = mk('div','dash-hero-label');
+      heroLabel.innerHTML = `<div class="dhl-main">${daysAfter===1?'PROVA FOI ONTEM':daysAfter+' DIAS APÓS A PROVA'}</div><div class="dhl-sub">${examName()} · ${formatExamDate()}</div>`;
+      heroLeft.appendChild(heroLabel);
+    } else {
+      // Mais de 7 dias após — vira CTA pra atualizar
+      const big = mk('div','dash-hero-big');big.textContent='🎯';big.style.fontSize='52px';
+      heroLeft.appendChild(big);
+      const heroLabel = mk('div','dash-hero-label');
+      heroLabel.innerHTML = `<div class="dhl-main">DEFINIR PRÓXIMA PROVA</div><div class="dhl-sub">A última prova foi há ${daysAfter} dias · clique aqui pra atualizar</div>`;
+      heroLeft.appendChild(heroLabel);
+      heroLeft.style.cursor = 'pointer';
+      heroLeft.addEventListener('click',()=>{
+        ST.view='settings';
+        render();
+        setTimeout(()=>{
+          const dateInput = document.querySelector('input[type="date"]');
+          if(dateInput){ dateInput.focus(); dateInput.scrollIntoView({behavior:'smooth',block:'center'}); }
+        }, 200);
+      });
+    }
+  }
   hero.appendChild(heroLeft);
 
   // Hero right: today stats strip (focus time + questions + cards)
