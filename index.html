@@ -2429,6 +2429,7 @@ async function publishSource(sourceData, opts){
   if(content.length < 50) throw new Error('Fonte vazia ou muito curta — mínimo 50 caracteres');
   if(content.length > 200000) throw new Error('Fonte muito longa (máx 200.000 caracteres)');
   const payload = {
+    local_id: sourceData.id, // pra detecção de "já publicado"
     source_name: sourceData.name,
     source_type: sourceData.type || 'relatorio',
     content_type: sourceData.contentType || 'misto',
@@ -6343,12 +6344,15 @@ function renderSourceList(wrap){
       setTimeout(()=>{delete ST.sourceScrollTo;},5000);
     }
     const actions = mk('div','flex');actions.style.gap='2px';
-    // Estágio 8: botão de publicar fonte (só se autenticado, não importada)
+    // Botão de publicar fonte com estado smart (✓ Publicado / 🔄 Atualizar / 🌐 Publicar)
     if(isAuthed() && !src.importedFromResource && (src.content||'').length >= 50){
-      const pubBtn = mkBtn('🌐','icon-btn');
-      pubBtn.title = 'Publicar esta fonte na descoberta';
-      pubBtn.addEventListener('click',()=>showPublishSourceModal(src));
-      actions.appendChild(pubBtn);
+      const pubSlot = mk('span','pub-btn-slot');pubSlot.style.display='inline-flex';
+      const placeholder = mkBtn('🌐','icon-btn');
+      placeholder.title = 'Verificando publicação...';
+      placeholder.disabled = true;
+      pubSlot.appendChild(placeholder);
+      actions.appendChild(pubSlot);
+      renderSmartPublishButtonForSource(pubSlot, src);
     }
     // Indicador de fonte importada (mostra origem)
     if(src.importedFromUser){
@@ -6915,6 +6919,7 @@ function showEditSourceModal(src){
     src.contentType=selCT.value;
     src.materialDate=inpDate.value||null;
     src.content=ta.value.trim()||src.content;
+    src.lastModifiedAt = Date.now(); // pra detecção de "outdated" no botão smart de publicação
     save();closeModal();render();
   });
   m.appendChild(saveB);
@@ -15996,6 +16001,13 @@ function renderDiscover(){
   matTab.addEventListener('click',()=>{
     if(ST.discoverTab === 'materials') return;
     ST.discoverTab = 'materials';
+    // Reset estado pra evitar promises antigas + loading travado
+    ST.discoverLoading = false;
+    ST.discoverItems = [];
+    ST.discoverPage = 0;
+    ST.discoverHasMore = true;
+    ST.discoverRecommendationsLoaded = false;
+    ST.discoverRecommendations = [];
     render();
   });
   tabsBar.appendChild(matTab);
@@ -16005,6 +16017,9 @@ function renderDiscover(){
   peopleTab.addEventListener('click',()=>{
     if(ST.discoverTab === 'people') return;
     ST.discoverTab = 'people';
+    // Reset busca de pessoas pra refresh limpo
+    ST.peopleResults = [];
+    ST.peopleLoading = false;
     render();
   });
   tabsBar.appendChild(peopleTab);
@@ -16874,6 +16889,172 @@ async function showMyPublishedModal(){
 }
 
 // Modal: publicar caderno
+// Renderiza botão de publicação inteligente — detecta se já publicado e se há mudanças locais
+// Versão genérica que despacha pra implementação por tipo
+async function renderSmartPublishButtonForSource(slot, source){
+  slot.innerHTML = '';
+  const placeholder = mkBtn('🌐','icon-btn');
+  placeholder.title = 'Verificando publicação...';
+  placeholder.disabled = true;
+  slot.appendChild(placeholder);
+
+  const status = await checkPublishStatus(source.id, 'fonte');
+  slot.innerHTML = '';
+
+  if(!status.published){
+    // Nunca publicada
+    const pubBtn = mkBtn('🌐','icon-btn');
+    pubBtn.title = 'Publicar esta fonte na descoberta';
+    pubBtn.addEventListener('click',()=>showPublishSourceModal(source));
+    slot.appendChild(pubBtn);
+    return;
+  }
+  // Já publicada — verifica se há mudanças locais
+  const localModifiedAt = source.lastModifiedAt || 0;
+  const isOutdated = localModifiedAt > status.lastPublishAt;
+  if(isOutdated){
+    const updBtn = mkBtn('🔄','icon-btn');
+    updBtn.title = 'Há mudanças locais não publicadas — clique pra atualizar';
+    updBtn.style.color = 'var(--gralia-purple)';
+    updBtn.addEventListener('click',()=>showUpdateSourcePublicationModal(source, status.resource));
+    slot.appendChild(updBtn);
+  } else {
+    const okBtn = mkBtn('✓','icon-btn');
+    okBtn.title = 'Fonte publicada e atualizada — clique pra gerenciar';
+    okBtn.style.color = 'var(--accent-text)';
+    okBtn.addEventListener('click',()=>showManageSourcePublicationModal(source, status.resource));
+    slot.appendChild(okBtn);
+  }
+}
+
+// Modal pra gerenciar publicação de fonte (despublicar, atualizar, editar metadata)
+function showManageSourcePublicationModal(source, resource){
+  const m = mk('div');m.style.maxWidth='420px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px';
+  h.textContent = '✓ Fonte publicada';
+  m.appendChild(h);
+  const sub = mk('p','txt3');sub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.5';
+  sub.textContent = 'Esta fonte está publicada e atualizada na descoberta.';
+  m.appendChild(sub);
+  const info = mk('div');info.style.cssText='font-size:12.5px;padding:.75rem;background:var(--surface2);border-radius:8px;margin-bottom:1rem;line-height:1.6';
+  info.innerHTML = `<b>Título público:</b> ${escapeHTML(resource.title)}<br>
+<b>Publicado em:</b> ${formatRelativeDate(resource.created_at)}<br>
+<b>Última atualização:</b> ${formatRelativeDate(resource.updated_at||resource.created_at)}`;
+  m.appendChild(info);
+  const actions = mk('div');actions.style.cssText='display:flex;flex-direction:column;gap:8px';
+  const updBtn = mkBtn('🔄 Atualizar publicação (forçar)','btn btn-sm');
+  updBtn.addEventListener('click',()=>{closeModal();showUpdateSourcePublicationModal(source, resource);});
+  actions.appendChild(updBtn);
+  const editBtn = mkBtn('✏️ Editar título/descrição/tags','btn btn-sm');
+  editBtn.addEventListener('click',()=>{closeModal();showUpdateSourcePublicationModal(source, resource, {editOnly:true});});
+  actions.appendChild(editBtn);
+  const unpubBtn = mkBtn('Despublicar','btn btn-sm btn-danger');
+  unpubBtn.addEventListener('click',async()=>{
+    if(!confirm('Despublicar esta fonte? Some da descoberta. (Cópias já importadas por outros usuários permanecem.)'))return;
+    try{
+      await unpublishResource(resource.id);
+      showToast('✓ Despublicado');
+      closeModal();
+      render();
+    }catch(err){ alert('Erro: '+err.message); }
+  });
+  actions.appendChild(unpubBtn);
+  m.appendChild(actions);
+  const footer = mk('div');footer.style.cssText='margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border);text-align:right';
+  const closeBtn = mkBtn('Fechar','btn btn-sm');
+  closeBtn.addEventListener('click',closeModal);
+  footer.appendChild(closeBtn);
+  m.appendChild(footer);
+  showModal(m);
+}
+
+// Modal pra atualizar publicação de fonte
+function showUpdateSourcePublicationModal(source, resource, opts){
+  opts = opts || {};
+  const m = mk('div');m.style.cssText='max-width:480px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px';
+  h.textContent = opts.editOnly ? '✏️ Editar publicação' : '🔄 Atualizar publicação';
+  m.appendChild(h);
+  const sub = mk('p','txt3');sub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.5';
+  sub.textContent = opts.editOnly
+    ? 'Edite título, descrição, disciplina ou tags. O conteúdo da fonte publicada permanece o mesmo.'
+    : 'Reenvia o conteúdo atual da fonte para publicação. Quem já importou não é afetado.';
+  m.appendChild(sub);
+
+  const titleRow = mk('div');titleRow.style.marginBottom='.75rem';
+  titleRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Título público</label>';
+  const titleIn = mk('input');titleIn.type='text';titleIn.maxLength=120;titleIn.value=resource.title||source.name||'';
+  titleRow.appendChild(titleIn);
+  m.appendChild(titleRow);
+
+  const descRow = mk('div');descRow.style.marginBottom='.75rem';
+  descRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Descrição</label>';
+  const descIn = mk('textarea');descIn.maxLength=500;descIn.rows=3;descIn.value = resource.description||'';
+  descRow.appendChild(descIn);
+  m.appendChild(descRow);
+
+  const discRow = mk('div');discRow.style.marginBottom='.75rem';
+  discRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Disciplina</label>';
+  const discIn = mk('input');discIn.type='text';discIn.maxLength=80;discIn.value=resource.discipline||'';
+  discRow.appendChild(discIn);
+  m.appendChild(discRow);
+
+  const tagsEditor = renderTagsEditor(resource.tags || [], {help: 'Tags ajudam outros concurseiros a encontrar.'});
+  tagsEditor.wrap.style.marginBottom = '.875rem';
+  m.appendChild(tagsEditor.wrap);
+
+  if(!opts.editOnly){
+    const sizeKb = Math.round((source.content||'').length / 1024 * 10) / 10;
+    const info = mk('div','txt3');info.style.cssText='font-size:11.5px;margin:.5rem 0 1rem;padding:.625rem;background:var(--surface2);border-radius:8px';
+    info.innerHTML = `📚 Conteúdo local atualizado · <b>${sizeKb} KB</b>`;
+    m.appendChild(info);
+  }
+
+  const actions = mk('div','flex');actions.style.cssText='gap:8px;justify-content:flex-end';
+  const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+  cancelBtn.addEventListener('click',closeModal);
+  actions.appendChild(cancelBtn);
+  const okBtn = mkBtn(opts.editOnly?'Salvar':'🔄 Atualizar agora','btn btn-sm btn-p');
+  actions.appendChild(okBtn);
+  m.appendChild(actions);
+
+  okBtn.addEventListener('click',async()=>{
+    okBtn.disabled = true;
+    okBtn.textContent = 'Atualizando...';
+    try{
+      const updateOpts = {
+        title: titleIn.value,
+        description: descIn.value,
+        discipline: discIn.value,
+        tags: tagsEditor.getTags()
+      };
+      if(!opts.editOnly){
+        // Reenvia payload completo
+        updateOpts.payload = {
+          local_id: source.id,
+          source_name: source.name,
+          source_type: source.type || 'relatorio',
+          content_type: source.contentType || 'misto',
+          content: source.content,
+          summary: source.summary || null
+        };
+      }
+      await updatePublishedResource(resource.id, updateOpts);
+      // Marca timestamp
+      source.lastPublishedAt = Date.now();
+      save();
+      closeModal();
+      showToast('✓ Publicação atualizada');
+      render();
+    }catch(err){
+      okBtn.disabled = false;
+      okBtn.textContent = opts.editOnly?'Salvar':'🔄 Atualizar agora';
+      alert('Erro: ' + err.message);
+    }
+  });
+  showModal(m);
+}
+
 // Renderiza botão de publicação inteligente — detecta se já publicado e se há mudanças locais
 async function renderSmartPublishButton(slot, notebook){
   // Inicial: botão "verificando"
@@ -18214,13 +18395,20 @@ function renderSettings(){
   rCard.appendChild(actions);
   wrap.appendChild(rCard);
 
-  // ==== Feedback / Sugestões ====
+  // ==== Feedback / Sugestões / NPS ====
   const fbCard = mk('div','card');fbCard.style.marginTop='1rem';
-  fbCard.appendChild(sLabel('Sugestões e feedback'));
+  fbCard.appendChild(sLabel('Fale conosco'));
   const fbDesc = mk('p','txt2');fbDesc.style.marginBottom='.875rem';
-  fbDesc.textContent='Encontrou um bug? Tem uma ideia pra melhorar? Sua opinião vai direto pro desenvolvedor e ajuda a priorizar o que vem a seguir.';
+  fbDesc.textContent='Encontrou um bug? Tem uma ideia pra melhorar? Mande sua mensagem — você recebe a resposta direto aqui no app na aba "Minhas mensagens".';
   fbCard.appendChild(fbDesc);
-  const fbBtn = mkBtn('💬 Enviar sugestão ou feedback','btn btn-p');
+
+  // Disclaimer plataforma em desenvolvimento
+  const beta = mk('div');beta.style.cssText='padding:.625rem .875rem;background:linear-gradient(135deg,rgba(128,66,250,.06),rgba(128,66,250,.02));border:1px solid rgba(128,66,250,.20);border-radius:8px;margin-bottom:.875rem;display:flex;align-items:center;gap:10px';
+  beta.innerHTML = `<span style="font-size:18px;flex-shrink:0">🚀</span><div style="font-size:12px;color:var(--text2);line-height:1.5"><b style="color:var(--gralia-purple)">Versão inicial em melhoria contínua</b> — novas funções e ajustes saem toda semana. Seu feedback acelera o desenvolvimento.</div>`;
+  fbCard.appendChild(beta);
+
+  const fbActions = mk('div');fbActions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+  const fbBtn = mkBtn('💬 Enviar sugestão ou feedback','btn btn-sm btn-p');
   fbBtn.addEventListener('click',()=>{
     try{showFeedbackModal();}
     catch(err){
@@ -18228,7 +18416,19 @@ function renderSettings(){
       alert('Erro ao abrir formulário: '+(err.message||err));
     }
   });
-  fbCard.appendChild(fbBtn);
+  fbActions.appendChild(fbBtn);
+
+  if(isAuthed()){
+    const npsBtn = mkBtn('⭐ Avaliar a plataforma','btn btn-sm');
+    npsBtn.title = 'Dê uma nota de 0 a 10';
+    npsBtn.addEventListener('click',()=>{
+      try{showNPSModal('config');}
+      catch(err){alert('Erro: '+(err.message||err));}
+    });
+    fbActions.appendChild(npsBtn);
+  }
+
+  fbCard.appendChild(fbActions);
   wrap.appendChild(fbCard);
 
   // ==== Modo Admin (oculto, só pra dev) ====
@@ -19324,9 +19524,27 @@ function renderGoals(){
   const mentorRow = mk('div','goal-mentor-row');
   const mentorCost = estimateMentorFeedbackCredits(getMethodModel('topic-profile'));
   const mentorBtn = mkBtn('','btn btn-sm');
+  // V1.3: bloqueia se não houver dados mínimos pra análise (evita gasto inútil de créditos)
+  // Critério: precisa ter pelo menos 5 questões respondidas OU 3 pomos OU 2 dias de atividade
+  const totalQ = ((DATA.session||{}).total||0) + (DATA.disciplines||[]).reduce((acc,d)=>acc+((d.sessions||[]).reduce((b,s)=>b+(s.total||0),0)),0);
+  const totalPomos = ((DATA.pomo||{}).sessions||[]).filter(s=>s.phase==='focus').length;
+  const yearActivity = computeYearlyActivity ? computeYearlyActivity() : {};
+  const activeDays = Object.values(yearActivity||{}).filter(d=>d && (d.questions||0)+(d.pomos||0) > 0).length;
+  const hasEnoughData = totalQ >= 5 || totalPomos >= 3 || activeDays >= 2;
   mentorBtn.innerHTML = `🤖 Pedir feedback do mentor IA <span class="btn-cost-hint ${mentorCost.tier}">${mentorCost.min}-${mentorCost.max} créd.</span>`;
-  mentorBtn.title = 'A IA analisa seu ritmo e sugere ajustes específicos';
+  if(!hasEnoughData){
+    mentorBtn.disabled = true;
+    mentorBtn.title = 'Estude mais antes de pedir análise — precisa de no mínimo 5 questões respondidas, 3 pomodoros ou 2 dias de atividade pra IA dar um feedback útil';
+    mentorBtn.style.opacity = '.55';
+    mentorBtn.style.cursor = 'not-allowed';
+  } else {
+    mentorBtn.title = 'A IA analisa seu ritmo e sugere ajustes específicos';
+  }
   mentorBtn.addEventListener('click',async()=>{
+    if(!hasEnoughData){
+      alert('Você ainda não tem dados suficientes pra uma análise útil. Resolva pelo menos 5 questões, complete 3 pomodoros ou estude por 2 dias antes de pedir o feedback.');
+      return;
+    }
     mentorBtn.disabled = true;
     mentorBtn.innerHTML = '⏳ Analisando seu ritmo...';
     try{
@@ -19785,111 +20003,307 @@ function showGoalConfigModal(){
 
 // Modal de feedback / sugestões
 function showFeedbackModal(){
-  console.log('[NEXUS] showFeedbackModal called');
-  // Não bloqueia mais por auth — se não houver, a função de envio avisa
   const m = mk('div');
-  m.style.cssText='max-width:440px';
+  m.style.cssText='max-width:480px;max-height:80vh;overflow-y:auto';
 
   const title = mk('h2');
   title.style.cssText='margin:0 0 .5rem;font-size:17px;font-weight:700';
-  title.innerHTML='💬 Sua opinião importa';
+  title.innerHTML='💬 Fale conosco';
   m.appendChild(title);
 
   const desc = mk('p','txt2');desc.style.cssText='font-size:13px;line-height:1.55;margin:0 0 1rem';
-  desc.textContent='Escolha a categoria e descreva com detalhes. Quanto mais específico, mais fácil de agir.';
+  desc.textContent='Plataforma em desenvolvimento ativo — sua opinião direciona o que vem a seguir. Respondemos pelo próprio app.';
   m.appendChild(desc);
 
-  // Aviso se não logado
   if(!isAuthed()){
     const warn = mk('div');warn.style.cssText='padding:.625rem .75rem;background:var(--amber-light);color:var(--amber-text);border-radius:var(--rs);font-size:12px;margin-bottom:.875rem;line-height:1.5';
-    warn.textContent='⚠ Você precisa estar logado para enviar feedback. Faça login em Config → Minha conta primeiro.';
+    warn.textContent='⚠ Você precisa estar logado para enviar feedback. Faça login primeiro.';
     m.appendChild(warn);
   }
 
-  const lblCat = mk('label');lblCat.textContent='Categoria';
-  m.appendChild(lblCat);
-  const catRow = mk('div','fb-cat-row');
-  const categories = [
-    {value:'bug',icon:'🐛',label:'Bug'},
-    {value:'feature',icon:'💡',label:'Ideia'},
-    {value:'ui',icon:'🎨',label:'Visual'},
-    {value:'general',icon:'💬',label:'Outro'}
-  ];
-  let selectedCat = 'feature';
-  categories.forEach(c=>{
-    const btn = mk('button','fb-cat-btn'+(c.value===selectedCat?' active':''));
-    btn.type='button';
-    btn.innerHTML = `<span class="fbc-icon">${c.icon}</span><span class="fbc-lbl">${c.label}</span>`;
-    btn.addEventListener('click',()=>{
-      selectedCat=c.value;
-      catRow.querySelectorAll('.fb-cat-btn').forEach(el=>el.classList.remove('active'));
-      btn.classList.add('active');
-    });
-    catRow.appendChild(btn);
-  });
-  m.appendChild(catRow);
+  // Tabs: nova mensagem + histórico
+  const tabsBar = mk('div');tabsBar.style.cssText='display:flex;gap:4px;margin-bottom:.75rem;border-bottom:1px solid var(--border)';
+  const newTab = mk('button');newTab.style.cssText='background:transparent;border:none;padding:.5rem .875rem;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;border-bottom:2px solid var(--gralia-purple);margin-bottom:-1px';
+  newTab.textContent = '✏️ Nova mensagem';
+  const histTab = mk('button');histTab.style.cssText='background:transparent;border:none;padding:.5rem .875rem;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px';
+  histTab.textContent = '📜 Minhas mensagens';
+  tabsBar.appendChild(newTab);
+  tabsBar.appendChild(histTab);
+  m.appendChild(tabsBar);
 
-  const lblMsg = mk('label');lblMsg.textContent='Sua mensagem';lblMsg.style.marginTop='.75rem';
-  m.appendChild(lblMsg);
-  const ta = mk('textarea');ta.rows=6;
-  ta.placeholder='Descreva com detalhes...\n\nBug: o que aconteceu + como reproduzir\nIdeia: o que você quer + por quê seria útil\nVisual: o que incomoda + sugestão';
+  const content = mk('div');
+  m.appendChild(content);
+
+  function renderNewMessage(){
+    content.innerHTML = '';
+    const lblCat = mk('label');lblCat.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px';
+    lblCat.textContent='Categoria';
+    content.appendChild(lblCat);
+    const catRow = mk('div');catRow.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:.75rem';
+    const categories = [
+      {value:'sugestao',icon:'💡',label:'Sugestão'},
+      {value:'bug',icon:'🐛',label:'Bug'},
+      {value:'duvida',icon:'❓',label:'Dúvida'},
+      {value:'elogio',icon:'😊',label:'Elogio'},
+      {value:'outro',icon:'💬',label:'Outro'}
+    ];
+    let selectedCat = 'sugestao';
+    function updateCatVisual(){
+      catRow.querySelectorAll('button').forEach(b=>{
+        const isActive = b.dataset.cat === selectedCat;
+        b.style.borderColor = isActive ? 'var(--gralia-purple)' : 'var(--border)';
+        b.style.background = isActive ? 'rgba(128,66,250,.10)' : 'var(--surface)';
+        b.style.color = isActive ? 'var(--gralia-purple)' : 'var(--text2)';
+      });
+    }
+    categories.forEach(c=>{
+      const btn = mk('button');btn.type='button';btn.dataset.cat=c.value;
+      btn.style.cssText = 'padding:.5rem .25rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;color:var(--text2);font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px;transition:all .15s';
+      btn.innerHTML = `<span style="font-size:18px">${c.icon}</span><span>${c.label}</span>`;
+      btn.addEventListener('click',()=>{ selectedCat=c.value; updateCatVisual(); });
+      catRow.appendChild(btn);
+    });
+    updateCatVisual();
+    content.appendChild(catRow);
+
+    const lblSubj = mk('label');lblSubj.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;margin-top:.75rem';
+    lblSubj.textContent='Assunto';
+    content.appendChild(lblSubj);
+    const subjIn = mk('input');subjIn.type='text';subjIn.maxLength=200;
+    subjIn.placeholder='Resumo curto (3-200 caracteres)';
+    subjIn.style.cssText='width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit';
+    content.appendChild(subjIn);
+
+    const lblMsg = mk('label');lblMsg.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;margin-top:.75rem';
+    lblMsg.textContent='Mensagem';
+    content.appendChild(lblMsg);
+    const ta = mk('textarea');ta.rows=6;ta.maxLength=5000;
+    ta.placeholder='Descreva com detalhes...';
+    ta.style.cssText='width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit;resize:vertical;min-height:100px';
+    content.appendChild(ta);
+
+    const status = mk('div');status.style.cssText='margin-top:.75rem;font-size:12px;min-height:18px';
+    content.appendChild(status);
+
+    const btnRow = mk('div');btnRow.style.cssText='display:flex;gap:8px;margin-top:.75rem;justify-content:flex-end';
+    const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+    cancelBtn.addEventListener('click',closeModal);
+    btnRow.appendChild(cancelBtn);
+    const sendBtn = mkBtn('Enviar →','btn btn-p btn-sm');
+    sendBtn.addEventListener('click',async()=>{
+      if(!isAuthed()){
+        status.textContent='⚠ Faça login primeiro.';status.style.color='var(--red-text)';return;
+      }
+      const subj = subjIn.value.trim();
+      const msg = ta.value.trim();
+      if(subj.length<3){status.textContent='⚠ Assunto curto demais.';status.style.color='var(--red-text)';return;}
+      if(msg.length<5){status.textContent='⚠ Mensagem curta demais.';status.style.color='var(--red-text)';return;}
+      sendBtn.disabled=true;sendBtn.textContent='Enviando...';status.textContent='';
+      try{
+        const {error} = await supa.from('user_feedback').insert({
+          user_id: AUTH.user.id,
+          kind: selectedCat,
+          subject: subj,
+          message: msg
+        });
+        if(error)throw error;
+        m.innerHTML='';
+        const okBox = mk('div');okBox.style.cssText='text-align:center;padding:1.5rem 1rem';
+        okBox.innerHTML = `<div style="font-size:48px;margin-bottom:.75rem">✅</div>
+          <h3 style="margin:0 0 .5rem;font-size:16px">Mensagem enviada!</h3>
+          <p class="txt2" style="margin:0 0 1.25rem;font-size:13px;line-height:1.55">A resposta aparecerá aqui mesmo na aba "Minhas mensagens" assim que estiver pronta.</p>`;
+        const okBtn = mkBtn('Fechar','btn btn-p');
+        okBtn.addEventListener('click',closeModal);
+        okBox.appendChild(okBtn);
+        m.appendChild(okBox);
+      }catch(err){
+        console.error('Feedback error:',err);
+        sendBtn.disabled=false;sendBtn.textContent='Enviar →';
+        status.textContent='⚠ '+(err.message||'Erro ao enviar.');
+        status.style.color='var(--red-text)';
+      }
+    });
+    btnRow.appendChild(sendBtn);
+    content.appendChild(btnRow);
+  }
+
+  async function renderHistory(){
+    content.innerHTML = '';
+    if(!isAuthed()){
+      content.innerHTML = '<div class="txt3" style="padding:1rem;text-align:center;font-size:13px">Faça login pra ver suas mensagens</div>';
+      return;
+    }
+    const ld = mk('div');ld.style.cssText='padding:1rem;text-align:center;color:var(--text3);font-size:13px';
+    ld.textContent = 'Carregando...';
+    content.appendChild(ld);
+    try{
+      const {data,error} = await supa.from('user_feedback')
+        .select('id, kind, subject, message, status, admin_reply, admin_replied_at, created_at')
+        .eq('user_id', AUTH.user.id)
+        .order('created_at',{ascending:false}).limit(30);
+      if(error) throw error;
+      content.innerHTML = '';
+      if(!data || data.length === 0){
+        content.innerHTML = '<div class="txt3" style="padding:2rem 1rem;text-align:center;font-size:13px">Você ainda não enviou nenhuma mensagem. <br>Use a aba "Nova mensagem" pra começar.</div>';
+        return;
+      }
+      data.forEach(item=>{
+        const card = mk('div');card.style.cssText='padding:.875rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:.625rem';
+        const head = mk('div');head.style.cssText='display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;align-items:flex-start';
+        const left = mk('div');left.style.flex='1';
+        const kindIcon = {'sugestao':'💡','bug':'🐛','duvida':'❓','elogio':'😊','outro':'💬'}[item.kind] || '💬';
+        const subj = mk('div');subj.style.cssText='font-size:13px;font-weight:700;color:var(--text);line-height:1.3';
+        subj.innerHTML = `${kindIcon} ${escapeHTML(item.subject)}`;
+        left.appendChild(subj);
+        const meta = mk('div');meta.style.cssText='font-size:11px;color:var(--text3);margin-top:2px';
+        meta.textContent = formatRelativeDate(item.created_at);
+        left.appendChild(meta);
+        head.appendChild(left);
+        const stBadge = mk('span');
+        const stCfg = {
+          open:{txt:'aguardando',bg:'var(--surface2)',color:'var(--text3)'},
+          reading:{txt:'em análise',bg:'rgba(232,164,60,.18)',color:'var(--amber-text)'},
+          answered:{txt:'respondida',bg:'rgba(73,197,137,.18)',color:'var(--accent-text)'},
+          closed:{txt:'encerrada',bg:'var(--surface2)',color:'var(--text3)'}
+        }[item.status] || {txt:item.status,bg:'var(--surface2)',color:'var(--text3)'};
+        stBadge.style.cssText = `font-size:10.5px;padding:3px 9px;border-radius:999px;background:${stCfg.bg};color:${stCfg.color};font-weight:700;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0`;
+        stBadge.textContent = stCfg.txt;
+        head.appendChild(stBadge);
+        card.appendChild(head);
+        const msgBox = mk('div');msgBox.style.cssText='font-size:12.5px;color:var(--text2);line-height:1.55;padding:.5rem .625rem;background:var(--surface2);border-radius:6px;white-space:pre-wrap';
+        msgBox.textContent = item.message;
+        card.appendChild(msgBox);
+        if(item.admin_reply){
+          const replyBox = mk('div');
+          replyBox.style.cssText='margin-top:8px;padding:.5rem .625rem;background:rgba(128,66,250,.07);border-left:3px solid var(--gralia-purple);border-radius:0 6px 6px 0;font-size:12.5px;color:var(--text);line-height:1.55;white-space:pre-wrap';
+          const replyHead = mk('div');replyHead.style.cssText='font-size:10.5px;color:var(--gralia-purple);font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px';
+          replyHead.textContent = '✉️ Resposta da equipe';
+          if(item.admin_replied_at){
+            const t = mk('span');t.style.cssText='font-weight:500;color:var(--text3);text-transform:none;letter-spacing:0;margin-left:6px;font-size:10px';
+            t.textContent = '· ' + formatRelativeDate(item.admin_replied_at);
+            replyHead.appendChild(t);
+          }
+          replyBox.appendChild(replyHead);
+          const replyBody = mk('div');replyBody.textContent = item.admin_reply;
+          replyBox.appendChild(replyBody);
+          card.appendChild(replyBox);
+        }
+        content.appendChild(card);
+      });
+    }catch(err){
+      content.innerHTML = '<div class="txt3" style="padding:1rem;text-align:center;color:var(--red-text);font-size:13px">Erro: '+escapeHTML(err.message||'desconhecido')+'</div>';
+    }
+  }
+
+  function setActiveTab(which){
+    if(which === 'new'){
+      newTab.style.color = 'var(--gralia-purple)';newTab.style.borderBottomColor = 'var(--gralia-purple)';
+      histTab.style.color = 'var(--text3)';histTab.style.borderBottomColor = 'transparent';
+      renderNewMessage();
+    } else {
+      histTab.style.color = 'var(--gralia-purple)';histTab.style.borderBottomColor = 'var(--gralia-purple)';
+      newTab.style.color = 'var(--text3)';newTab.style.borderBottomColor = 'transparent';
+      renderHistory();
+    }
+  }
+  newTab.addEventListener('click',()=>setActiveTab('new'));
+  histTab.addEventListener('click',()=>setActiveTab('hist'));
+
+  setActiveTab('new');
+  showModal(m);
+}
+
+// === NPS ===
+// Mostra modal de NPS opcional. Só dispara em momentos certos (ex: após pomodoro completo de 4 ciclos)
+async function maybeShowNPSPrompt(context){
+  if(!isAuthed()) return;
+  // Verifica última resposta — não pede se respondeu nos últimos 60 dias
+  const lastShownLocal = parseInt(localStorage.getItem('nexus_nps_dismissed_at')||'0');
+  if(lastShownLocal && (Date.now()-lastShownLocal) < 60*24*60*60*1000) return; // 60 dias
+  try{
+    const {data} = await supa.rpc('get_my_last_nps');
+    if(data){
+      const lastDate = new Date(data).getTime();
+      if((Date.now()-lastDate) < 60*24*60*60*1000) return;
+    }
+  }catch(e){}
+  showNPSModal(context);
+}
+
+function showNPSModal(context){
+  const m = mk('div');m.style.cssText='max-width:440px';
+  const t = mk('h2');t.style.cssText='margin:0 0 .25rem;font-size:18px;font-weight:700';
+  t.textContent = '⭐ Sua opinião sobre o Gralia';
+  m.appendChild(t);
+  const sub = mk('p','txt2');sub.style.cssText='margin:0 0 1.25rem;font-size:13px;line-height:1.55';
+  sub.innerHTML = 'Em uma escala de <b>0 a 10</b>, qual a chance de você recomendar o Gralia para outro estudante?<br><span class="txt3" style="font-size:11.5px">A plataforma está em desenvolvimento ativo — sua avaliação ajuda a priorizar.</span>';
+  m.appendChild(sub);
+
+  // Escala 0-10
+  const scaleRow = mk('div');scaleRow.style.cssText='display:grid;grid-template-columns:repeat(11,1fr);gap:4px;margin-bottom:1rem';
+  let selected = -1;
+  for(let i=0;i<=10;i++){
+    const b = mk('button');b.type='button';b.dataset.score = i;
+    b.textContent = String(i);
+    b.style.cssText = 'padding:.625rem 0;background:var(--surface);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:var(--text2);transition:all .15s';
+    b.addEventListener('click',()=>{
+      selected = i;
+      scaleRow.querySelectorAll('button').forEach(btn=>{
+        const v = parseInt(btn.dataset.score);
+        const isSelected = v === selected;
+        btn.style.background = isSelected ? 'var(--gralia-purple)' : 'var(--surface)';
+        btn.style.color = isSelected ? '#fff' : 'var(--text2)';
+        btn.style.borderColor = isSelected ? 'var(--gralia-purple)' : 'var(--border)';
+      });
+    });
+    scaleRow.appendChild(b);
+  }
+  m.appendChild(scaleRow);
+  const scaleHelp = mk('div');scaleHelp.style.cssText='display:flex;justify-content:space-between;font-size:10.5px;color:var(--text3);margin-bottom:.875rem;font-weight:600';
+  scaleHelp.innerHTML = '<span>0 — Não recomendaria</span><span>10 — Com certeza</span>';
+  m.appendChild(scaleHelp);
+
+  // Comentário opcional
+  const cLbl = mk('label');cLbl.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px';
+  cLbl.textContent = 'Comentário (opcional)';
+  m.appendChild(cLbl);
+  const ta = mk('textarea');ta.rows=2;ta.maxLength=500;
+  ta.placeholder='O que poderia melhorar?';
+  ta.style.cssText='width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit;resize:vertical';
   m.appendChild(ta);
 
-  const status = mk('div','fb-status');status.style.cssText='margin-top:.75rem;font-size:12px;min-height:18px';
-  m.appendChild(status);
-
-  const btnRow = mk('div','flex');btnRow.style.cssText='gap:8px;margin-top:.75rem;justify-content:flex-end';
-  const cancelBtn = mkBtn('Cancelar','btn btn-sm');
-  cancelBtn.addEventListener('click',()=>closeModal());
-  btnRow.appendChild(cancelBtn);
-
-  const sendBtn = mkBtn('Enviar →','btn btn-p btn-sm');
+  const actions = mk('div');actions.style.cssText='display:flex;gap:8px;margin-top:.875rem;justify-content:flex-end';
+  const skipBtn = mkBtn('Não agora','btn btn-sm');
+  skipBtn.addEventListener('click',()=>{
+    localStorage.setItem('nexus_nps_dismissed_at', String(Date.now()));
+    closeModal();
+  });
+  actions.appendChild(skipBtn);
+  const sendBtn = mkBtn('Enviar','btn btn-sm btn-p');
   sendBtn.addEventListener('click',async()=>{
-    if(!isAuthed()){
-      status.textContent='⚠ Faça login primeiro em Config → Minha conta.';
-      status.style.color='var(--red-text)';
+    if(selected === -1){
+      alert('Selecione uma nota de 0 a 10 antes de enviar.');
       return;
     }
-    const msg = ta.value.trim();
-    if(msg.length<10){
-      status.textContent='⚠ Escreva pelo menos 10 caracteres.';
-      status.style.color='var(--red-text)';
-      return;
-    }
-    sendBtn.disabled=true;sendBtn.textContent='Enviando...';
-    status.textContent='';
+    sendBtn.disabled = true;sendBtn.textContent = 'Enviando...';
     try{
-      const payload = {
-        user_id:AUTH.user.id,
-        email:AUTH.user.email,
-        category:selectedCat,
-        message:msg,
-        app_version:'v4',
-        user_agent:(navigator.userAgent||'').slice(0,200)
-      };
-      const {error} = await supa.from('user_feedback').insert(payload);
-      if(error)throw error;
-      // Sucesso
-      m.innerHTML='';
-      const okBox = mk('div');okBox.style.cssText='text-align:center;padding:1.5rem 1rem';
-      const emo = mk('div');emo.style.cssText='font-size:48px;margin-bottom:.75rem;animation:pop .4s ease';emo.textContent='✅';
-      const t = mk('h3');t.style.cssText='margin:0 0 .5rem;font-size:16px';t.textContent='Obrigado pela sua mensagem!';
-      const p = mk('p','txt2');p.style.cssText='margin:0 0 1.25rem;font-size:13px;line-height:1.55';
-      p.textContent='Sua sugestão chegou pro desenvolvedor. Cada feedback ajuda a construir uma plataforma melhor.';
-      const okBtn = mkBtn('Fechar','btn btn-p');
-      okBtn.addEventListener('click',()=>closeModal());
-      okBox.appendChild(emo);okBox.appendChild(t);okBox.appendChild(p);okBox.appendChild(okBtn);
-      m.appendChild(okBox);
+      await supa.from('nps_responses').insert({
+        user_id: AUTH.user.id,
+        score: selected,
+        comment: ta.value.trim() || null,
+        context: context || 'manual',
+        app_version: 'gralia'
+      });
+      localStorage.setItem('nexus_nps_dismissed_at', String(Date.now()));
+      closeModal();
+      showToast('✓ Obrigado pela avaliação!');
     }catch(err){
-      console.error('Feedback send error:',err);
-      sendBtn.disabled=false;sendBtn.textContent='Enviar →';
-      status.textContent='⚠ '+(err.message||'Erro ao enviar, tente novamente.');
-      status.style.color='var(--red-text)';
+      sendBtn.disabled=false;sendBtn.textContent='Enviar';
+      alert('Erro: '+(err.message||err));
     }
   });
-  btnRow.appendChild(sendBtn);
-  m.appendChild(btnRow);
-
+  actions.appendChild(sendBtn);
+  m.appendChild(actions);
   showModal(m);
 }
 
