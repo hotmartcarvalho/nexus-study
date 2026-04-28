@@ -1219,6 +1219,53 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 .mcard-desc{font-size:12px;color:var(--text2);line-height:1.5}
 .mcard-tag{position:absolute;top:10px;right:10px;font-size:9.5px;font-weight:700;letter-spacing:.5px;padding:2px 7px;border-radius:999px;text-transform:uppercase}
 
+/* === Methods Page V2 (refresh visual) === */
+.methods-v2{padding-bottom:2rem}
+.methods-head{margin-bottom:1.5rem}
+.methods-empty{padding:2.5rem 1.75rem;text-align:center;background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));border:1px dashed rgba(128,66,250,.25)}
+.methods-empty .me-icon{font-size:42px;margin-bottom:.5rem}
+.methods-ctx{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:.625rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:1.5rem;font-size:12.5px}
+.mctx-lbl{font-weight:700;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-right:2px}
+.mctx-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;border:1px solid;font-size:11.5px;font-weight:600;line-height:1.5}
+.mctx-dot{width:6px;height:6px;border-radius:50%}
+.mctx-edit{margin-left:auto;background:transparent;border:none;color:var(--text3);font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;padding:2px 6px;border-radius:6px}
+.mctx-edit:hover{background:var(--surface);color:var(--text2)}
+.methods-section{margin-bottom:2rem}
+.msec-head{display:flex;align-items:center;gap:12px;margin-bottom:1rem;padding:.75rem 0}
+.msec-icon{font-size:28px;flex-shrink:0;width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:var(--surface2);border-radius:12px;border:1px solid var(--border)}
+.msec-text{flex:1;min-width:0}
+.msec-title{font-size:16px;font-weight:700;letter-spacing:-.3px;color:var(--text)}
+.msec-sub{font-size:12px;color:var(--text3);margin-top:1px;line-height:1.4}
+.methods-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.mcard-v2{position:relative;display:flex;flex-direction:column;padding:1.125rem 1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;cursor:pointer;text-align:left;transition:all .18s ease;font-family:inherit;color:inherit;min-height:130px;overflow:hidden}
+.mcard-v2:hover{border-color:var(--gralia-purple);transform:translateY(-2px);box-shadow:0 4px 16px rgba(128,66,250,.10);background:linear-gradient(135deg,rgba(128,66,250,.03),var(--surface))}
+.mcard-icon-v2{font-size:30px;margin-bottom:.75rem;line-height:1}
+.mcard-title-v2{font-size:14px;font-weight:700;margin-bottom:4px;letter-spacing:-.2px;color:var(--text)}
+.mcard-desc-v2{font-size:12px;color:var(--text2);line-height:1.55;flex:1}
+.mcard-tag-v2{position:absolute;top:11px;right:11px;font-size:9.5px;font-weight:800;letter-spacing:.6px;padding:2px 8px;border-radius:999px;text-transform:uppercase;line-height:1.5}
+.mcard-tag-v2.clas{background:rgba(24,95,165,.12);color:var(--blue-text)}
+.mcard-tag-v2.inov{background:rgba(128,66,250,.13);color:var(--gralia-purple)}
+
+/* === SRS Overview Panel (V1.2) === */
+.srs-overview-panel{margin:0 0 1.25rem;padding:1rem;background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));border:1px solid rgba(128,66,250,.18);border-radius:14px}
+.srs-ov-head{display:flex;align-items:center;gap:8px;margin-bottom:.875rem;font-size:13.5px;color:var(--text)}
+.srs-ov-head .ov-icon{font-size:16px}
+.srs-ov-head b{font-weight:700;letter-spacing:-.2px}
+.srs-ov-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.srs-ov-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--text3);border-radius:10px;padding:.75rem .875rem;cursor:pointer;text-align:left;font-family:inherit;color:inherit;transition:all .15s;display:flex;flex-direction:column;gap:6px}
+.srs-ov-card:hover{transform:translateY(-1px);box-shadow:0 2px 10px rgba(0,0,0,.06);border-color:var(--gralia-purple)}
+.sov-title-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sov-title{font-size:13px;font-weight:700;color:var(--text);line-height:1.3;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sov-due-badge{font-size:10px;font-weight:700;padding:2px 8px;background:rgba(232,164,60,.18);color:var(--amber-text);border-radius:999px;text-transform:uppercase;letter-spacing:.3px;flex-shrink:0;line-height:1.5}
+.sov-stats{display:flex;gap:10px;font-size:11px;color:var(--text3);flex-wrap:wrap}
+.sov-stat b{color:var(--text);font-weight:700}
+.sov-stat-due.has-due b{color:var(--amber-text)}
+.sov-stat-ok b{color:var(--accent-text)}
+.sov-prog{position:relative;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.sov-prog-fill{position:absolute;top:0;left:0;height:100%;border-radius:3px;transition:width .3s}
+.sov-prog-due{position:absolute;top:0;right:0;height:100%;background:rgba(232,164,60,.45)}
+.sov-cta{font-size:11.5px;color:var(--gralia-purple);font-weight:700;margin-top:2px}
+
 .conf-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
 .conf-btn{padding:11px 6px;border-radius:var(--r);border:1.5px solid var(--border);background:var(--surface);text-align:center;font-size:12.5px;font-weight:500;color:var(--text)}
 .conf-btn:hover{border-color:var(--border2);background:var(--surface2)}
@@ -2646,22 +2693,42 @@ async function fetchMyPublishedResources(){
 
 // Verifica se um recurso local (caderno) já foi publicado.
 // Retorna: {published: false} | {published: true, resource, isOutdated, lastPublishAt}
-async function checkPublishStatus(localId, resourceType){
+async function checkPublishStatus(localId, resourceType, fallbackName){
   if(!supa || !AUTH.user) return {published: false};
   try{
     const { data, error } = await supa.from('shared_resources')
-      .select('id, resource_type, title, description, discipline, payload, created_at, updated_at, is_public')
+      .select('id, resource_type, title, description, discipline, tags, payload, created_at, updated_at, is_public')
       .eq('owner_id', AUTH.user.id)
       .eq('resource_type', resourceType)
       .eq('is_public', true)
       .order('created_at', {ascending: false})
       .limit(50);
     if(error || !data) return {published: false};
-    // Procura por payload que tenha localId (caderno pode ter localId no payload — vamos adicionar)
-    const found = data.find(r => {
+    // 1) Procura por payload com localId (recursos publicados nesta versão)
+    let found = data.find(r => {
       const p = r.payload || {};
       return p.local_id === localId;
     });
+    // 2) Fallback: procura por nome dentro do payload (ex: notebook_name, source_name) — recursos antigos sem local_id
+    if(!found && fallbackName){
+      const norm = String(fallbackName).trim().toLowerCase();
+      found = data.find(r => {
+        const p = r.payload || {};
+        if(p.notebook_name && String(p.notebook_name).trim().toLowerCase() === norm) return true;
+        if(p.source_name && String(p.source_name).trim().toLowerCase() === norm) return true;
+        if(r.title && String(r.title).trim().toLowerCase() === norm) return true;
+        return false;
+      });
+      // Se encontrou via fallback, faz auto-fix injetando local_id no payload (próxima vez detecta direto)
+      if(found){
+        try{
+          const updatedPayload = {...(found.payload||{}), local_id: localId};
+          await supa.from('shared_resources')
+            .update({payload: updatedPayload})
+            .eq('id', found.id).eq('owner_id', AUTH.user.id);
+        }catch(e){ /* não-crítico */ }
+      }
+    }
     if(!found) return {published: false};
     return {
       published: true,
@@ -4930,7 +4997,34 @@ function render(){
     const bc = renderBreadcrumb();
     if(bc)pg.appendChild(bc);
   }
-  pg.appendChild((views[ST.view]||renderDashboard)());
+  // Renderiza a view com proteção contra crashes — não deixa tela em branco mesmo se houver erro
+  try{
+    pg.appendChild((views[ST.view]||renderDashboard)());
+  }catch(err){
+    console.error('[render] Crash na view "'+ST.view+'":', err);
+    const errCard = mk('div','card');
+    errCard.style.cssText='padding:1.5rem;margin:1rem;border:1px solid var(--red);background:rgba(232,76,76,.05);border-radius:12px';
+    errCard.innerHTML = `
+      <h2 style="margin:0 0 .5rem;font-size:17px;color:var(--red-text)">⚠️ Algo quebrou ao carregar essa página</h2>
+      <p class="txt2" style="font-size:13px;margin:0 0 .75rem;line-height:1.55">Foi um erro inesperado. Seus dados estão seguros. Pode tentar voltar pro Painel ou reiniciar a página.</p>
+      <details style="font-size:11.5px;color:var(--text3);margin-bottom:.875rem"><summary style="cursor:pointer;font-weight:600">Detalhes técnicos (pra reportar)</summary><pre style="margin-top:.5rem;padding:.5rem;background:var(--surface2);border-radius:6px;overflow:auto;font-size:10.5px">${escapeHTML(err && err.message ? err.message : String(err))}\n${escapeHTML(err && err.stack ? err.stack.slice(0,500) : '')}</pre></details>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm btn-p" id="err-go-dash">↺ Voltar ao Painel</button>
+        <button class="btn btn-sm" id="err-reload">🔄 Recarregar página</button>
+        <button class="btn btn-sm" id="err-feedback">💬 Reportar erro</button>
+      </div>`;
+    pg.appendChild(errCard);
+    setTimeout(()=>{
+      const goBtn = errCard.querySelector('#err-go-dash');
+      if(goBtn) goBtn.addEventListener('click',()=>{ST.view='dashboard';ST.navStack=[];render();});
+      const reloadBtn = errCard.querySelector('#err-reload');
+      if(reloadBtn) reloadBtn.addEventListener('click',()=>location.reload());
+      const fbBtn = errCard.querySelector('#err-feedback');
+      if(fbBtn) fbBtn.addEventListener('click',()=>{
+        try{ showFeedbackModal(); }catch(e){ alert('Não consegui abrir o feedback. Recarregue a página.'); }
+      });
+    },50);
+  }
   APP.appendChild(pg);
   // Floating focus-mode toggle (always present)
   const focusBtn = mk('button','focus-toggle');
@@ -6928,66 +7022,95 @@ function showEditSourceModal(src){
 
 /* METHODS HUB */
 function renderMethods(){
-  const wrap = mk('div','fade');
-  const h = mk('h1');h.textContent='Métodos de Estudo';
-  const sub = mk('p','txt2');sub.style.marginBottom='1.25rem';
-  sub.textContent='Oito métodos: quatro clássicos comprovados que concurseiros já usam, e quatro inovadores que quase ninguém aplica.';
-  wrap.appendChild(h);wrap.appendChild(sub);
+  const wrap = mk('div','fade methods-v2');
+  const head = mk('div','methods-head');
+  const titleBlock = mk('div','methods-title-block');
+  const h = mk('h1');h.style.cssText='margin:0 0 4px;font-size:24px;letter-spacing:-.5px';h.textContent='Métodos de estudo';
+  const sub = mk('p','txt2');sub.style.cssText='margin:0;font-size:13.5px;line-height:1.5;max-width:580px';
+  sub.textContent='Oito métodos pra estudar com mais profundidade. Quatro clássicos comprovados, quatro inovadores que poucos concurseiros usam.';
+  titleBlock.appendChild(h);titleBlock.appendChild(sub);
+  head.appendChild(titleBlock);
+  wrap.appendChild(head);
 
   if(!hasContent()){
-    wrap.appendChild(warnBox('⚠ Adicione pelo menos uma fonte em <a href="#" id="gs">Fontes</a> antes de usar os métodos.'));
-    setTimeout(()=>{const l=$('gs');if(l)l.addEventListener('click',e=>{e.preventDefault();ST.view='sources';render();});},0);
+    const empty = mk('div','card methods-empty');
+    empty.innerHTML = `<div class="me-icon">📚</div>
+      <h3 style="margin:0 0 .375rem;font-size:16px">Adicione uma fonte primeiro</h3>
+      <p class="txt2" style="margin:0 0 1rem;font-size:13px;line-height:1.5">Os métodos usam o conteúdo das suas fontes (PDFs, artigos, resumos) para gerar questões e flashcards personalizados.</p>
+      <button class="btn btn-p btn-sm" id="me-go-srcs">+ Adicionar fonte</button>`;
+    wrap.appendChild(empty);
+    setTimeout(()=>{
+      const btn = empty.querySelector('#me-go-srcs');
+      if(btn) btn.addEventListener('click',()=>{ST.view='sources';render();});
+    },0);
     return wrap;
   }
 
-  // Active disciplines indicator
+  // Active disciplines indicator (pílula compacta)
   const act = activeDisciplines().filter(d=>DATA.sources.some(s=>s.disciplineId===d.id));
   if(act.length>0){
-    const info = mk('p','txt2');info.style.marginBottom='1rem';info.style.display='flex';info.style.alignItems='center';info.style.flexWrap='wrap';info.style.gap='4px';
-    const lbl = mk('span');lbl.textContent='Estudando: ';lbl.style.marginRight='4px';
-    info.appendChild(lbl);
+    const ctxBar = mk('div','methods-ctx');
+    const ctxLbl = mk('span','mctx-lbl');ctxLbl.textContent='Estudando agora:';
+    ctxBar.appendChild(ctxLbl);
     act.forEach(d=>{
-      const chip = mk('span','disc-tag');chip.style.background=d.color+'22';chip.style.color=d.color;
-      const dot = mk('span','disc-dot');dot.style.background=d.color;
-      const nm = mk('span');nm.textContent=d.name;
-      chip.appendChild(dot);chip.appendChild(nm);
-      info.appendChild(chip);
+      const chip = mk('span','mctx-chip');
+      chip.style.cssText = `background:${d.color}18;color:${d.color};border-color:${d.color}40`;
+      chip.innerHTML = `<span class="mctx-dot" style="background:${d.color}"></span>${escapeHTML(d.name)}`;
+      ctxBar.appendChild(chip);
     });
-    const ch = mk('a');ch.href='#';ch.textContent='Alterar ↗';ch.style.fontSize='12px';ch.style.marginLeft='6px';
-    ch.addEventListener('click',e=>{e.preventDefault();ST.view='sources';ST.srcSubview='list';render();});
-    info.appendChild(ch);
-    wrap.appendChild(info);
+    const ch = mk('button','mctx-edit');ch.type='button';ch.textContent='Alterar';
+    ch.addEventListener('click',()=>{ST.view='sources';ST.srcSubview='list';render();});
+    ctxBar.appendChild(ch);
+    wrap.appendChild(ctxBar);
   }
 
-  wrap.appendChild(sLabel('🏛️ Clássicos — comprovados cientificamente, já usados por concurseiros'));
-  const g1 = mk('div','mode-grid');g1.style.marginBottom='1.25rem';
+  // Seção: Clássicos
+  const sec1 = mk('div','methods-section');
+  const sec1Head = mk('div','msec-head');
+  sec1Head.innerHTML = `<div class="msec-icon">🏛️</div>
+    <div class="msec-text">
+      <div class="msec-title">Clássicos</div>
+      <div class="msec-sub">Comprovados cientificamente · usados por quem passa em concursos</div>
+    </div>`;
+  sec1.appendChild(sec1Head);
+  const g1 = mk('div','methods-grid');
   ['srs','practice','simulado','interleaving'].forEach(key=>{
     const i = METHOD_INFO[key];
     g1.appendChild(makeMethodCard(i.icon,i.title,i.short,key,i.tag));
   });
-  wrap.appendChild(g1);
+  sec1.appendChild(g1);
+  wrap.appendChild(sec1);
 
-  wrap.appendChild(sLabel('🔬 Inovadores — quase ninguém usa em preparação para concursos'));
-  const g2 = mk('div','mode-grid');
+  // Seção: Inovadores
+  const sec2 = mk('div','methods-section');
+  const sec2Head = mk('div','msec-head');
+  sec2Head.innerHTML = `<div class="msec-icon">🔬</div>
+    <div class="msec-text">
+      <div class="msec-title">Inovadores</div>
+      <div class="msec-sub">Pouca gente usa em concursos · podem ser seu diferencial</div>
+    </div>`;
+  sec2.appendChild(sec2Head);
+  const g2 = mk('div','methods-grid');
   ['calibration','examiner','drill','elaborative'].forEach(key=>{
     const i = METHOD_INFO[key];
     g2.appendChild(makeMethodCard(i.icon,i.title,i.short,key,i.tag));
   });
-  wrap.appendChild(g2);
+  sec2.appendChild(g2);
+  wrap.appendChild(sec2);
 
   return wrap;
 }
 function makeMethodCard(icon,title,desc,view,tag){
-  const mc = mk('div','mcard');
-  const mi = mk('div','mcard-icon');mi.textContent=icon;
-  const mt = mk('div','mcard-title');mt.textContent=title;
-  const md = mk('div','mcard-desc');md.textContent=desc;
+  const mc = mk('button','mcard-v2');mc.type='button';
   if(tag){
-    const mtag = mk('div','mcard-tag');mtag.textContent=tag;
-    if(tag==='INOVADOR'){mtag.style.background='var(--purple-light)';mtag.style.color='var(--purple-text)';}
-    else{mtag.style.background='var(--blue-light)';mtag.style.color='var(--blue-text)';}
+    const mtag = mk('div','mcard-tag-v2');mtag.textContent=tag;
+    if(tag==='INOVADOR'){mtag.classList.add('inov');}
+    else{mtag.classList.add('clas');}
     mc.appendChild(mtag);
   }
+  const mi = mk('div','mcard-icon-v2');mi.textContent=icon;
+  const mt = mk('div','mcard-title-v2');mt.textContent=title;
+  const md = mk('div','mcard-desc-v2');md.textContent=desc;
   mc.appendChild(mi);mc.appendChild(mt);mc.appendChild(md);
   mc.addEventListener('click',()=>{ST.view=view;render();});
   return mc;
@@ -12568,6 +12691,61 @@ function renderSRSStudy(wrap,due,total){
   // Apply filter to due pool
   const filteredDue = ST.srsStudyDisc==='all'?due:due.filter(c=>c.disciplineId===ST.srsStudyDisc);
 
+  // Painel de panorama por matéria (mostra apenas no modo "Todas" e quando há cards) — V1.2
+  if(ST.srsStudyDisc==='all' && discsWithCards.length >= 2){
+    const overview = mk('div','srs-overview-panel');
+    const ovHead = mk('div','srs-ov-head');
+    ovHead.innerHTML = '<span class="ov-icon">📊</span><b>Panorama por matéria</b>';
+    overview.appendChild(ovHead);
+    const ovGrid = mk('div','srs-ov-grid');
+    discsWithCards.forEach(d=>{
+      const allDisc = DATA.srs.cards.filter(c=>c.disciplineId===d.id && (c.active!==false));
+      const dueDisc = srsActiveDue(d.id).length;
+      const dominated = allDisc.filter(c=>(c.reviews||0) >= 3 && (c.lapses||0) === 0).length;
+      const learning = allDisc.length - dominated - dueDisc;
+      const card = mk('button','srs-ov-card');card.type='button';
+      card.style.borderLeftColor = d.color;
+      const titleRow = mk('div','sov-title-row');
+      const titleEl = mk('div','sov-title');titleEl.textContent = d.name;
+      titleRow.appendChild(titleEl);
+      if(dueDisc > 0){
+        const badge = mk('span','sov-due-badge');
+        badge.textContent = `${dueDisc} pra revisar`;
+        titleRow.appendChild(badge);
+      }
+      card.appendChild(titleRow);
+      const stats = mk('div','sov-stats');
+      stats.innerHTML = `
+        <span class="sov-stat"><b>${allDisc.length}</b> total</span>
+        <span class="sov-stat sov-stat-due ${dueDisc>0?'has-due':''}"><b>${dueDisc}</b> devidos</span>
+        ${dominated>0?`<span class="sov-stat sov-stat-ok"><b>${dominated}</b> dominados</span>`:''}
+      `;
+      card.appendChild(stats);
+      // Barra de progresso visual
+      const progBar = mk('div','sov-prog');
+      if(allDisc.length > 0){
+        const okPct = Math.round((dominated/allDisc.length)*100);
+        const duePct = Math.round((dueDisc/allDisc.length)*100);
+        progBar.innerHTML = `<div class="sov-prog-fill" style="width:${okPct}%;background:var(--accent)"></div>
+          <div class="sov-prog-due" style="width:${duePct}%"></div>`;
+      }
+      card.appendChild(progBar);
+      const cta = mk('div','sov-cta');
+      cta.textContent = dueDisc > 0 ? `▶ Revisar ${dueDisc} pendente${dueDisc===1?'':'s'}` : 'Tudo em dia ✓';
+      if(dueDisc === 0) cta.style.color = 'var(--accent-text)';
+      card.appendChild(cta);
+      card.addEventListener('click',()=>{
+        ST.srsStudyDisc = d.id;
+        ST.srsCurrent = null;
+        ST.srsShowBack = false;
+        render();
+      });
+      ovGrid.appendChild(card);
+    });
+    overview.appendChild(ovGrid);
+    wrap.appendChild(overview);
+  }
+
   if(filteredDue.length===0){
     const info = mk('div','alert alert-info');
     if(ST.srsStudyDisc!=='all'){
@@ -16396,27 +16574,32 @@ function renderPersonCard(profile, opts){
 
 // Estágio 10: renderiza seção "Recomendado pra você" no topo da descoberta
 async function renderRecommendations(container){
-  // Estado inicial: placeholder enquanto carrega
-  container.innerHTML = '';
-  // Já carregado nesta navegação? Usa cache
-  if(ST.discoverRecommendationsLoaded){
-    if(ST.discoverRecommendations.length === 0) return; // nada relevante — não mostra seção
-    drawReco(ST.discoverRecommendations);
-    return;
-  }
-  // Loading state sutil
-  const loading = mk('div','reco-loading');
-  loading.innerHTML = '<span class="txt3" style="font-size:12px">⚡ Buscando recomendações pra você...</span>';
-  container.appendChild(loading);
+  try{
+    // Estado inicial: placeholder enquanto carrega
+    container.innerHTML = '';
+    // Já carregado nesta navegação? Usa cache
+    if(ST.discoverRecommendationsLoaded){
+      if(ST.discoverRecommendations.length === 0) return; // nada relevante — não mostra seção
+      drawReco(ST.discoverRecommendations);
+      return;
+    }
+    // Loading state sutil
+    const loading = mk('div','reco-loading');
+    loading.innerHTML = '<span class="txt3" style="font-size:12px">⚡ Buscando recomendações pra você...</span>';
+    container.appendChild(loading);
 
-  const result = await fetchRecommendedResources(8);
-  ST.discoverRecommendationsLoaded = true;
-  ST.discoverRecommendations = result.items || [];
-  container.innerHTML = '';
-  if(!result.items || result.items.length === 0){
-    return; // Sem recomendações relevantes — não mostra a seção
+    const result = await fetchRecommendedResources(8);
+    ST.discoverRecommendationsLoaded = true;
+    ST.discoverRecommendations = result.items || [];
+    container.innerHTML = '';
+    if(!result.items || result.items.length === 0){
+      return; // Sem recomendações relevantes — não mostra a seção
+    }
+    drawReco(result.items);
+  }catch(err){
+    console.warn('[reco] erro ao renderizar recomendações:', err);
+    container.innerHTML = ''; // não bloqueia render principal
   }
-  drawReco(result.items);
 
   function drawReco(items){
     const head = mk('div','reco-head');
@@ -16430,8 +16613,10 @@ async function renderRecommendations(container){
 
     const grid = mk('div','reco-grid');
     items.forEach(item=>{
-      const card = renderRecoCard(item);
-      grid.appendChild(card);
+      try{
+        const card = renderRecoCard(item);
+        grid.appendChild(card);
+      }catch(e){ console.warn('[reco] card erro:', e); }
     });
     container.appendChild(grid);
 
@@ -16898,7 +17083,7 @@ async function renderSmartPublishButtonForSource(slot, source){
   placeholder.disabled = true;
   slot.appendChild(placeholder);
 
-  const status = await checkPublishStatus(source.id, 'fonte');
+  const status = await checkPublishStatus(source.id, 'fonte', source.name);
   slot.innerHTML = '';
 
   if(!status.published){
@@ -17063,7 +17248,7 @@ async function renderSmartPublishButton(slot, notebook){
   placeholder.disabled = true;
   slot.appendChild(placeholder);
 
-  const status = await checkPublishStatus(notebook.id, 'caderno');
+  const status = await checkPublishStatus(notebook.id, 'caderno', notebook.name);
   slot.innerHTML = '';
 
   if(!status.published){
@@ -20916,6 +21101,26 @@ async function initAuth(){
 /* INIT */
 applyTheme();
 applyFocusMode();
+
+// Captura erros não tratados pra evitar tela branca silenciosa.
+// Loga no console e tenta re-renderizar o painel se a tela estiver vazia.
+window.addEventListener('error', function(ev){
+  // Ignora erros de imagens (já tratados abaixo)
+  if(ev && ev.target && ev.target.tagName === 'IMG') return;
+  console.error('[NEXUS] erro JS não tratado:', ev.error || ev.message);
+  // Se APP estiver vazio (tela branca), tenta voltar pro painel
+  try{
+    if(APP && APP.children.length === 0){
+      ST.view = 'dashboard';
+      setTimeout(()=>{ try{render();}catch(e){console.error('falha re-render:',e);} }, 100);
+    }
+  }catch(e){}
+});
+window.addEventListener('unhandledrejection', function(ev){
+  console.error('[NEXUS] promise rejeitada não tratada:', ev.reason);
+  // Não previne default — só loga
+});
+
 // Fetch exchange rates in background if not cached (non-blocking)
 ensureRates().then(r=>{
   if(document.querySelector('.usage-card'))render();
