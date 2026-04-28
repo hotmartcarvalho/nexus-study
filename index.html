@@ -796,6 +796,53 @@ html.focus-mode .pomo-float{display:none}
 .uec-lbl{font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
 .uec-val{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
 
+/* === ESTÁGIO 12: Editor de tags === */
+.tags-editor{}
+.tags-editor-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:28px}
+.tags-editor-empty{font-size:11.5px;color:var(--text3);font-style:italic;line-height:28px}
+.tags-editor-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 4px 3px 10px;background:rgba(128,66,250,.10);border:1px solid rgba(128,66,250,.25);color:var(--gralia-purple);border-radius:999px;font-size:11.5px;font-weight:600;line-height:1.4}
+.tags-editor-rm{background:transparent;border:none;color:var(--gralia-purple);cursor:pointer;font-size:14px;line-height:1;padding:0 4px;font-family:inherit;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px}
+.tags-editor-rm:hover{background:rgba(128,66,250,.20)}
+.tags-editor-input-row{margin-bottom:8px}
+.tags-editor-input{width:100%;padding:.4rem .625rem;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit;outline:none}
+.tags-editor-input:focus{border-color:var(--gralia-purple);box-shadow:0 0 0 3px rgba(128,66,250,.10)}
+.tags-editor-suggestions{margin-top:6px}
+.tags-editor-suggs-list{display:flex;flex-wrap:wrap;gap:5px}
+.tags-editor-sugg{font-size:11px;padding:3px 9px;background:var(--surface2);border:1px solid var(--border);color:var(--text2);border-radius:999px;cursor:pointer;font-family:inherit;font-weight:500;transition:all .15s}
+.tags-editor-sugg:hover{background:var(--gralia-purple);color:#fff;border-color:var(--gralia-purple)}
+
+/* === Tag chips em cards de recurso === */
+.rc-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:.5rem;margin-bottom:.5rem}
+.rc-tag-chip{display:inline-block;padding:2px 9px;font-size:10.5px;font-weight:600;background:rgba(128,66,250,.07);border:1px solid rgba(128,66,250,.20);color:var(--gralia-purple);border-radius:999px;cursor:pointer;font-family:inherit;line-height:1.5;transition:all .15s}
+.rc-tag-chip:hover{background:var(--gralia-purple);color:#fff}
+
+/* === Filtro ativo de tag na descoberta === */
+.discover-active-tag{display:flex;align-items:center;gap:8px;padding:.625rem .875rem;margin-bottom:.875rem;background:rgba(128,66,250,.08);border:1px solid rgba(128,66,250,.22);border-radius:10px;font-size:13px;color:var(--text)}
+.dat-icon{font-size:13px}
+.dat-label b{color:var(--gralia-purple);font-weight:700}
+.dat-rm{margin-left:auto;background:transparent;border:none;color:var(--gralia-purple);cursor:pointer;font-size:18px;line-height:1;padding:0 6px;font-family:inherit;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-weight:700}
+.dat-rm:hover{background:rgba(128,66,250,.20)}
+
+/* === ESTÁGIO 10: Seção de recomendações === */
+.discover-reco-wrap{margin-bottom:1.25rem}
+.reco-loading{padding:.875rem;text-align:center;color:var(--text3)}
+.reco-head{margin-bottom:.625rem}
+.reco-title{font-size:13.5px;letter-spacing:-.2px;margin-bottom:2px}
+.reco-title b{font-weight:700;color:var(--text)}
+.reco-sub{font-size:11.5px;color:var(--text3);line-height:1.4}
+.reco-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin-bottom:.5rem}
+@media(max-width:560px){.reco-grid{grid-template-columns:1fr}}
+.reco-card{padding:.75rem .875rem;background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));border:1px solid rgba(128,66,250,.20);border-radius:10px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;gap:4px;min-height:88px}
+.reco-card:hover{border-color:var(--gralia-purple);transform:translateY(-1px);box-shadow:0 2px 8px rgba(128,66,250,.10)}
+.reco-badge{display:inline-block;align-self:flex-start;padding:1px 8px;border-radius:999px;background:rgba(128,66,250,.15);color:var(--gralia-purple);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;line-height:1.5}
+.reco-card-title{font-size:13.5px;font-weight:700;color:var(--text);line-height:1.3;display:flex;gap:4px;align-items:flex-start}
+.reco-card-title span{flex-shrink:0}
+.reco-card-author{font-size:11px;color:var(--text3);line-height:1.3}
+.reco-card-author b{color:var(--text2);font-weight:600}
+.reco-card-stats{font-size:11px;color:var(--text3);line-height:1.4;margin-top:auto}
+.reco-sep{display:flex;align-items:center;gap:10px;margin:.875rem 0 .25rem;color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.reco-sep::before,.reco-sep::after{content:'';flex:1;height:1px;background:var(--border)}
+
 /* === ESTÁGIO 4: Contadores de followers/following === */
 .up-counts{display:flex;gap:18px;margin-top:10px}
 .up-count-btn{background:transparent;border:none;padding:0;cursor:pointer;font-family:inherit;color:var(--text2);text-align:left;display:flex;flex-direction:column;gap:1px}
@@ -2341,12 +2388,14 @@ async function publishNotebook(notebookData, opts){
   const questionCount = payload.questions.length;
   if(questionCount === 0) throw new Error('Caderno vazio — adicione questões antes de publicar');
 
+  const tags = normalizeTagsList(opts.tags);
   const { data, error } = await supa.from('shared_resources').insert({
     owner_id: AUTH.user.id,
     resource_type: 'caderno',
     title,
     description: description || null,
     discipline,
+    tags,
     payload,
     question_count: questionCount,
     is_public: true
@@ -2374,12 +2423,14 @@ async function publishSource(sourceData, opts){
     content,
     summary: sourceData.summary || null
   };
+  const tags = normalizeTagsList(opts.tags);
   const { data, error } = await supa.from('shared_resources').insert({
     owner_id: AUTH.user.id,
     resource_type: 'fonte',
     title,
     description: description || null,
     discipline,
+    tags,
     payload,
     question_count: 0,
     is_public: true
@@ -2410,12 +2461,14 @@ async function publishTopicProfile(profileData, opts){
     generated_at: profile.generatedAt || null,
     model_used: profile.model || null
   };
+  const tags = normalizeTagsList(opts.tags);
   const { data, error } = await supa.from('shared_resources').insert({
     owner_id: AUTH.user.id,
     resource_type: 'perfil_topico',
     title,
     description: description || null,
     discipline,
+    tags,
     topic: profileData.topic,
     payload,
     question_count: 0,
@@ -2454,13 +2507,99 @@ async function searchPublicResources(filters){
       p_search: filters.search || null,
       p_sort: filters.sort || 'newest',
       p_limit: filters.limit || 20,
-      p_offset: filters.offset || 0
+      p_offset: filters.offset || 0,
+      p_tag: filters.tag || null
     });
     if(error) return {error: error.message, items: []};
     return {items: data || []};
   }catch(err){
     return {error: err.message || 'Erro', items: []};
   }
+}
+
+// === ESTÁGIO 12: TAGS ===
+
+// Normaliza lista de tags (string com vírgulas OU array)
+// Retorna array de strings limpas (lowercase, sem espaços extras, max 30 chars cada, max 8 tags)
+function normalizeTagsList(input){
+  if(!input) return [];
+  let arr;
+  if(Array.isArray(input)){
+    arr = input;
+  } else if(typeof input === 'string'){
+    arr = input.split(',');
+  } else {
+    return [];
+  }
+  return arr
+    .map(t => (t||'').toString().trim().toLowerCase())
+    .filter(t => t.length > 0 && t.length <= 30)
+    .filter((t, i, a) => a.indexOf(t) === i) // dedup
+    .slice(0, 8);
+}
+
+// Sugestões padrão de tags (mostradas no editor de publicação)
+const SUGGESTED_TAGS = [
+  // Concursos comuns
+  'pf','prf','pcdf','pmdf','pf agente','pf escrivão','pf delegado',
+  'tre','trf','stm','stj','stf','tcu','tce','tcm',
+  'inss','agu','mpu','mpf','dpu','dpf',
+  'receita federal','auditor fiscal','auditor receita',
+  'banco do brasil','caixa','bndes','bacen','bcb',
+  'concurso unificado','cnu',
+  // Bancas
+  'cebraspe','cespe','fcc','fgv','vunesp','ibfc','quadrix','cesgranrio','consulplan',
+  // Ano-target
+  '2024','2025','2026',
+  // Gerais
+  'iniciante','intermediário','avançado','reta final','revisão',
+  'simulado','prova anterior','questões inéditas'
+];
+
+// Busca tags populares (top usadas pela comunidade)
+async function fetchPopularTags(limit){
+  if(!supa) return [];
+  try{
+    const { data, error } = await supa.rpc('get_popular_tags', {p_limit: limit||30});
+    if(error || !data) return [];
+    return data; // [{tag, usage_count}]
+  }catch(err){ return []; }
+}
+
+// === ESTÁGIO 10: RECOMENDAÇÕES ===
+
+// Busca materiais recomendados pra o usuário baseado em disciplinas + cargo/banca
+async function fetchRecommendedResources(limit){
+  if(!supa || !AUTH.user) return {items:[]};
+  // Coleta disciplinas do usuário
+  const myDisciplines = (DATA.disciplines||[])
+    .filter(d => d.active)
+    .map(d => d.name)
+    .filter(n => n && n.length > 1);
+  // Coleta tags candidatas baseadas no perfil (cargo + banca lowercase)
+  const examTags = [];
+  if(AUTH.profile){
+    if(AUTH.profile.target_exam_name){
+      // Tags possíveis: nome inteiro lowercase + palavras curtas
+      const nm = AUTH.profile.target_exam_name.toLowerCase();
+      examTags.push(nm);
+      // Sigla provável (3-6 letras maiúsculas no original)
+      const acronymMatch = AUTH.profile.target_exam_name.match(/\b[A-Z]{2,6}\b/);
+      if(acronymMatch) examTags.push(acronymMatch[0].toLowerCase());
+    }
+    if(AUTH.profile.target_exam_board){
+      examTags.push(AUTH.profile.target_exam_board.toLowerCase());
+    }
+  }
+  try{
+    const { data, error } = await supa.rpc('get_recommended_resources', {
+      p_disciplines: myDisciplines.length ? myDisciplines : null,
+      p_exam_tags: examTags.length ? examTags : null,
+      p_limit: limit || 8
+    });
+    if(error) return {items:[], error: error.message};
+    return {items: data || []};
+  }catch(err){ return {items:[], error: err.message}; }
 }
 
 // Busca recurso completo com payload (pra importar)
@@ -2526,6 +2665,7 @@ async function updatePublishedResource(resourceId, opts){
   if(opts.title) update.title = opts.title.trim().slice(0,120);
   if(opts.description !== undefined) update.description = (opts.description||'').trim().slice(0,500) || null;
   if(opts.discipline !== undefined) update.discipline = (opts.discipline||'').trim().slice(0,80) || null;
+  if(opts.tags !== undefined) update.tags = normalizeTagsList(opts.tags);
   if(opts.payload) update.payload = opts.payload;
   if(opts.question_count !== undefined) update.question_count = opts.question_count;
   update.updated_at = new Date().toISOString();
@@ -3268,11 +3408,15 @@ function renderTopicStatChip(stats){
 
 const DEFAULT_EXAM_NAME = 'Prova';
 function examDate(){
-  const d = (DATA&&DATA.config&&DATA.config.examDate)||DEFAULT_EXAM_DATE;
+  // Perfil tem prioridade quando logado
+  const profDate = (AUTH && AUTH.profile && AUTH.profile.target_exam_date) ? AUTH.profile.target_exam_date : null;
+  const d = profDate || (DATA&&DATA.config&&DATA.config.examDate)||DEFAULT_EXAM_DATE;
   return new Date(d);
 }
 function examName(){
-  return (DATA&&DATA.config&&DATA.config.examName)||DEFAULT_EXAM_NAME;
+  // Perfil tem prioridade quando logado
+  const profName = (AUTH && AUTH.profile && AUTH.profile.target_exam_name) ? AUTH.profile.target_exam_name : '';
+  return profName || (DATA&&DATA.config&&DATA.config.examName) || DEFAULT_EXAM_NAME;
 }
 function formatExamDate(){
   const d = examDate();
@@ -3722,11 +3866,14 @@ const ST = {
   profileLoading:false,
   profileError:null,
   // Discover (Estágio 3 social)
-  discoverFilter:{type:'caderno', discipline:'', search:'', sort:'newest'},
+  discoverFilter:{type:'caderno', discipline:'', search:'', sort:'newest', tag:''},
   discoverItems:[],
   discoverLoading:false,
   discoverPage:0,
   discoverHasMore:true,
+  // Estágio 10: recomendações
+  discoverRecommendations:[],
+  discoverRecommendationsLoaded:false,
   // Discover Pessoas (Estágio 5)
   discoverTab:'materials',     // 'materials' | 'people'
   peopleSearch:'',
@@ -5013,8 +5160,11 @@ function renderDashboard(){
   const weekSessions = ((DATA.pomo||{}).sessions||[]).filter(s=>s.date>=weekAgo);
   const weekFocusMin = Math.round(weekSessions.reduce((a,s)=>a+(s.durationSec||0),0)/60);
 
-  // ===== GREETING — saudação personalizada =====
-  const userName = (DATA.config.userName||'').trim();
+  // ===== GREETING — saudação personalizada (perfil é fonte de verdade) =====
+  // Prioridade: AUTH.profile.display_name > DATA.config.userName (legado) > genérico
+  const profileName = (AUTH.profile && AUTH.profile.display_name) ? AUTH.profile.display_name.trim() : '';
+  const legacyName = (DATA.config.userName||'').trim();
+  const userName = profileName || legacyName;
   const hour = new Date().getHours();
   let timeGreeting = 'Olá';
   if(hour<5)timeGreeting='Boa madrugada';
@@ -5024,12 +5174,18 @@ function renderDashboard(){
   const greeting = mk('div','dash-greeting');
   if(userName){
     greeting.innerHTML = `<span class="dg-time">${timeGreeting},</span> <b>${escapeHTML(userName)}</b>`;
+  } else if(isAuthed()){
+    // Logado mas sem perfil
+    greeting.innerHTML = `<span class="dg-time">${timeGreeting}, concurseiro(a)</span> <span class="dg-prompt">— crie seu <a href="#" class="dg-link" data-go-settings="1">perfil público</a> pra personalizar</span>`;
   } else {
-    greeting.innerHTML = `<span class="dg-time">${timeGreeting}</span> <span class="dg-prompt">— defina seu nome em <a href="#" class="dg-link" data-go-settings="1">Config</a></span>`;
+    greeting.innerHTML = `<span class="dg-time">${timeGreeting}, concurseiro(a)</span>`;
   }
-  // Subtitle: cargo + banca quando ambos preenchidos
-  const examBank = (DATA.config.examBank||'').trim();
-  const examNm = (DATA.config.examName||'').trim();
+  // Subtitle: cargo (do perfil) + banca (do perfil)
+  const profExamName = (AUTH.profile && AUTH.profile.target_exam_name) ? AUTH.profile.target_exam_name.trim() : '';
+  const profExamBoard = (AUTH.profile && AUTH.profile.target_exam_board) ? AUTH.profile.target_exam_board.trim() : '';
+  // Fallback pro legado se perfil não tiver
+  const examNm = profExamName || (DATA.config.examName||'').trim();
+  const examBank = profExamBoard || (DATA.config.examBank||'').trim();
   if(examNm || examBank){
     const sub = mk('div','dash-greeting-sub');
     const parts = [];
@@ -15585,10 +15741,10 @@ function renderDiscover(){
       ST.discoverFilter.type = t;
       ST.discoverPage = 0;
       ST.discoverItems = [];
-      // Atualiza estado visual dos botões
-      typeSeg.querySelectorAll('.df-seg-opt').forEach(b=>b.classList.remove('on'));
-      opt.classList.add('on');
-      loadDiscover();
+      // Recomendações só aparecem em 'caderno' — invalida cache pra recarregar quando voltar
+      ST.discoverRecommendationsLoaded = false;
+      ST.discoverRecommendations = [];
+      render();
     });
     typeSeg.appendChild(opt);
   });
@@ -15624,6 +15780,31 @@ function renderDiscover(){
   searchRow.appendChild(sortSel);
   filters.appendChild(searchRow);
   wrap.appendChild(filters);
+
+  // Chip de filtro de tag ativo (Estágio 12) — quando usuário clicou numa tag
+  if(ST.discoverFilter.tag){
+    const tagChip = mk('div','discover-active-tag');
+    tagChip.innerHTML = `
+      <span class="dat-icon">🏷️</span>
+      <span class="dat-label">Filtrando por: <b>#${escapeHTML(ST.discoverFilter.tag)}</b></span>
+      <button class="dat-rm" type="button" aria-label="Remover filtro">×</button>
+    `;
+    tagChip.querySelector('.dat-rm').addEventListener('click',()=>{
+      ST.discoverFilter.tag = '';
+      ST.discoverPage = 0;
+      ST.discoverItems = [];
+      render();
+    });
+    wrap.appendChild(tagChip);
+  }
+
+  // Seção de Recomendações (Estágio 10) — só na primeira página, sem filtros ativos, e tipo cadernos
+  const noFiltersActive = !ST.discoverFilter.search && !ST.discoverFilter.tag && !ST.discoverFilter.discipline;
+  if(AUTH.profile && noFiltersActive && ST.discoverFilter.type === 'caderno' && ST.discoverPage === 0){
+    const recoWrap = mk('div','discover-reco-wrap');
+    wrap.appendChild(recoWrap);
+    renderRecommendations(recoWrap);
+  }
 
   // Lista
   const listWrap = mk('div','discover-list');
@@ -15672,6 +15853,7 @@ function renderDiscover(){
       discipline: ST.discoverFilter.discipline || null,
       search: ST.discoverFilter.search || null,
       sort: ST.discoverFilter.sort,
+      tag: ST.discoverFilter.tag || null,
       limit,
       offset: ST.discoverPage * limit
     });
@@ -15888,8 +16070,94 @@ function renderPersonCard(profile, opts){
   return card;
 }
 
+// Estágio 10: renderiza seção "Recomendado pra você" no topo da descoberta
+async function renderRecommendations(container){
+  // Estado inicial: placeholder enquanto carrega
+  container.innerHTML = '';
+  // Já carregado nesta navegação? Usa cache
+  if(ST.discoverRecommendationsLoaded){
+    if(ST.discoverRecommendations.length === 0) return; // nada relevante — não mostra seção
+    drawReco(ST.discoverRecommendations);
+    return;
+  }
+  // Loading state sutil
+  const loading = mk('div','reco-loading');
+  loading.innerHTML = '<span class="txt3" style="font-size:12px">⚡ Buscando recomendações pra você...</span>';
+  container.appendChild(loading);
+
+  const result = await fetchRecommendedResources(8);
+  ST.discoverRecommendationsLoaded = true;
+  ST.discoverRecommendations = result.items || [];
+  container.innerHTML = '';
+  if(!result.items || result.items.length === 0){
+    return; // Sem recomendações relevantes — não mostra a seção
+  }
+  drawReco(result.items);
+
+  function drawReco(items){
+    const head = mk('div','reco-head');
+    const ttl = mk('div','reco-title');
+    ttl.innerHTML = '⚡ <b>Recomendado pra você</b>';
+    head.appendChild(ttl);
+    const sub = mk('div','reco-sub');
+    sub.textContent = 'Materiais relevantes baseados nas suas disciplinas e concurso alvo';
+    head.appendChild(sub);
+    container.appendChild(head);
+
+    const grid = mk('div','reco-grid');
+    items.forEach(item=>{
+      const card = renderRecoCard(item);
+      grid.appendChild(card);
+    });
+    container.appendChild(grid);
+
+    // Separador visual
+    const sep = mk('div','reco-sep');
+    sep.innerHTML = '<span>todos os materiais ↓</span>';
+    container.appendChild(sep);
+  }
+}
+
+// Card compacto de recomendação (versão menor que renderResourceCard)
+function renderRecoCard(item){
+  const card = mk('div','reco-card');
+  const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : '🧠';
+  // Badge de motivo da recomendação
+  const reasonLabel = {
+    'exam_tag': '🎯 Pro seu concurso',
+    'discipline_match': '📘 Sua disciplina',
+    'popular': '🔥 Popular',
+    'recent': '🆕 Recente'
+  }[item.match_reason] || '';
+  if(reasonLabel){
+    const badge = mk('div','reco-badge');
+    badge.textContent = reasonLabel;
+    card.appendChild(badge);
+  }
+  // Title
+  const title = mk('div','reco-card-title');
+  title.innerHTML = `<span>${typeIcon}</span> ${escapeHTML(item.title)}`;
+  card.appendChild(title);
+  // Author
+  const author = mk('div','reco-card-author');
+  author.innerHTML = `por <b>@${escapeHTML(item.owner_username)}</b>`;
+  card.appendChild(author);
+  // Stats compactas
+  const stats = mk('div','reco-card-stats');
+  const sParts = [];
+  if(item.resource_type === 'caderno' && item.question_count) sParts.push(`${item.question_count} q.`);
+  if(item.discipline) sParts.push(escapeHTML(item.discipline));
+  if(item.total_uses > 0) sParts.push(`${item.total_uses} uso${item.total_uses>1?'s':''}`);
+  if(item.useful_pct >= 50 && item.rated_count > 0) sParts.push(`👍 ${item.useful_pct}%`);
+  stats.innerHTML = sParts.join(' · ');
+  card.appendChild(stats);
+  // Card inteiro abre preview
+  card.style.cursor = 'pointer';
+  card.addEventListener('click',()=>showResourcePreviewModal(item));
+  return card;
+}
+
 function renderResourceCard(item){
-  const card = mk('div','resource-card card');
   // Badge de tipo
   const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : '🧠';
   // Header: título + tipo
@@ -15949,6 +16217,26 @@ function renderResourceCard(item){
     stats.appendChild(pStat);
   }
   card.appendChild(stats);
+
+  // Tags clicáveis (Estágio 12)
+  if(item.tags && item.tags.length > 0){
+    const tagsBox = mk('div','rc-tags');
+    item.tags.slice(0, 6).forEach(t=>{
+      const tagChip = mk('button','rc-tag-chip');tagChip.type='button';
+      tagChip.textContent = '#' + t;
+      tagChip.title = `Filtrar por "${t}"`;
+      tagChip.addEventListener('click',e=>{
+        e.stopPropagation();
+        // Aplica filtro de tag na descoberta
+        ST.discoverFilter.tag = t;
+        ST.discoverPage = 0;
+        ST.discoverItems = [];
+        render();
+      });
+      tagsBox.appendChild(tagChip);
+    });
+    card.appendChild(tagsBox);
+  }
 
   // Actions
   const actions = mk('div','rc-actions');
@@ -16400,6 +16688,11 @@ function showUpdatePublicationModal(notebook, resource, opts){
     m.appendChild(info);
   }
 
+  // Editor de tags (Estágio 12) — sempre disponível, inclusive no editOnly
+  const tagsEditor = renderTagsEditor(resource.tags || [], {help: 'Tags ajudam outros concurseiros a encontrar.'});
+  tagsEditor.wrap.style.marginBottom = '.875rem';
+  m.appendChild(tagsEditor.wrap);
+
   const actions = mk('div','flex');actions.style.cssText='gap:8px;justify-content:flex-end';
   const cancelBtn = mkBtn('Cancelar','btn btn-sm');
   cancelBtn.addEventListener('click',closeModal);
@@ -16415,7 +16708,8 @@ function showUpdatePublicationModal(notebook, resource, opts){
       const updateOpts = {
         title: titleIn.value,
         description: descIn.value,
-        discipline: discIn.value
+        discipline: discIn.value,
+        tags: tagsEditor.getTags()
       };
       if(!opts.editOnly){
         // Reenvia payload completo
@@ -16450,6 +16744,111 @@ function showUpdatePublicationModal(notebook, resource, opts){
     }
   });
   showModal(m);
+}
+
+// Helper: cria editor de tags reutilizável (chips com X + input pra adicionar)
+// Retorna {wrap: HTMLElement, getTags: () => string[]}
+function renderTagsEditor(initialTags, opts){
+  opts = opts || {};
+  let tags = normalizeTagsList(initialTags || []);
+
+  const wrap = mk('div','tags-editor');
+  const lbl = mk('label');lbl.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px';
+  lbl.textContent = opts.label || 'Tags (opcional, máx. 8)';
+  wrap.appendChild(lbl);
+
+  if(opts.help){
+    const help = mk('p','txt3');help.style.cssText='margin:0 0 8px;font-size:11.5px;line-height:1.45';
+    help.textContent = opts.help;
+    wrap.appendChild(help);
+  }
+
+  // Container de chips ativas
+  const chipsBox = mk('div','tags-editor-chips');
+  wrap.appendChild(chipsBox);
+
+  // Input pra digitar nova tag
+  const inputRow = mk('div','tags-editor-input-row');
+  const input = mk('input');input.type='text';input.maxLength=30;
+  input.placeholder = 'Digite e Enter, ou clique nas sugestões abaixo...';
+  input.className = 'tags-editor-input';
+  inputRow.appendChild(input);
+  wrap.appendChild(inputRow);
+
+  // Sugestões (4-6 tags populares + customizadas)
+  const suggBox = mk('div','tags-editor-suggestions');
+  wrap.appendChild(suggBox);
+
+  function renderChips(){
+    chipsBox.innerHTML = '';
+    if(tags.length === 0){
+      const empty = mk('span','tags-editor-empty');
+      empty.textContent = 'Nenhuma tag ainda';
+      chipsBox.appendChild(empty);
+      return;
+    }
+    tags.forEach(t=>{
+      const chip = mk('span','tags-editor-chip');
+      chip.innerHTML = `<span>${escapeHTML(t)}</span><button type="button" class="tags-editor-rm" aria-label="Remover">×</button>`;
+      chip.querySelector('.tags-editor-rm').addEventListener('click',()=>{
+        tags = tags.filter(x => x !== t);
+        renderChips();
+        renderSuggs();
+      });
+      chipsBox.appendChild(chip);
+    });
+  }
+
+  function addTag(t){
+    const norm = (t||'').toString().trim().toLowerCase();
+    if(!norm || norm.length > 30) return false;
+    if(tags.includes(norm)) return false;
+    if(tags.length >= 8){ alert('Máximo de 8 tags'); return false; }
+    tags.push(norm);
+    renderChips();
+    renderSuggs();
+    return true;
+  }
+
+  function renderSuggs(){
+    suggBox.innerHTML = '';
+    // Filtra sugestões removendo as já adicionadas
+    const available = SUGGESTED_TAGS.filter(s => !tags.includes(s.toLowerCase())).slice(0, 12);
+    if(available.length === 0) return;
+    const lbl = mk('div');lbl.style.cssText='font-size:10.5px;color:var(--text3);font-weight:600;margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px';
+    lbl.textContent = 'Sugestões:';
+    suggBox.appendChild(lbl);
+    const list = mk('div','tags-editor-suggs-list');
+    available.forEach(s=>{
+      const sb = mk('button','tags-editor-sugg');sb.type='button';
+      sb.textContent = '+ ' + s;
+      sb.addEventListener('click',()=>{ addTag(s); });
+      list.appendChild(sb);
+    });
+    suggBox.appendChild(list);
+  }
+
+  input.addEventListener('keydown',e=>{
+    if(e.key === 'Enter' || e.key === ',' || e.key === ';'){
+      e.preventDefault();
+      const v = input.value.trim();
+      if(v){
+        if(addTag(v)) input.value = '';
+      }
+    } else if(e.key === 'Backspace' && !input.value && tags.length > 0){
+      tags.pop();
+      renderChips();
+      renderSuggs();
+    }
+  });
+
+  renderChips();
+  renderSuggs();
+
+  return {
+    wrap,
+    getTags: () => tags.slice()
+  };
 }
 
 function showPublishNotebookModal(notebook){
@@ -16488,6 +16887,11 @@ function showPublishNotebookModal(notebook){
   info.innerHTML = `📝 <b>${(notebook.questionIds||[]).length}</b> questões serão publicadas`;
   m.appendChild(info);
 
+  // Editor de tags (Estágio 12)
+  const tagsEditor = renderTagsEditor([], {help: 'Tags ajudam outros concurseiros a encontrar seu material. Use siglas do concurso, banca, ano, dificuldade.'});
+  tagsEditor.wrap.style.marginBottom = '.875rem';
+  m.appendChild(tagsEditor.wrap);
+
   const actions = mk('div','flex');actions.style.cssText='gap:8px;justify-content:flex-end';
   const cancelBtn = mkBtn('Cancelar','btn btn-sm');
   cancelBtn.addEventListener('click',closeModal);
@@ -16512,7 +16916,8 @@ function showPublishNotebookModal(notebook){
       const result = await publishNotebook(fullData, {
         title: titleIn.value,
         description: descIn.value,
-        discipline: discIn.value
+        discipline: discIn.value,
+        tags: tagsEditor.getTags()
       });
       // Marco social: publicou material
       try{ recordPublishMilestone(result); }catch(e){}
@@ -16573,6 +16978,10 @@ function showPublishSourceModal(source){
   info.innerHTML = `📚 Tipo: <b>${source.type||'?'}</b> · Conteúdo: <b>${source.contentType||'?'}</b> · Tamanho: <b>${sizeKb} KB</b>`;
   m.appendChild(info);
 
+  const tagsEditor = renderTagsEditor([], {help: 'Tags ajudam outros concurseiros a encontrar sua fonte.'});
+  tagsEditor.wrap.style.marginBottom = '.875rem';
+  m.appendChild(tagsEditor.wrap);
+
   const actions = mk('div','flex');actions.style.cssText='gap:8px;justify-content:flex-end';
   const cancelBtn = mkBtn('Cancelar','btn btn-sm');
   cancelBtn.addEventListener('click',closeModal);
@@ -16588,7 +16997,8 @@ function showPublishSourceModal(source){
       const result = await publishSource(source, {
         title: titleIn.value,
         description: descIn.value,
-        discipline: discIn.value
+        discipline: discIn.value,
+        tags: tagsEditor.getTags()
       });
       try{ recordPublishMilestone(result); }catch(e){}
       closeModal();
@@ -16649,6 +17059,10 @@ function showPublishTopicProfileModal(disciplineId, topic){
   info.innerHTML = `🧠 Markdown: <b>${charCount.toLocaleString('pt-BR')}</b> caracteres${hasAudio?' · 🎙️ Inclui roteiro de áudio':''}`;
   m.appendChild(info);
 
+  const tagsEditor = renderTagsEditor([], {help: 'Tags ajudam outros concurseiros a encontrar este perfil.'});
+  tagsEditor.wrap.style.marginBottom = '.875rem';
+  m.appendChild(tagsEditor.wrap);
+
   const actions = mk('div','flex');actions.style.cssText='gap:8px;justify-content:flex-end';
   const cancelBtn = mkBtn('Cancelar','btn btn-sm');
   cancelBtn.addEventListener('click',closeModal);
@@ -16669,7 +17083,8 @@ function showPublishTopicProfileModal(disciplineId, topic){
       }, {
         title: titleIn.value,
         description: descIn.value,
-        discipline: discIn.value
+        discipline: discIn.value,
+        tags: tagsEditor.getTags()
       });
       try{ recordPublishMilestone(result); }catch(e){}
       closeModal();
@@ -17009,56 +17424,81 @@ function renderSettings(){
     if(socialCard) wrap.appendChild(socialCard);
   }
 
-  // Perfil + Prova
+  // Perfil + Prova — quando logado e tem perfil, mostra valores read-only com link pra editar
+  // Caso contrário (sem login OU sem perfil), mostra formulário legado
   const examCard = mk('div','card');examCard.style.marginTop='1rem';
   examCard.appendChild(sLabel('Seu perfil e prova'));
-  const examDesc = mk('p','txt2');examDesc.style.marginBottom='.875rem';
-  examDesc.textContent='Personalize como o app te chama e os dados do concurso que você está estudando.';
-  examCard.appendChild(examDesc);
 
-  // Nome (chamado de) — campo único acima
-  const nameRow = mk('div');nameRow.style.marginBottom='.875rem';
-  const lblName = mk('label');lblName.textContent='Como você prefere ser chamado(a)';
-  const inpName = mk('input');inpName.type='text';inpName.placeholder='Ex: Jean';
-  inpName.value = DATA.config.userName||'';
-  inpName.addEventListener('change',e=>{DATA.config.userName=e.target.value.trim();save();render();});
-  nameRow.appendChild(lblName);nameRow.appendChild(inpName);
-  examCard.appendChild(nameRow);
+  if(isAuthed() && AUTH.profile){
+    // Versão simplificada — dados vêm do perfil, edição é em "🌐 Perfil público" acima
+    const desc = mk('p','txt2');desc.style.cssText='margin-bottom:.875rem;font-size:13px;line-height:1.55';
+    desc.innerHTML = 'Os dados abaixo vêm do seu <b>perfil público</b>. Pra editar, use a seção "🌐 Perfil público" acima.';
+    examCard.appendChild(desc);
 
-  const examGrid = mk('div','grid g2');
-  // Nome da prova
-  const col1 = mk('div');
-  const lblN = mk('label');lblN.textContent='Nome do cargo';
-  const inpN = mk('input');inpN.type='text';inpN.placeholder='Ex: Polícia Legislativa Federal';
-  inpN.value = DATA.config.examName||'';
-  inpN.addEventListener('change',e=>{DATA.config.examName=e.target.value.trim()||DEFAULT_EXAM_NAME;save();render();});
-  col1.appendChild(lblN);col1.appendChild(inpN);
-  // Banca
-  const col2 = mk('div');
-  const lblB = mk('label');lblB.textContent='Banca examinadora';
-  const inpB = mk('input');inpB.type='text';inpB.placeholder='Ex: Cebraspe, FGV, IBFC';
-  inpB.value = DATA.config.examBank||'';
-  inpB.addEventListener('change',e=>{DATA.config.examBank=e.target.value.trim();save();render();});
-  col2.appendChild(lblB);col2.appendChild(inpB);
-  examGrid.appendChild(col1);examGrid.appendChild(col2);
-  examCard.appendChild(examGrid);
+    const summary = mk('div');summary.style.cssText='display:flex;flex-direction:column;gap:8px;padding:.75rem;background:var(--surface2);border-radius:8px';
+    const profile = AUTH.profile;
+    const rows = [
+      {icon:'👤', label:'Nome exibido', value: profile.display_name || '—'},
+      {icon:'🎯', label:'Cargo / concurso', value: profile.target_exam_name || '— (opcional)'},
+      {icon:'🏛️', label:'Banca examinadora', value: profile.target_exam_board || '— (opcional)'},
+      {icon:'📅', label:'Data da prova', value: profile.target_exam_date ? new Date(profile.target_exam_date).toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}) : '— (opcional)'}
+    ];
+    rows.forEach(r=>{
+      const row = mk('div');row.style.cssText='display:flex;align-items:center;gap:10px;font-size:13px';
+      row.innerHTML = `<span style="font-size:14px;flex-shrink:0">${r.icon}</span><span style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600;min-width:140px">${r.label}</span><span style="color:var(--text);font-weight:500">${escapeHTML(r.value)}</span>`;
+      summary.appendChild(row);
+    });
+    examCard.appendChild(summary);
+  } else {
+    // Não logado ou sem perfil — mantém formulário legado
+    const examDesc = mk('p','txt2');examDesc.style.marginBottom='.875rem';
+    examDesc.textContent='Personalize como o app te chama e os dados do concurso que você está estudando.';
+    examCard.appendChild(examDesc);
 
-  // Data
-  const dateRow = mk('div');dateRow.style.marginTop='.875rem';
-  const lblD = mk('label');lblD.textContent='Data da prova';
-  const inpD = mk('input');inpD.type='date';inpD.style.maxWidth='240px';
-  const d = examDate();
-  const pad = n=>String(n).padStart(2,'0');
-  inpD.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-  inpD.addEventListener('change',e=>{
-    const v = e.target.value;
-    if(v){
-      DATA.config.examDate = v+'T13:00:00-03:00';
-      save();render();
-    }
-  });
-  dateRow.appendChild(lblD);dateRow.appendChild(inpD);
-  examCard.appendChild(dateRow);
+    // Nome (chamado de) — campo único acima
+    const nameRow = mk('div');nameRow.style.marginBottom='.875rem';
+    const lblName = mk('label');lblName.textContent='Como você prefere ser chamado(a)';
+    const inpName = mk('input');inpName.type='text';inpName.placeholder='Ex: Jean';
+    inpName.value = DATA.config.userName||'';
+    inpName.addEventListener('change',e=>{DATA.config.userName=e.target.value.trim();save();render();});
+    nameRow.appendChild(lblName);nameRow.appendChild(inpName);
+    examCard.appendChild(nameRow);
+
+    const examGrid = mk('div','grid g2');
+    // Nome da prova
+    const col1 = mk('div');
+    const lblN = mk('label');lblN.textContent='Nome do cargo';
+    const inpN = mk('input');inpN.type='text';inpN.placeholder='Ex: Polícia Legislativa Federal';
+    inpN.value = DATA.config.examName||'';
+    inpN.addEventListener('change',e=>{DATA.config.examName=e.target.value.trim()||DEFAULT_EXAM_NAME;save();render();});
+    col1.appendChild(lblN);col1.appendChild(inpN);
+    // Banca
+    const col2 = mk('div');
+    const lblB = mk('label');lblB.textContent='Banca examinadora';
+    const inpB = mk('input');inpB.type='text';inpB.placeholder='Ex: Cebraspe, FGV, IBFC';
+    inpB.value = DATA.config.examBank||'';
+    inpB.addEventListener('change',e=>{DATA.config.examBank=e.target.value.trim();save();render();});
+    col2.appendChild(lblB);col2.appendChild(inpB);
+    examGrid.appendChild(col1);examGrid.appendChild(col2);
+    examCard.appendChild(examGrid);
+
+    // Data
+    const dateRow = mk('div');dateRow.style.marginTop='.875rem';
+    const lblD = mk('label');lblD.textContent='Data da prova';
+    const inpD = mk('input');inpD.type='date';inpD.style.maxWidth='240px';
+    const d = examDate();
+    const pad = n=>String(n).padStart(2,'0');
+    inpD.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    inpD.addEventListener('change',e=>{
+      const v = e.target.value;
+      if(v){
+        DATA.config.examDate = v+'T13:00:00-03:00';
+        save();render();
+      }
+    });
+    dateRow.appendChild(lblD);dateRow.appendChild(inpD);
+    examCard.appendChild(dateRow);
+  }
 
   // Help / tutorial reopener
   const helpRow = mk('div');helpRow.style.marginTop='1rem';
@@ -17841,8 +18281,8 @@ function showShareStoryModal(){
   if(!g)return;
   const view = goalDailyView(g);
   const yearly = computeYearlyActivity();
-  const userName = (DATA.config?.userName||'').trim();
-  const examName = (DATA.config?.examName||'').trim() || 'Concurso';
+  const userName = (AUTH.profile && AUTH.profile.display_name) || (DATA.config?.userName||'').trim();
+  const examName = (AUTH.profile && AUTH.profile.target_exam_name) || (DATA.config?.examName||'').trim() || 'Concurso';
 
   const m = mk('div');
   m.style.cssText='max-width:420px';
