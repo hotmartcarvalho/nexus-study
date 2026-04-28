@@ -2207,7 +2207,7 @@ async function fetchUserProfile(force){
   try{
     const { data, error } = await supa
       .from('profiles')
-      .select('id, username, display_name, visibility, username_edits_count, username_last_edit, created_at, target_exam_name, target_exam_board, target_exam_date')
+      .select('id, username, display_name, visibility, username_edits_count, username_last_edit, created_at, target_exam_name, target_exam_board, target_exam_date, target_type, target_role, target_institution')
       .eq('id', AUTH.user.id)
       .maybeSingle();
     AUTH.profileLoading = false;
@@ -2321,7 +2321,7 @@ async function fetchPublicProfile(username){
   try{
     const { data, error } = await supa
       .from('profiles')
-      .select('id, username, display_name, visibility, created_at, target_exam_name, target_exam_board, target_exam_date')
+      .select('id, username, display_name, visibility, created_at, target_exam_name, target_exam_board, target_exam_date, target_type, target_role, target_institution')
       .eq('username', v)
       .maybeSingle();
     if(error) return {error: error.message};
@@ -2351,6 +2351,18 @@ async function updateExamFields(opts){
   }
   if(opts.target_exam_date !== undefined){
     update.target_exam_date = opts.target_exam_date || null;
+  }
+  if(opts.target_type !== undefined){
+    const valid = ['concurso','vestibular','oab','enem','faculdade','certificacao','outro'];
+    update.target_type = valid.includes(opts.target_type) ? opts.target_type : 'concurso';
+  }
+  if(opts.target_role !== undefined){
+    const v = (opts.target_role||'').trim().slice(0,120);
+    update.target_role = v || null;
+  }
+  if(opts.target_institution !== undefined){
+    const v = (opts.target_institution||'').trim().slice(0,120);
+    update.target_institution = v || null;
   }
   update.updated_at = new Date().toISOString();
   const { error } = await supa.from('profiles').update(update).eq('id', AUTH.user.id);
@@ -3687,44 +3699,318 @@ const DISC_COLORS = ['#0F6E56','#185FA5','#6C5CE7','#B07316','#D4537E','#D94B4A'
 // Padroniza nomenclatura para facilitar busca, descoberta e estatísticas globais.
 // Usuário pode escolher da lista ou digitar nome livre.
 const CANONICAL_DISCIPLINES = [
-  // Conhecimentos básicos
-  'Língua Portuguesa','Redação Oficial','Inglês','Espanhol',
-  'Raciocínio Lógico','Matemática','Matemática Financeira','Estatística',
+  // === BÁSICAS ===
+  'Língua Portuguesa','Gramática','Ortografia','Redação','Redação Oficial','Interpretação de Texto','Literatura',
+  'Inglês','Espanhol','Francês','Alemão','Italiano','Mandarim',
+  'Raciocínio Lógico','Raciocínio Lógico-Matemático','Raciocínio Quantitativo',
+  'Matemática','Matemática Básica','Matemática Financeira','Estatística','Estatística Aplicada',
   'Informática','Noções de Informática','Tecnologia da Informação','Lógica de Programação',
-  'Atualidades','Conhecimentos Gerais','História do Brasil','Geografia do Brasil',
-  // Direito
+  'Atualidades','Conhecimentos Gerais','Cultura Geral','Realidade Brasileira',
+
+  // === HUMANAS / VESTIBULAR ===
+  'História do Brasil','História Geral','História Contemporânea','História Antiga','História Medieval','História Moderna',
+  'Geografia do Brasil','Geografia Geral','Geopolítica','Geografia Humana','Geografia Física',
+  'Sociologia','Antropologia','Filosofia','Filosofia da Educação',
+  'Psicologia','Psicologia Social','Psicologia Educacional','Psicologia Clínica','Psicologia Organizacional',
+  'Pedagogia','Didática','Educação','Educação Inclusiva','Educação Especial','Política Educacional',
+  'Ciência Política','Ciências Políticas','Relações Internacionais','Defesa Nacional',
+
+  // === EXATAS / VESTIBULAR ===
+  'Física','Física Mecânica','Física Térmica','Eletromagnetismo','Óptica','Física Moderna',
+  'Química','Química Geral','Química Orgânica','Química Inorgânica','Físico-Química','Bioquímica',
+  'Biologia','Biologia Celular','Botânica','Zoologia','Genética','Ecologia','Evolução','Microbiologia','Histologia','Embriologia','Fisiologia',
+  'Cálculo','Álgebra','Álgebra Linear','Geometria','Geometria Analítica','Trigonometria','Probabilidade',
+
+  // === DIREITO (ampla) ===
   'Direito Constitucional','Direito Administrativo','Direito Civil','Direito Processual Civil',
   'Direito Penal','Direito Processual Penal','Direito Penal Militar','Direito Processual Penal Militar',
   'Direito do Trabalho','Direito Processual do Trabalho','Direito Tributário','Direito Financeiro',
-  'Direito Empresarial','Direito Comercial','Direito Internacional','Direito Internacional Público',
-  'Direito Ambiental','Direito Eleitoral','Direito Previdenciário','Direito Agrário',
+  'Direito Empresarial','Direito Comercial','Direito Societário','Direito Falimentar','Direito Bancário',
+  'Direito Internacional','Direito Internacional Público','Direito Internacional Privado',
+  'Direito Ambiental','Direito Eleitoral','Direito Previdenciário','Direito Agrário','Direito Urbanístico',
   'Direito do Consumidor','Direito da Criança e do Adolescente','Direitos Humanos',
-  'Legislação Específica','Legislação Aplicada','Ética no Serviço Público',
-  // Administração e gestão
-  'Administração Pública','Administração Geral','Administração Financeira e Orçamentária',
+  'Legislação Específica','Legislação Aplicada','Ética no Serviço Público','Ética Profissional',
+  'Direito Notarial e Registral','Direito Marítimo','Direito Aeronáutico','Direito Digital','Direito da Tecnologia',
+  'Hermenêutica Jurídica','Filosofia do Direito','Sociologia Jurídica','Teoria Geral do Direito','História do Direito',
+  'Prática Forense','Lei de Improbidade Administrativa','Lei de Acesso à Informação','LGPD',
+
+  // === ADMINISTRAÇÃO E GESTÃO ===
+  'Administração Pública','Administração Geral','Administração Financeira e Orçamentária','Administração de Recursos Materiais',
   'Gestão de Pessoas','Gestão de Projetos','Gestão de Processos','Gestão da Qualidade',
-  'Gestão Estratégica','Gestão de Contratos','Licitações e Contratos','Logística',
-  'Arquivologia','Biblioteconomia','Auditoria','Controle Interno',
-  // Contabilidade e economia
+  'Gestão Estratégica','Gestão de Contratos','Gestão de Riscos','Gestão Documental',
+  'Licitações e Contratos','Logística','Compras Públicas','Marketing','Marketing Digital',
+  'Arquivologia','Biblioteconomia','Auditoria','Controle Interno','Controle Externo',
+  'Comportamento Organizacional','Cultura Organizacional','Clima Organizacional',
+
+  // === CONTABILIDADE E ECONOMIA ===
   'Contabilidade Geral','Contabilidade Pública','Contabilidade de Custos','Contabilidade Avançada',
-  'Análise de Demonstrações Contábeis','Auditoria Contábil',
-  'Economia','Macroeconomia','Microeconomia','Economia Brasileira','Finanças Públicas',
-  // Segurança pública (PF, PRF, PCs, PMs)
+  'Contabilidade Tributária','Contabilidade Comercial','Análise de Demonstrações Contábeis','Auditoria Contábil',
+  'Perícia Contábil','Atuária',
+  'Economia','Macroeconomia','Microeconomia','Economia Brasileira','Economia Internacional',
+  'Finanças','Finanças Públicas','Mercado Financeiro','Mercado de Capitais',
+
+  // === SEGURANÇA PÚBLICA / POLICIAL ===
   'Legislação de Trânsito','Direção Defensiva','Mecânica Básica','Primeiros Socorros',
-  'Investigação Criminal','Polícia Judiciária','Criminologia','Medicina Legal','Identificação Criminal',
-  'Inteligência Policial','Análise Criminal','Defesa Pessoal','Tiro Policial',
-  // Tributário e fiscal
+  'Investigação Criminal','Polícia Judiciária','Polícia Administrativa','Criminologia','Vitimologia',
+  'Medicina Legal','Identificação Criminal','Identificação Humana','Papiloscopia',
+  'Inteligência Policial','Atividade de Inteligência','Análise Criminal','Análise de Dados',
+  'Defesa Pessoal','Tiro Policial','Armamento e Tiro','Munição e Armamento',
+  'Criminalística','Balística','Documentoscopia','Local de Crime','Locais de Crime',
+  'Toxicologia Forense','Genética Forense','Antropologia Forense','Entomologia Forense',
+  'Operações Policiais','Patrulhamento','Abordagem Policial','Uso da Força',
+  'Direitos Humanos Aplicados','Vitimização','Profiling Criminal',
+
+  // === TRIBUTÁRIO E FISCAL ===
   'Auditoria Fiscal','Tributos Federais','Tributos Estaduais','Tributos Municipais',
-  'ICMS','ISS','IPI','Imposto de Renda','Contribuições Previdenciárias',
-  // Saúde (Coren, Crefono, etc.)
-  'Saúde Pública','SUS','Epidemiologia','Vigilância Sanitária','Enfermagem',
-  // Engenharia / técnico
-  'Desenho Técnico','Mecânica Geral','Eletricidade Básica','Hidráulica','Saneamento',
-  // Outros
-  'Sociologia','Antropologia','Filosofia','Psicologia','Pedagogia','Didática',
-  'Ciência Política','Ciências Políticas','Relações Internacionais','Defesa Nacional',
-  'Realidade Brasileira','Cultura Geral'
+  'ICMS','ISS','IPI','IPTU','IPVA','ITCMD','Imposto de Renda','Contribuições Previdenciárias',
+  'PIS/COFINS','Substituição Tributária','Planejamento Tributário',
+
+  // === SAÚDE ===
+  'Saúde Pública','SUS','Epidemiologia','Bioestatística','Vigilância Sanitária','Vigilância Epidemiológica',
+  'Enfermagem','Enfermagem Clínica','Enfermagem em Saúde Pública','Saúde da Família',
+  'Anatomia','Fisiologia Humana','Patologia','Farmacologia','Nutrição',
+  'Psiquiatria','Cardiologia','Pediatria','Geriatria','Ginecologia','Obstetrícia',
+
+  // === ENGENHARIA E TÉCNICAS ===
+  'Desenho Técnico','Mecânica Geral','Resistência dos Materiais','Termodinâmica',
+  'Eletricidade Básica','Eletrotécnica','Eletrônica','Eletromagnetismo Aplicado',
+  'Hidráulica','Hidrologia','Saneamento','Tratamento de Água','Tratamento de Esgoto',
+  'Construção Civil','Topografia','Materiais de Construção','Estruturas',
+  'Refrigeração e Climatização','Automação','Manutenção',
+
+  // === TI / COMPUTAÇÃO ===
+  'Banco de Dados','Engenharia de Software','Arquitetura de Software','Padrões de Projeto',
+  'Sistemas Operacionais','Redes de Computadores','Segurança da Informação','Criptografia',
+  'Programação Orientada a Objetos','Algoritmos','Estruturas de Dados',
+  'Cloud Computing','DevOps','Inteligência Artificial','Machine Learning','Data Science',
+  'Governança de TI','ITIL','COBIT','Análise de Sistemas','UX/UI','Desenvolvimento Web',
+  'Desenvolvimento Mobile','Desenvolvimento Back-end','Desenvolvimento Front-end',
+
+  // === ARTE, CULTURA, COMUNICAÇÃO ===
+  'História da Arte','Artes Visuais','Música','Teoria Musical','Teatro','Dança',
+  'Comunicação Social','Jornalismo','Publicidade e Propaganda','Relações Públicas','Cinema',
+
+  // === OUTRAS ===
+  'Espanhol Aplicado','Inglês Técnico','Inglês Instrumental','Espanhol Instrumental',
+  'Estudos Bíblicos','Teologia','Religiões Comparadas',
+  'Educação Física','Esportes','Treinamento Esportivo',
+  'Agronomia','Veterinária','Zootecnia','Agroecologia','Engenharia Agronômica',
+  'Arquitetura','Urbanismo','Design','Design Gráfico','Design de Produto'
 ];
+
+// === LISTA CANÔNICA DE BANCAS EXAMINADORAS ===
+const CANONICAL_BANKS = [
+  // Federais grandes
+  'Cebraspe','CESPE/Cebraspe','FCC','FGV','Vunesp','IBFC','Quadrix','Cesgranrio','Consulplan',
+  'Aocp','IDIB','Instituto AOCP','Instituto Pró-Município','Instituto Brasileiro de Educação',
+  'Conscam','Conpass','Crescer Consultorias','Centro de Seleção e de Promoção de Eventos',
+  'Comperve','Coperve','Coseac','Copeve','Copese','Concepção Cespe',
+  'Esaf','ESAF','Cesgranrio','UFRJ','UFMG','Esag','Ibam','IBAM','IBADE','IBADE',
+  'IDECAN','INAZ','Funrio','Funcab','Funcefet','FUNDEP','FUNCAB','Fundatec','Fundep','Fundape',
+  // Estaduais e regionais
+  'Vunesp','Aocp','Iades','IADES','UEL','UEM','UEPG','UNESP','Comvest',
+  'Marinha','Exército','Aeronáutica','Comissão de Concursos do Exército',
+  // Internacionais (pra concursos com inglês)
+  'British Council','TOEFL','IELTS','Cambridge English',
+  // Para vestibular
+  'INEP','ENEM','Fuvest','UNICAMP','VUNESP','UERJ','UFRGS','UNIFESP'
+];
+
+// === LISTA CANÔNICA DE CARGOS / CONCURSOS / PROVAS ===
+// Inclui concursos federais, estaduais, municipais, vestibulares, OAB, ENEM
+const CANONICAL_TARGET_ROLES = [
+  // === POLÍCIAS FEDERAIS / FEDERAIS ===
+  'Polícia Federal — Agente','Polícia Federal — Escrivão','Polícia Federal — Delegado','Polícia Federal — Papiloscopista','Polícia Federal — Perito Criminal','Polícia Federal — Administrativo',
+  'Polícia Rodoviária Federal — PRF',
+  'Polícia Penal Federal','Depen','Polícia Civil DF — PCDF Agente','Polícia Civil DF — PCDF Escrivão','Polícia Civil DF — PCDF Delegado','Polícia Civil DF — PCDF Perito',
+  'Polícia Militar DF — PMDF','Bombeiros DF — CBMDF','Polícia Legislativa Federal — Câmara','Polícia Legislativa Federal — Senado',
+  'ABIN — Agente','ABIN — Oficial de Inteligência','ABIN — Oficial Técnico',
+
+  // === POLÍCIAS ESTADUAIS (genérico, usuário customiza) ===
+  'Polícia Civil — Agente','Polícia Civil — Escrivão','Polícia Civil — Delegado','Polícia Civil — Perito',
+  'Polícia Militar — Soldado','Polícia Militar — Oficial','Polícia Penal — Agente','Bombeiros Militar — Soldado','Bombeiros Militar — Oficial',
+
+  // === FORÇAS ARMADAS ===
+  'Marinha — Praça','Marinha — Oficial','Marinha — EAOM','EFOMM','EAM',
+  'Exército — Praça','Exército — Oficial','EsPCEx','AMAN','EsSA','EAS',
+  'Aeronáutica — Praça','Aeronáutica — Oficial','EPCAR','AFA','EEAR','EAOEAR',
+
+  // === RECEITA E FISCAIS ===
+  'Receita Federal — Auditor Fiscal','Receita Federal — Analista Tributário',
+  'Auditor Fiscal Estadual','Auditor Fiscal Municipal','SEFAZ Estadual',
+  'Procurador da Fazenda Nacional','Procurador Federal','AGU — Advogado da União','AGU — Procurador',
+
+  // === TRIBUNAIS E MINISTÉRIO PÚBLICO ===
+  'Tribunal Regional Federal — TRF','TRF — Analista','TRF — Técnico',
+  'Tribunal Regional Eleitoral — TRE','TRE — Analista','TRE — Técnico',
+  'Tribunal Regional do Trabalho — TRT','TRT — Analista','TRT — Técnico',
+  'STF — Analista','STF — Técnico','STJ — Analista','STJ — Técnico',
+  'TST — Analista','TST — Técnico','STM — Analista','STM — Técnico',
+  'CNJ','CNMP',
+  'Tribunal de Contas da União — TCU','Tribunal de Contas do Estado — TCE','Tribunal de Contas do Município — TCM',
+  'Ministério Público da União — MPU','Ministério Público Federal — MPF','Ministério Público do Trabalho — MPT',
+  'Ministério Público Militar','Ministério Público Estadual','MP — Promotor','MP — Procurador',
+  'Defensoria Pública da União — DPU','Defensoria Pública Federal','Defensoria Pública Estadual',
+  'Magistratura Federal','Magistratura Estadual','Magistratura do Trabalho',
+
+  // === BANCO CENTRAL E AGÊNCIAS REGULADORAS ===
+  'Banco Central — Bacen Analista','Banco Central — Bacen Técnico','Banco Central — Procurador',
+  'CVM — Analista','SUSEP — Analista','ANEEL','ANATEL','ANP','ANAC','ANAC — Especialista',
+  'ANS — Agência Nacional de Saúde','ANVISA — Agência Nacional de Vigilância Sanitária','ANTT','ANTAQ','ANA',
+
+  // === BANCOS PÚBLICOS ===
+  'Banco do Brasil — BB','Caixa Econômica Federal — CEF','BNDES','Banco do Nordeste — BNB',
+  'Banco da Amazônia — BASA','Banrisul','Banese','Banpará','BRB',
+
+  // === MINISTÉRIOS / EXECUTIVO ===
+  'INSS — Analista','INSS — Técnico','MTE','Ministério do Trabalho','Ministério da Saúde',
+  'Ministério da Educação — MEC','IBGE','IBAMA','ICMBio','INEP','INPI','FUNAI','DNIT','Anvisa',
+  'Concurso Público Nacional Unificado — CNU','CNU 2024','CNU 2025',
+
+  // === POLÍCIA LEGISLATIVA / CASA LEGISLATIVA ===
+  'Câmara dos Deputados','Senado Federal','Assembleia Legislativa','Câmara Municipal',
+
+  // === EDUCAÇÃO PÚBLICA ===
+  'Professor SEDUC','Professor da Educação Básica','Professor Federal — IFs','Professor Universitário','Técnico em Assuntos Educacionais',
+
+  // === SAÚDE PÚBLICA ===
+  'Médico Concurso','Enfermeiro Concurso','Técnico em Enfermagem','Agente Comunitário de Saúde','Agente de Saúde','Cirurgião Dentista Concurso',
+
+  // === MUNICIPAIS / ESTADUAIS DIVERSOS ===
+  'Prefeitura — Auditor','Prefeitura — Fiscal','Prefeitura — Procurador',
+  'Prefeitura — Técnico Administrativo','Prefeitura — Analista','Prefeitura — Professor',
+
+  // === VESTIBULARES ===
+  'ENEM','Vestibular Geral','SISU','PROUNI','FIES',
+  'FUVEST','UNICAMP','UNESP','UNIFESP','UFRJ','UFMG','UFRGS','UFSC','UFPR','UFG','UFBA','UFC','UFPE','UFRN','UNB','UnB',
+  'PUC-SP','PUC-RJ','PUC-Campinas','PUC-RS','PUC-MG','PUC-PR','MACKENZIE','ESPM','FGV — Vestibular',
+  'Direito FGV','ITA','IME','IBMEC',
+  // Medicina (vestibulares específicos)
+  'Medicina FUVEST','Medicina UNICAMP','Medicina UNIFESP','Medicina UFRJ','Medicina UFMG','Medicina USP',
+
+  // === OAB / EXAMES PROFISSIONAIS ===
+  'OAB — 1ª fase','OAB — 2ª fase','OAB — Penal','OAB — Civil','OAB — Trabalhista','OAB — Tributário','OAB — Empresarial','OAB — Constitucional',
+  'CFC — Conselho Federal de Contabilidade','Suficiência CFC',
+  'Coren','CRM','CRO','CREA','CFM','CFE','CFA',
+
+  // === FACULDADE / PÓS ===
+  'Provas Internas — Faculdade','Mestrado','Doutorado','Pós-Graduação','MBA','Residência Médica','Residência Multiprofissional',
+  'PROVÃO','Prova Brasil','TOEFL','IELTS','Cambridge — FCE','Cambridge — CAE','Cambridge — CPE',
+
+  // === CERTIFICAÇÕES TI / FINANÇAS ===
+  'CFA — Chartered Financial Analyst','CFP','ANBIMA — CPA-10','ANBIMA — CPA-20','CEA','CGA',
+  'AWS Certified','Azure Certified','Google Cloud Certified','Cisco — CCNA','Cisco — CCNP',
+  'PMP — Project Management','Scrum Master','ITIL Certified','Six Sigma',
+
+  // === GENÉRICOS ===
+  'Outro concurso federal','Outro concurso estadual','Outro concurso municipal','Outro vestibular','Outra certificação','Outra prova'
+];
+
+// === LISTA CANÔNICA DE INSTITUIÇÕES (universidades + bancas) ===
+const CANONICAL_INSTITUTIONS = [
+  // Universidades públicas federais
+  'USP — Universidade de São Paulo','UNICAMP','UNESP','UNIFESP',
+  'UFRJ','UFMG','UFRGS','UFSC','UFPR','UFG','UFBA','UFC','UFPE','UFRN','UnB',
+  'UFES','UFPB','UFAL','UFS','UFMT','UFMS','UFF','UFV','UFLA','UFJF','UFU','UFOP','UFSCar',
+  'UFAM','UFPA','UFAC','UFRR','UFAP','UFTM','UFCG','UFERSA','UFGD','UFRA','UFMA','UFPI','UFRPE','UFRB',
+  // Universidades públicas estaduais
+  'UERJ','UEL','UEM','UEPG','UENP','UEMG','UESC','UESB','UEFS','UNEB','UNIRIO','UEPB','UEPA','UPE','UEMA','UEA','UECE','UESPI',
+  // Federais técnicas
+  'IME — Instituto Militar de Engenharia','ITA — Instituto Tecnológico de Aeronáutica','EMBRAPA','FIOCRUZ',
+  'IFs — Institutos Federais','IFRS','IFSP','IFRJ','IFMG','IFG','IFC','IFB','IFPR','IFSul',
+  // Privadas grandes
+  'Mackenzie','PUC-SP','PUC-Rio','PUC-RS','PUC-MG','PUC-PR','PUC-Campinas','FGV','INSPER','ESPM','IBMEC','FAAP',
+  'Anhembi Morumbi','Estácio','Unip','UniNove','Cruzeiro do Sul','Belas Artes',
+  // Bancas (referenciadas como instituição quando a prova não tem cargo definido)
+  'Cebraspe','FCC','FGV','Vunesp','IBFC','Quadrix','Cesgranrio','Consulplan'
+];
+
+// Helper genérico — modal de seleção a partir de lista canônica
+// title: título do modal; placeholder: do input; list: array de strings; onSelect: callback
+// allowCustom: bool (se permite digitar nome livre fora da lista)
+function showCanonicalPickerModal(opts){
+  const m = mk('div');m.style.maxWidth='480px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px';
+  h.textContent = opts.title || 'Selecionar';
+  m.appendChild(h);
+  if(opts.subtitle){
+    const sub = mk('p','txt3');sub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.5';
+    sub.textContent = opts.subtitle;
+    m.appendChild(sub);
+  }
+
+  const inWrap = mk('div');inWrap.style.cssText='position:relative;margin-bottom:.875rem';
+  const input = mk('input');input.type='search';
+  input.placeholder = opts.placeholder || 'Buscar ou digitar customizado...';
+  input.value = opts.initialValue || '';
+  input.style.cssText = 'width:100%;padding:.625rem .875rem;font-size:14px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit';
+  inWrap.appendChild(input);
+  m.appendChild(inWrap);
+
+  const listWrap = mk('div');
+  listWrap.style.cssText = 'max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:var(--surface)';
+  m.appendChild(listWrap);
+
+  function renderList(){
+    listWrap.innerHTML = '';
+    const q = input.value.toLowerCase().trim();
+    let shown = 0;
+    (opts.list || []).forEach(name=>{
+      if(q && !name.toLowerCase().includes(q)) return;
+      const item = mk('button','disc-picker-item');
+      item.type = 'button';
+      item.textContent = name;
+      item.addEventListener('click',()=>{
+        if(opts.onSelect) opts.onSelect(name);
+        closeModal();
+      });
+      listWrap.appendChild(item);
+      shown++;
+    });
+    if(opts.allowCustom !== false && q && !(opts.list||[]).some(n=>n.toLowerCase()===q)){
+      const customName = input.value.trim();
+      if(customName.length >= 2){
+        const sep = mk('div','disc-picker-sep');
+        sep.textContent = 'OU customizado:';
+        listWrap.appendChild(sep);
+        const customItem = mk('button','disc-picker-item custom');
+        customItem.type = 'button';
+        customItem.innerHTML = `+ Usar "<b>${escapeHTML(customName)}</b>" (customizado)`;
+        customItem.addEventListener('click',()=>{
+          if(opts.onSelect) opts.onSelect(customName);
+          closeModal();
+        });
+        listWrap.appendChild(customItem);
+        shown++;
+      }
+    }
+    if(shown === 0){
+      const empty = mk('div');empty.style.cssText='padding:1.5rem;text-align:center;color:var(--text3);font-size:13px';
+      empty.textContent = 'Nenhuma opção encontrada. Digite um nome customizado acima.';
+      listWrap.appendChild(empty);
+    }
+  }
+  input.addEventListener('input',renderList);
+  renderList();
+
+  const footer = mk('div','flex');footer.style.cssText='gap:8px;justify-content:flex-end;margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border)';
+  if(opts.allowClear){
+    const clearBtn = mkBtn('Limpar campo','btn btn-sm');
+    clearBtn.addEventListener('click',()=>{
+      if(opts.onSelect) opts.onSelect('');
+      closeModal();
+    });
+    footer.appendChild(clearBtn);
+  }
+  const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+  cancelBtn.addEventListener('click',closeModal);
+  footer.appendChild(cancelBtn);
+  m.appendChild(footer);
+
+  showModal(m);
+  setTimeout(()=>input.focus(),50);
+}
+
 
 /* STATE */
 function defaultData(){
@@ -15522,10 +15808,25 @@ function renderUserProfile(){
   }
   header.appendChild(headInfo);
 
-  // Linha de informações do concurso alvo (cargo / banca / data) — opcional, opt-in
+  // Linha de informações do alvo (cargo / banca / data) — opcional, opt-in
+  // Labels se adaptam ao target_type (concurso / vestibular / etc)
   const examChips = [];
-  if(p.target_exam_name) examChips.push({icon:'🎯', label:'Cargo', value: p.target_exam_name});
-  if(p.target_exam_board) examChips.push({icon:'⚖️', label:'Banca', value: p.target_exam_board});
+  const tType = p.target_type || 'concurso';
+  // Determina labels baseado no tipo
+  let cargoLabel = 'Cargo', bancaLabel = 'Banca', dateLabel = 'Prova', cargoIcon = '🎯', bancaIcon = '⚖️';
+  if(tType === 'vestibular' || tType === 'faculdade'){
+    cargoLabel = 'Curso'; bancaLabel = 'Universidade'; bancaIcon = '🎓';
+  } else if(tType === 'enem'){
+    cargoLabel = 'Curso de interesse'; bancaLabel = 'Programa'; bancaIcon = '📝';
+  } else if(tType === 'oab'){
+    cargoLabel = 'Fase OAB'; bancaLabel = 'Instituição'; cargoIcon = '⚖️'; bancaIcon = '🏛️';
+  } else if(tType === 'certificacao'){
+    cargoLabel = 'Certificação'; bancaLabel = 'Organização'; cargoIcon = '🏆'; bancaIcon = '🏛️';
+  } else if(tType === 'outro'){
+    cargoLabel = 'Prova'; bancaLabel = 'Instituição'; bancaIcon = '🏛️';
+  }
+  if(p.target_exam_name) examChips.push({icon:cargoIcon, label:cargoLabel, value: p.target_exam_name});
+  if(p.target_exam_board) examChips.push({icon:bancaIcon, label:bancaLabel, value: p.target_exam_board});
   if(p.target_exam_date){
     const d = new Date(p.target_exam_date);
     if(!isNaN(d.getTime())){
@@ -15535,7 +15836,7 @@ function renderUserProfile(){
       if(days > 0) suffix = ' · ' + days + ' ' + (days === 1 ? 'dia' : 'dias');
       else if(days === 0) suffix = ' · hoje';
       else if(days >= -7) suffix = ' · concluída';
-      examChips.push({icon:'📅', label:'Prova', value: dateStr + suffix});
+      examChips.push({icon:'📅', label:dateLabel, value: dateStr + suffix});
     }
   }
   if(examChips.length > 0){
@@ -15741,6 +16042,8 @@ function renderDiscover(){
       ST.discoverFilter.type = t;
       ST.discoverPage = 0;
       ST.discoverItems = [];
+      ST.discoverLoading = false; // reseta estado de loading pra evitar bloqueio
+      ST.discoverHasMore = true;
       // Recomendações só aparecem em 'caderno' — invalida cache pra recarregar quando voltar
       ST.discoverRecommendationsLoaded = false;
       ST.discoverRecommendations = [];
@@ -15874,9 +16177,15 @@ function renderDiscover(){
     renderItems();
   }
 
-  // Carrega na primeira renderização
-  if(ST.discoverItems.length === 0 && !ST.discoverLoading){
-    loadDiscover();
+  // Carrega na primeira renderização (resilient: dispara mesmo se loading ficou travado)
+  if(ST.discoverItems.length === 0){
+    if(!ST.discoverLoading){
+      loadDiscover();
+    } else {
+      // Se loading está marcado mas nada apareceu, força reset e recarrega
+      ST.discoverLoading = false;
+      loadDiscover();
+    }
   } else {
     renderItems();
   }
@@ -17292,32 +17601,173 @@ function renderSocialProfileCard(){
     vRow.appendChild(vSeg);
     body.appendChild(vRow);
 
-    // Campos opcionais do concurso alvo (mostrados no perfil público)
+    // Campos opcionais do alvo (mostrados no perfil público) — suporta vários tipos
     const examWrap = mk('div');examWrap.style.cssText='margin-bottom:.875rem;padding:.875rem;background:var(--surface2);border-radius:10px;border:1px solid var(--border)';
-    const examTitle = mk('div');examTitle.style.cssText='font-size:12px;font-weight:700;color:var(--text);margin-bottom:.25rem;display:flex;align-items:center;gap:6px';
-    examTitle.innerHTML = '🎯 Concurso alvo <span style="font-size:10px;color:var(--text3);font-weight:600;background:var(--surface);padding:2px 7px;border-radius:999px;text-transform:uppercase;letter-spacing:.3px">opcional · público</span>';
+    const examTitle = mk('div');examTitle.style.cssText='font-size:12px;font-weight:700;color:var(--text);margin-bottom:.25rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+    examTitle.innerHTML = '🎯 Prova alvo <span style="font-size:10px;color:var(--text3);font-weight:600;background:var(--surface);padding:2px 7px;border-radius:999px;text-transform:uppercase;letter-spacing:.3px">opcional · público</span>';
     examWrap.appendChild(examTitle);
     const examSub = mk('p','txt3');examSub.style.cssText='margin:0 0 .75rem;font-size:11.5px;line-height:1.5';
-    examSub.textContent = 'Aparecerá no seu perfil público pra outros concurseiros saberem qual concurso você prepara.';
+    examSub.textContent = 'Aparecerá no seu perfil público pra outras pessoas saberem o que você prepara.';
     examWrap.appendChild(examSub);
 
-    // Cargo
+    // Tipo de prova alvo (concurso / vestibular / oab / etc)
+    let pendingTargetType = p.target_type || 'concurso';
+    const ttRow = mk('div');ttRow.style.marginBottom='.875rem';
+    ttRow.innerHTML = '<label style="display:block;font-size:10.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px">Tipo de prova</label>';
+    const ttSeg = mk('div');ttSeg.style.cssText='display:flex;flex-wrap:wrap;gap:5px';
+    const TARGET_TYPE_OPTIONS = [
+      {key:'concurso', label:'🏛️ Concurso público'},
+      {key:'vestibular', label:'🎓 Vestibular'},
+      {key:'enem', label:'📝 ENEM'},
+      {key:'oab', label:'⚖️ OAB'},
+      {key:'faculdade', label:'📚 Provas de faculdade'},
+      {key:'certificacao', label:'🏆 Certificação'},
+      {key:'outro', label:'✨ Outro'}
+    ];
+    function updateTtSegVisual(){
+      ttSeg.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.tt === pendingTargetType));
+      // Atualiza labels dinamicamente baseado no tipo
+      updateLabels();
+    }
+    TARGET_TYPE_OPTIONS.forEach(o=>{
+      const b = mk('button','tt-seg-opt'+(pendingTargetType===o.key?' on':''));
+      b.type='button';b.dataset.tt=o.key;
+      b.textContent = o.label;
+      b.style.cssText='padding:5px 10px;background:var(--surface);border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--text2);font-family:inherit;transition:all .15s';
+      b.addEventListener('click',()=>{
+        pendingTargetType = o.key;
+        updateTtSegVisual();
+      });
+      ttSeg.appendChild(b);
+    });
+    ttRow.appendChild(ttSeg);
+    examWrap.appendChild(ttRow);
+
+    // Estilo "on" pra segmentado de tipo
+    const styleEl = document.getElementById('tt-seg-style') || (function(){
+      const s = document.createElement('style');s.id='tt-seg-style';
+      s.textContent='.tt-seg-opt.on{background:var(--gralia-purple)!important;color:#fff!important;border-color:var(--gralia-purple)!important}';
+      document.head.appendChild(s);
+      return s;
+    })();
+
+    // Nome (cargo / curso / prova)
     const cgRow = mk('div');cgRow.style.marginBottom='.625rem';
-    cgRow.innerHTML = '<label style="display:block;font-size:10.5px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">Nome do cargo / concurso</label>';
-    const cgIn = mk('input');cgIn.type='text';cgIn.maxLength=120;cgIn.value=p.target_exam_name || '';
-    cgIn.placeholder='Ex: Polícia Federal, Auditor da Receita...';
-    cgIn.style.cssText='width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit';
-    cgRow.appendChild(cgIn);
+    const cgLbl = mk('label');cgLbl.style.cssText='display:block;font-size:10.5px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px';
+    cgRow.appendChild(cgLbl);
+    const cgPicker = mk('button','disc-picker-trigger');cgPicker.type='button';
+    cgPicker.style.cssText='width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);text-align:left;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:space-between;gap:8px';
+    let pendingCargo = p.target_exam_name || '';
+    function updateCgPicker(){
+      cgPicker.innerHTML = `<span style="${pendingCargo?'':'color:var(--text3)'}">${pendingCargo ? escapeHTML(pendingCargo) : 'Clique pra escolher'}</span><span style="color:var(--text3);font-size:11px">▾</span>`;
+    }
+    updateCgPicker();
+    cgPicker.addEventListener('click',()=>{
+      let list, title, placeholder, subtitle;
+      if(pendingTargetType === 'vestibular' || pendingTargetType === 'enem' || pendingTargetType === 'faculdade'){
+        list = ['ENEM','Vestibular Geral','SISU','PROUNI','Medicina','Direito','Engenharia','Administração','Psicologia','Arquitetura','Pedagogia','Letras','História','Outro'];
+        title = 'Escolher curso/prova';
+        placeholder = 'Ex: Medicina, Direito, ENEM...';
+        subtitle = 'Selecione o curso ou prova alvo.';
+      } else if(pendingTargetType === 'oab'){
+        list = ['OAB — 1ª fase','OAB — 2ª fase','OAB — Penal','OAB — Civil','OAB — Trabalhista','OAB — Tributário','OAB — Empresarial','OAB — Constitucional','OAB — Administrativo'];
+        title = 'Escolher fase / área OAB';
+        placeholder = 'Ex: OAB 1ª fase...';
+        subtitle = '';
+      } else if(pendingTargetType === 'certificacao'){
+        list = ['CFA','CFP','ANBIMA — CPA-10','ANBIMA — CPA-20','TOEFL','IELTS','Cambridge — FCE','Cambridge — CAE','PMP','Scrum Master','AWS Certified','Azure Certified','Cisco — CCNA','ITIL','Six Sigma','Outra certificação'];
+        title = 'Escolher certificação';
+        placeholder = 'Ex: PMP, IELTS...';
+        subtitle = '';
+      } else {
+        list = CANONICAL_TARGET_ROLES;
+        title = 'Escolher cargo / concurso';
+        placeholder = 'Ex: Polícia Federal, Receita...';
+        subtitle = 'Selecione da lista ou digite um nome customizado.';
+      }
+      showCanonicalPickerModal({
+        title, subtitle, placeholder,
+        list, allowCustom: true, allowClear: true,
+        initialValue: pendingCargo,
+        onSelect: v => {
+          pendingCargo = v || '';
+          updateCgPicker();
+        }
+      });
+    });
+    cgRow.appendChild(cgPicker);
     examWrap.appendChild(cgRow);
 
-    // Banca
+    // Banca / Universidade / Instituição
     const bkRow = mk('div');bkRow.style.marginBottom='.625rem';
-    bkRow.innerHTML = '<label style="display:block;font-size:10.5px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">Banca examinadora</label>';
-    const bkIn = mk('input');bkIn.type='text';bkIn.maxLength=60;bkIn.value=p.target_exam_board || '';
-    bkIn.placeholder='Ex: Cebraspe, FCC, FGV, Vunesp...';
-    bkIn.style.cssText='width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit';
-    bkRow.appendChild(bkIn);
+    const bkLbl = mk('label');bkLbl.style.cssText='display:block;font-size:10.5px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px';
+    bkRow.appendChild(bkLbl);
+    const bkPicker = mk('button','disc-picker-trigger');bkPicker.type='button';
+    bkPicker.style.cssText='width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);text-align:left;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:space-between;gap:8px';
+    let pendingBanca = p.target_exam_board || '';
+    function updateBkPicker(){
+      bkPicker.innerHTML = `<span style="${pendingBanca?'':'color:var(--text3)'}">${pendingBanca ? escapeHTML(pendingBanca) : 'Clique pra escolher'}</span><span style="color:var(--text3);font-size:11px">▾</span>`;
+    }
+    updateBkPicker();
+    bkPicker.addEventListener('click',()=>{
+      let list, title, placeholder, subtitle;
+      if(pendingTargetType === 'vestibular' || pendingTargetType === 'faculdade'){
+        list = CANONICAL_INSTITUTIONS;
+        title = 'Escolher universidade';
+        placeholder = 'Ex: USP, UNICAMP, UFRJ...';
+        subtitle = 'Selecione a universidade alvo.';
+      } else if(pendingTargetType === 'enem'){
+        list = ['ENEM','SISU','PROUNI','FIES'];
+        title = 'Escolher programa';
+        placeholder = '';
+        subtitle = '';
+      } else if(pendingTargetType === 'concurso' || pendingTargetType === 'oab'){
+        list = CANONICAL_BANKS;
+        title = 'Escolher banca examinadora';
+        placeholder = 'Ex: Cebraspe, FCC, FGV...';
+        subtitle = 'Selecione da lista ou digite uma banca customizada.';
+      } else {
+        list = [...CANONICAL_INSTITUTIONS, ...CANONICAL_BANKS];
+        title = 'Escolher instituição/banca';
+        placeholder = '';
+        subtitle = '';
+      }
+      showCanonicalPickerModal({
+        title, subtitle, placeholder,
+        list, allowCustom: true, allowClear: true,
+        initialValue: pendingBanca,
+        onSelect: v => {
+          pendingBanca = v || '';
+          updateBkPicker();
+        }
+      });
+    });
+    bkRow.appendChild(bkPicker);
     examWrap.appendChild(bkRow);
+
+    // Função pra atualizar labels dinamicamente
+    function updateLabels(){
+      if(pendingTargetType === 'vestibular' || pendingTargetType === 'faculdade'){
+        cgLbl.textContent = 'Curso desejado';
+        bkLbl.textContent = 'Universidade';
+      } else if(pendingTargetType === 'enem'){
+        cgLbl.textContent = 'Curso/área de interesse';
+        bkLbl.textContent = 'Programa (ENEM/SISU/etc)';
+      } else if(pendingTargetType === 'oab'){
+        cgLbl.textContent = 'Fase / área da OAB';
+        bkLbl.textContent = 'Instituição organizadora';
+      } else if(pendingTargetType === 'certificacao'){
+        cgLbl.textContent = 'Certificação';
+        bkLbl.textContent = 'Organização certificadora';
+      } else if(pendingTargetType === 'outro'){
+        cgLbl.textContent = 'Nome da prova';
+        bkLbl.textContent = 'Instituição/organização';
+      } else {
+        cgLbl.textContent = 'Nome do cargo / concurso';
+        bkLbl.textContent = 'Banca examinadora';
+      }
+    }
+    updateLabels();
 
     // Data
     const dtRow = mk('div');
@@ -17372,18 +17822,21 @@ function renderSocialProfileCard(){
         if(pendingVisibility !== p.visibility){
           await updateVisibility(pendingVisibility);
         }
-        // Salva campos do concurso alvo
-        const newCargo = cgIn.value.trim();
-        const newBanca = bkIn.value.trim();
+        // Salva campos do alvo (concurso/vestibular/etc)
+        const newCargo = pendingCargo.trim();
+        const newBanca = pendingBanca.trim();
+        const newType = pendingTargetType;
         const newData = dtIn.value ? new Date(dtIn.value+'T13:00:00').toISOString() : null;
         const cargoChanged = newCargo !== (p.target_exam_name||'');
         const bancaChanged = newBanca !== (p.target_exam_board||'');
         const dataChanged = newData !== (p.target_exam_date||null);
-        if(cargoChanged || bancaChanged || dataChanged){
+        const typeChanged = newType !== (p.target_type||'concurso');
+        if(cargoChanged || bancaChanged || dataChanged || typeChanged){
           await updateExamFields({
             target_exam_name: newCargo,
             target_exam_board: newBanca,
-            target_exam_date: newData
+            target_exam_date: newData,
+            target_type: newType
           });
         }
         showToast('✓ Perfil atualizado');
@@ -19741,11 +20194,26 @@ function updateSyncIndicator(){
 // - Local com dados + remoto vazio → pergunta se quer subir
 // - Local com dados + remoto com dados → usa o mais recente (simple last-write-wins por ora)
 async function handleFirstLoginMerge(){
+  // Se já fizemos merge nesta conta antes, não pergunta de novo
+  // Flag persiste em DATA.config (sincronizada com nuvem)
+  if(DATA.config && DATA.config._mergeHandled === AUTH.user.id){
+    // Apenas garante dados sincronizados
+    const remote = await syncDown();
+    if(remote){
+      Object.assign(DATA, remote);
+      save();
+      render();
+    }
+    return;
+  }
   const hasLocalData = (DATA.errors||[]).length>0||(DATA.srs?.cards||[]).length>0||(DATA.sources||[]).length>0;
   const remote = await syncDown();
 
   if(!remote&&!hasLocalData){
     // Usuário novo, nada para fazer
+    if(!DATA.config) DATA.config = {};
+    DATA.config._mergeHandled = AUTH.user.id;
+    save();
     return;
   }
   if(!remote&&hasLocalData){
@@ -19755,11 +20223,16 @@ async function handleFirstLoginMerge(){
       await syncUp();
       showToast('✓ Dados enviados para sua conta.');
     }
+    if(!DATA.config) DATA.config = {};
+    DATA.config._mergeHandled = AUTH.user.id;
+    save();
     return;
   }
   if(remote&&!hasLocalData){
     // Conta tem dados, local não → carrega remoto
     Object.assign(DATA,remote);
+    if(!DATA.config) DATA.config = {};
+    DATA.config._mergeHandled = AUTH.user.id;
     save();
     showToast('✓ Dados da sua conta carregados.');
     render();
@@ -19776,6 +20249,9 @@ async function handleFirstLoginMerge(){
     await syncUp();
     showToast('✓ Dados locais enviados para a conta.');
   }
+  if(!DATA.config) DATA.config = {};
+  DATA.config._mergeHandled = AUTH.user.id;
+  save();
   render();
 }
 
@@ -19931,6 +20407,10 @@ async function initAuth(){
     return;
   }
 
+  // Flag pra distinguir SIGNED_IN inicial (vindo de session restorada do localStorage)
+  // vs SIGNED_IN real (novo login feito pelo usuário). Definido por handleAuthInit abaixo.
+  let _initialSessionHandled = false;
+
   // Listen for auth changes
   client.auth.onAuthStateChange(async(event,session)=>{
     const wasAuthed = !!AUTH.user;
@@ -19939,15 +20419,40 @@ async function initAuth(){
     AUTH.loading = false;
     AUTH.authReady = true;
 
-    if(event==='SIGNED_IN'&&!wasAuthed){
-      // Reset auth-flow state and ensure welcome is marked as seen
+    // SIGNED_IN dispara também na inicialização quando há sessão válida no localStorage.
+    // Distinguimos: se já processamos a sessão inicial, esse SIGNED_IN é um login novo de fato.
+    const isInitialAutoSignIn = event==='SIGNED_IN' && !_initialSessionHandled;
+    if(isInitialAutoSignIn){
+      _initialSessionHandled = true;
+      // Sessão já existente — apenas carrega dados, sem prompt de merge
+      ST.showAuth = false;
+      // Carrega dados em background sem bloquear/perguntar
+      syncDown().then(remote=>{
+        if(remote){
+          Object.assign(DATA,remote);
+          save();
+          render();
+        }
+      }).catch(err=>{
+        console.warn('[NEXUS] Initial syncDown (auto) failed:',err.message);
+      });
+      fetchQuota().then(()=>render()).catch(()=>{});
+      fetchUserProfile(true).then(()=>render()).catch(()=>{});
+      render();
+      return;
+    }
+
+    if(event==='SIGNED_IN' && !wasAuthed){
+      // Login novo de fato (usuário acabou de fazer signin/signup nesta sessão)
       ST.showAuth = false;
       DATA.welcomeShown = true;
       save();
       // First login of this session — merge data
       await handleFirstLoginMerge();
-      // Load quota in background (non-blocking)
       fetchQuota().then(()=>render()).catch(()=>{});
+      fetchUserProfile(true).then(()=>render()).catch(err=>{
+        console.warn('[profile] failed to load on SIGNED_IN:', err.message);
+      });
     }
     if(event==='SIGNED_OUT'){
       // Clear sync state. Keep DATA as-is — user may log in to another account
@@ -19961,13 +20466,18 @@ async function initAuth(){
     render();
   });
 
-  // Restore existing session (if any)
+  // Restore existing session (if any). Quando há sessão válida, onAuthStateChange dispara
+  // automaticamente com event=SIGNED_IN — tratado acima como `isInitialAutoSignIn`.
+  // Esta chamada só serve pra forçar a inicialização caso o listener ainda não tenha rodado.
   try{
     const {data:{session}} = await withTimeout(client.auth.getSession(),5000,'getSession');
-    if(session){
+    // Se ainda não foi processado pelo listener, processa agora
+    if(session && !_initialSessionHandled){
+      _initialSessionHandled = true;
       AUTH.session = session;
       AUTH.user = session.user;
-      // getSession doesn't fire SIGNED_IN; do a manual download (but don't block boot if it hangs)
+      AUTH.authReady = true;
+      AUTH.loading = false;
       syncDown().then(remote=>{
         if(remote){
           Object.assign(DATA,remote);
@@ -19975,10 +20485,11 @@ async function initAuth(){
           render();
         }
       }).catch(err=>{
-        console.warn('[NEXUS] Initial syncDown failed (non-blocking):',err.message);
+        console.warn('[NEXUS] Initial syncDown (manual) failed:',err.message);
       });
-      // Fetch quota (also non-blocking)
       fetchQuota().then(()=>render()).catch(()=>{});
+      fetchUserProfile(true).then(()=>render()).catch(()=>{});
+      render();
     }
   }catch(e){
     console.warn('[NEXUS] getSession timeout or error:',e.message);
