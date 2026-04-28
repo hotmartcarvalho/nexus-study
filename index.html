@@ -1309,6 +1309,48 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 .mt-title{font-size:13px;font-weight:700;color:var(--amber-text);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
 .mt-body{margin:0;font-size:13px;color:var(--text);line-height:1.6}
 
+/* === Cache compartilhado de explicações IA === */
+.shexpl-wrap{padding:1rem;background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));border:1px solid rgba(128,66,250,.18);border-radius:12px}
+.shexpl-head{display:flex;align-items:center;gap:8px;margin-bottom:.625rem;flex-wrap:wrap}
+.shexpl-head .she-icon{font-size:18px;line-height:1}
+.shexpl-head b{font-size:14px;letter-spacing:-.2px;color:var(--text)}
+.shexpl-head .she-sub{font-size:11px;color:var(--text3);font-weight:500}
+.shexpl-list{display:flex;flex-direction:column;gap:8px}
+.shexpl-loading{padding:.625rem;text-align:center;color:var(--text3);font-size:12px;font-style:italic}
+.shexpl-empty{padding:.75rem 1rem;background:var(--surface);border:1px dashed var(--border);border-radius:8px}
+.shexpl-card{padding:.75rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;gap:8px}
+.shexpl-card-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.shexpl-model-tag{font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.4px;line-height:1.5}
+.shexpl-model-tag.mt-haiku{background:rgba(24,95,165,.12);color:var(--blue-text)}
+.shexpl-model-tag.mt-sonnet{background:rgba(128,66,250,.13);color:var(--gralia-purple)}
+.shexpl-author{font-size:11.5px;color:var(--text3)}
+.shexpl-author-link{color:var(--gralia-purple);text-decoration:none;font-weight:600}
+.shexpl-author-link:hover{text-decoration:underline}
+.shexpl-date{font-size:10.5px;color:var(--text3);margin-left:auto}
+.shexpl-body{font-size:13px;color:var(--text2);line-height:1.6}
+.shexpl-body b{color:var(--text);font-weight:700}
+.shexpl-foot{display:flex;align-items:center;gap:6px;padding-top:6px;border-top:1px solid var(--border)}
+.shexpl-vote{background:transparent;border:1px solid var(--border);color:var(--text3);font-size:11.5px;padding:3px 10px;border-radius:7px;cursor:pointer;font-family:inherit;font-weight:600;display:inline-flex;align-items:center;gap:4px;transition:all .15s}
+.shexpl-vote:hover{background:var(--surface2);border-color:var(--gralia-purple);color:var(--gralia-purple)}
+.shexpl-vote.on{background:rgba(128,66,250,.10);border-color:var(--gralia-purple);color:var(--gralia-purple)}
+.shexpl-vote.dn:hover,.shexpl-vote.dn.on{border-color:var(--red);color:var(--red-text);background:rgba(232,76,76,.06)}
+.shexpl-help-btn{margin-left:auto;background:transparent;border:1px solid rgba(128,66,250,.30);color:var(--gralia-purple);font-size:11.5px;padding:3px 10px;border-radius:7px;cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s}
+.shexpl-help-btn:hover{background:rgba(128,66,250,.10);border-color:var(--gralia-purple)}
+.shexpl-gen-row{display:flex;gap:6px;margin-top:.625rem;flex-wrap:wrap;padding-top:.625rem;border-top:1px solid var(--border)}
+.shfc-card{background:linear-gradient(135deg,rgba(73,197,137,.04),var(--surface));border-color:rgba(73,197,137,.18)}
+
+/* Versão colapsada (em acertos) */
+.shexpl-details{padding:0;background:transparent;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.shexpl-details[open]{border-color:rgba(128,66,250,.25)}
+.shexpl-summary{padding:.625rem .875rem;cursor:pointer;display:flex;align-items:center;gap:8px;list-style:none;background:var(--surface2);transition:background .15s}
+.shexpl-summary::-webkit-details-marker{display:none}
+.shexpl-summary:hover{background:rgba(128,66,250,.05)}
+.shexpl-summary .shs-icon{font-size:14px;flex-shrink:0}
+.shexpl-summary b{font-size:13px;color:var(--text);font-weight:600}
+.shexpl-summary .shs-hint{font-size:11px;color:var(--text3);font-weight:500;margin-left:auto}
+.shexpl-details[open] .shexpl-summary .faq-chev{transform:rotate(180deg);color:var(--gralia-purple)}
+.shexpl-inner{padding:.75rem}
+
 @media(max-width:540px){
   .about-hero-logo{font-size:38px}
   .manual-step{grid-template-columns:24px 28px 1fr;gap:10px;padding:.875rem 1rem}
@@ -2500,20 +2542,34 @@ async function publishNotebook(notebookData, opts){
   if(title.length < 3) throw new Error('Título precisa ter ao menos 3 caracteres');
   const description = (opts.description || '').trim().slice(0, 500);
   const discipline = (opts.discipline || '').trim().slice(0, 80) || null;
-  // Payload completo do caderno (questões e metadados)
+  // Payload completo do caderno (questões e metadados) — sanitizadas pra remover referências
   const payload = {
     local_id: notebookData.id, // permite identificar o caderno local pra updates futuros
-    notebook_name: notebookData.name,
+    notebook_name: sanitizeContentForSharing(notebookData.name||''),
     questions: (notebookData.questions || []).map(q => ({
-      enunciado: q.enunciado || q.statement || '',
+      enunciado: sanitizeContentForSharing(q.enunciado || q.statement || ''),
       alternativas: q.alternativas || q.alternatives || null,
       gabarito: q.gabarito || q.answer || null,
       tipo: q.tipo || q.type || 'CE',
-      comentario: q.comentario || q.commentary || '',
+      comentario: sanitizeContentForSharing(q.comentario || q.commentary || ''),
       disciplineId: q.disciplineId || null,
       topic: q.topic || null
     }))
   };
+  // Sanitiza alternativas também (texto das letras)
+  payload.questions.forEach(q=>{
+    if(Array.isArray(q.alternativas)){
+      q.alternativas = q.alternativas.map(alt => {
+        if(typeof alt === 'string') return sanitizeContentForSharing(alt);
+        if(alt && typeof alt === 'object'){
+          const sanitizedAlt = {...alt};
+          if(sanitizedAlt.text) sanitizedAlt.text = sanitizeContentForSharing(sanitizedAlt.text);
+          return sanitizedAlt;
+        }
+        return alt;
+      });
+    }
+  });
   const questionCount = payload.questions.length;
   if(questionCount === 0) throw new Error('Caderno vazio — adicione questões antes de publicar');
 
@@ -2521,8 +2577,8 @@ async function publishNotebook(notebookData, opts){
   const { data, error } = await supa.from('shared_resources').insert({
     owner_id: AUTH.user.id,
     resource_type: 'caderno',
-    title,
-    description: description || null,
+    title: sanitizeContentForSharing(title),
+    description: sanitizeContentForSharing(description) || null,
     discipline,
     tags,
     payload,
@@ -2535,6 +2591,59 @@ async function publishNotebook(notebookData, opts){
 
 // Publica uma fonte como recurso público
 // sourceData: {id, name, type, contentType, content, summary?, disciplineId}
+// Remove referências a cursos preparatórios, professores, IAs, plataformas etc.
+// Aplicado ANTES de publicar fontes/cadernos compartilhados — não destrói o original local.
+function sanitizeContentForSharing(text){
+  if(!text || typeof text !== 'string') return text;
+  let s = text;
+
+  // Lista de cursos preparatórios e plataformas (case-insensitive)
+  const platforms = [
+    // Cursos preparatórios
+    'estratégia concursos','estrategia concursos','estratégia carreira jurídica','estrategia carreira juridica',
+    'gran cursos','gran online','grancursos',
+    'direção concursos','direcao concursos','direção carreiras jurídicas',
+    'qconcursos','q concursos','qcconcursos',
+    'cers','cers cursos','cursos cers',
+    'damásio','damasio',
+    'lfg','complexo educacional damásio',
+    'alfacon','alfa concursos',
+    'tec concursos','tecconcursos','tec-concursos',
+    'aprovaconcursos','aprova concursos',
+    'cursoenfase','cursoênfase','curso ênfase','enfase concursos',
+    'cebraspe','cebraspeapp',
+    // Plataformas IA
+    'chatgpt','gpt-4','gpt-3.5','openai',
+    'claude.ai','anthropic',
+    'gemini','bard','google ai',
+    'copilot','microsoft copilot',
+    'perplexity','perplexity.ai',
+    'deepseek','llama','mistral'
+  ];
+  // Remove menções diretas (palavra/expressão isolada)
+  platforms.forEach(p=>{
+    const re = new RegExp(`\\b${p.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}\\b`, 'gi');
+    s = s.replace(re, '[fonte]');
+  });
+
+  // Remove URLs de plataformas conhecidas
+  s = s.replace(/https?:\/\/(?:www\.)?(estrategiaconcursos|grancursos|qconcursos|tecconcursos|direcaoconcursos|cursoenfase|cers|alfacon)\.[a-z./?=&_-]+/gi, '[link]');
+
+  // Remove assinaturas comuns ("Por Prof. Fulano", "Professor X", "Material gerado por...")
+  s = s.replace(/\b(?:prof(?:essor|essora)?\.?\s+(?:[A-ZÁÉÍÓÚÂÊÔÃÕ][a-záéíóúâêôãõç]+\s*){1,3})/g, '[autor]');
+  s = s.replace(/(?:material\s+(?:gerado|criado|produzido|elaborado)\s+por[\s\S]{1,80}?)(?=[.\n]|$)/gi, '');
+  s = s.replace(/(?:fonte\s*:\s*[A-ZÁÉÍÓÚÂÊÔÃÕ][\s\S]{1,80}?)(?=[.\n]|$)/gi, '');
+
+  // Limpa "[fonte]" repetido em sequência
+  s = s.replace(/\[fonte\](?:\s*[—-]?\s*\[fonte\])+/g, '[fonte]');
+  s = s.replace(/\[fonte\]\s*\[fonte\]/g, '[fonte]');
+
+  // Colapsa múltiplas quebras de linha que sobraram
+  s = s.replace(/\n{3,}/g, '\n\n').trim();
+
+  return s;
+}
+
 async function publishSource(sourceData, opts){
   if(!supa || !AUTH.user) throw new Error('Não autenticado');
   if(!AUTH.profile) throw new Error('Crie seu perfil em Configurações antes de publicar');
@@ -2542,23 +2651,25 @@ async function publishSource(sourceData, opts){
   if(title.length < 3) throw new Error('Título precisa ter ao menos 3 caracteres');
   const description = (opts.description || '').trim().slice(0, 500);
   const discipline = (opts.discipline || '').trim().slice(0, 80) || null;
-  const content = (sourceData.content || '').trim();
+  // Sanitiza o conteúdo pra remover referências a cursos/IAs/autores antes de publicar
+  const rawContent = (sourceData.content || '').trim();
+  const content = sanitizeContentForSharing(rawContent);
   if(content.length < 50) throw new Error('Fonte vazia ou muito curta — mínimo 50 caracteres');
   if(content.length > 200000) throw new Error('Fonte muito longa (máx 200.000 caracteres)');
   const payload = {
     local_id: sourceData.id, // pra detecção de "já publicado"
-    source_name: sourceData.name,
+    source_name: sanitizeContentForSharing(sourceData.name||''),
     source_type: sourceData.type || 'relatorio',
     content_type: sourceData.contentType || 'misto',
     content,
-    summary: sourceData.summary || null
+    summary: sanitizeContentForSharing(sourceData.summary || '') || null
   };
   const tags = normalizeTagsList(opts.tags);
   const { data, error } = await supa.from('shared_resources').insert({
     owner_id: AUTH.user.id,
     resource_type: 'fonte',
-    title,
-    description: description || null,
+    title: sanitizeContentForSharing(title),
+    description: sanitizeContentForSharing(description) || null,
     discipline,
     tags,
     payload,
@@ -3374,7 +3485,566 @@ function renderQuestionStatsChip(stats, opts){
   return chip;
 }
 
-// === ESTÁGIO 9: SUA TAXA PESSOAL VS MÉDIA GLOBAL ===
+// === CACHE COMPARTILHADO DE EXPLICAÇÕES E FLASHCARDS ===
+// Quando alguém gera explicação/flashcard com IA pra uma questão importada,
+// salvamos no banco. Próximos usuários veem essas opções e não gastam créditos.
+
+// Lista todas as explicações (haiku/sonnet) e flashcards disponíveis pra uma questão
+async function listExplanationsForQuestion(enunciado, kind){
+  if(!supa || !AUTH.user) return [];
+  const hash = questionHash(enunciado);
+  if(!hash) return [];
+  try{
+    const { data, error } = await supa.rpc('list_explanations_for_question', {
+      p_hash: hash,
+      p_kind: kind || null
+    });
+    if(error || !data) return [];
+    return data;
+  }catch(err){ return []; }
+}
+
+// Salva explicação/flashcard gerado pela IA na biblioteca compartilhada
+// kind: 'explicacao' | 'flashcard'
+// model: 'haiku' | 'sonnet'
+// payload: objeto com {explanation, trap, keyword} ou {front, back}
+async function saveSharedExplanation(enunciado, kind, model, payload){
+  if(!supa || !AUTH.user) return null;
+  const hash = questionHash(enunciado);
+  if(!hash) return null;
+  try{
+    const username = (AUTH.profile && AUTH.profile.username) || (AUTH.user.email||'').split('@')[0];
+    const { data, error } = await supa.from('shared_explanations')
+      .upsert({
+        question_hash: hash,
+        kind,
+        model,
+        payload,
+        author_id: AUTH.user.id,
+        author_username: username
+      }, { onConflict: 'question_hash,kind,model,author_id' })
+      .select().single();
+    if(error){ console.warn('[shared-expl] save erro:',error.message); return null; }
+    return data;
+  }catch(err){ console.warn('[shared-expl] save exception:',err); return null; }
+}
+
+// Vota numa explicação compartilhada (+1, -1, 0)
+async function voteSharedExplanation(explanationId, vote){
+  if(!supa || !AUTH.user) return false;
+  try{
+    const { error } = await supa.rpc('vote_explanation', {
+      p_explanation_id: explanationId,
+      p_vote: vote
+    });
+    return !error;
+  }catch(err){ return false; }
+}
+
+// Detecta modelo atual pra explicação (Haiku padrão / Sonnet via "regenerar")
+function modelTagFor(modelStr){
+  const s = String(modelStr||'').toLowerCase();
+  if(s.includes('sonnet')) return 'sonnet';
+  return 'haiku';
+}
+
+// Renderiza UI compartilhada de explicações + flashcards após responder uma questão
+// container: HTMLElement onde inserir o conteúdo
+// q: objeto da questão (com enunciado, alternatives, answer, kind)
+// wasCorrect: bool — se o usuário acertou, UI fica colapsada por padrão (menos intrusiva)
+async function renderSharedExplanationsUI(container, q, wasCorrect){
+  container.innerHTML = '';
+
+  // Em acertos, encapsula em <details> colapsado por padrão pra não ser intrusivo
+  if(wasCorrect){
+    const details = mk('details','shexpl-details');
+    const summary = mk('summary','shexpl-summary');
+    summary.innerHTML = `<span class="shs-icon">🤖</span><b>Ver explicações da comunidade</b><span class="shs-hint">útil pra entender a armadilha que você evitou</span><span class="faq-chev">▾</span>`;
+    details.appendChild(summary);
+    const inner = mk('div','shexpl-inner');
+    details.appendChild(inner);
+    container.appendChild(details);
+    // Renderiza dentro do details quando aberto pela primeira vez
+    let loaded = false;
+    details.addEventListener('toggle',()=>{
+      if(details.open && !loaded){
+        loaded = true;
+        renderSharedExplanationsBody(inner, q);
+      }
+    });
+    return;
+  }
+
+  // Em erros, mostra direto (mais proeminente)
+  renderSharedExplanationsBody(container, q);
+}
+
+async function renderSharedExplanationsBody(container, q){
+  container.innerHTML = '';
+  const wrap = mk('div','shexpl-wrap');
+  container.appendChild(wrap);
+
+  // Header
+  const head = mk('div','shexpl-head');
+  head.innerHTML = `<span class="she-icon">🤖</span><b>Explicações da IA</b><span class="she-sub">Geradas pela comunidade — economize créditos!</span>`;
+  wrap.appendChild(head);
+
+  const list = mk('div','shexpl-list');
+  wrap.appendChild(list);
+
+  // Loading state
+  const loading = mk('div','shexpl-loading');
+  loading.textContent = 'Procurando explicações disponíveis...';
+  list.appendChild(loading);
+
+  // Busca todas as explicações (não-flashcard)
+  const items = await listExplanationsForQuestion(q.enunciado, 'explicacao');
+  list.innerHTML = '';
+
+  if(items.length === 0){
+    const empty = mk('div','shexpl-empty');
+    empty.innerHTML = `<div style="font-size:12.5px;color:var(--text2);line-height:1.5;margin-bottom:.5rem">Ainda ninguém gerou explicação pra essa questão. <b>Seja o primeiro!</b> Sua explicação ficará disponível pra outros estudantes — e você ganha gratidão da comunidade.</div>`;
+    list.appendChild(empty);
+  } else {
+    items.forEach(item=>{
+      list.appendChild(renderSharedExplanationCard(item, q));
+    });
+  }
+
+  // Botões de gerar nova
+  const genRow = mk('div','shexpl-gen-row');
+  const haveHaiku = items.some(i=>i.model==='haiku' && i.author_id===AUTH.user.id);
+  const haveSonnet = items.some(i=>i.model==='sonnet' && i.author_id===AUTH.user.id);
+  const haikuBtn = mkBtn(haveHaiku?'🤖 Atualizar minha (Haiku)':'🤖 Gerar (Haiku) · ~1-2 créd.','btn btn-sm');
+  haikuBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'haiku', container));
+  genRow.appendChild(haikuBtn);
+  const sonnetBtn = mkBtn(haveSonnet?'⚡ Atualizar minha (Sonnet)':'⚡ Gerar com Sonnet (mais profundo) · ~5-8 créd.','btn btn-sm');
+  sonnetBtn.style.borderColor = 'var(--gralia-purple)';
+  sonnetBtn.style.color = 'var(--gralia-purple)';
+  sonnetBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'sonnet', container));
+  genRow.appendChild(sonnetBtn);
+  wrap.appendChild(genRow);
+
+  // Seção de flashcards compartilhados
+  const flashItems = await listExplanationsForQuestion(q.enunciado, 'flashcard');
+  const flashHead = mk('div','shexpl-head');flashHead.style.marginTop='1rem';
+  flashHead.innerHTML = `<span class="she-icon">🎴</span><b>Flashcards desta questão</b><span class="she-sub">${flashItems.length} ${flashItems.length===1?'disponível':'disponíveis'}</span>`;
+  wrap.appendChild(flashHead);
+  if(flashItems.length > 0){
+    const flashList = mk('div','shexpl-list');
+    flashItems.slice(0,3).forEach(item=>flashList.appendChild(renderSharedFlashcardCard(item, q)));
+    wrap.appendChild(flashList);
+  }
+  // Botão de gerar flashcard novo (sempre disponível)
+  const fcGenRow = mk('div','shexpl-gen-row');fcGenRow.style.marginTop='.5rem';
+  const fcHaiku = mkBtn('🎴 Gerar flashcard (Haiku) · ~1 créd.','btn btn-sm');
+  fcHaiku.addEventListener('click',()=>generateAndSaveFlashcard(q, 'haiku', container));
+  fcGenRow.appendChild(fcHaiku);
+  const fcSonnet = mkBtn('🎴 Gerar com Sonnet · ~3-5 créd.','btn btn-sm');
+  fcSonnet.style.borderColor = 'var(--gralia-purple)';
+  fcSonnet.style.color = 'var(--gralia-purple)';
+  fcSonnet.addEventListener('click',()=>generateAndSaveFlashcard(q, 'sonnet', container));
+  fcGenRow.appendChild(fcSonnet);
+  wrap.appendChild(fcGenRow);
+}
+
+// Card de explicação individual com voto
+function renderSharedExplanationCard(item, q){
+  const card = mk('div','shexpl-card');
+  // Header: modelo + autor + score
+  const cHead = mk('div','shexpl-card-head');
+  const modelTag = mk('span','shexpl-model-tag');
+  modelTag.classList.add('mt-'+item.model);
+  modelTag.textContent = item.model === 'sonnet' ? '⚡ Sonnet' : '🤖 Haiku';
+  cHead.appendChild(modelTag);
+  const author = mk('span','shexpl-author');
+  author.innerHTML = `por <a href="#u/${escapeHTML(item.author_username||'')}" class="shexpl-author-link">@${escapeHTML(item.author_username||'desconhecido')}</a>`;
+  cHead.appendChild(author);
+  const dateEl = mk('span','shexpl-date');
+  dateEl.textContent = formatRelativeDate(item.created_at);
+  cHead.appendChild(dateEl);
+  card.appendChild(cHead);
+
+  // Body: explicação + armadilha + gatilho
+  const body = mk('div','shexpl-body');
+  const p = item.payload || {};
+  if(p.explanation){
+    const e = mk('p');e.style.margin='0 0 .5rem';e.innerHTML = `<b>Explicação:</b> ${escapeHTML(p.explanation)}`;
+    body.appendChild(e);
+  }
+  if(p.trap){
+    const t = mk('p');t.style.margin='0 0 .5rem';t.innerHTML = `<b>Armadilha:</b> ${escapeHTML(p.trap)}`;
+    body.appendChild(t);
+  }
+  if(p.keyword){
+    const k = mk('p');k.style.margin='0';k.innerHTML = `<b>Gatilho:</b> ${escapeHTML(p.keyword)}`;
+    body.appendChild(k);
+  }
+  card.appendChild(body);
+
+  // Footer: voto + "não entendi"
+  const foot = mk('div','shexpl-foot');
+  const myVote = item.my_vote || 0;
+  const upBtn = mk('button','shexpl-vote'+(myVote===1?' on':''));
+  upBtn.type='button';
+  upBtn.innerHTML = `👍 <span class="vote-count">${item.upvotes||0}</span>`;
+  upBtn.title = 'Útil';
+  const dnBtn = mk('button','shexpl-vote dn'+(myVote===-1?' on':''));
+  dnBtn.type='button';
+  dnBtn.innerHTML = `👎 <span class="vote-count">${item.downvotes||0}</span>`;
+  dnBtn.title = 'Não útil';
+  upBtn.addEventListener('click',async()=>{
+    const newVote = myVote === 1 ? 0 : 1;
+    upBtn.disabled = true;dnBtn.disabled = true;
+    const ok = await voteSharedExplanation(item.id, newVote);
+    if(ok){
+      // Atualiza local
+      if(myVote === 1){ item.upvotes = Math.max(0,(item.upvotes||0)-1); item.my_vote = 0; }
+      else if(myVote === -1){ item.downvotes = Math.max(0,(item.downvotes||0)-1); item.upvotes = (item.upvotes||0)+1; item.my_vote = 1; }
+      else{ item.upvotes = (item.upvotes||0)+1; item.my_vote = 1; }
+      // Re-render só o card
+      const newCard = renderSharedExplanationCard(item, q);
+      card.replaceWith(newCard);
+    } else {
+      upBtn.disabled = false;dnBtn.disabled = false;
+    }
+  });
+  dnBtn.addEventListener('click',async()=>{
+    const newVote = myVote === -1 ? 0 : -1;
+    upBtn.disabled = true;dnBtn.disabled = true;
+    const ok = await voteSharedExplanation(item.id, newVote);
+    if(ok){
+      if(myVote === -1){ item.downvotes = Math.max(0,(item.downvotes||0)-1); item.my_vote = 0; }
+      else if(myVote === 1){ item.upvotes = Math.max(0,(item.upvotes||0)-1); item.downvotes = (item.downvotes||0)+1; item.my_vote = -1; }
+      else{ item.downvotes = (item.downvotes||0)+1; item.my_vote = -1; }
+      const newCard = renderSharedExplanationCard(item, q);
+      card.replaceWith(newCard);
+    } else {
+      upBtn.disabled = false;dnBtn.disabled = false;
+    }
+  });
+  foot.appendChild(upBtn);
+  foot.appendChild(dnBtn);
+  // V1.5: Botão "Não entendi" — pede explicação personalizada
+  const helpBtn = mk('button','shexpl-help-btn');
+  helpBtn.type='button';
+  helpBtn.innerHTML = '🤔 Não entendi, me ajuda?';
+  helpBtn.title = 'Pergunta específica pra Sonnet 4.5 explicar do seu jeito';
+  helpBtn.addEventListener('click',()=>showHelpDoubtModal(q, item));
+  foot.appendChild(helpBtn);
+  card.appendChild(foot);
+
+  return card;
+}
+
+// Card de flashcard compartilhado (com botão "Adicionar ao meu deck")
+function renderSharedFlashcardCard(item, q){
+  const card = mk('div','shexpl-card shfc-card');
+  const cHead = mk('div','shexpl-card-head');
+  const modelTag = mk('span','shexpl-model-tag');
+  modelTag.classList.add('mt-'+item.model);
+  modelTag.textContent = item.model === 'sonnet' ? '⚡ Sonnet' : '🤖 Haiku';
+  cHead.appendChild(modelTag);
+  const author = mk('span','shexpl-author');
+  author.innerHTML = `por @${escapeHTML(item.author_username||'')}`;
+  cHead.appendChild(author);
+  card.appendChild(cHead);
+
+  const p = item.payload || {};
+  const body = mk('div','shexpl-body');
+  if(p.front){
+    const f = mk('div');f.style.cssText='font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:.4rem;line-height:1.5';
+    f.textContent = '🃏 ' + p.front;
+    body.appendChild(f);
+  }
+  if(p.back){
+    const b = mk('div');b.style.cssText='font-size:12px;color:var(--text2);line-height:1.5';
+    b.innerHTML = '<b style="color:var(--text3);font-size:10.5px;text-transform:uppercase">Verso:</b> ' + escapeHTML(p.back);
+    body.appendChild(b);
+  }
+  card.appendChild(body);
+
+  const foot = mk('div','shexpl-foot');
+  const addBtn = mkBtn('+ Adicionar ao meu deck','btn btn-sm');
+  addBtn.style.cssText = 'background:var(--accent);color:white;border-color:var(--accent);font-size:11px';
+  addBtn.addEventListener('click',()=>{
+    if(!p.front || !p.back){ alert('Flashcard incompleto'); return; }
+    addCardToDeck({
+      front: p.front,
+      back: p.back,
+      type: p.type,
+      disciplineId: q.disciplineId || null,
+      topic: q.topic || null,
+      sourceQuestion: q.id,
+      generatedBy: 'shared-'+(item.model||'haiku')
+    });
+    addBtn.disabled = true;
+    addBtn.textContent = '✓ Adicionado';
+  });
+  foot.appendChild(addBtn);
+  card.appendChild(foot);
+
+  return card;
+}
+
+// Helper pra adicionar flashcard ao deck local
+// Aceita: {front, back, disciplineId, topic, sourceQuestion, generatedBy}
+function addCardToDeck(c){
+  if(!DATA.srs) DATA.srs = {cards:[]};
+  if(!DATA.srs.cards) DATA.srs.cards = [];
+  const id = Date.now()+''+Math.random();
+  DATA.srs.cards.push({
+    id,
+    front: c.front,
+    back: c.back,
+    type: c.type || 'concept',
+    tags: c.topic ? [c.topic] : [],
+    disciplineId: c.disciplineId || null,
+    nextReview: Date.now(),
+    interval: 0,
+    ease: 2.5,
+    reviews: 0,
+    createdAt: Date.now(),
+    sourceQuestion: c.sourceQuestion || null,
+    generatedBy: c.generatedBy || 'shared',
+    fromShared: true   // marca que veio do cache compartilhado
+  });
+  save();
+  // Registra atividade de tópico se houver
+  if(c.topic && c.disciplineId && typeof recordTopicActivity === 'function'){
+    try{ recordTopicActivity(c.disciplineId, c.topic, 'flashcards'); }catch(e){}
+  }
+  showToast('🎴 Flashcard adicionado ao deck');
+}
+
+// Gera explicação NOVA com modelo escolhido + salva no cache compartilhado + re-renderiza UI
+async function generateAndSaveExplanation(q, model, container){
+  const userAnswered = ST.importedAnswer;
+  // Custo aproximado pra alertar usuário
+  const costMsg = model === 'sonnet'
+    ? 'Gerar com Sonnet 4.5 custa ~5-8 créditos. A explicação ficará disponível pra outros usuários (e pra você sempre que voltar nessa questão).\n\nContinuar?'
+    : 'Gerar com Haiku 4.5 custa ~1-2 créditos. A explicação ficará disponível pra outros usuários.\n\nContinuar?';
+  if(!confirm(costMsg)) return;
+
+  try{
+    const qText = q.kind==='MC'
+      ? `${q.enunciado}\n\nAlternativas:\n${(q.alternatives||[]).map(a=>`${a.letter}) ${a.text}`).join('\n')}`
+      : q.enunciado;
+    const sys = model === 'sonnet'
+      ? 'Você é professor especialista em concursos públicos brasileiros. Sua resposta deve ter clareza, profundidade e identificar armadilhas com precisão. Responda SEMPRE em JSON puro, sem markdown.'
+      : 'Você é professor de concursos. Responda SEMPRE em JSON puro, sem markdown.';
+    const prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nCandidato respondeu ${userAnswered||'(em branco)'} e ${userAnswered===q.answer?'acertou':'errou'}. Explique o gabarito em 2-4 frases, identifique a armadilha (o motivo de muitos errarem) e a palavra-gatilho do enunciado. Responda em JSON:\n{"explanation":"...","trap":"...","keyword":"..."}`;
+
+    const modelOverride = model === 'sonnet' ? 'claude-sonnet-4-6' : null;
+    const opts = modelOverride ? {model: modelOverride} : undefined;
+    const res = await callAPI(sys, [{role:'user', content: prompt}], opts);
+
+    // Salva no cache compartilhado (não bloqueia se falhar)
+    saveSharedExplanation(q.enunciado, 'explicacao', model, {
+      explanation: res.explanation || '',
+      trap: res.trap || '',
+      keyword: res.keyword || ''
+    });
+
+    // Re-renderiza a UI pra mostrar a nova explicação
+    await renderSharedExplanationsUI(container, q);
+    showToast('✓ Explicação gerada e compartilhada');
+  }catch(e){
+    alert('Erro: ' + (e.message||e));
+  }
+}
+
+// Gera FLASHCARD novo a partir da questão + salva no cache compartilhado + adiciona ao deck
+async function generateAndSaveFlashcard(q, model, container){
+  const costMsg = model === 'sonnet'
+    ? 'Gerar flashcard com Sonnet 4.5 custa ~3-5 créditos. O flashcard será adicionado ao seu deck E ficará disponível pra outros usuários.\n\nContinuar?'
+    : 'Gerar flashcard com Haiku custa ~1 crédito. O flashcard será adicionado ao seu deck E ficará disponível pra outros usuários.\n\nContinuar?';
+  if(!confirm(costMsg)) return;
+
+  try{
+    const qText = q.kind==='MC'
+      ? `${q.enunciado}\n\nAlternativas:\n${(q.alternatives||[]).map(a=>`${a.letter}) ${a.text}`).join('\n')}`
+      : q.enunciado;
+    const sys = model === 'sonnet'
+      ? 'Você é especialista em criar flashcards eficazes para concursos brasileiros. Use repetição espaçada (SRS). FRENTE: pergunta ou conceito-gatilho concreto. VERSO: resposta direta com no máximo 2 frases. Foque no que diferencia esse conceito de outros parecidos. Responda em JSON puro.'
+      : 'Você cria flashcards SRS pra concursos. FRENTE: pergunta concreta. VERSO: resposta breve. Responda em JSON puro.';
+    const prompt = `Crie UM flashcard a partir desta questão:\n\nQUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nO flashcard deve testar o CONCEITO da questão, não decorar a questão. Foque na regra/princípio que ela cobra.\n\nResponda em JSON:\n{"front":"...","back":"...","type":"concept"}`;
+
+    const modelOverride = model === 'sonnet' ? 'claude-sonnet-4-6' : null;
+    const opts = modelOverride ? {model: modelOverride} : undefined;
+    const res = await callAPI(sys, [{role:'user', content: prompt}], opts);
+
+    if(!res || !res.front || !res.back){
+      alert('Resposta da IA inválida — tente novamente.');
+      return;
+    }
+
+    // Salva no cache compartilhado
+    saveSharedExplanation(q.enunciado, 'flashcard', model, {
+      front: res.front,
+      back: res.back,
+      type: res.type || 'concept'
+    });
+
+    // Adiciona ao deck local automaticamente
+    addCardToDeck({
+      front: res.front,
+      back: res.back,
+      type: res.type || 'concept',
+      disciplineId: q.disciplineId || null,
+      topic: q.topic || null,
+      sourceQuestion: q.id,
+      generatedBy: 'self-'+model
+    });
+
+    // Re-renderiza pra mostrar o flashcard novo
+    await renderSharedExplanationsBody(container, q);
+    showToast('✓ Flashcard criado, adicionado ao deck e compartilhado');
+  }catch(e){
+    alert('Erro: ' + (e.message||e));
+  }
+}
+
+// V1.5: Modal pra usuário dizer o que não entendeu — gera resposta personalizada com Sonnet
+function showHelpDoubtModal(q, currentExplanation){
+  const m = mk('div');m.style.cssText='max-width:560px;max-height:85vh;overflow-y:auto';
+
+  const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px;font-weight:700';
+  h.innerHTML = '🤔 Me ajuda a entender';
+  m.appendChild(h);
+  const sub = mk('p','txt2');sub.style.cssText='margin:0 0 1rem;font-size:13px;line-height:1.55';
+  sub.innerHTML = 'Sonnet 4.5 vai explicar do jeito que faz sentido pra você. <span style="color:var(--text3);font-size:12px">Custo: ~3-6 créditos.</span>';
+  m.appendChild(sub);
+
+  // Mostra explicação atual em destaque (resumo)
+  const p = currentExplanation.payload || {};
+  if(p.explanation){
+    const curBox = mk('div');curBox.style.cssText='padding:.625rem .875rem;background:var(--surface2);border-left:3px solid var(--gralia-purple);border-radius:0 8px 8px 0;margin-bottom:.875rem;font-size:12.5px;color:var(--text2);line-height:1.55';
+    curBox.innerHTML = `<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);font-weight:700;margin-bottom:4px">Explicação atual:</div>${escapeHTML(p.explanation)}`;
+    m.appendChild(curBox);
+  }
+
+  // Sugestões rápidas
+  const lblQ = mk('label');lblQ.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px';
+  lblQ.textContent = 'O que ficou confuso?';
+  m.appendChild(lblQ);
+
+  const suggRow = mk('div');suggRow.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px';
+  const SUGGESTIONS = [
+    'Não entendi a armadilha',
+    'Explica o conceito por trás',
+    'Me dá um exemplo prático',
+    'Por que essa alternativa está certa?',
+    'Qual a diferença entre as alternativas?',
+    'Decora isso de algum jeito (mnemônico)?'
+  ];
+  const ta = mk('textarea');
+  ta.placeholder='Ex: Não consigo distinguir esse princípio do princípio X. Por que aqui não se aplica Y?';
+  ta.rows = 4;
+  ta.style.cssText='width:100%;padding:.625rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit;resize:vertical;line-height:1.55';
+  SUGGESTIONS.forEach(s=>{
+    const sb = mk('button');sb.type='button';
+    sb.style.cssText='font-size:11.5px;padding:4px 10px;background:var(--surface);border:1px solid var(--border);border-radius:999px;cursor:pointer;color:var(--text2);font-family:inherit;font-weight:500;transition:all .15s';
+    sb.textContent = s;
+    sb.addEventListener('click',()=>{
+      // Adiciona a sugestão ao textarea (não substitui)
+      const cur = ta.value.trim();
+      ta.value = cur ? cur + '\n' + s : s;
+      ta.focus();
+    });
+    sb.addEventListener('mouseenter',()=>{
+      sb.style.background = 'var(--gralia-purple)';
+      sb.style.color = '#fff';
+      sb.style.borderColor = 'var(--gralia-purple)';
+    });
+    sb.addEventListener('mouseleave',()=>{
+      sb.style.background = 'var(--surface)';
+      sb.style.color = 'var(--text2)';
+      sb.style.borderColor = 'var(--border)';
+    });
+    suggRow.appendChild(sb);
+  });
+  m.appendChild(suggRow);
+
+  m.appendChild(ta);
+
+  const respArea = mk('div');respArea.style.cssText='margin-top:1rem';
+  m.appendChild(respArea);
+
+  const actions = mk('div');actions.style.cssText='display:flex;gap:8px;justify-content:flex-end;margin-top:1rem;padding-top:.875rem;border-top:1px solid var(--border)';
+  const cancelBtn = mkBtn('Fechar','btn btn-sm');
+  cancelBtn.addEventListener('click',closeModal);
+  actions.appendChild(cancelBtn);
+  const askBtn = mkBtn('⚡ Explicar com Sonnet 4.5','btn btn-sm btn-p');
+  askBtn.addEventListener('click',async()=>{
+    const doubt = ta.value.trim();
+    if(doubt.length < 5){
+      alert('Descreva sua dúvida (mínimo 5 caracteres). Use as sugestões se ajudar.');
+      return;
+    }
+    askBtn.disabled = true;
+    askBtn.textContent = 'Pensando...';
+    respArea.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--text3);font-size:12.5px">Sonnet 4.5 está analisando sua dúvida...</div>';
+
+    try{
+      const qText = q.kind==='MC'
+        ? `${q.enunciado}\n\nAlternativas:\n${(q.alternatives||[]).map(a=>`${a.letter}) ${a.text}`).join('\n')}`
+        : q.enunciado;
+      const sys = `Você é um professor especialista em concursos brasileiros, com paciência infinita e talento pra explicar conceitos difíceis de forma simples. O estudante já viu uma explicação mas não entendeu — sua missão é destravar a confusão DELE especificamente, sem repetir o que ele já leu.
+
+REGRAS:
+- Foque APENAS no que o estudante perguntou — não responda além
+- Use exemplos concretos quando possível
+- Se ele pediu mnemônico, crie um
+- Se ele pediu exemplo, dê 1-2 exemplos diretos
+- Linguagem clara e direta, sem juridiquês excessivo
+- Se a dúvida estiver mal formulada, peça pra ele esclarecer
+- Máximo 3 parágrafos curtos`;
+
+      const prevExpl = p.explanation || '';
+      const prevTrap = p.trap || '';
+      const userMsg = `QUESTÃO: ${qText}
+GABARITO: ${q.answer}
+
+EXPLICAÇÃO QUE O ESTUDANTE JÁ LEU:
+${prevExpl}
+${prevTrap ? '\nARMADILHA: ' + prevTrap : ''}
+
+DÚVIDA ESPECÍFICA DO ESTUDANTE:
+"${doubt}"
+
+Responda em texto plano (sem JSON, sem markdown), focando exatamente nessa dúvida.`;
+
+      const opts = {model: 'claude-sonnet-4-6', raw: true};  // raw: pega texto puro sem extrair JSON
+      const respText = await callAPI(sys, [{role:'user', content: userMsg}], opts);
+
+      respArea.innerHTML = '';
+      const respBox = mk('div');respBox.style.cssText='padding:.875rem 1rem;background:linear-gradient(135deg,rgba(128,66,250,.08),rgba(128,66,250,.02));border:1px solid rgba(128,66,250,.25);border-radius:10px;line-height:1.65';
+      const respHead = mk('div');respHead.style.cssText='font-size:10.5px;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-bottom:6px';
+      respHead.textContent = '⚡ Sonnet 4.5 explica:';
+      respBox.appendChild(respHead);
+      const respBody = mk('div');respBody.style.cssText='font-size:13.5px;color:var(--text);white-space:pre-wrap';
+      respBody.textContent = String(respText||'').trim();
+      respBox.appendChild(respBody);
+      respArea.appendChild(respBox);
+
+      // Permite fazer outra pergunta
+      askBtn.disabled = false;
+      askBtn.textContent = '⚡ Perguntar outra coisa';
+      ta.value = '';
+      ta.focus();
+    }catch(e){
+      askBtn.disabled = false;
+      askBtn.textContent = '⚡ Explicar com Sonnet 4.5';
+      respArea.innerHTML = `<div style="padding:.625rem .875rem;background:rgba(232,76,76,.08);border:1px solid rgba(232,76,76,.22);border-radius:8px;color:var(--red-text);font-size:12.5px">Erro: ${escapeHTML(e.message||String(e))}</div>`;
+    }
+  });
+  actions.appendChild(askBtn);
+  m.appendChild(actions);
+
+  showModal(m);
+  setTimeout(()=>ta.focus(), 50);
+}
 
 // Busca a tentativa pessoal do usuário em uma questão
 async function fetchMyQuestionAttempt(enunciado){
@@ -4755,6 +5425,11 @@ async function callAPI(system, msgs, opts){
       cacheCreation:d.usage.cache_creation_input_tokens||0,
       cacheRead:d.usage.cache_read_input_tokens||0
     };
+  }
+  // Modo raw: retorna texto puro sem tentar extrair JSON
+  // Usado pra explicações conversacionais (ex: "Não entendi") onde queremos texto livre
+  if(opts && opts.raw){
+    return txt;
   }
   // Robust JSON extraction. The model sometimes wraps output in ```json ... ``` and
   // adds trailing narration after the block. We try, in order:
@@ -7856,9 +8531,21 @@ function parseTecBlock(block, sourceUrl){
 }
 
 function parseSimpleFormat(raw){
+  // Normaliza unicodes raros (em-dash, smart quotes, etc.)
+  raw = raw
+    .replace(/\u2013|\u2014/g,'-')
+    .replace(/\u2018|\u2019|\u201A|\u201B/g,"'")
+    .replace(/\u201C|\u201D/g,'"')
+    .replace(/\u00A0/g,' '); // nbsp
+
+  // Tenta formato MC (múltipla escolha) primeiro
+  const mcQuestions = parseMultipleChoiceFormat(raw);
+  if(mcQuestions.length > 0) return mcQuestions;
+
+  // Fallback: formato CE clássico (existente)
   const blocks = raw.split(/\n\s*\n+/).map(b=>b.trim()).filter(Boolean);
   const out = [];
-  const GAB_REGEX = /(?:gabarito|resposta)\s*[:=\-–—]?\s*\(?\s*(c|e|certo|errado|verdadeiro|falso|v|f)\s*\)?\s*\.?\s*$/i;
+  const GAB_REGEX = /(?:gabarito|resposta|resp\.?|alternativa\s+correta|correto[\s:]+|answer)\s*[:=\-–—]?\s*\(?\s*(c|e|certo|errado|verdadeiro|falso|v|f)\s*\)?\s*\.?\s*$/i;
   const ANSWER_LINE_REGEX = /^\s*\(?\s*(c|e|certo|errado|verdadeiro|falso|v|f)\s*\)?\s*\.?\s*$/i;
   const normAnswer = s => {
     const v = (s||'').toLowerCase().trim();
@@ -7878,9 +8565,98 @@ function parseSimpleFormat(raw){
       const m2 = block.match(GAB_REGEX);
       if(m2){answer = normAnswer(m2[1]);enun = block.replace(GAB_REGEX,'').trim();}
     }
-    enun = enun.replace(/^(?:q(?:uest[aã]o)?\s*)?\d+\s*[.\)\-:]?\s*/i,'').trim();
+    // Remove numeração inicial (1., 1), 01., Q1, Questão 1, etc.)
+    enun = enun.replace(/^(?:q(?:uest[aã]o|\.)?\s*)?(?:0?\d{1,3})\s*[.\)\-:]?\s*/i,'').trim();
     if(enun.length>=20&&answer)out.push({enunciado:enun,answer,kind:'CE'});
     else if(enun.length>=20)out.push({enunciado:enun,answer:null,kind:'CE',needsAnswer:true});
+  });
+  return out;
+}
+
+// Detecta formato de múltipla escolha (MC) com alternativas A) B) C) D) E)
+// Aceita formatos:
+//  - "1. Pergunta?\nA) opção\nB) opção..."
+//  - "Questão 1: ...\na) ...\nb) ..."
+//  - "(QConcursos 2023) ...\n(A) ...\n(B) ..."
+//  - Resposta indicada como "Gabarito: B" / "Resposta: A" / linha isolada "B"
+function parseMultipleChoiceFormat(raw){
+  const out = [];
+  // Divide em blocos de questão. Detecta novos blocos por:
+  //  - Linha em branco seguida de numeração (1., Q1, etc.)
+  //  - Padrão "Gabarito: X" sucedido por nova questão
+  // Usamos abordagem simples: split por \n\n e tenta parsear cada bloco
+  const blocks = raw.split(/\n\s*\n+/).map(b=>b.trim()).filter(Boolean);
+  // Padrões pra letra de alternativa: A), A., (A), A-
+  const ALT_LINE = /^\s*(?:\(?([a-eA-E])[\)\.\-:]\s+|\(([a-eA-E])\)\s+)(.+)$/;
+  // Padrão pra gabarito explícito
+  const GAB_PATTERNS = [
+    /(?:gabarito|resposta|resp\.?|alternativa\s+correta|correto[\s:]+|answer)\s*[:=\-–—]?\s*\(?\s*([a-eA-E])\s*\)?\s*\.?$/im,
+    /^\s*\(?\s*([a-eA-E])\s*\)?\s*$/m  // letra solta numa linha
+  ];
+  // Pra cada bloco, separa linhas
+  blocks.forEach(block=>{
+    const lines = block.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+    if(lines.length < 3) return; // precisa de enunciado + ao menos 2 alternativas
+    // Encontra primeira linha de alternativa
+    let altStartIdx = -1;
+    for(let i=1;i<lines.length;i++){
+      if(ALT_LINE.test(lines[i])){
+        altStartIdx = i;
+        break;
+      }
+    }
+    if(altStartIdx === -1) return;
+    // Coleta alternativas sequenciais
+    const alternatives = [];
+    let answer = null;
+    let i = altStartIdx;
+    while(i < lines.length){
+      const line = lines[i];
+      const m = line.match(ALT_LINE);
+      if(m){
+        const letter = (m[1]||m[2]||'').toUpperCase();
+        const text = (m[3]||'').trim();
+        // Acumula linhas seguintes até encontrar próxima alt ou gabarito ou fim
+        let acc = text;
+        let j = i+1;
+        while(j < lines.length && !ALT_LINE.test(lines[j]) && !/(?:gabarito|resposta|resp\.?|answer)\s*[:=]/i.test(lines[j])){
+          // Linha de gabarito numa letra solta? Ex: "B"
+          if(/^\s*\(?\s*[a-eA-E]\s*\)?\s*$/.test(lines[j]) && j === lines.length-1){
+            // Última linha — provavelmente é gabarito
+            answer = lines[j].replace(/[^a-eA-E]/g,'').toUpperCase();
+            break;
+          }
+          acc += ' ' + lines[j];
+          j++;
+        }
+        alternatives.push({letter, text: acc.trim()});
+        i = j;
+      } else {
+        // Linha não-alt — pode ser gabarito
+        for(const pat of GAB_PATTERNS){
+          const gm = line.match(pat);
+          if(gm){
+            answer = gm[1].toUpperCase();
+            break;
+          }
+        }
+        i++;
+      }
+    }
+    if(alternatives.length < 2) return;
+    // Enunciado = linhas antes do altStartIdx, com numeração removida
+    let enun = lines.slice(0, altStartIdx).join(' ').trim();
+    enun = enun.replace(/^(?:q(?:uest[aã]o|\.)?\s*)?(?:0?\d{1,3})\s*[.\)\-:]?\s*/i,'').trim();
+    // Remove referências comuns "(QConcursos 2023)", "(Cebraspe - 2024)", etc. (vem antes)
+    enun = enun.replace(/^\((?:[^)]{1,80})\)\s*/,'').trim();
+    if(enun.length < 15) return;
+    out.push({
+      enunciado: enun,
+      kind: 'MC',
+      alternatives,
+      answer: answer || null,
+      needsAnswer: !answer
+    });
   });
   return out;
 }
@@ -10288,6 +11064,9 @@ function renderImportedPractice(wrap){
       srcLink.textContent='Ver no TEC ↗';
       actions.appendChild(srcLink);
     }
+    // IMPORTANTE: anexa actions ao fb ANTES de qualquer insertBefore que use 'actions' como referência
+    // (caso contrário, insertBefore lança NotFoundError porque actions ainda não é filho de fb)
+    fb.appendChild(actions);
     if(!ok){
       // Create flashcard button — uses the error just logged
       const errRef = DATA.errors.find(e=>e.id===ST.importedLastErrId);
@@ -10311,27 +11090,12 @@ function renderImportedPractice(wrap){
         }
         fb.insertBefore(ctaRow,actions);
       }
-      const exBtn = mkBtn('🤖 Pedir explicação à IA','btn');
-      exBtn.addEventListener('click',async()=>{
-        exBtn.disabled=true;exBtn.textContent='Pensando...';
-        try{
-          const qText = q.kind==='MC'?`${q.enunciado}\n\nAlternativas:\n${(q.alternatives||[]).map(a=>`${a.letter}) ${a.text}`).join('\n')}`:q.enunciado;
-          const prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nCandidato respondeu ${ST.importedAnswer} e errou. Explique o gabarito em 2-3 frases, identifique a armadilha e a palavra-gatilho. Responda em JSON:\n{"explanation":"...","trap":"...","keyword":"..."}`;
-          const res = await callAPI('Você é professor Cebraspe. Responda SEMPRE em JSON puro, sem markdown.',[{role:'user',content:prompt}]);
-          const box = mk('div','meta-box');box.style.marginTop='.75rem';
-          const p1 = mk('p');p1.style.margin='0';p1.innerHTML=`<strong>Explicação:</strong> ${res.explanation||''}`;box.appendChild(p1);
-          if(res.trap){const p2=mk('p');p2.style.margin='0';p2.innerHTML=`<strong>Armadilha:</strong> ${res.trap}`;box.appendChild(p2);}
-          if(res.keyword){const p3=mk('p');p3.style.margin='0';p3.innerHTML=`<strong>Gatilho:</strong> ${res.keyword}`;box.appendChild(p3);}
-          fb.insertBefore(box,actions);
-          exBtn.remove();
-        }catch(e){
-          exBtn.disabled=false;exBtn.textContent='🤖 Pedir explicação à IA';
-          alert('Erro: '+(e.message||e));
-        }
-      });
-      actions.appendChild(exBtn);
     }
-    fb.appendChild(actions);
+    // Container pra explicações IA + flashcards compartilhados (aparece TANTO em acertos quanto erros)
+    // Em acertos, ajuda a confirmar entendimento e identificar armadilhas evitadas
+    const aiContainer = mk('div','imp-ai-container');aiContainer.style.cssText='margin-top:.875rem';
+    fb.insertBefore(aiContainer, actions);
+    renderSharedExplanationsUI(aiContainer, q, ok);
     wrap.appendChild(fb);
   }
   return wrap;
@@ -19620,160 +20384,252 @@ function renderStoryCanvas(canvas, data){
   const W = canvas.width, H = canvas.height;
   const {goal, view, yearly, userName, examName} = data;
 
-  // Fundo: gradient azul-marinho → roxo (identidade Gralia)
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, '#0e1838');
-  bg.addColorStop(0.45, '#1a2a52');
-  bg.addColorStop(1, '#5e3fd8');
-  ctx.fillStyle = bg;
+  // Cores Gralia
+  const GRALIA_BLUE = '#1a2a52';
+  const GRALIA_PURPLE = '#8042fa';
+  const GRALIA_PURPLE_LIGHT = '#9255ff';
+  const GRALIA_PURPLE_GLOW = '#a571ff';
+
+  // === Fundo: dark mode com radial glow ===
+  // Base sólida quase preta com tom azul
+  ctx.fillStyle = '#0a0e1f';
   ctx.fillRect(0, 0, W, H);
 
-  // Padrão sutil de pontos no fundo
-  ctx.fillStyle = 'rgba(255,255,255,0.04)';
-  for(let x=40; x<W; x+=80){
-    for(let y=40; y<H; y+=80){
+  // Glow radial roxo no canto superior direito
+  const glow1 = ctx.createRadialGradient(W*0.85, H*0.10, 0, W*0.85, H*0.10, W*0.7);
+  glow1.addColorStop(0, 'rgba(128, 66, 250, 0.32)');
+  glow1.addColorStop(0.4, 'rgba(128, 66, 250, 0.10)');
+  glow1.addColorStop(1, 'rgba(128, 66, 250, 0)');
+  ctx.fillStyle = glow1;
+  ctx.fillRect(0, 0, W, H);
+
+  // Glow radial azul no canto inferior esquerdo
+  const glow2 = ctx.createRadialGradient(W*0.15, H*0.95, 0, W*0.15, H*0.95, W*0.8);
+  glow2.addColorStop(0, 'rgba(26, 42, 82, 0.6)');
+  glow2.addColorStop(0.5, 'rgba(26, 42, 82, 0.2)');
+  glow2.addColorStop(1, 'rgba(26, 42, 82, 0)');
+  ctx.fillStyle = glow2;
+  ctx.fillRect(0, 0, W, H);
+
+  // Padrão de pontos sutil (mais escasso)
+  ctx.fillStyle = 'rgba(255,255,255,0.025)';
+  for(let x=60; x<W; x+=120){
+    for(let y=60; y<H; y+=120){
       ctx.beginPath();
-      ctx.arc(x, y, 2, 0, Math.PI*2);
+      ctx.arc(x, y, 1.5, 0, Math.PI*2);
       ctx.fill();
     }
   }
 
+  // === Borda fina no topo ===
+  const topBorder = ctx.createLinearGradient(0, 0, W, 0);
+  topBorder.addColorStop(0, 'rgba(128, 66, 250, 0)');
+  topBorder.addColorStop(0.5, 'rgba(128, 66, 250, 0.8)');
+  topBorder.addColorStop(1, 'rgba(128, 66, 250, 0)');
+  ctx.fillStyle = topBorder;
+  ctx.fillRect(0, 0, W, 4);
+
   // === HEADER: Logo Gralia ===
-  const headY = 140;
-  // Nome GRALIA grande
+  const headY = 200;
+  // Tenta usar Sora — fallback pra system-ui
+  const FONT_BRAND = '900 110px Sora,system-ui,-apple-system,sans-serif';
+  const FONT_SUB = '500 30px Sora,system-ui,sans-serif';
+  ctx.font = FONT_BRAND;
   ctx.textAlign = 'center';
-  ctx.font = '900 96px system-ui,-apple-system,Segoe UI,sans-serif';
-  ctx.letterSpacing = '-3px';
-  // GRAL em branco
-  ctx.fillStyle = '#ffffff';
+  ctx.textBaseline = 'alphabetic';
+
+  // Calcula posição centralizada de "GRALIA"
   const gralWidth = ctx.measureText('GRAL').width;
   const iaWidth = ctx.measureText('IA').width;
   const totalW = gralWidth + iaWidth;
   const startX = (W - totalW) / 2;
+
+  // GRAL — branco com leve sombra azul
+  ctx.shadowColor = 'rgba(26, 42, 82, 0.6)';
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 4;
+  ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'left';
   ctx.fillText('GRAL', startX, headY);
-  // IA em gradient roxo
-  const iaGrad = ctx.createLinearGradient(startX+gralWidth, headY-80, startX+totalW, headY+10);
-  iaGrad.addColorStop(0, '#a98aff');
-  iaGrad.addColorStop(1, '#dbc8ff');
+
+  // IA — gradient roxo Gralia (mais vívido)
+  const iaGrad = ctx.createLinearGradient(startX+gralWidth, headY-100, startX+totalW, headY+15);
+  iaGrad.addColorStop(0, GRALIA_PURPLE);
+  iaGrad.addColorStop(0.5, GRALIA_PURPLE_LIGHT);
+  iaGrad.addColorStop(1, GRALIA_PURPLE_GLOW);
   ctx.fillStyle = iaGrad;
   ctx.fillText('IA', startX+gralWidth, headY);
-  // Reset
+
+  // Reset shadow
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
   ctx.textAlign = 'center';
 
-  // Subtitle
-  ctx.font = '500 32px system-ui,sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.fillText('Plataforma de estudos com IA', W/2, headY + 50);
+  // Subtitle (com mais respiro)
+  ctx.font = FONT_SUB;
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillText('plataforma de estudos com IA', W/2, headY + 60);
 
-  // === USER + EXAM ===
-  const userY = headY + 200;
+  // === USER + EXAM (layout mais hierárquico) ===
+  const userY = headY + 220;
   if(userName){
-    ctx.font = '700 56px system-ui,sans-serif';
+    ctx.font = '700 60px Sora,system-ui,sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(userName, W/2, userY);
+    // Limita largura do nome (pra não estourar)
+    const maxNameW = W - 120;
+    let displayName = userName;
+    while(ctx.measureText(displayName).width > maxNameW && displayName.length > 3){
+      displayName = displayName.slice(0, -1);
+    }
+    if(displayName !== userName) displayName += '...';
+    ctx.fillText(displayName, W/2, userY);
   }
-  ctx.font = '500 32px system-ui,sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.65)';
-  ctx.fillText(`📚 ${examName}`, W/2, userY + (userName ? 60 : 0));
 
-  // === STATUS PILL (Adiantado/No ritmo/Atrasado) ===
-  const statusY = userY + (userName ? 140 : 80);
-  let statusText, statusEmoji, statusBg;
-  if(view.status==='ahead'){statusText='ADIANTADO';statusEmoji='🚀';statusBg='rgba(73, 197, 137, 0.2)';}
-  else if(view.status==='behind'){statusText='NO RITMO PRA RECUPERAR';statusEmoji='⏳';statusBg='rgba(232, 164, 60, 0.2)';}
-  else {statusText='NO RITMO';statusEmoji='⚖️';statusBg='rgba(124, 92, 255, 0.25)';}
-  ctx.font = '700 28px system-ui,sans-serif';
-  const statusFullText = `${statusEmoji} ${statusText}`;
-  const stMeasure = ctx.measureText(statusFullText);
-  const stPad = 32;
-  const stW = stMeasure.width + stPad*2;
-  const stH = 70;
-  const stX = (W-stW)/2;
-  // Pill bg
-  ctx.fillStyle = statusBg;
-  roundRect(ctx, stX, statusY-stH/2, stW, stH, 35);
+  // Exam chip (mais estiloso — pílula)
+  const examChipY = userY + (userName ? 50 : -10);
+  ctx.font = '600 30px Sora,system-ui,sans-serif';
+  const examFullText = examName;
+  const exMeasure = ctx.measureText(examFullText);
+  const exPad = 32;
+  const exW = Math.min(exMeasure.width + exPad*2 + 50, W - 100); // 50 = espaço pro emoji
+  const exH = 64;
+  const exX = (W-exW)/2;
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  roundRect(ctx, exX, examChipY, exW, exH, exH/2);
   ctx.fill();
-  // Border
-  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-  ctx.lineWidth = 2;
-  roundRect(ctx, stX, statusY-stH/2, stW, stH, 35);
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, exX, examChipY, exW, exH, exH/2);
   ctx.stroke();
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🎯  ' + examFullText, W/2, examChipY + exH/2);
+  ctx.textBaseline = 'alphabetic';
+
+  // === STATUS PILL ===
+  const statusY = examChipY + exH + 80;
+  let statusText, statusEmoji, statusBg, statusBorder, statusColor;
+  if(view.status==='ahead'){
+    statusText='ADIANTADO';statusEmoji='🚀';
+    statusBg='rgba(73, 197, 137, 0.15)';
+    statusBorder='rgba(73, 197, 137, 0.5)';
+    statusColor='#7eedb1';
+  } else if(view.status==='behind'){
+    statusText='RECUPERANDO';statusEmoji='⏳';
+    statusBg='rgba(232, 164, 60, 0.15)';
+    statusBorder='rgba(232, 164, 60, 0.5)';
+    statusColor='#f5c477';
+  } else {
+    statusText='NO RITMO';statusEmoji='⚖';
+    statusBg='rgba(128, 66, 250, 0.18)';
+    statusBorder='rgba(128, 66, 250, 0.55)';
+    statusColor='#bca0ff';
+  }
+  ctx.font = '700 30px Sora,system-ui,sans-serif';
+  const statusFullText = `${statusEmoji}  ${statusText}`;
+  const stMeasure = ctx.measureText(statusFullText);
+  const stPad = 36;
+  const stW = stMeasure.width + stPad*2;
+  const stH = 76;
+  const stX = (W-stW)/2;
+  ctx.fillStyle = statusBg;
+  roundRect(ctx, stX, statusY-stH/2, stW, stH, stH/2);
+  ctx.fill();
+  ctx.strokeStyle = statusBorder;
+  ctx.lineWidth = 2;
+  roundRect(ctx, stX, statusY-stH/2, stW, stH, stH/2);
+  ctx.stroke();
+  ctx.fillStyle = statusColor;
   ctx.textBaseline = 'middle';
   ctx.fillText(statusFullText, W/2, statusY);
   ctx.textBaseline = 'alphabetic';
 
-  // === PROGRESS CARDS (Questões + Pomos) ===
-  const cardsY = statusY + 120;
+  // === PROGRESS CARDS ===
+  const cardsY = statusY + 110;
   const cardW = (W - 100 - 40) / 2;
-  const cardH = 300;
+  const cardH = 320;
   drawProgressCard(ctx, 50, cardsY, cardW, cardH, '📝', 'Questões', view.doneQ, goal.questionsTarget, view.pctQ);
   drawProgressCard(ctx, 50+cardW+40, cardsY, cardW, cardH, '🍅', 'Pomos', view.donePomos, goal.pomosTarget, view.pctP);
 
   // === HEATMAP MINI ===
-  const hmY = cardsY + cardH + 80;
-  ctx.font = '600 28px system-ui,sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  const hmY = cardsY + cardH + 90;
+  ctx.font = '700 28px Sora,system-ui,sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
   ctx.textAlign = 'left';
-  ctx.fillText('Últimos 12 meses', 50, hmY);
+  ctx.fillText('ÚLTIMOS 12 MESES', 50, hmY);
   // Mini heatmap
-  const hmStartY = hmY + 30;
-  const hmH = 110;
+  const hmStartY = hmY + 36;
+  const hmH = 120;
   const hmW = W - 100;
   const colW = hmW / 12;
   yearly.months.forEach((m, idx)=>{
     const x = 50 + idx*colW;
-    const barW = colW - 8;
+    const barW = colW - 10;
     // Background da coluna
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    roundRect(ctx, x, hmStartY, barW, hmH, 6);
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    roundRect(ctx, x, hmStartY, barW, hmH, 8);
     ctx.fill();
     // Barra de intensidade
     if(m.intensity>0 && !m.isFuture){
       const barH = (m.intensity/4) * hmH;
       const barY = hmStartY + (hmH - barH);
       const barGrad = ctx.createLinearGradient(0, barY, 0, hmStartY+hmH);
-      barGrad.addColorStop(0, '#a98aff');
-      barGrad.addColorStop(1, '#7c5cff');
+      barGrad.addColorStop(0, GRALIA_PURPLE_GLOW);
+      barGrad.addColorStop(1, GRALIA_PURPLE);
       ctx.fillStyle = barGrad;
-      roundRect(ctx, x, barY, barW, barH, 6);
+      roundRect(ctx, x, barY, barW, barH, 8);
       ctx.fill();
     }
     // Label do mês
-    ctx.font = '600 18px system-ui,sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '600 18px Sora,system-ui,sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
     ctx.textAlign = 'center';
-    ctx.fillText(m.shortLabel, x + barW/2, hmStartY + hmH + 30);
+    ctx.fillText(m.shortLabel, x + barW/2, hmStartY + hmH + 32);
   });
 
   // === STATS TOTAL ===
-  const totY = hmStartY + hmH + 110;
+  const totY = hmStartY + hmH + 130;
   ctx.textAlign = 'center';
-  ctx.font = '700 56px system-ui,sans-serif';
-  // 4 stats lado a lado: total Q, total P, dias ativos, melhor mês
+  // 3 stats lado a lado: total Q, total P, dias ativos
   const statsBoxes = [
-    {value:yearly.totalQ.toLocaleString('pt-BR'), label:'questões'},
-    {value:yearly.totalP.toLocaleString('pt-BR'), label:'pomodoros'},
-    {value:yearly.activeDays.toString(), label:'dias ativos'}
+    {value:yearly.totalQ.toLocaleString('pt-BR'), label:'QUESTÕES'},
+    {value:yearly.totalP.toLocaleString('pt-BR'), label:'POMODOROS'},
+    {value:yearly.activeDays.toString(), label:'DIAS ATIVOS'}
   ];
   const statColW = (W-100)/3;
   statsBoxes.forEach((s, i)=>{
     const sx = 50 + i*statColW + statColW/2;
-    ctx.font = '900 64px system-ui,sans-serif';
+    ctx.font = '900 72px Sora,system-ui,sans-serif';
+    // Sombra leve pro número se destacar
+    ctx.shadowColor = 'rgba(128, 66, 250, 0.3)';
+    ctx.shadowBlur = 16;
     ctx.fillStyle = '#ffffff';
     ctx.fillText(s.value, sx, totY);
-    ctx.font = '500 24px system-ui,sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.fillText(s.label.toUpperCase(), sx, totY + 38);
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.font = '700 22px Sora,system-ui,sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.letterSpacing = '2px';
+    ctx.fillText(s.label, sx, totY + 42);
   });
 
   // === FOOTER ===
-  const footY = H - 100;
+  const footY = H - 90;
+  // Linha decorativa
+  const footLineW = 200;
+  const footLineX = (W - footLineW)/2;
+  const footLineGrad = ctx.createLinearGradient(footLineX, 0, footLineX+footLineW, 0);
+  footLineGrad.addColorStop(0, 'rgba(128, 66, 250, 0)');
+  footLineGrad.addColorStop(0.5, 'rgba(128, 66, 250, 0.6)');
+  footLineGrad.addColorStop(1, 'rgba(128, 66, 250, 0)');
+  ctx.fillStyle = footLineGrad;
+  ctx.fillRect(footLineX, footY - 30, footLineW, 2);
+
   ctx.textAlign = 'center';
-  ctx.font = '600 26px system-ui,sans-serif';
+  ctx.font = '600 26px Sora,system-ui,sans-serif';
   ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  ctx.fillText('estude no Gralia · ferramenta de estudos com IA', W/2, footY);
+  ctx.fillText('estude no gralia · estudos com IA', W/2, footY);
 }
 
 function roundRect(ctx, x, y, w, h, r){
@@ -19791,59 +20647,77 @@ function roundRect(ctx, x, y, w, h, r){
 }
 
 function drawProgressCard(ctx, x, y, w, h, emoji, label, done, target, pct){
-  // Card bg
-  ctx.fillStyle = 'rgba(255,255,255,0.08)';
-  roundRect(ctx, x, y, w, h, 28);
+  // Card bg com glassmorphism mais elegante
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  roundRect(ctx, x, y, w, h, 32);
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-  ctx.lineWidth = 2;
-  roundRect(ctx, x, y, w, h, 28);
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, x, y, w, h, 32);
   ctx.stroke();
 
+  // Glow interno sutil baseado no progresso
+  if(pct >= 75){
+    const innerGlow = ctx.createRadialGradient(x+w/2, y+h/2, 0, x+w/2, y+h/2, w);
+    innerGlow.addColorStop(0, 'rgba(128, 66, 250, 0.15)');
+    innerGlow.addColorStop(1, 'rgba(128, 66, 250, 0)');
+    ctx.fillStyle = innerGlow;
+    roundRect(ctx, x, y, w, h, 32);
+    ctx.fill();
+  }
+
   // Emoji
-  ctx.font = '64px sans-serif';
+  ctx.font = '70px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText(emoji, x+30, y+74);
+  ctx.fillText(emoji, x+32, y+82);
 
   // Label
-  ctx.font = '600 32px system-ui,sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.fillText(label.toUpperCase(), x+30, y+120);
+  ctx.font = '700 28px Sora,system-ui,sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.fillText(label.toUpperCase(), x+32, y+130);
 
-  // Big number
-  ctx.font = '900 88px system-ui,sans-serif';
+  // Big number "done"
+  ctx.font = '900 96px Sora,system-ui,sans-serif';
+  ctx.shadowColor = 'rgba(128, 66, 250, 0.4)';
+  ctx.shadowBlur = 24;
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(`${done}`, x+30, y+200);
+  ctx.fillText(done.toLocaleString('pt-BR'), x+32, y+220);
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
 
-  // /target
-  ctx.font = '500 38px system-ui,sans-serif';
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
-  const doneW = ctx.measureText(`${done}`);
-  ctx.fillText(` / ${target}`, x+30+doneW.width+8, y+200);
-
-  // % pill
-  ctx.font = '800 28px system-ui,sans-serif';
-  const pctText = `${pct}%`;
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#a98aff';
-  ctx.fillText(pctText, x+w-30, y+74);
+  // "/ target"
+  ctx.font = '600 32px Sora,system-ui,sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  const doneStr = done.toLocaleString('pt-BR');
+  ctx.font = '900 96px Sora,system-ui,sans-serif';
+  const doneW = ctx.measureText(doneStr).width;
+  ctx.font = '600 32px Sora,system-ui,sans-serif';
+  ctx.fillText('/ ' + target.toLocaleString('pt-BR'), x+32+doneW+12, y+220);
 
   // Progress bar
-  const barY = y + h - 56;
-  const barX = x + 30;
-  const barW = w - 60;
-  const barH = 16;
-  ctx.fillStyle = 'rgba(255,255,255,0.12)';
-  roundRect(ctx, barX, barY, barW, barH, 8);
+  const pbY = y + h - 45;
+  const pbW = w - 64;
+  const pbX = x + 32;
+  const pbH = 12;
+  ctx.fillStyle = 'rgba(255,255,255,0.10)';
+  roundRect(ctx, pbX, pbY, pbW, pbH, pbH/2);
   ctx.fill();
-  // Fill
-  const fillW = Math.max(barH, (Math.min(100,pct)/100)*barW);
-  const fillGrad = ctx.createLinearGradient(barX, 0, barX+fillW, 0);
-  fillGrad.addColorStop(0, '#7c5cff');
-  fillGrad.addColorStop(1, '#dbc8ff');
-  ctx.fillStyle = fillGrad;
-  roundRect(ctx, barX, barY, fillW, barH, 8);
-  ctx.fill();
+  // Fill com gradient roxo
+  const fillW = Math.min(pbW, pbW * (pct/100));
+  if(fillW > 0){
+    const fillGrad = ctx.createLinearGradient(pbX, 0, pbX+pbW, 0);
+    fillGrad.addColorStop(0, '#8042fa');
+    fillGrad.addColorStop(1, '#a571ff');
+    ctx.fillStyle = fillGrad;
+    roundRect(ctx, pbX, pbY, fillW, pbH, pbH/2);
+    ctx.fill();
+  }
+
+  // % text
+  ctx.font = '700 24px Sora,system-ui,sans-serif';
+  ctx.fillStyle = pct >= 100 ? '#7eedb1' : 'rgba(255,255,255,0.65)';
+  ctx.textAlign = 'right';
+  ctx.fillText(pct + '%', x + w - 32, pbY - 12);
 }
 
 function showGoalMentorModal(result){
