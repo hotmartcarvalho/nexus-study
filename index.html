@@ -657,6 +657,40 @@ html.focus-mode .pomo-float{display:none}
 .df-sort{padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer}
 
 .discover-list{display:flex;flex-direction:column;gap:10px}
+
+/* === Discover Pessoas (Estágio 5) === */
+.discover-tabs{display:flex;gap:4px;margin-bottom:1rem;border-bottom:1px solid var(--border)}
+.dt-tab{background:transparent;border:none;padding:.625rem 1rem;font-size:13.5px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.dt-tab:hover{color:var(--text)}
+.dt-tab.on{color:var(--gralia-purple);border-bottom-color:var(--gralia-purple)}
+
+.discover-people-search{padding:.75rem 1rem;margin-bottom:.875rem}
+.dpps-row{display:flex;align-items:center;gap:8px;padding:.5rem .625rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;transition:border-color .15s}
+.dpps-row:focus-within{border-color:var(--gralia-purple);background:var(--surface)}
+.dpps-icon{font-size:14px;flex-shrink:0;opacity:.7}
+.dpps-input{flex:1;background:transparent !important;border:none !important;padding:.25rem 0 !important;font-size:14px !important;font-family:inherit;color:var(--text);outline:none !important;box-shadow:none !important}
+.dpps-input:focus{outline:none !important;box-shadow:none !important}
+.dpps-hint{font-size:11.5px;color:var(--text3);margin-top:8px;line-height:1.4}
+.dpps-count{font-size:12px;color:var(--text3);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+
+.people-empty-section{margin-top:.5rem}
+.pes-label{font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.5rem;padding-left:2px}
+
+.people-list{display:flex;flex-direction:column;gap:6px}
+.person-card{display:flex;align-items:center;gap:12px;padding:.625rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all .15s}
+.person-card:hover{border-color:rgba(128,66,250,.35);background:var(--surface)}
+.pc-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:800;flex-shrink:0;letter-spacing:-.3px;font-family:'Sora',system-ui,sans-serif}
+.pc-info{flex:1;min-width:0}
+.pc-name{font-size:13.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+.pc-username{font-size:12px;color:var(--text3);line-height:1.3;display:flex;align-items:center;gap:4px}
+.pc-priv{font-size:10px;opacity:.7}
+.pc-btn{flex-shrink:0;font-size:12px !important;padding:.4rem .75rem !important}
+.pc-self-tag{flex-shrink:0;font-size:10.5px;padding:3px 9px;border-radius:999px;background:var(--surface2);color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+@media (max-width:560px){
+  .person-card{padding:.5rem .625rem;gap:10px}
+  .pc-avatar{width:34px;height:34px;font-size:12px}
+  .pc-name{font-size:13px}
+}
 .discover-empty{padding:2rem 1rem;text-align:center}
 .discover-empty .de-icon{font-size:36px;margin-bottom:.5rem;opacity:.7}
 .discover-empty h2{margin:0 0 .25rem;font-size:16px}
@@ -702,6 +736,32 @@ html.focus-mode .pomo-float{display:none}
 /* Inline link button (usado em "importado de @user") */
 .link-btn{background:none;border:none;color:var(--gralia-purple);text-decoration:underline;cursor:pointer;font-family:inherit;font-size:inherit;padding:0;font-weight:600}
 .link-btn:hover{opacity:.8}
+
+/* === ESTÁGIO 6: Chips de estatísticas globais por questão === */
+.qs-chip-container{display:flex}
+.qs-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--border);font-size:11.5px;color:var(--text2);max-width:100%;line-height:1.3;font-variant-numeric:tabular-nums}
+.qs-chip .qs-icon{font-size:11px;opacity:.85}
+.qs-chip .qs-pct b{font-weight:800;color:var(--text)}
+.qs-chip .qs-divider{color:var(--text3);opacity:.6;margin:0 1px}
+.qs-chip .qs-total{color:var(--text3)}
+.qs-chip.qs-easy{background:rgba(73,197,137,.10);border-color:rgba(73,197,137,.25);color:var(--accent-text)}
+.qs-chip.qs-easy .qs-pct b{color:var(--accent-text)}
+.qs-chip.qs-mid{background:rgba(232,164,60,.10);border-color:rgba(232,164,60,.25);color:var(--amber-text)}
+.qs-chip.qs-mid .qs-pct b{color:var(--amber-text)}
+.qs-chip.qs-hard{background:rgba(232,76,76,.08);border-color:rgba(232,76,76,.22);color:var(--red-text)}
+.qs-chip.qs-hard .qs-pct b{color:var(--red-text)}
+.qs-chip.qs-chip-empty{background:transparent;border-style:dashed;font-size:11px;color:var(--text3)}
+
+/* === ESTÁGIO 7: Chip de tópico no Mapa === */
+.topic-stat-chip{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:999px;background:rgba(128,66,250,.10);border:1px solid rgba(128,66,250,.22);color:var(--gralia-purple);font-size:10.5px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.4;cursor:default}
+.topic-stat-chip .tsc-icon{font-size:10px;opacity:.85}
+.topic-stat-chip b{font-weight:800;color:var(--gralia-purple)}
+.map-topic-stat-slot{display:inline-flex;align-items:center}
+.map-topic-stat-slot:empty{display:none}
+
+/* === ESTÁGIO 8: Badge de "importado de @user" === */
+.src-imported-badge{font-size:11.5px;color:var(--text3);margin-top:6px;padding:3px 8px;background:rgba(128,66,250,.06);border-radius:6px;display:inline-block}
+.tp-imported-badge{font-size:11.5px}
 
 /* === ESTÁGIO 4: Contadores de followers/following === */
 .up-counts{display:flex;gap:18px;margin-top:10px}
@@ -2237,6 +2297,76 @@ async function publishNotebook(notebookData, opts){
   return data;
 }
 
+// Publica uma fonte como recurso público
+// sourceData: {id, name, type, contentType, content, summary?, disciplineId}
+async function publishSource(sourceData, opts){
+  if(!supa || !AUTH.user) throw new Error('Não autenticado');
+  if(!AUTH.profile) throw new Error('Crie seu perfil em Configurações antes de publicar');
+  const title = (opts.title || sourceData.name || '').trim().slice(0, 120);
+  if(title.length < 3) throw new Error('Título precisa ter ao menos 3 caracteres');
+  const description = (opts.description || '').trim().slice(0, 500);
+  const discipline = (opts.discipline || '').trim().slice(0, 80) || null;
+  const content = (sourceData.content || '').trim();
+  if(content.length < 50) throw new Error('Fonte vazia ou muito curta — mínimo 50 caracteres');
+  if(content.length > 200000) throw new Error('Fonte muito longa (máx 200.000 caracteres)');
+  const payload = {
+    source_name: sourceData.name,
+    source_type: sourceData.type || 'relatorio',
+    content_type: sourceData.contentType || 'misto',
+    content,
+    summary: sourceData.summary || null
+  };
+  const { data, error } = await supa.from('shared_resources').insert({
+    owner_id: AUTH.user.id,
+    resource_type: 'fonte',
+    title,
+    description: description || null,
+    discipline,
+    payload,
+    question_count: 0,
+    is_public: true
+  }).select().single();
+  if(error) throw new Error(error.message);
+  return data;
+}
+
+// Publica um perfil de tópico como recurso público
+// profileData: {disciplineId, disciplineName, topic, profile (objeto completo do topicProfile)}
+async function publishTopicProfile(profileData, opts){
+  if(!supa || !AUTH.user) throw new Error('Não autenticado');
+  if(!AUTH.profile) throw new Error('Crie seu perfil em Configurações antes de publicar');
+  const title = (opts.title || profileData.topic || '').trim().slice(0, 120);
+  if(title.length < 3) throw new Error('Título precisa ter ao menos 3 caracteres');
+  const description = (opts.description || '').trim().slice(0, 500);
+  const discipline = (opts.discipline || profileData.disciplineName || '').trim().slice(0, 80) || null;
+  const profile = profileData.profile;
+  if(!profile || !profile.markdown || profile.markdown.length < 100){
+    throw new Error('Perfil sem conteúdo suficiente (mínimo 100 caracteres de markdown)');
+  }
+  const payload = {
+    topic_name: profileData.topic,
+    discipline_name: profileData.disciplineName,
+    markdown: profile.markdown,
+    sections: profile.sections || null,
+    audio_script: profile.audioScript || null,
+    generated_at: profile.generatedAt || null,
+    model_used: profile.model || null
+  };
+  const { data, error } = await supa.from('shared_resources').insert({
+    owner_id: AUTH.user.id,
+    resource_type: 'perfil_topico',
+    title,
+    description: description || null,
+    discipline,
+    topic: profileData.topic,
+    payload,
+    question_count: 0,
+    is_public: true
+  }).select().single();
+  if(error) throw new Error(error.message);
+  return data;
+}
+
 // Despublica um recurso (volta a ser privado)
 async function unpublishResource(resourceId){
   if(!supa || !AUTH.user) throw new Error('Não autenticado');
@@ -2350,6 +2480,90 @@ async function importNotebookToLocal(resourceId){
     console.warn('[import] falha ao registrar:', e);
   }
   return {notebook, importedCount: importedQuestions.length};
+}
+
+// Importa fonte: clona pra DATA.sources com disciplina escolhida pelo usuário
+// targetDisciplineId é obrigatório (mapeamento manual)
+async function importSourceToLocal(resourceId, targetDisciplineId){
+  if(!targetDisciplineId) throw new Error('Selecione uma disciplina destino');
+  const result = await fetchResourceFull(resourceId);
+  if(result.error) throw new Error(result.error);
+  const r = result.resource;
+  if(r.resource_type !== 'fonte') throw new Error('Esse recurso não é uma fonte');
+  if(!r.payload || !r.payload.content) throw new Error('Fonte sem conteúdo');
+  // Verifica se a disciplina existe na conta do usuário
+  const targetDisc = getDiscipline(targetDisciplineId);
+  if(!targetDisc) throw new Error('Disciplina destino inválida');
+
+  if(!DATA.sources) DATA.sources = [];
+  const newId = 's_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+  const newSource = {
+    id: newId,
+    name: r.title,
+    type: r.payload.source_type || 'relatorio',
+    contentType: r.payload.content_type || 'misto',
+    content: r.payload.content,
+    summary: r.payload.summary || '',
+    disciplineId: targetDisciplineId,
+    addedAt: Date.now(),
+    importedFromResource: resourceId,
+    importedFromUser: r.owner_username,
+    importedFromDisplayName: r.owner_display_name
+  };
+  DATA.sources.push(newSource);
+  save();
+  // Registra uso no servidor
+  try{
+    await supa.rpc('record_resource_import', {p_resource_id: resourceId});
+  }catch(e){
+    console.warn('[import] falha ao registrar:', e);
+  }
+  return {source: newSource};
+}
+
+// Importa perfil de tópico: clona pra DATA.topicProfiles
+async function importTopicProfileToLocal(resourceId, targetDisciplineId){
+  if(!targetDisciplineId) throw new Error('Selecione uma disciplina destino');
+  const result = await fetchResourceFull(resourceId);
+  if(result.error) throw new Error(result.error);
+  const r = result.resource;
+  if(r.resource_type !== 'perfil_topico') throw new Error('Esse recurso não é um perfil de tópico');
+  if(!r.payload || !r.payload.markdown) throw new Error('Perfil sem conteúdo');
+  const targetDisc = getDiscipline(targetDisciplineId);
+  if(!targetDisc) throw new Error('Disciplina destino inválida');
+
+  // Usa o nome do tópico original
+  const topic = r.payload.topic_name || r.title;
+  if(!DATA.topicProfiles) DATA.topicProfiles = {};
+
+  // Verifica se já existe um perfil pro mesmo tópico nessa disciplina
+  const key = profileKey(targetDisciplineId, topic);
+  if(DATA.topicProfiles[key]){
+    throw new Error('Você já tem um perfil para este tópico ('+topic+'). Apague o atual antes de importar.');
+  }
+
+  const profile = {
+    markdown: r.payload.markdown,
+    sections: r.payload.sections || null,
+    audioScript: r.payload.audio_script || null,
+    generatedAt: Date.now(),
+    model: r.payload.model_used || 'imported',
+    importedFromResource: resourceId,
+    importedFromUser: r.owner_username,
+    importedFromDisplayName: r.owner_display_name,
+    originalDiscipline: r.payload.discipline_name || ''
+  };
+  DATA.topicProfiles[key] = profile;
+  save();
+  // Registra atividade de tópico
+  recordTopicActivity(targetDisciplineId, topic, 'profile');
+  // Registra uso no servidor
+  try{
+    await supa.rpc('record_resource_import', {p_resource_id: resourceId});
+  }catch(e){
+    console.warn('[import] falha ao registrar:', e);
+  }
+  return {profile, topic, disciplineId: targetDisciplineId};
 }
 
 // Avalia recurso (👍/👎 + estrelas opcionais)
@@ -2613,6 +2827,282 @@ async function recordPublishMilestone(resource){
     type: resource.resource_type,
     discipline: resource.discipline
   });
+}
+
+// === ESTÁGIO 6: ESTATÍSTICAS DE QUESTÕES ===
+
+// Hash determinístico do enunciado (DJB2 modificado, retorna hex 16 chars)
+// Mesmo texto → mesmo hash, em qualquer cliente. Hash anonimiza o conteúdo.
+function questionHash(enunciado){
+  if(!enunciado || typeof enunciado !== 'string') return null;
+  // Normaliza: lowercase, remove pontuação trivial, colapsa espaços
+  const norm = enunciado.toLowerCase()
+    .replace(/[\u00A0\s]+/g, ' ')
+    .replace(/[.,;:!?\u2019\u201C\u201D"'`´()[\]{}\u2014\u2013-]+/g, '')
+    .trim();
+  if(norm.length < 8) return null; // muito curto pra ser confiável
+  // DJB2
+  let hash = 5381;
+  for(let i = 0; i < norm.length; i++){
+    hash = ((hash << 5) + hash + norm.charCodeAt(i)) | 0;
+  }
+  // Combina com FNV-1a pra reduzir colisões em 16 chars
+  let h2 = 2166136261;
+  for(let i = 0; i < norm.length; i++){
+    h2 = (h2 ^ norm.charCodeAt(i)) >>> 0;
+    h2 = Math.imul(h2, 16777619) >>> 0;
+  }
+  // Concatena, padding hex 8+8
+  return ((hash >>> 0).toString(16).padStart(8,'0')) + (h2.toString(16).padStart(8,'0'));
+}
+
+// Cache local: questões já registradas nesta sessão (evita duplicar RPCs)
+const _attemptsRecorded = new Set();
+// Cache de stats por hash (evita re-fetch dentro de poucos segundos)
+const _statsCache = new Map(); // hash → {data, fetchedAt}
+const STATS_CACHE_TTL_MS = 60000; // 1 min
+
+// Registra atempt no servidor (fire-and-forget)
+// question deve ter pelo menos {enunciado}; opcionalmente {sourceErrorId, fromImported, importedFromResource}
+async function recordQuestionAttempt(question, wasCorrect){
+  if(!supa || !AUTH.user) return;
+  if(!question || !question.enunciado) return;
+  // Só registra questões importadas (TEC ou compartilhadas) — questões geradas por IA não fazem sentido agregar
+  // Heurística: se tem importedFromResource OU está em DATA.importedQuestions, é elegível
+  const hash = questionHash(question.enunciado);
+  if(!hash) return;
+  // Cache por sessão: cada par (hash, was_correct) registra no máximo 1x por minuto
+  const cacheKey = hash + '_' + (wasCorrect ? '1' : '0');
+  if(_attemptsRecorded.has(cacheKey)) return;
+  _attemptsRecorded.add(cacheKey);
+  // Limpa cache antigo periodicamente
+  if(_attemptsRecorded.size > 500){
+    const arr = [..._attemptsRecorded];
+    _attemptsRecorded.clear();
+    arr.slice(-200).forEach(k => _attemptsRecorded.add(k));
+  }
+  try{
+    await supa.rpc('record_question_attempt', {
+      p_question_hash: hash,
+      p_was_correct: !!wasCorrect
+    });
+    // Invalida cache de stats dessa questão
+    _statsCache.delete(hash);
+  }catch(err){
+    // Silencioso: não bloqueia UX
+    console.warn('[question_attempt] falha:', err.message||err);
+  }
+}
+
+// Busca stats de uma questão (com cache de 1 min)
+async function fetchQuestionStats(enunciado){
+  if(!supa || !AUTH.user) return null;
+  const hash = questionHash(enunciado);
+  if(!hash) return null;
+  // Cache
+  const cached = _statsCache.get(hash);
+  if(cached && (Date.now() - cached.fetchedAt) < STATS_CACHE_TTL_MS){
+    return cached.data;
+  }
+  try{
+    const { data, error } = await supa.rpc('get_question_stats_batch', {p_hashes: [hash]});
+    if(error || !data || data.length === 0){
+      _statsCache.set(hash, {data: null, fetchedAt: Date.now()});
+      return null;
+    }
+    const s = data[0];
+    _statsCache.set(hash, {data: s, fetchedAt: Date.now()});
+    return s;
+  }catch(err){
+    return null;
+  }
+}
+
+// Busca stats de várias questões em batch (otimização pra listagens)
+async function fetchQuestionStatsBatch(enunciados){
+  if(!supa || !AUTH.user) return {};
+  if(!Array.isArray(enunciados) || enunciados.length === 0) return {};
+  // Calcula hashes únicos
+  const hashes = [];
+  const enunToHash = new Map();
+  enunciados.forEach(e=>{
+    const h = questionHash(e);
+    if(h){
+      enunToHash.set(e, h);
+      if(!hashes.includes(h)) hashes.push(h);
+    }
+  });
+  if(hashes.length === 0) return {};
+  try{
+    const { data, error } = await supa.rpc('get_question_stats_batch', {p_hashes: hashes});
+    if(error) return {};
+    const byHash = {};
+    (data||[]).forEach(s=>{ byHash[s.question_hash] = s; });
+    // Mapeia de volta pro enunciado
+    const result = {};
+    enunciados.forEach(e=>{
+      const h = enunToHash.get(e);
+      if(h && byHash[h]) result[e] = byHash[h];
+    });
+    return result;
+  }catch(err){
+    return {};
+  }
+}
+
+// Renderiza chip de estatística (visual sutil, usado após responder)
+// stats: {total_users, accuracy_pct} ou null
+function renderQuestionStatsChip(stats, opts){
+  opts = opts || {};
+  const chip = document.createElement('div');
+  chip.className = 'qs-chip';
+  if(!stats || !stats.total_users || stats.total_users < 2){
+    // Poucos dados ainda — não mostra (evita ruído)
+    chip.classList.add('qs-chip-empty');
+    if(opts.showEmpty){
+      chip.innerHTML = `<span class="qs-icon">📊</span><span class="qs-text">Estatísticas ficam disponíveis após mais resoluções da comunidade</span>`;
+    } else {
+      return null;
+    }
+    return chip;
+  }
+  const pct = stats.accuracy_pct;
+  const totalLbl = stats.total_users === 1 ? '1 resolução' : `${stats.total_users.toLocaleString('pt-BR')} resoluções`;
+  let pctClass = 'qs-mid';
+  if(pct >= 70) pctClass = 'qs-easy';
+  else if(pct >= 40) pctClass = 'qs-mid';
+  else pctClass = 'qs-hard';
+  chip.classList.add(pctClass);
+  chip.innerHTML = `
+    <span class="qs-icon">📊</span>
+    <span class="qs-pct"><b>${pct}%</b> acertam</span>
+    <span class="qs-divider">·</span>
+    <span class="qs-total">${totalLbl}</span>
+  `;
+  return chip;
+}
+
+// === ESTÁGIO 7: ESTATÍSTICAS DE TÓPICOS ===
+
+// Normaliza nome (lowercase + remove acento + colapsa espaços + remove pontuação)
+function normalizeTopicString(s){
+  if(!s || typeof s !== 'string') return '';
+  return s.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .replace(/[.,;:!?"'`´()[\]{}\u2014\u2013-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80);
+}
+
+// Helper: pega disciplineKey + topicKey de um tópico
+// Aceita {disciplineId, topic} OU {disciplineName, topic}
+function topicKeyFor(disciplineId, topicName){
+  if(!topicName) return null;
+  const disc = disciplineId ? getDiscipline(disciplineId) : null;
+  const dName = disc ? disc.name : (disciplineId || '');
+  const dKey = normalizeTopicString(dName);
+  const tKey = normalizeTopicString(topicName);
+  if(!dKey || !tKey || tKey.length < 2) return null;
+  return {discipline_key: dKey, topic_key: tKey, combo: dKey + '|' + tKey};
+}
+
+// Cache local de stats por chave
+const _topicStatsCache = new Map(); // combo → {data, fetchedAt}
+const TOPIC_STATS_CACHE_TTL = 120000; // 2 min
+
+// Cache de atividades já registradas nesta sessão (evita duplicar)
+const _topicActivityRecorded = new Set();
+
+// Registra atividade num tópico (fire-and-forget, idempotente)
+// kind: 'questions' | 'profile' | 'flashcards'
+async function recordTopicActivity(disciplineId, topicName, kind){
+  if(!supa || !AUTH.user) return;
+  const k = topicKeyFor(disciplineId, topicName);
+  if(!k) return;
+  const cacheKey = k.combo + ':' + kind;
+  if(_topicActivityRecorded.has(cacheKey)) return;
+  _topicActivityRecorded.add(cacheKey);
+  if(_topicActivityRecorded.size > 1000){
+    const arr = [..._topicActivityRecorded];
+    _topicActivityRecorded.clear();
+    arr.slice(-500).forEach(x => _topicActivityRecorded.add(x));
+  }
+  try{
+    await supa.rpc('record_topic_activity', {
+      p_discipline_key: k.discipline_key,
+      p_topic_key: k.topic_key,
+      p_kind: kind
+    });
+    // Invalida cache de stats desse tópico
+    _topicStatsCache.delete(k.combo);
+  }catch(err){
+    console.warn('[topic_activity] falha:', err.message||err);
+  }
+}
+
+// Busca stats de vários tópicos em batch
+// items: [{disciplineId, topic}, ...]
+// Retorna: Map combo → {user_count, profile_count, question_user_count}
+async function fetchTopicStatsBatch(items){
+  if(!supa || !AUTH.user) return new Map();
+  if(!Array.isArray(items) || items.length === 0) return new Map();
+  // Calcula chaves únicas, filtrando cache
+  const result = new Map();
+  const toFetch = [];
+  const now = Date.now();
+  items.forEach(it=>{
+    const k = topicKeyFor(it.disciplineId, it.topic);
+    if(!k) return;
+    const cached = _topicStatsCache.get(k.combo);
+    if(cached && (now - cached.fetchedAt) < TOPIC_STATS_CACHE_TTL){
+      result.set(k.combo, cached.data);
+    } else if(!toFetch.includes(k.combo)){
+      toFetch.push(k.combo);
+    }
+  });
+  if(toFetch.length === 0) return result;
+  try{
+    const { data, error } = await supa.rpc('get_topic_stats_batch', {p_keys: toFetch});
+    if(error){
+      // Marca como sem dados pra não tentar de novo
+      toFetch.forEach(c => _topicStatsCache.set(c, {data: null, fetchedAt: now}));
+      return result;
+    }
+    // Indexa retorno
+    const byCombo = {};
+    (data||[]).forEach(s=>{
+      const combo = s.discipline_key + '|' + s.topic_key;
+      byCombo[combo] = s;
+    });
+    // Atualiza cache + result com TODOS os solicitados (incluindo os sem dados)
+    toFetch.forEach(combo=>{
+      const v = byCombo[combo] || null;
+      _topicStatsCache.set(combo, {data: v, fetchedAt: now});
+      if(v) result.set(combo, v);
+    });
+    return result;
+  }catch(err){
+    return result;
+  }
+}
+
+// Busca stats de um único tópico
+async function fetchTopicStats(disciplineId, topicName){
+  const result = await fetchTopicStatsBatch([{disciplineId, topic: topicName}]);
+  const k = topicKeyFor(disciplineId, topicName);
+  if(!k) return null;
+  return result.get(k.combo) || null;
+}
+
+// Renderiza chip de stat de tópico (sutil, usado no Mapa)
+function renderTopicStatChip(stats){
+  if(!stats || !stats.user_count || stats.user_count < 2) return null;
+  const chip = document.createElement('span');
+  chip.className = 'topic-stat-chip';
+  chip.innerHTML = `<span class="tsc-icon">👥</span><b>${stats.user_count}</b>`;
+  chip.title = `${stats.user_count} pessoas estudaram este tópico${stats.profile_count > 0 ? ' · ' + stats.profile_count + ' geraram perfil' : ''}`;
+  return chip;
 }
 
 const DEFAULT_EXAM_NAME = 'Prova';
@@ -3032,7 +3522,13 @@ const ST = {
   discoverItems:[],
   discoverLoading:false,
   discoverPage:0,
-  discoverHasMore:true
+  discoverHasMore:true,
+  // Discover Pessoas (Estágio 5)
+  discoverTab:'materials',     // 'materials' | 'people'
+  peopleSearch:'',
+  peopleResults:[],
+  peopleLoading:false,
+  peopleSearchToken:0          // para invalidar requests obsoletas
 };
 
 /* CONTENT & DISCIPLINES */
@@ -5214,6 +5710,19 @@ function renderSourceList(wrap){
       setTimeout(()=>{delete ST.sourceScrollTo;},5000);
     }
     const actions = mk('div','flex');actions.style.gap='2px';
+    // Estágio 8: botão de publicar fonte (só se autenticado, não importada)
+    if(isAuthed() && !src.importedFromResource && (src.content||'').length >= 50){
+      const pubBtn = mkBtn('🌐','icon-btn');
+      pubBtn.title = 'Publicar esta fonte na descoberta';
+      pubBtn.addEventListener('click',()=>showPublishSourceModal(src));
+      actions.appendChild(pubBtn);
+    }
+    // Indicador de fonte importada (mostra origem)
+    if(src.importedFromUser){
+      const origin = mk('div','src-imported-badge');
+      origin.innerHTML = `📥 Importado de <button class="link-btn" onclick="navigateToProfile('${escapeHTML(src.importedFromUser)}')">@${escapeHTML(src.importedFromUser)}</button>`;
+      info.appendChild(origin);
+    }
     const edit = mkBtn('✏️','icon-btn');
     edit.addEventListener('click',()=>showEditSourceModal(src));
     const del = mkBtn('×','icon-btn del');
@@ -6546,6 +7055,8 @@ Gere UM flashcard que RESOLVA a dificuldade. Escolha o tipo de card que melhor a
       const e2 = DATA.errors.find(x=>x.id===err.id);
       if(e2)e2.hasCard=true;
       save();
+      // Estágio 7: registra atividade do tópico (criação de flashcard)
+      if(err.topic) recordTopicActivity(err.disciplineId, err.topic, 'flashcards');
       if(typeof showToast==='function')showToast('✓ Flashcard criado e adicionado ao deck.');
       if(ctaRow){
         ctaRow.innerHTML='';
@@ -6694,6 +7205,10 @@ function showEditCardModal(card,isNew,onSave){
     card.lastEdited=Date.now();
     if(isNew)DATA.srs.cards.push(card);
     save();
+    // Estágio 7: registra atividade do tópico
+    if(isNew && card.sourceErrorData && card.sourceErrorData.topic){
+      recordTopicActivity(card.disciplineId, card.sourceErrorData.topic, 'flashcards');
+    }
     if(onSave)onSave();
     closeModal();render();
   });
@@ -7057,6 +7572,8 @@ function renderMapa(){
         if(entry.cards.length>0)parts.push(`<span class="crd">🎴${entry.cards.length}</span>`);
         if(entry.questions.length>0)parts.push(`<span class="qs">📝${entry.questions.length}</span>`);
         if(score!==null)parts.push(`<b class="mast ${level}">${score}%</b>`);
+        // Slot pra chip de stat global (preenchido depois em batch)
+        parts.push(`<span class="map-topic-stat-slot" data-disc="${m.discipline.id}" data-topic="${escapeHTML(entry.name)}"></span>`);
         stats.innerHTML = parts.join(' ');
         row.appendChild(stats);
         row.addEventListener('click',()=>{
@@ -7079,6 +7596,36 @@ function renderMapa(){
     tree.appendChild(infoBox('Nenhum tópico corresponde aos filtros selecionados.'));
   }
   wrap.appendChild(tree);
+
+  // Estágio 7: carrega stats globais de tópicos em batch (async, não bloqueia render)
+  if(isAuthed()){
+    setTimeout(()=>{
+      const slots = wrap.querySelectorAll('.map-topic-stat-slot');
+      if(slots.length === 0) return;
+      const items = [];
+      const slotByCombo = new Map();
+      slots.forEach(slot=>{
+        const dId = slot.getAttribute('data-disc');
+        const tName = slot.getAttribute('data-topic');
+        const k = topicKeyFor(dId, tName);
+        if(k){
+          items.push({disciplineId: dId, topic: tName});
+          if(!slotByCombo.has(k.combo)) slotByCombo.set(k.combo, []);
+          slotByCombo.get(k.combo).push(slot);
+        }
+      });
+      fetchTopicStatsBatch(items).then(statsMap=>{
+        statsMap.forEach((stats, combo)=>{
+          const slotsForCombo = slotByCombo.get(combo);
+          if(!slotsForCombo) return;
+          slotsForCombo.forEach(slot=>{
+            const chip = renderTopicStatChip(stats);
+            if(chip) slot.appendChild(chip);
+          });
+        });
+      });
+    }, 100);
+  }
 
   return wrap;
 }
@@ -8738,6 +9285,9 @@ function renderImportedPractice(wrap){
           } else {
             ST.importedLastErrId = null;
           }
+          // Estágio 6: registra atempt anônimo no servidor
+          recordQuestionAttempt(q, ok);
+          if(q.topic) recordTopicActivity(q.disciplineId, q.topic, 'questions');
           save();render();
         });
         br.appendChild(b);
@@ -8761,6 +9311,9 @@ function renderImportedPractice(wrap){
           } else {
             ST.importedLastErrId = null;
           }
+          // Estágio 6: registra atempt anônimo no servidor
+          recordQuestionAttempt(q, ok);
+          if(q.topic) recordTopicActivity(q.disciplineId, q.topic, 'questions');
           save();render();
         });
         br.appendChild(b);
@@ -8776,6 +9329,14 @@ function renderImportedPractice(wrap){
     const info = mk('p','txt2');info.style.marginTop='.75rem';
     info.textContent='Questão importada — sem explicação automática. Consulte o comentário original na fonte.';
     fb.appendChild(info);
+    // Estágio 6: chip de estatísticas globais (anônimo)
+    const statsContainer = mk('div','qs-chip-container');
+    statsContainer.style.marginTop='.625rem';
+    fb.appendChild(statsContainer);
+    fetchQuestionStats(q.enunciado).then(stats=>{
+      const chip = renderQuestionStatsChip(stats);
+      if(chip) statsContainer.appendChild(chip);
+    });
     const actions = mk('div','flex');actions.style.cssText='margin-top:.875rem;gap:8px;flex-wrap:wrap';
     const nb = mkBtn('Próxima →','btn btn-p');
     nb.addEventListener('click',()=>{
@@ -10144,6 +10705,14 @@ function renderNotebookPractice(wrap){
     const info = mk('p','txt2');info.style.marginTop='.75rem';
     info.textContent='Questão importada — sem explicação automática.';
     fb.appendChild(info);
+    // Estágio 6: chip de estatísticas globais
+    const statsContainer = mk('div','qs-chip-container');
+    statsContainer.style.marginTop='.625rem';
+    fb.appendChild(statsContainer);
+    fetchQuestionStats(q.enunciado).then(stats=>{
+      const chip = renderQuestionStatsChip(stats);
+      if(chip) statsContainer.appendChild(chip);
+    });
     const actions = mk('div','flex');actions.style.cssText='margin-top:.875rem;gap:8px;flex-wrap:wrap';
     const isLast = ST.notebookPracticeIdx>=ST.notebookPracticeOrder.length-1;
     const nb2 = mkBtn(isLast?'Finalizar →':'Próxima →','btn btn-p');
@@ -10215,6 +10784,9 @@ function notebookSubmitAnswer(answer){
     });
     ST.notebookLastErrId = errRec.id;
   }
+  // Estágio 6: registra atempt anônimo no servidor
+  recordQuestionAttempt(q, ok);
+  if(q.topic) recordTopicActivity(q.disciplineId, q.topic, 'questions');
   save();render();
 }
 
@@ -12762,6 +13334,8 @@ function saveTopicProfile(disciplineId, topic, profile){
   if(!DATA.topicProfiles)DATA.topicProfiles = {};
   DATA.topicProfiles[profileKey(disciplineId,topic)] = profile;
   save();
+  // Estágio 7: registra atividade de tópico (anonimo, agregado)
+  recordTopicActivity(disciplineId, topic, 'profile');
 }
 
 // Atualiza perfil preservando snapshot anterior pra rollback
@@ -13255,6 +13829,24 @@ function showTopicProfileModal(disciplineId, topic, mode){
       });
     });
     footer.appendChild(copyBtn);
+
+    // Estágio 8: botão de publicar perfil (só se autenticado, não importado)
+    if(isAuthed() && !profile.importedFromResource){
+      const pubBtn = mkBtn('🌐 Publicar','btn btn-sm');
+      pubBtn.title = 'Compartilhar este perfil de tópico com a comunidade';
+      pubBtn.addEventListener('click',()=>{
+        closeModal();
+        showPublishTopicProfileModal(disciplineId, topic);
+      });
+      footer.appendChild(pubBtn);
+    }
+    // Indicador de perfil importado
+    if(profile.importedFromUser){
+      const origin = mk('div','tp-imported-badge');
+      origin.style.cssText='font-size:11.5px;color:var(--text3);padding:.4rem .6rem;background:var(--surface2);border-radius:8px;margin-right:auto';
+      origin.innerHTML = `📥 Importado de <button class="link-btn" onclick="navigateToProfile('${escapeHTML(profile.importedFromUser)}')">@${escapeHTML(profile.importedFromUser)}</button>`;
+      footer.appendChild(origin);
+    }
 
     const regenBtn = mkBtn('↻ Regenerar do zero','btn btn-sm');
     regenBtn.style.marginLeft='auto';
@@ -14573,20 +15165,51 @@ function renderDiscover(){
 
   const head = mk('div','discover-head');
   const ttl = mk('h1','page-h1');ttl.style.margin='0';
-  ttl.innerHTML = '🌐 Descobrir <span class="page-h1-tag">materiais da comunidade</span>';
+  const subtitle = ST.discoverTab === 'people' ? 'pessoas da comunidade' : 'materiais da comunidade';
+  ttl.innerHTML = `🌐 Descobrir <span class="page-h1-tag">${subtitle}</span>`;
   head.appendChild(ttl);
-  // Botão "meus materiais publicados"
-  const mineBtn = mkBtn('📚 Meus publicados','btn btn-sm');
-  mineBtn.addEventListener('click',()=>showMyPublishedModal());
-  head.appendChild(mineBtn);
+  // Botão contextual: muda conforme aba
+  if(ST.discoverTab === 'materials' || !ST.discoverTab){
+    const mineBtn = mkBtn('📚 Meus publicados','btn btn-sm');
+    mineBtn.addEventListener('click',()=>showMyPublishedModal());
+    head.appendChild(mineBtn);
+  }
   wrap.appendChild(head);
 
-  // Aviso se sem perfil
+  // Abas: Materiais | Pessoas
+  const tabsBar = mk('div','discover-tabs');
+  const matTab = mk('button','dt-tab'+(ST.discoverTab==='people'?'':' on'));
+  matTab.type='button';
+  matTab.innerHTML = '📚 Materiais';
+  matTab.addEventListener('click',()=>{
+    if(ST.discoverTab === 'materials') return;
+    ST.discoverTab = 'materials';
+    render();
+  });
+  tabsBar.appendChild(matTab);
+  const peopleTab = mk('button','dt-tab'+(ST.discoverTab==='people'?' on':''));
+  peopleTab.type='button';
+  peopleTab.innerHTML = '👥 Pessoas';
+  peopleTab.addEventListener('click',()=>{
+    if(ST.discoverTab === 'people') return;
+    ST.discoverTab = 'people';
+    render();
+  });
+  tabsBar.appendChild(peopleTab);
+  wrap.appendChild(tabsBar);
+
+  // Aviso se sem perfil (mostrado em ambas as abas)
   if(!AUTH.profile){
-    const noProfile = mk('div','card');noProfile.style.cssText='padding:1rem 1.25rem;background:linear-gradient(135deg,rgba(128,66,250,.05),var(--surface));border:1px dashed rgba(128,66,250,.25)';
-    noProfile.innerHTML = '<p class="txt2" style="margin:0;font-size:13.5px">⚡ Pra publicar materiais, primeiro <b>crie seu perfil</b> em Configurações.</p>';
+    const noProfile = mk('div','card');noProfile.style.cssText='padding:1rem 1.25rem;background:linear-gradient(135deg,rgba(128,66,250,.05),var(--surface));border:1px dashed rgba(128,66,250,.25);margin-bottom:1rem';
+    noProfile.innerHTML = '<p class="txt2" style="margin:0;font-size:13.5px">⚡ Pra publicar materiais ou seguir pessoas, primeiro <b>crie seu perfil</b> em Configurações.</p>';
     wrap.appendChild(noProfile);
   }
+
+  // Roteamento por aba
+  if(ST.discoverTab === 'people'){
+    return renderDiscoverPeople(wrap);
+  }
+  // Padrão: aba de materiais (lógica existente abaixo)
 
   // Filtros
   const filters = mk('div','discover-filters card');
@@ -14594,10 +15217,15 @@ function renderDiscover(){
   const typeRow = mk('div','df-row');
   typeRow.innerHTML = '<label class="df-lbl">Tipo</label>';
   const typeSeg = mk('div','df-seg');
-  ['caderno'].forEach(t=>{
+  const TYPE_LABELS = {
+    'caderno': '📝 Cadernos',
+    'fonte': '📚 Fontes',
+    'perfil_topico': '🧠 Perfis de Tópico'
+  };
+  ['caderno','fonte','perfil_topico'].forEach(t=>{
     const opt = mk('button','df-seg-opt'+(ST.discoverFilter.type===t?' on':''));
     opt.type='button';
-    opt.textContent = t==='caderno' ? '📝 Cadernos' : t;
+    opt.textContent = TYPE_LABELS[t] || t;
     opt.addEventListener('click',()=>{
       ST.discoverFilter.type = t;
       ST.discoverPage = 0;
@@ -14606,7 +15234,6 @@ function renderDiscover(){
     });
     typeSeg.appendChild(opt);
   });
-  // Futuro: 'fonte', 'perfil_topico'
   typeRow.appendChild(typeSeg);
   filters.appendChild(typeRow);
 
@@ -14717,6 +15344,192 @@ function renderDiscover(){
 }
 
 // Card individual de recurso na descoberta
+// Aba de Pessoas na descoberta
+function renderDiscoverPeople(wrap){
+  // Input de busca
+  const searchCard = mk('div','card discover-people-search');
+  const searchRow = mk('div','dpps-row');
+  const searchIcon = mk('span','dpps-icon');searchIcon.textContent = '🔍';
+  searchRow.appendChild(searchIcon);
+  const searchIn = mk('input');searchIn.type='search';searchIn.className='dpps-input';
+  searchIn.placeholder='Buscar por nome ou @username...';searchIn.value=ST.peopleSearch||'';
+  searchIn.autocomplete='off';
+  searchRow.appendChild(searchIn);
+  searchCard.appendChild(searchRow);
+  const searchHint = mk('div','dpps-hint');
+  searchHint.textContent = 'Mínimo 2 caracteres. Busque por @username (começo) ou parte do nome.';
+  searchCard.appendChild(searchHint);
+  wrap.appendChild(searchCard);
+
+  // Container de resultados
+  const resultsWrap = mk('div','discover-people-results');
+  wrap.appendChild(resultsWrap);
+
+  // Função pra fazer a busca
+  async function doSearch(query){
+    const myToken = ++ST.peopleSearchToken;
+    ST.peopleSearch = query;
+    if(!query || query.length < 2){
+      ST.peopleResults = [];
+      ST.peopleLoading = false;
+      renderResults();
+      return;
+    }
+    ST.peopleLoading = true;
+    renderResults();
+    try{
+      const result = await searchProfiles(query, 15);
+      // Verifica se ainda é a busca relevante
+      if(myToken !== ST.peopleSearchToken) return;
+      ST.peopleResults = result.items || [];
+      ST.peopleLoading = false;
+      renderResults();
+    }catch(err){
+      if(myToken !== ST.peopleSearchToken) return;
+      ST.peopleLoading = false;
+      ST.peopleResults = [];
+      renderResults();
+    }
+  }
+
+  // Debounce no input
+  let debounceTimer = null;
+  searchIn.addEventListener('input',e=>{
+    const v = e.target.value;
+    clearTimeout(debounceTimer);
+    if(!v || v.length < 2){
+      ST.peopleSearchToken++; // cancela buscas pendentes
+      ST.peopleResults = [];
+      ST.peopleLoading = false;
+      ST.peopleSearch = v;
+      renderResults();
+      return;
+    }
+    debounceTimer = setTimeout(()=>doSearch(v.trim()), 350);
+  });
+
+  function renderResults(){
+    resultsWrap.innerHTML = '';
+    const q = (ST.peopleSearch||'').trim();
+
+    // Estado: sem busca ativa — mostra "pessoas que você segue"
+    if(!q || q.length < 2){
+      renderEmptyState();
+      return;
+    }
+
+    // Estado: carregando
+    if(ST.peopleLoading){
+      const ld = mk('div','card');ld.style.cssText='padding:1.25rem;text-align:center;color:var(--text3);font-size:13px';
+      ld.textContent = 'Buscando...';
+      resultsWrap.appendChild(ld);
+      return;
+    }
+
+    // Estado: sem resultados
+    if(!ST.peopleResults || ST.peopleResults.length === 0){
+      const empty = mk('div','card discover-empty');
+      empty.innerHTML = `
+        <div class="de-icon">🔍</div>
+        <h2>Nenhum perfil encontrado</h2>
+        <p>Tente outro nome ou parte do username de quem você procura.</p>
+      `;
+      resultsWrap.appendChild(empty);
+      return;
+    }
+
+    // Estado: tem resultados
+    const countLbl = mk('div','dpps-count');
+    countLbl.textContent = `${ST.peopleResults.length} ${ST.peopleResults.length === 1 ? 'resultado' : 'resultados'} para "${q}"`;
+    resultsWrap.appendChild(countLbl);
+
+    const list = mk('div','people-list');
+    ST.peopleResults.forEach(profile=>{
+      list.appendChild(renderPersonCard(profile));
+    });
+    resultsWrap.appendChild(list);
+  }
+
+  function renderEmptyState(){
+    // Mostra "pessoas que você segue" como atalho
+    const followingCard = mk('div','people-empty-section');
+    const lbl = mk('div','pes-label');lbl.textContent = 'Pessoas que você segue';
+    followingCard.appendChild(lbl);
+    const followingList = mk('div','people-list');
+    followingList.innerHTML = '<div class="txt3" style="padding:.875rem;font-size:12.5px">Carregando...</div>';
+    followingCard.appendChild(followingList);
+    resultsWrap.appendChild(followingCard);
+
+    // Carrega quem segue
+    fetchFollowing(AUTH.user.id, 20).then(result=>{
+      followingList.innerHTML = '';
+      if(!result.items || result.items.length === 0){
+        followingList.innerHTML = '<div class="txt3" style="padding:.875rem 0;font-size:12.5px">Você ainda não segue ninguém. Use a busca acima pra encontrar pessoas.</div>';
+        return;
+      }
+      result.items.forEach(item=>{
+        const pseudo = {
+          id: item.followed_id,
+          username: item.profile.username,
+          display_name: item.profile.display_name,
+          visibility: item.profile.visibility
+        };
+        followingList.appendChild(renderPersonCard(pseudo, {hideFollowBtn:true}));
+      });
+    }).catch(()=>{
+      followingList.innerHTML = '<div class="txt3" style="padding:.875rem 0;font-size:12.5px">Erro ao carregar.</div>';
+    });
+  }
+
+  // Render inicial
+  renderResults();
+  return wrap;
+}
+
+// Card individual de pessoa (perfil) — usado na busca + sugestões
+// opts: {hideFollowBtn:boolean}
+function renderPersonCard(profile, opts){
+  opts = opts || {};
+  const card = mk('div','person-card');
+  // Avatar
+  const avatar = mk('div','pc-avatar');
+  avatar.style.background = avatarGradient(profile.username);
+  avatar.textContent = initialsFor(profile.display_name||profile.username);
+  card.appendChild(avatar);
+
+  // Info
+  const info = mk('div','pc-info');
+  const dn = mk('div','pc-name');dn.textContent = profile.display_name || profile.username;
+  info.appendChild(dn);
+  const un = mk('div','pc-username');
+  un.innerHTML = `@${escapeHTML(profile.username)}${profile.visibility==='private'?' <span class="pc-priv">🔒</span>':''}`;
+  info.appendChild(un);
+  card.appendChild(info);
+
+  // Botão seguir (à direita) — não mostra se for próprio perfil
+  const isMe = AUTH.user && profile.id === AUTH.user.id;
+  if(!isMe && !opts.hideFollowBtn){
+    const followBtn = mkBtn('Carregando...','btn btn-sm pc-btn');
+    followBtn.disabled = true;
+    card.appendChild(followBtn);
+    // Carrega status atual
+    getFollowStatus(profile.id).then(status=>{
+      followBtn.disabled = false;
+      updateFollowButton(followBtn, status, profile);
+    });
+  } else if(isMe){
+    const tag = mk('span','pc-self-tag');tag.textContent = 'Você';
+    card.appendChild(tag);
+  }
+
+  // Click no card (fora do botão) leva pro perfil
+  card.addEventListener('click',e=>{
+    if(e.target.closest('.pc-btn')) return;
+    navigateToProfile(profile.username);
+  });
+  return card;
+}
+
 function renderResourceCard(item){
   const card = mk('div','resource-card card');
   // Badge de tipo
@@ -14746,10 +15559,22 @@ function renderResourceCard(item){
     card.appendChild(desc);
   }
 
-  // Stats line
+  // Stats line — adaptado por tipo de recurso
   const stats = mk('div','rc-stats');
-  const qStat = mk('span','rc-stat');qStat.innerHTML = `<b>${item.question_count||0}</b> questões`;
-  stats.appendChild(qStat);
+  if(item.resource_type === 'caderno'){
+    const qStat = mk('span','rc-stat');qStat.innerHTML = `<b>${item.question_count||0}</b> questões`;
+    stats.appendChild(qStat);
+  } else if(item.resource_type === 'fonte'){
+    const tStat = mk('span','rc-stat');tStat.innerHTML = `📚 <b>Fonte</b>`;
+    stats.appendChild(tStat);
+  } else if(item.resource_type === 'perfil_topico'){
+    const tStat = mk('span','rc-stat');tStat.innerHTML = `🧠 <b>Perfil de tópico</b>`;
+    stats.appendChild(tStat);
+    if(item.topic){
+      const topicStat = mk('span','rc-stat');topicStat.innerHTML = escapeHTML(item.topic);
+      stats.appendChild(topicStat);
+    }
+  }
   if(item.discipline){
     const dStat = mk('span','rc-stat');dStat.innerHTML = `<b>${escapeHTML(item.discipline)}</b>`;
     stats.appendChild(dStat);
@@ -14810,15 +15635,54 @@ function formatRelativeDate(iso){
 // Modal: confirmar importação
 function showImportConfirmModal(item){
   const m = mk('div');m.style.maxWidth='460px';
+  const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : '🧠';
   const h = mk('h2');h.style.cssText='margin:0 0 .5rem;font-size:18px';
   h.textContent = '📥 Importar pra sua conta';
   m.appendChild(h);
+
+  // Texto descritivo adaptado por tipo
   const p = mk('p','txt2');p.style.cssText='margin:0 0 1rem;font-size:13.5px;line-height:1.55';
-  p.innerHTML = `Vai criar um caderno chamado <b>"${escapeHTML(item.title)}"</b> com <b>${item.question_count}</b> questões na sua conta.<br><br>Você pode editar livremente após importar — o material fica independente do original.`;
+  if(item.resource_type === 'caderno'){
+    p.innerHTML = `${typeIcon} Vai criar um caderno chamado <b>"${escapeHTML(item.title)}"</b> com <b>${item.question_count}</b> questões na sua conta.<br><br>Você pode editar livremente após importar — o material fica independente do original.`;
+  } else if(item.resource_type === 'fonte'){
+    p.innerHTML = `${typeIcon} Vai criar uma fonte chamada <b>"${escapeHTML(item.title)}"</b> na sua conta.<br><br>Selecione abaixo a disciplina destino.`;
+  } else if(item.resource_type === 'perfil_topico'){
+    p.innerHTML = `${typeIcon} Vai criar um perfil de tópico <b>"${escapeHTML(item.title)}"</b> na sua conta.<br><br>Selecione abaixo em qual disciplina o tópico se encaixa.`;
+  }
   m.appendChild(p);
+
+  // Para fonte e perfil: dropdown de disciplina destino
+  let discSelect = null;
+  if(item.resource_type === 'fonte' || item.resource_type === 'perfil_topico'){
+    const discRow = mk('div');discRow.style.marginBottom='.875rem';
+    discRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Importar para qual disciplina?</label>';
+    discSelect = mk('select');
+    discSelect.style.cssText='width:100%;padding:.5rem .75rem;font-size:13.5px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit';
+    const myDiscs = activeDisciplines();
+    if(myDiscs.length === 0){
+      const opt = document.createElement('option');opt.value='';opt.textContent='— Crie uma disciplina primeiro';opt.disabled=true;opt.selected=true;
+      discSelect.appendChild(opt);
+    } else {
+      // Auto-sugestão: se item.discipline bate com nome de uma disc, pré-seleciona
+      const itemDiscNorm = (item.discipline||'').toLowerCase().trim();
+      let suggestedId = null;
+      myDiscs.forEach(d=>{
+        if(!suggestedId && d.name.toLowerCase().includes(itemDiscNorm) && itemDiscNorm.length > 2) suggestedId = d.id;
+      });
+      myDiscs.forEach(d=>{
+        const opt = document.createElement('option');opt.value=d.id;opt.textContent=d.name;
+        if(suggestedId === d.id) opt.selected = true;
+        discSelect.appendChild(opt);
+      });
+    }
+    discRow.appendChild(discSelect);
+    m.appendChild(discRow);
+  }
+
   const credit = mk('div','txt3');credit.style.cssText='font-size:12px;padding:.5rem .75rem;background:var(--surface2);border-radius:8px;margin-bottom:1rem';
   credit.innerHTML = `Criado por <b>@${escapeHTML(item.owner_username)}</b> · ${item.total_uses||0} pessoa(s) já importaram`;
   m.appendChild(credit);
+
   const actions = mk('div','flex');actions.style.cssText='gap:8px;justify-content:flex-end';
   const cancelBtn = mkBtn('Cancelar','btn btn-sm');
   cancelBtn.addEventListener('click',closeModal);
@@ -14826,14 +15690,30 @@ function showImportConfirmModal(item){
   const okBtn = mkBtn('Importar agora','btn btn-sm btn-p');
   actions.appendChild(okBtn);
   m.appendChild(actions);
+
   okBtn.addEventListener('click',async()=>{
     okBtn.disabled = true;
     okBtn.textContent = 'Importando...';
     try{
-      const result = await importNotebookToLocal(item.id);
+      let toastMsg = '';
+      if(item.resource_type === 'caderno'){
+        const result = await importNotebookToLocal(item.id);
+        toastMsg = `✓ Caderno importado (${result.importedCount} questões)`;
+      } else if(item.resource_type === 'fonte'){
+        const targetDiscId = discSelect ? discSelect.value : null;
+        if(!targetDiscId) throw new Error('Selecione uma disciplina destino');
+        await importSourceToLocal(item.id, targetDiscId);
+        toastMsg = '✓ Fonte importada';
+      } else if(item.resource_type === 'perfil_topico'){
+        const targetDiscId = discSelect ? discSelect.value : null;
+        if(!targetDiscId) throw new Error('Selecione uma disciplina destino');
+        await importTopicProfileToLocal(item.id, targetDiscId);
+        toastMsg = '✓ Perfil importado';
+      } else {
+        throw new Error('Tipo de recurso desconhecido');
+      }
       closeModal();
-      showToast(`✓ Caderno importado (${result.importedCount} questões)`);
-      // Atualiza counter de uses local
+      showToast(toastMsg);
       item.total_uses = (item.total_uses||0) + 1;
       render();
     }catch(err){
@@ -14848,11 +15728,22 @@ function showImportConfirmModal(item){
 // Modal: preview de recurso
 function showResourcePreviewModal(item){
   const m = mk('div');m.style.maxWidth='560px';
+  const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : '🧠';
   const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px;line-height:1.3';
-  h.innerHTML = `${item.resource_type==='caderno'?'📝':'📚'} ${escapeHTML(item.title)}`;
+  h.innerHTML = `${typeIcon} ${escapeHTML(item.title)}`;
   m.appendChild(h);
   const sub = mk('div','txt3');sub.style.cssText='font-size:12.5px;margin-bottom:.875rem';
-  sub.innerHTML = `por <b>@${escapeHTML(item.owner_username)}</b> · ${item.question_count} questões${item.discipline?' · '+escapeHTML(item.discipline):''}`;
+  let subParts = [`por <b>@${escapeHTML(item.owner_username)}</b>`];
+  if(item.resource_type === 'caderno'){
+    subParts.push(`${item.question_count} questões`);
+  } else if(item.resource_type === 'fonte'){
+    subParts.push('Fonte de estudo');
+  } else if(item.resource_type === 'perfil_topico'){
+    subParts.push('Perfil de tópico');
+    if(item.topic) subParts.push(escapeHTML(item.topic));
+  }
+  if(item.discipline) subParts.push(escapeHTML(item.discipline));
+  sub.innerHTML = subParts.join(' · ');
   m.appendChild(sub);
   if(item.description){
     const desc = mk('p','txt2');desc.style.cssText='font-size:13.5px;line-height:1.55;margin-bottom:1rem;padding:.75rem;background:var(--surface2);border-radius:8px';
@@ -15094,6 +15985,158 @@ function showPublishNotebookModal(notebook){
       try{ recordPublishMilestone(result); }catch(e){}
       closeModal();
       showToast('✓ Caderno publicado na descoberta');
+    }catch(err){
+      pubBtn.disabled = false;
+      pubBtn.textContent = '🌐 Publicar agora';
+      alert('Erro: ' + err.message);
+    }
+  });
+  showModal(m);
+}
+
+// === Estágio 8: Modal de publicação de FONTE ===
+function showPublishSourceModal(source){
+  if(!AUTH.profile){
+    alert('Crie seu perfil em Configurações antes de publicar materiais.');
+    return;
+  }
+  const m = mk('div');m.style.cssText='max-width:480px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px';
+  h.textContent = '🌐 Publicar fonte';
+  m.appendChild(h);
+  const sub = mk('p','txt3');sub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.5';
+  sub.textContent = 'A fonte ficará visível na descoberta pra outros usuários logados. Você pode despublicar a qualquer momento.';
+  m.appendChild(sub);
+
+  const titleRow = mk('div');titleRow.style.marginBottom='.75rem';
+  titleRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Título público</label>';
+  const titleIn = mk('input');titleIn.type='text';titleIn.maxLength=120;titleIn.value=source.name||'';
+  titleRow.appendChild(titleIn);
+  m.appendChild(titleRow);
+
+  const descRow = mk('div');descRow.style.marginBottom='.75rem';
+  descRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Descrição (opcional)</label>';
+  const descIn = mk('textarea');descIn.maxLength=500;descIn.rows=3;
+  descIn.placeholder='Conta o que essa fonte cobre, qual concurso, etc.';
+  descRow.appendChild(descIn);
+  m.appendChild(descRow);
+
+  const discRow = mk('div');discRow.style.marginBottom='.75rem';
+  discRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Disciplina (opcional)</label>';
+  const discIn = mk('input');discIn.type='text';discIn.maxLength=80;
+  // Auto-sugere disciplina pelo source
+  const ownDisc = source.disciplineId ? getDiscipline(source.disciplineId) : null;
+  discIn.value = ownDisc ? ownDisc.name : '';
+  discIn.placeholder='Ex: Direito Constitucional';
+  discRow.appendChild(discIn);
+  m.appendChild(discRow);
+
+  const sizeKb = Math.round((source.content||'').length / 1024 * 10) / 10;
+  const info = mk('div','txt3');info.style.cssText='font-size:11.5px;margin:.5rem 0 1rem;padding:.625rem;background:var(--surface2);border-radius:8px';
+  info.innerHTML = `📚 Tipo: <b>${source.type||'?'}</b> · Conteúdo: <b>${source.contentType||'?'}</b> · Tamanho: <b>${sizeKb} KB</b>`;
+  m.appendChild(info);
+
+  const actions = mk('div','flex');actions.style.cssText='gap:8px;justify-content:flex-end';
+  const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+  cancelBtn.addEventListener('click',closeModal);
+  actions.appendChild(cancelBtn);
+  const pubBtn = mkBtn('🌐 Publicar agora','btn btn-sm btn-p');
+  actions.appendChild(pubBtn);
+  m.appendChild(actions);
+
+  pubBtn.addEventListener('click',async()=>{
+    pubBtn.disabled = true;
+    pubBtn.textContent = 'Publicando...';
+    try{
+      const result = await publishSource(source, {
+        title: titleIn.value,
+        description: descIn.value,
+        discipline: discIn.value
+      });
+      try{ recordPublishMilestone(result); }catch(e){}
+      closeModal();
+      showToast('✓ Fonte publicada na descoberta');
+    }catch(err){
+      pubBtn.disabled = false;
+      pubBtn.textContent = '🌐 Publicar agora';
+      alert('Erro: ' + err.message);
+    }
+  });
+  showModal(m);
+}
+
+// === Estágio 8: Modal de publicação de PERFIL DE TÓPICO ===
+function showPublishTopicProfileModal(disciplineId, topic){
+  if(!AUTH.profile){
+    alert('Crie seu perfil em Configurações antes de publicar materiais.');
+    return;
+  }
+  const profile = getTopicProfile(disciplineId, topic);
+  if(!profile || !profile.markdown){
+    alert('Perfil ainda não foi gerado para este tópico.');
+    return;
+  }
+  const disc = getDiscipline(disciplineId);
+
+  const m = mk('div');m.style.cssText='max-width:480px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px';
+  h.textContent = '🌐 Publicar perfil de tópico';
+  m.appendChild(h);
+  const sub = mk('p','txt3');sub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.5';
+  sub.textContent = 'O perfil completo (markdown + áudio se houver) ficará visível na descoberta. Você pode despublicar quando quiser.';
+  m.appendChild(sub);
+
+  const titleRow = mk('div');titleRow.style.marginBottom='.75rem';
+  titleRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Título público</label>';
+  const titleIn = mk('input');titleIn.type='text';titleIn.maxLength=120;titleIn.value=topic||'';
+  titleRow.appendChild(titleIn);
+  m.appendChild(titleRow);
+
+  const descRow = mk('div');descRow.style.marginBottom='.75rem';
+  descRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Descrição (opcional)</label>';
+  const descIn = mk('textarea');descIn.maxLength=500;descIn.rows=3;
+  descIn.placeholder='Comente o que esse perfil cobre, banca, dicas...';
+  descRow.appendChild(descIn);
+  m.appendChild(descRow);
+
+  const discRow = mk('div');discRow.style.marginBottom='.75rem';
+  discRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Disciplina</label>';
+  const discIn = mk('input');discIn.type='text';discIn.maxLength=80;
+  discIn.value = disc ? disc.name : '';
+  discRow.appendChild(discIn);
+  m.appendChild(discRow);
+
+  const charCount = (profile.markdown || '').length;
+  const hasAudio = !!profile.audioScript;
+  const info = mk('div','txt3');info.style.cssText='font-size:11.5px;margin:.5rem 0 1rem;padding:.625rem;background:var(--surface2);border-radius:8px';
+  info.innerHTML = `🧠 Markdown: <b>${charCount.toLocaleString('pt-BR')}</b> caracteres${hasAudio?' · 🎙️ Inclui roteiro de áudio':''}`;
+  m.appendChild(info);
+
+  const actions = mk('div','flex');actions.style.cssText='gap:8px;justify-content:flex-end';
+  const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+  cancelBtn.addEventListener('click',closeModal);
+  actions.appendChild(cancelBtn);
+  const pubBtn = mkBtn('🌐 Publicar agora','btn btn-sm btn-p');
+  actions.appendChild(pubBtn);
+  m.appendChild(actions);
+
+  pubBtn.addEventListener('click',async()=>{
+    pubBtn.disabled = true;
+    pubBtn.textContent = 'Publicando...';
+    try{
+      const result = await publishTopicProfile({
+        disciplineId,
+        disciplineName: disc ? disc.name : '',
+        topic,
+        profile
+      }, {
+        title: titleIn.value,
+        description: descIn.value,
+        discipline: discIn.value
+      });
+      try{ recordPublishMilestone(result); }catch(e){}
+      closeModal();
+      showToast('✓ Perfil publicado na descoberta');
     }catch(err){
       pubBtn.disabled = false;
       pubBtn.textContent = '🌐 Publicar agora';
