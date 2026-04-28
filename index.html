@@ -16627,6 +16627,17 @@ async function renderRecommendations(container){
   }
 }
 
+// Helper centralizado: invalida o cache da descoberta pra forçar recarga
+// Chamado após publicar/atualizar/despublicar materiais — garante visibilidade imediata
+function invalidateDiscoverCache(){
+  ST.discoverItems = [];
+  ST.discoverPage = 0;
+  ST.discoverHasMore = true;
+  ST.discoverLoading = false;
+  ST.discoverRecommendationsLoaded = false;
+  ST.discoverRecommendations = [];
+}
+
 // Card compacto de recomendação (versão menor que renderResourceCard)
 function renderRecoCard(item){
   const card = mk('div','reco-card');
@@ -16667,6 +16678,7 @@ function renderRecoCard(item){
 }
 
 function renderResourceCard(item){
+  const card = mk('div','resource-card card');
   // Badge de tipo
   const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : '🧠';
   // Header: título + tipo
@@ -17046,6 +17058,7 @@ async function showMyPublishedModal(){
         if(!confirm('Despublicar "'+it.title+'"? Volta a ser privado e some da descoberta.'))return;
         try{
           await unpublishResource(it.id);
+          invalidateDiscoverCache();
           showToast('✓ Despublicado');
           closeModal();
           showMyPublishedModal();
@@ -17138,6 +17151,7 @@ function showManageSourcePublicationModal(source, resource){
     if(!confirm('Despublicar esta fonte? Some da descoberta. (Cópias já importadas por outros usuários permanecem.)'))return;
     try{
       await unpublishResource(resource.id);
+      invalidateDiscoverCache();
       showToast('✓ Despublicado');
       closeModal();
       render();
@@ -17228,6 +17242,7 @@ function showUpdateSourcePublicationModal(source, resource, opts){
       // Marca timestamp
       source.lastPublishedAt = Date.now();
       save();
+      invalidateDiscoverCache();
       closeModal();
       showToast('✓ Publicação atualizada');
       render();
@@ -17308,6 +17323,7 @@ function showManagePublicationModal(notebook, resource){
     if(!confirm('Despublicar este caderno? Some da descoberta. (Cópias já importadas por outros usuários permanecem nas contas deles.)'))return;
     try{
       await unpublishResource(resource.id);
+      invalidateDiscoverCache();
       showToast('✓ Despublicado');
       closeModal();
       render();
@@ -17409,6 +17425,7 @@ function showUpdatePublicationModal(notebook, resource, opts){
       // Atualiza lastModifiedAt do notebook pra dar match com lastPublishAt
       notebook.lastPublishedAt = Date.now();
       save();
+      invalidateDiscoverCache();
       closeModal();
       showToast('✓ Publicação atualizada');
       render();
@@ -17599,6 +17616,7 @@ function showPublishNotebookModal(notebook){
       // Track timestamp pra detecção de "outdated" no botão smart
       notebook.lastPublishedAt = Date.now();
       save();
+      invalidateDiscoverCache();
       closeModal();
       showToast('✓ Caderno publicado na descoberta');
       render();
@@ -17676,8 +17694,13 @@ function showPublishSourceModal(source){
         tags: tagsEditor.getTags()
       });
       try{ recordPublishMilestone(result); }catch(e){}
+      // Track timestamp e invalida cache pra aparecer na lista
+      source.lastPublishedAt = Date.now();
+      save();
+      invalidateDiscoverCache();
       closeModal();
       showToast('✓ Fonte publicada na descoberta');
+      render();
     }catch(err){
       pubBtn.disabled = false;
       pubBtn.textContent = '🌐 Publicar agora';
@@ -17762,8 +17785,10 @@ function showPublishTopicProfileModal(disciplineId, topic){
         tags: tagsEditor.getTags()
       });
       try{ recordPublishMilestone(result); }catch(e){}
+      invalidateDiscoverCache();
       closeModal();
       showToast('✓ Perfil publicado na descoberta');
+      render();
     }catch(err){
       pubBtn.disabled = false;
       pubBtn.textContent = '🌐 Publicar agora';
