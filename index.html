@@ -1246,6 +1246,76 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 .mcard-tag-v2.clas{background:rgba(24,95,165,.12);color:var(--blue-text)}
 .mcard-tag-v2.inov{background:rgba(128,66,250,.13);color:var(--gralia-purple)}
 
+/* === Página Sobre / FAQ / Manual === */
+.about-page{padding-bottom:2rem}
+.about-tabs{display:flex;gap:4px;margin-bottom:1.5rem;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.about-tabs::-webkit-scrollbar{display:none}
+.about-tab{background:transparent;border:none;padding:.625rem .875rem;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:color .15s}
+.about-tab:hover{color:var(--text2)}
+.about-tab.on{color:var(--gralia-purple);border-bottom-color:var(--gralia-purple)}
+
+.about-hero{text-align:center;padding:2.5rem 1rem 2rem;background:linear-gradient(135deg,rgba(128,66,250,.05),var(--surface));border:1px solid rgba(128,66,250,.18);border-radius:16px;margin-bottom:1.5rem}
+.about-hero-logo{font-family:'Sora','Inter',-apple-system,sans-serif;font-size:48px;font-weight:800;letter-spacing:-1px;line-height:1;display:inline-block}
+.ahl-gral{color:var(--gralia-blue,#1a2a52)}
+[data-theme="dark"] .ahl-gral{color:#cfd9ff}
+.ahl-ia{background:linear-gradient(135deg,#8042fa 0%,#9255ff 50%,#a571ff 100%);background-clip:text;-webkit-background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.about-hero-sub{font-size:14px;color:var(--text2);margin:.875rem auto 0;max-width:460px;line-height:1.55}
+
+.about-section{margin-bottom:1.75rem}
+.abs-title{font-size:17px;font-weight:700;letter-spacing:-.3px;margin:0 0 .75rem;color:var(--text)}
+.abs-text{font-size:13.5px;line-height:1.65;color:var(--text2);margin:0 0 .75rem}
+.abs-text:last-child{margin-bottom:0}
+
+.abs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-top:.5rem}
+.abs-feat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.875rem 1rem;display:flex;flex-direction:column;gap:5px}
+.abs-feat-icon{font-size:22px;line-height:1;margin-bottom:2px}
+.abs-feat-title{font-size:13.5px;font-weight:700;color:var(--text);letter-spacing:-.2px}
+.abs-feat-desc{font-size:12px;color:var(--text2);line-height:1.55}
+
+.about-status{padding:1.125rem 1.25rem;background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));border:1px solid rgba(128,66,250,.15);border-radius:12px}
+.about-status .abs-title{font-size:15px;color:var(--gralia-purple)}
+
+.about-cta{display:flex;align-items:center;gap:14px;padding:1rem 1.25rem;background:var(--surface2);border:1px solid var(--border);border-radius:12px;margin-top:1.5rem;flex-wrap:wrap}
+.abc-icon{font-size:28px;flex-shrink:0;line-height:1}
+.abc-text{flex:1;min-width:180px}
+.abc-title{font-size:13.5px;font-weight:700;color:var(--text);letter-spacing:-.2px}
+.abc-sub{font-size:12px;color:var(--text2);margin-top:2px;line-height:1.45}
+
+/* FAQ */
+.faq-list{display:flex;flex-direction:column;gap:6px}
+.faq-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .15s}
+.faq-item[open]{border-color:rgba(128,66,250,.30)}
+.faq-q{padding:.875rem 1.125rem;font-size:13.5px;font-weight:600;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;list-style:none;line-height:1.4}
+.faq-q::-webkit-details-marker{display:none}
+.faq-q:hover{background:var(--surface2)}
+.faq-chev{font-size:14px;color:var(--text3);flex-shrink:0;transition:transform .2s}
+.faq-item[open] .faq-chev{transform:rotate(180deg);color:var(--gralia-purple)}
+.faq-a{padding:0 1.125rem 1rem}
+.faq-a p{margin:0;font-size:13px;color:var(--text2);line-height:1.65}
+
+/* Manual */
+.manual-list{display:flex;flex-direction:column;gap:10px}
+.manual-step{display:grid;grid-template-columns:32px 32px 1fr;gap:12px;padding:1rem 1.125rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;align-items:flex-start}
+.ms-num{width:28px;height:28px;background:var(--gralia-purple);color:#fff;font-weight:800;font-size:13px;border-radius:50%;display:flex;align-items:center;justify-content:center;line-height:1;margin-top:2px}
+.ms-icon{font-size:24px;line-height:1;text-align:center;margin-top:1px}
+.ms-content{min-width:0}
+.ms-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px;letter-spacing:-.2px}
+.ms-body{font-size:12.5px;color:var(--text2);line-height:1.6;margin-bottom:6px}
+.ms-where{font-size:11px;color:var(--text3);font-weight:500}
+.ms-where b{color:var(--text2)}
+
+.manual-tip{margin-top:1.25rem;padding:1.125rem;background:rgba(232,164,60,.07);border:1px solid rgba(232,164,60,.22);border-radius:12px;display:flex;gap:12px;align-items:flex-start}
+.mt-icon{font-size:24px;flex-shrink:0;line-height:1.2}
+.mt-title{font-size:13px;font-weight:700;color:var(--amber-text);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.mt-body{margin:0;font-size:13px;color:var(--text);line-height:1.6}
+
+@media(max-width:540px){
+  .about-hero-logo{font-size:38px}
+  .manual-step{grid-template-columns:24px 28px 1fr;gap:10px;padding:.875rem 1rem}
+  .ms-num{width:24px;height:24px;font-size:11px}
+  .ms-icon{font-size:20px}
+}
+
 /* === SRS Overview Panel (V1.2) === */
 .srs-overview-panel{margin:0 0 1.25rem;padding:1rem;background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));border:1px solid rgba(128,66,250,.18);border-radius:14px}
 .srs-ov-head{display:flex;align-items:center;gap:8px;margin-bottom:.875rem;font-size:13.5px;color:var(--text)}
@@ -4230,6 +4300,7 @@ const ST = {
   discoverRecommendationsLoaded:false,
   // Discover Pessoas (Estágio 5)
   discoverTab:'materials',     // 'materials' | 'people'
+  aboutTab:'sobre',            // 'sobre' | 'faq' | 'manual'
   peopleSearch:'',
   peopleResults:[],
   peopleLoading:false,
@@ -4990,7 +5061,7 @@ function render(){
     pomodoro:renderPomodoro,settings:renderSettings,history:renderHistory,turbo:renderTurbo,eve:renderEve,imported:renderImported,review:renderReview,revgen:renderRevgen,
     calibration:renderCalibration,examiner:renderExaminer,drill:renderDrill,
     elaborative:renderElaborative,practice:renderPractice,simulado:renderSimulado,
-    interleaving:renderInterleaving,srs:renderSRS,mapa:renderMapa,usage:renderUsage,goals:renderGoals,userProfile:renderUserProfile,discover:renderDiscover,feed:renderFeed
+    interleaving:renderInterleaving,srs:renderSRS,mapa:renderMapa,usage:renderUsage,goals:renderGoals,userProfile:renderUserProfile,discover:renderDiscover,feed:renderFeed,about:renderAbout
   };
   // Contextual breadcrumb — shows where user came from
   if(ST.navStack.length>0){
@@ -18257,6 +18328,323 @@ function renderSocialProfileCard(){
   return card;
 }
 
+// ============================================================================
+// SOBRE / FAQ / MANUAL
+// ============================================================================
+function renderAbout(){
+  const wrap = mk('div','fade about-page');
+  const h = mk('h1');h.style.cssText='margin:0 0 4px;font-size:24px;letter-spacing:-.5px';h.textContent='Sobre o Gralia';
+  const sub = mk('p','txt2');sub.style.cssText='margin:0 0 1.5rem;font-size:13.5px;line-height:1.5';
+  sub.textContent='Conheça o projeto, tire dúvidas e veja como tirar o máximo da plataforma.';
+  wrap.appendChild(h);wrap.appendChild(sub);
+
+  // Tabs
+  const tabsBar = mk('div','about-tabs');
+  const TABS = [
+    {key:'sobre', label:'🪶 Sobre nós'},
+    {key:'faq', label:'❓ Perguntas frequentes'},
+    {key:'manual', label:'📖 Como usar'}
+  ];
+  TABS.forEach(t=>{
+    const btn = mk('button','about-tab'+(ST.aboutTab===t.key?' on':''));
+    btn.type='button';
+    btn.textContent = t.label;
+    btn.addEventListener('click',()=>{
+      if(ST.aboutTab === t.key) return;
+      ST.aboutTab = t.key;
+      render();
+    });
+    tabsBar.appendChild(btn);
+  });
+  wrap.appendChild(tabsBar);
+
+  if(ST.aboutTab === 'faq') return renderAboutFAQ(wrap);
+  if(ST.aboutTab === 'manual') return renderAboutManual(wrap);
+  return renderAboutSobre(wrap);
+}
+
+function renderAboutSobre(wrap){
+  // Hero — Quem somos
+  const hero = mk('div','about-hero');
+  const heroLogo = mk('div','about-hero-logo');
+  // Logo grande estilo Gralia
+  heroLogo.innerHTML = '<span class="ahl-gral">GRAL</span><span class="ahl-ia">IA</span>';
+  hero.appendChild(heroLogo);
+  const heroSub = mk('p','about-hero-sub');
+  heroSub.textContent = 'Plataforma brasileira de estudo com IA pra concursos, vestibulares e provas em geral.';
+  hero.appendChild(heroSub);
+  wrap.appendChild(hero);
+
+  // Missão
+  const mission = mk('div','about-section');
+  mission.innerHTML = `
+    <h2 class="abs-title">🎯 Nossa missão</h2>
+    <p class="abs-text">Ajudar você a passar na prova que importa, com menos esforço perdido e mais profundidade. Não somos mais um banco de questões — somos a camada que conecta seu material, sua memória e seu tempo a métodos comprovados de estudo.</p>
+    <p class="abs-text">A IA aqui é ferramenta, não muleta. Ela gera questões reais sobre o que você está estudando, identifica suas armadilhas favoritas, monta flashcards a partir dos seus erros e te dá feedback individual sobre seu ritmo. Mas quem estuda é você. A gente só remove os atritos.</p>
+  `;
+  wrap.appendChild(mission);
+
+  // O que faz diferente
+  const diff = mk('div','about-section');
+  diff.innerHTML = `
+    <h2 class="abs-title">⚡ O que tem aqui que não tem nos outros</h2>
+    <div class="abs-grid">
+      <div class="abs-feat">
+        <div class="abs-feat-icon">🧠</div>
+        <div class="abs-feat-title">8 métodos de estudo</div>
+        <div class="abs-feat-desc">Não só questões. Flashcards espaçados, prática deliberada, calibração de confiança, "ser examinador", drill de armadilhas, elaboração — métodos que <b>poucos concurseiros usam</b> e fazem diferença real.</div>
+      </div>
+      <div class="abs-feat">
+        <div class="abs-feat-icon">🗺️</div>
+        <div class="abs-feat-title">Mapa da matéria</div>
+        <div class="abs-feat-desc">Visualize seu progresso por tópico, identifique buracos no conteúdo e veja exatamente o que falta dominar. Conecta erros, flashcards, questões e perfis.</div>
+      </div>
+      <div class="abs-feat">
+        <div class="abs-feat-icon">🌐</div>
+        <div class="abs-feat-title">Comunidade ativa</div>
+        <div class="abs-feat-desc">Compartilhe cadernos, fontes e perfis de tópico. Importe materiais de quem já passou. Sistema de tags e recomendações pra encontrar o que importa pro seu concurso.</div>
+      </div>
+      <div class="abs-feat">
+        <div class="abs-feat-icon">⏱️</div>
+        <div class="abs-feat-title">Pomodoro real</div>
+        <div class="abs-feat-desc">Não é só timer. Roda em background, sincroniza entre dispositivos, registra sessões pra você ver seu ritmo real de foco.</div>
+      </div>
+      <div class="abs-feat">
+        <div class="abs-feat-icon">🎯</div>
+        <div class="abs-feat-title">Mentor IA</div>
+        <div class="abs-feat-desc">Análise qualitativa do seu desempenho. Não é só "X% de acerto" — é leitura de padrões e plano de ação pra próxima semana.</div>
+      </div>
+      <div class="abs-feat">
+        <div class="abs-feat-icon">🚫</div>
+        <div class="abs-feat-title">Sem gamificação tóxica</div>
+        <div class="abs-feat-desc">Nada de streaks que te culpam por descansar, ranking pra te comparar com estranhos, ou notificações fingindo urgência. Estudar é sério, mas não precisa ser cruel.</div>
+      </div>
+    </div>
+  `;
+  wrap.appendChild(diff);
+
+  // Status / disclaimer
+  const status = mk('div','about-section about-status');
+  status.innerHTML = `
+    <h2 class="abs-title">🚀 Versão inicial em desenvolvimento ativo</h2>
+    <p class="abs-text">A plataforma está nas suas primeiras versões e em melhoria constante. Novas funções e ajustes saem toda semana, baseados no que você pede.</p>
+    <p class="abs-text"><b>Hoje é grátis com créditos limitados.</b> Em breve haverá planos pagos pra quem quer usar mais a IA. Quem está aqui agora tá ajudando a construir e vai ter prioridade em novidades.</p>
+    <p class="abs-text">Encontrou bug, tem ideia, quer reclamar de algo? Use a opção <b>Fale conosco</b> em Configurações — você recebe a resposta direto no app.</p>
+  `;
+  wrap.appendChild(status);
+
+  // Tutorial reativável
+  const tutorial = mk('div','about-cta');
+  tutorial.innerHTML = `
+    <div class="abc-icon">📖</div>
+    <div class="abc-text">
+      <div class="abc-title">Quer rever o tutorial inicial?</div>
+      <div class="abc-sub">Apresenta a plataforma desde o começo, ideal pra revisitar conceitos.</div>
+    </div>
+    <button class="btn btn-sm btn-p" id="abc-tut-btn">Rever tutorial</button>
+  `;
+  wrap.appendChild(tutorial);
+  setTimeout(()=>{
+    const tBtn = tutorial.querySelector('#abc-tut-btn');
+    if(tBtn) tBtn.addEventListener('click',()=>{
+      DATA.welcomeShown = false;
+      save();
+      render();
+    });
+  },50);
+
+  return wrap;
+}
+
+function renderAboutFAQ(wrap){
+  const intro = mk('p','txt2');intro.style.cssText='margin:0 0 1.25rem;font-size:13px;line-height:1.55';
+  intro.innerHTML = 'Não achou sua dúvida aqui? Use o <b>Fale conosco</b> em Configurações que respondemos rapidinho.';
+  wrap.appendChild(intro);
+
+  const FAQ = [
+    {
+      q: 'O Gralia é grátis?',
+      a: 'Hoje sim, com créditos limitados pra usar a IA. Cada conta começa com 50 créditos de avaliação. Em breve haverá planos pagos pra quem quer usar mais — mas o uso básico (estudar com seus próprios materiais sem IA, fazer pomodoros, criar flashcards manualmente) continua disponível sem custo de créditos.'
+    },
+    {
+      q: 'O que são "créditos" e quando são gastos?',
+      a: 'Créditos são consumidos só quando a IA faz algo pra você: gerar questões, criar flashcards, comentar uma resposta, fazer perfil de tópico, dar feedback do mentor, etc. Cada operação mostra o custo aproximado antes de rodar. Estudar suas próprias questões importadas, revisar flashcards prontos, fazer pomodoros e usar o mapa da matéria não custam nada.'
+    },
+    {
+      q: 'Posso usar pra vestibular ou só concurso?',
+      a: 'Pra qualquer prova com formato de questões objetivas. Em Configurações → Perfil você escolhe o tipo de prova alvo: concurso, vestibular, ENEM, OAB, faculdade ou certificação. As listas de disciplinas, cargos e instituições se adaptam ao tipo escolhido.'
+    },
+    {
+      q: 'Os meus dados estão seguros?',
+      a: 'Sim. Tudo é guardado no Supabase (infraestrutura usada por milhares de aplicações). Sua conta é privada por padrão — só você vê seus erros, flashcards, fontes e métricas. Se você decidir publicar um caderno ou fonte na descoberta, aí sim aparece pra outros usuários, mas com seus dados pessoais (email, métricas) sempre privados.'
+    },
+    {
+      q: 'Como faço pra importar questões do TEC Concursos?',
+      a: 'Vá em Estudar → Banco → Importar. Cole o link da questão ou da página de resultados do TEC. O sistema extrai automaticamente o enunciado, alternativas e gabarito. Você pode importar uma questão isolada ou uma lista inteira de uma só vez.'
+    },
+    {
+      q: 'Posso importar de outras plataformas além do TEC?',
+      a: 'Por enquanto a importação automatizada é só do TEC. Você pode adicionar questões manualmente em Estudar → Banco → "Adicionar questão". Suporte a mais plataformas (incluindo leitura de PDFs com IA) está no roadmap.'
+    },
+    {
+      q: 'Como funciona a "comunidade"?',
+      a: 'É opcional e opt-in. Se quiser, você cria um perfil público com username e visibilidade configurável. Aí pode publicar cadernos, fontes ou perfis de tópico pra outros usuários encontrarem na descoberta. Pode também seguir pessoas e ver o feed de marcos delas (questões resolvidas, materiais publicados). Sem perfil, você usa o app normalmente em modo privado.'
+    },
+    {
+      q: 'O que é "perfil de tópico"?',
+      a: 'É um material gerado por IA que aprofunda um tópico específico (ex: "Direito Administrativo → Princípios"). Inclui resumo teórico, mnemônicos, tabelas comparativas, mapa de armadilhas comuns na banca, exemplos de questões prováveis. É o tipo de material que você usaria 2-3 dias antes da prova pra revisar com profundidade.'
+    },
+    {
+      q: 'Como funcionam os flashcards?',
+      a: 'Usamos repetição espaçada (SRS) com algoritmo similar ao SM-2 do Anki. Você revela a resposta, classifica como Errei/Difícil/Bom/Fácil, e o sistema agenda a próxima revisão automaticamente. Cards podem ser gerados pela IA a partir das suas fontes, criados manualmente ou nascer dos seus erros em questões.'
+    },
+    {
+      q: 'O Pomodoro funciona offline / em background?',
+      a: 'O timer continua rodando se você fechar a aba ou trocar de página dentro do app. Mas pra notificações de fim de ciclo funcionarem, é melhor manter a aba ativa. Sessões completadas são registradas mesmo se você fechar antes.'
+    },
+    {
+      q: 'Por que o botão de mentor IA está bloqueado?',
+      a: 'Pra evitar gasto inútil de créditos. O mentor precisa de pelo menos 5 questões respondidas, 3 pomodoros completos ou 2 dias de atividade pra dar uma análise útil. Sem dados ele só geraria conselhos genéricos. Estude um pouco e o botão libera.'
+    },
+    {
+      q: 'Posso baixar meus dados?',
+      a: 'Tudo seu fica em Configurações → Privacidade → "Baixar todos os meus dados" (JSON completo). Sua conta também pode ser apagada permanentemente pelo mesmo lugar.'
+    },
+    {
+      q: 'Achei um bug. O que faço?',
+      a: 'Mande pelo Fale conosco em Configurações com o máximo de detalhe (o que você fez, o que esperava, o que aconteceu). Erros técnicos também aparecem com botão "Reportar erro" quando algo quebra. Você recebe a resposta direto no app na aba "Minhas mensagens".'
+    },
+    {
+      q: 'Tem app pra celular?',
+      a: 'O site funciona muito bem em celular (responsivo). Apps nativos pra iOS/Android estão no plano de longo prazo, mas hoje a versão web cobre praticamente tudo.'
+    },
+    {
+      q: 'Como vocês escolhem o que melhorar a seguir?',
+      a: 'Pelas mensagens do Fale conosco. Se 5 pessoas pedem a mesma coisa, vai pra cima da fila. Sem campanhas de marketing nem feedback inflado — quem fala mais, é mais ouvido.'
+    }
+  ];
+
+  const list = mk('div','faq-list');
+  FAQ.forEach((item, idx)=>{
+    const det = mk('details','faq-item');
+    const sum = mk('summary','faq-q');
+    sum.innerHTML = `<span>${escapeHTML(item.q)}</span><span class="faq-chev">▾</span>`;
+    det.appendChild(sum);
+    const ans = mk('div','faq-a');
+    ans.innerHTML = `<p>${escapeHTML(item.a)}</p>`;
+    det.appendChild(ans);
+    list.appendChild(det);
+  });
+  wrap.appendChild(list);
+
+  // CTA pra fale conosco
+  const cta = mk('div','about-cta');cta.style.marginTop='1.5rem';
+  cta.innerHTML = `
+    <div class="abc-icon">💬</div>
+    <div class="abc-text">
+      <div class="abc-title">Sua dúvida não está aqui?</div>
+      <div class="abc-sub">Manda pra gente — respondemos pelo próprio app.</div>
+    </div>
+    <button class="btn btn-sm btn-p" id="faq-fb-btn">Fale conosco</button>
+  `;
+  wrap.appendChild(cta);
+  setTimeout(()=>{
+    const fbBtn = cta.querySelector('#faq-fb-btn');
+    if(fbBtn) fbBtn.addEventListener('click',()=>{
+      try{ showFeedbackModal(); }catch(e){alert('Erro: '+e.message);}
+    });
+  },50);
+  return wrap;
+}
+
+function renderAboutManual(wrap){
+  const intro = mk('p','txt2');intro.style.cssText='margin:0 0 1.5rem;font-size:13px;line-height:1.55';
+  intro.innerHTML = 'Roteiro rápido pra tirar o máximo da plataforma. Comece pelos passos 1-3 — em 10 minutos você está estudando.';
+  wrap.appendChild(intro);
+
+  const STEPS = [
+    {
+      n:1, icon:'⚙️', title:'Configure seu perfil',
+      body:'Em <b>Configurações → Perfil</b>, defina seu nome, escolha o tipo de prova alvo (concurso, vestibular, OAB, ENEM, etc.), informe cargo/curso e banca/universidade, e a data prevista da prova. Esses dados aparecem no painel e ajudam a IA a personalizar respostas.',
+      where:'Configurações'
+    },
+    {
+      n:2, icon:'📚', title:'Adicione suas disciplinas',
+      body:'Em <b>Configurações → Disciplinas</b>, ative as matérias que você vai estudar. A lista canônica tem 250+ disciplinas pra escolher (de Atividade de Inteligência a Bioquímica). Pode adicionar customizadas se faltar alguma.',
+      where:'Configurações → Disciplinas'
+    },
+    {
+      n:3, icon:'📖', title:'Importe ou crie sua primeira fonte',
+      body:'Em <b>Estudar → Fontes</b>, clique "+ Adicionar fonte" e cole seu material — pode ser conteúdo de aula, lei seca, resumo, qualquer texto. As fontes alimentam os métodos de estudo (a IA gera questões e flashcards baseado nelas).',
+      where:'Estudar → Fontes'
+    },
+    {
+      n:4, icon:'📝', title:'Importe questões reais (TEC)',
+      body:'Em <b>Estudar → Banco → Importar</b>, cole o link de uma questão ou lista do TEC Concursos. Importa enunciado, alternativas e gabarito automaticamente. Questões importadas alimentam estatísticas globais (% de acerto da comunidade).',
+      where:'Estudar → Banco'
+    },
+    {
+      n:5, icon:'🧠', title:'Use os métodos de estudo',
+      body:'Em <b>Estudar → Métodos</b>, escolha entre 8 métodos (4 clássicos + 4 inovadores). Para começar, recomendo: <b>Prática</b> (responde questões com feedback) e <b>Flashcards</b> (revisão espaçada). Depois explore Calibração e Drill — esses são diferenciais pouco usados.',
+      where:'Estudar → Métodos'
+    },
+    {
+      n:6, icon:'🗺️', title:'Acompanhe pelo Mapa da matéria',
+      body:'Em <b>Estudar → Mapa</b>, veja seu progresso por disciplina e tópico. Cada bolinha mostra quantas questões, flashcards e erros você tem em cada tópico. Identifica rapidinho onde você está fraco.',
+      where:'Estudar → Mapa'
+    },
+    {
+      n:7, icon:'⏱️', title:'Trabalhe com Pomodoro',
+      body:'O <b>botão flutuante de pomodoro</b> está em todas as páginas. Roda em background, sincroniza entre dispositivos. Ciclos de 25min foco / 5min pausa (configurável). Sessões viram métricas no painel.',
+      where:'Botão flutuante'
+    },
+    {
+      n:8, icon:'🎯', title:'Defina metas e use o mentor',
+      body:'Em <b>Planejar → Metas</b>, defina meta diária de questões, pomodoros e flashcards. Conforme acumula dados, libera o botão "Pedir feedback do mentor IA" — análise qualitativa do seu ritmo.',
+      where:'Planejar → Metas'
+    },
+    {
+      n:9, icon:'🌐', title:'(Opcional) Crie perfil público',
+      body:'Em <b>Configurações → Perfil público</b>, crie um @username e ative visibilidade. Aí pode publicar cadernos/fontes/perfis na descoberta, seguir outros concurseiros e ver feed de marcos. Não publica nada sem você mandar.',
+      where:'Configurações → Perfil público'
+    },
+    {
+      n:10, icon:'📲', title:'Compartilhe progresso',
+      body:'Em <b>Planejar → Metas</b>, botão "Compartilhar progresso" gera uma imagem estilo stories pra postar no Instagram ou WhatsApp. Não inclui dados sensíveis — só métricas públicas.',
+      where:'Planejar → Metas'
+    }
+  ];
+
+  const list = mk('div','manual-list');
+  STEPS.forEach(s=>{
+    const step = mk('div','manual-step');
+    step.innerHTML = `
+      <div class="ms-num">${s.n}</div>
+      <div class="ms-icon">${s.icon}</div>
+      <div class="ms-content">
+        <div class="ms-title">${escapeHTML(s.title)}</div>
+        <div class="ms-body">${s.body}</div>
+        <div class="ms-where"><b>Onde:</b> ${escapeHTML(s.where)}</div>
+      </div>
+    `;
+    list.appendChild(step);
+  });
+  wrap.appendChild(list);
+
+  // Tip final
+  const tip = mk('div','manual-tip');
+  tip.innerHTML = `
+    <div class="mt-icon">💡</div>
+    <div>
+      <div class="mt-title">Dica de ouro</div>
+      <p class="mt-body">Não tente usar todos os 8 métodos no primeiro dia. Comece com 2 (Prática + Flashcards), pegue ritmo, depois adiciona. A maioria dos concurseiros acerta mais usando 2-3 métodos consistentemente do que tentando aplicar 8 de forma esparsa.</p>
+    </div>
+  `;
+  wrap.appendChild(tip);
+
+  return wrap;
+}
+
 function renderSettings(){
   const wrap = mk('div','fade');
   const h = mk('h1');h.textContent='Configurações';
@@ -18604,6 +18992,30 @@ function renderSettings(){
   actions.appendChild(exp);actions.appendChild(imp);actions.appendChild(del);
   rCard.appendChild(actions);
   wrap.appendChild(rCard);
+
+  // ==== Sobre o Gralia (acesso rápido pra Sobre/FAQ/Manual) ====
+  const aboutCard = mk('div','card');aboutCard.style.marginTop='1rem';
+  aboutCard.appendChild(sLabel('Sobre o Gralia'));
+  const aboutDesc = mk('p','txt2');aboutDesc.style.marginBottom='.875rem';
+  aboutDesc.textContent='Conheça o projeto, tire dúvidas no FAQ ou veja o manual rápido de uso.';
+  aboutCard.appendChild(aboutDesc);
+  const aboutActions = mk('div');aboutActions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+  const aboutOpts = [
+    {tab:'sobre', label:'🪶 Sobre nós'},
+    {tab:'faq', label:'❓ Perguntas frequentes'},
+    {tab:'manual', label:'📖 Como usar (manual)'}
+  ];
+  aboutOpts.forEach(o=>{
+    const b = mkBtn(o.label, 'btn btn-sm');
+    b.addEventListener('click',()=>{
+      ST.aboutTab = o.tab;
+      ST.view = 'about';
+      render();
+    });
+    aboutActions.appendChild(b);
+  });
+  aboutCard.appendChild(aboutActions);
+  wrap.appendChild(aboutCard);
 
   // ==== Feedback / Sugestões / NPS ====
   const fbCard = mk('div','card');fbCard.style.marginTop='1rem';
