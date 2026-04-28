@@ -158,7 +158,7 @@ a{color:var(--accent)}
 
 /* Auto-fade dos elementos passivos da topbar (sync + credits) */
 /* Visíveis no carregamento, depois esmaecem; voltam ao hover */
-.credits-chip,.sync-dot{transition:opacity .6s ease}
+.credits-chip,.sync-dot{transition:opacity .6s ease, max-width .6s ease, margin .6s ease}
 .topbar-col-right.faded .credits-chip,
 .topbar-col-right.faded .sync-dot{opacity:.22}
 .topbar-col-right:hover .credits-chip,
@@ -166,6 +166,11 @@ a{color:var(--accent)}
 /* Quando o sync está em andamento OU em erro, força visível */
 .topbar-col-right.faded .sync-dot.syncing,
 .topbar-col-right.faded .sync-dot.error{opacity:1}
+/* Estágio de melhorias: sync-dot fade-out e hide após sucesso */
+.sync-dot.fading{opacity:.15 !important}
+.sync-dot.hidden{opacity:0 !important;max-width:0 !important;padding:0 !important;margin:0 !important;border-width:0 !important;overflow:hidden;pointer-events:none}
+/* Erro força visível mesmo em hidden */
+.sync-dot.error{opacity:1 !important;max-width:none !important}
 
 /* Theme switch elegante (sol/lua) — usado no topbar e na welcome */
 .topbar-theme-switch{position:relative;width:60px;height:28px;border-radius:999px;border:1px solid var(--border);background:linear-gradient(90deg,#fef3c7 0%,#fde68a 100%);padding:0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;transition:background .25s ease,border-color .15s;flex-shrink:0}
@@ -752,6 +757,16 @@ html.focus-mode .pomo-float{display:none}
 .qs-chip.qs-hard .qs-pct b{color:var(--red-text)}
 .qs-chip.qs-chip-empty{background:transparent;border-style:dashed;font-size:11px;color:var(--text3)}
 
+/* === ESTÁGIO 9: Chip de comparação pessoal vs global === */
+.pvg-chip-container{display:flex}
+.pvg-chip{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:10px;background:var(--surface2);border:1px solid var(--border);font-size:11.5px;color:var(--text2);max-width:100%;line-height:1.4}
+.pvg-chip .pvg-icon{font-size:13px;flex-shrink:0;line-height:1}
+.pvg-chip .pvg-text b{font-weight:800;color:var(--text)}
+.pvg-chip.pvg-good{background:rgba(73,197,137,.08);border-color:rgba(73,197,137,.22)}
+.pvg-chip.pvg-good .pvg-icon{color:var(--accent-text)}
+.pvg-chip.pvg-bad{background:rgba(232,76,76,.06);border-color:rgba(232,76,76,.18)}
+.pvg-chip.pvg-bad .pvg-icon{color:var(--red-text)}
+
 /* === ESTÁGIO 7: Chip de tópico no Mapa === */
 .topic-stat-chip{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:999px;background:rgba(128,66,250,.10);border:1px solid rgba(128,66,250,.22);color:var(--gralia-purple);font-size:10.5px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.4;cursor:default}
 .topic-stat-chip .tsc-icon{font-size:10px;opacity:.85}
@@ -762,6 +777,24 @@ html.focus-mode .pomo-float{display:none}
 /* === ESTÁGIO 8: Badge de "importado de @user" === */
 .src-imported-badge{font-size:11.5px;color:var(--text3);margin-top:6px;padding:3px 8px;background:rgba(128,66,250,.06);border-radius:6px;display:inline-block}
 .tp-imported-badge{font-size:11.5px}
+
+/* === Discipline picker modal === */
+.disc-picker-item{display:block;width:100%;padding:.625rem .875rem;background:transparent;border:none;border-bottom:1px solid var(--border);text-align:left;cursor:pointer;font-family:inherit;font-size:13.5px;color:var(--text);transition:background .12s}
+.disc-picker-item:last-child{border-bottom:none}
+.disc-picker-item:hover{background:var(--surface2)}
+.disc-picker-item.used{color:var(--text3);cursor:not-allowed;font-style:italic}
+.disc-picker-item.used:hover{background:transparent}
+.disc-picker-item.custom{background:rgba(128,66,250,.05);color:var(--gralia-purple);font-weight:600}
+.disc-picker-item.custom:hover{background:rgba(128,66,250,.10)}
+.disc-picker-sep{padding:.5rem .875rem;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);font-weight:700;background:var(--surface2);border-bottom:1px solid var(--border)}
+
+/* === Chips de concurso alvo no perfil público === */
+.up-exam-info{display:flex;flex-wrap:wrap;gap:8px;width:100%;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.up-exam-chip{display:inline-flex;align-items:center;gap:8px;padding:.5rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;min-width:120px}
+.uec-icon{font-size:16px;flex-shrink:0;line-height:1}
+.uec-text{display:flex;flex-direction:column;gap:1px;min-width:0}
+.uec-lbl{font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
+.uec-val{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
 
 /* === ESTÁGIO 4: Contadores de followers/following === */
 .up-counts{display:flex;gap:18px;margin-top:10px}
@@ -1682,8 +1715,8 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* Credits chip — shows remaining API quota in topbar */
-.credits-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--accent-text);padding:4px 10px;border-radius:10px;background:var(--accent-light);border:1px solid var(--accent);cursor:default;transition:all .15s}
-.credits-chip::before{content:'⚡';font-size:10px}
+.credits-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--accent-text);padding:4px 10px;border-radius:10px;background:var(--accent-light);border:1px solid var(--accent);cursor:default;transition:all .15s;white-space:nowrap;flex-shrink:0;line-height:1}
+.credits-chip::before{content:'⚡';font-size:10px;flex-shrink:0}
 .credits-chip.low{color:var(--amber);background:rgba(245,158,11,.12);border-color:var(--amber)}
 .credits-chip.empty{color:var(--red-text);background:var(--red-light);border-color:var(--red);animation:credit-pulse 2s ease-in-out infinite}
 @keyframes credit-pulse{0%,100%{opacity:1}50%{opacity:.65}}
@@ -2127,7 +2160,7 @@ async function fetchUserProfile(force){
   try{
     const { data, error } = await supa
       .from('profiles')
-      .select('id, username, display_name, visibility, username_edits_count, username_last_edit, created_at')
+      .select('id, username, display_name, visibility, username_edits_count, username_last_edit, created_at, target_exam_name, target_exam_board, target_exam_date')
       .eq('id', AUTH.user.id)
       .maybeSingle();
     AUTH.profileLoading = false;
@@ -2241,7 +2274,7 @@ async function fetchPublicProfile(username){
   try{
     const { data, error } = await supa
       .from('profiles')
-      .select('id, username, display_name, visibility, created_at')
+      .select('id, username, display_name, visibility, created_at, target_exam_name, target_exam_board, target_exam_date')
       .eq('username', v)
       .maybeSingle();
     if(error) return {error: error.message};
@@ -2254,6 +2287,30 @@ async function fetchPublicProfile(username){
   }catch(err){
     return {error: err.message || 'Erro ao buscar'};
   }
+}
+
+// Atualiza campos opcionais do perfil (cargo/banca/data da prova)
+// Passar null/'' pra apagar um campo
+async function updateExamFields(opts){
+  if(!supa || !AUTH.user) throw new Error('Não autenticado');
+  const update = {};
+  if(opts.target_exam_name !== undefined){
+    const v = (opts.target_exam_name||'').trim().slice(0,120);
+    update.target_exam_name = v || null;
+  }
+  if(opts.target_exam_board !== undefined){
+    const v = (opts.target_exam_board||'').trim().slice(0,60);
+    update.target_exam_board = v || null;
+  }
+  if(opts.target_exam_date !== undefined){
+    update.target_exam_date = opts.target_exam_date || null;
+  }
+  update.updated_at = new Date().toISOString();
+  const { error } = await supa.from('profiles').update(update).eq('id', AUTH.user.id);
+  if(error) throw new Error(error.message);
+  // Invalida cache
+  AUTH.profileLastFetch = 0;
+  await fetchUserProfile(true);
 }
 
 // === ESTÁGIO 3: MATERIAIS COMPARTILHADOS ===
@@ -2269,6 +2326,7 @@ async function publishNotebook(notebookData, opts){
   const discipline = (opts.discipline || '').trim().slice(0, 80) || null;
   // Payload completo do caderno (questões e metadados)
   const payload = {
+    local_id: notebookData.id, // permite identificar o caderno local pra updates futuros
     notebook_name: notebookData.name,
     questions: (notebookData.questions || []).map(q => ({
       enunciado: q.enunciado || q.statement || '',
@@ -2424,7 +2482,7 @@ async function fetchMyPublishedResources(){
   if(!supa || !AUTH.user) return {items: []};
   try{
     const { data, error } = await supa.from('shared_resources')
-      .select('id, resource_type, title, description, discipline, question_count, is_public, created_at')
+      .select('id, resource_type, title, description, discipline, question_count, is_public, created_at, updated_at, payload')
       .eq('owner_id', AUTH.user.id)
       .order('created_at', {ascending: false});
     if(error) return {error: error.message, items: []};
@@ -2432,6 +2490,50 @@ async function fetchMyPublishedResources(){
   }catch(err){
     return {error: err.message, items: []};
   }
+}
+
+// Verifica se um recurso local (caderno) já foi publicado.
+// Retorna: {published: false} | {published: true, resource, isOutdated, lastPublishAt}
+async function checkPublishStatus(localId, resourceType){
+  if(!supa || !AUTH.user) return {published: false};
+  try{
+    const { data, error } = await supa.from('shared_resources')
+      .select('id, resource_type, title, description, discipline, payload, created_at, updated_at, is_public')
+      .eq('owner_id', AUTH.user.id)
+      .eq('resource_type', resourceType)
+      .eq('is_public', true)
+      .order('created_at', {ascending: false})
+      .limit(50);
+    if(error || !data) return {published: false};
+    // Procura por payload que tenha localId (caderno pode ter localId no payload — vamos adicionar)
+    const found = data.find(r => {
+      const p = r.payload || {};
+      return p.local_id === localId;
+    });
+    if(!found) return {published: false};
+    return {
+      published: true,
+      resource: found,
+      lastPublishAt: new Date(found.updated_at || found.created_at).getTime()
+    };
+  }catch(err){ return {published: false}; }
+}
+
+// Atualiza recurso já publicado (in-place)
+async function updatePublishedResource(resourceId, opts){
+  if(!supa || !AUTH.user) throw new Error('Não autenticado');
+  const update = {};
+  if(opts.title) update.title = opts.title.trim().slice(0,120);
+  if(opts.description !== undefined) update.description = (opts.description||'').trim().slice(0,500) || null;
+  if(opts.discipline !== undefined) update.discipline = (opts.discipline||'').trim().slice(0,80) || null;
+  if(opts.payload) update.payload = opts.payload;
+  if(opts.question_count !== undefined) update.question_count = opts.question_count;
+  update.updated_at = new Date().toISOString();
+  const { data, error } = await supa.from('shared_resources')
+    .update(update).eq('id', resourceId).eq('owner_id', AUTH.user.id)
+    .select().single();
+  if(error) throw new Error(error.message);
+  return data;
 }
 
 // Importa caderno: clona pra DATA local + registra uso no servidor
@@ -2982,6 +3084,65 @@ function renderQuestionStatsChip(stats, opts){
   return chip;
 }
 
+// === ESTÁGIO 9: SUA TAXA PESSOAL VS MÉDIA GLOBAL ===
+
+// Busca a tentativa pessoal do usuário em uma questão
+async function fetchMyQuestionAttempt(enunciado){
+  if(!supa || !AUTH.user) return null;
+  const hash = questionHash(enunciado);
+  if(!hash) return null;
+  try{
+    const { data, error } = await supa.rpc('get_my_question_attempt', {p_hash: hash});
+    if(error || !data || data.length === 0) return null;
+    return data[0]; // {last_was_correct, attempts_count, first_attempt_at, last_attempt_at}
+  }catch(err){
+    return null;
+  }
+}
+
+// Renderiza chip de COMPARAÇÃO pessoal vs global (estágio 9)
+// myAttempt: {last_was_correct, attempts_count}, globalStats: {accuracy_pct, total_users}
+// Mostra apenas se houver dados pra comparar (>= 2 atempts pessoais E global confiável)
+function renderPersonalVsGlobalChip(myAttempt, globalStats, currentWasCorrect){
+  // Renderiza algo significativo apenas se:
+  // 1) Usuário já tem 2+ tentativas (precisa de histórico, não só a atual)
+  // 2) OU global tem dados suficientes pra comparar
+  if(!globalStats || !globalStats.total_users || globalStats.total_users < 2) return null;
+  if(!myAttempt) return null;
+  // attempts_count após o registro inclui a tentativa atual; pra ser útil precisamos 2+
+  // Caso usuário tenha respondido só agora, mostra mensagem motivacional simples
+  const totalAttempts = myAttempt.attempts_count || 1;
+  if(totalAttempts < 2){
+    // Tentativa única — mostra só comparação binária da atual
+    const chip = document.createElement('div');
+    chip.className = 'pvg-chip';
+    const youOk = currentWasCorrect ? 'acertou' : 'errou';
+    const youCls = currentWasCorrect ? 'pvg-good' : 'pvg-bad';
+    chip.classList.add(youCls);
+    // Comparação contextual
+    let context = '';
+    if(currentWasCorrect && globalStats.accuracy_pct < 50){
+      context = ` — você foi melhor que a maioria (média ${globalStats.accuracy_pct}%)`;
+    } else if(!currentWasCorrect && globalStats.accuracy_pct >= 70){
+      context = ` — questão fácil pra maioria (${globalStats.accuracy_pct}% acertam)`;
+    } else if(!currentWasCorrect && globalStats.accuracy_pct < 50){
+      context = ` — questão difícil pra maioria também (${globalStats.accuracy_pct}% acertam)`;
+    }
+    chip.innerHTML = `<span class="pvg-icon">${currentWasCorrect?'✓':'✗'}</span><span class="pvg-text">Você ${youOk}${context}</span>`;
+    return chip;
+  }
+  // 2+ tentativas: pode mostrar taxa pessoal vs global
+  // Como `last_was_correct` é só a última, não temos taxa histórica precisa.
+  // Limitação do schema atual — vou mostrar comparação simbólica.
+  const chip = document.createElement('div');
+  chip.className = 'pvg-chip';
+  const youOk = myAttempt.last_was_correct ? 'última: certa' : 'última: errada';
+  const youCls = myAttempt.last_was_correct ? 'pvg-good' : 'pvg-bad';
+  chip.classList.add(youCls);
+  chip.innerHTML = `<span class="pvg-icon">📈</span><span class="pvg-text"><b>Você</b>: ${totalAttempts}× tentativas (${youOk}) · <b>Comunidade</b>: ${globalStats.accuracy_pct}% acertam (${globalStats.total_users.toLocaleString('pt-BR')} pessoas)</span>`;
+  return chip;
+}
+
 // === ESTÁGIO 7: ESTATÍSTICAS DE TÓPICOS ===
 
 // Normaliza nome (lowercase + remove acento + colapsa espaços + remove pontuação)
@@ -3377,6 +3538,49 @@ const CARD_TYPES = {
   why:{emoji:'❓',label:'Por quê?'}
 };
 const DISC_COLORS = ['#0F6E56','#185FA5','#6C5CE7','#B07316','#D4537E','#D94B4A','#378ADD','#5E3A08'];
+
+// Lista canônica de disciplinas comuns em concursos públicos federais e estaduais
+// Padroniza nomenclatura para facilitar busca, descoberta e estatísticas globais.
+// Usuário pode escolher da lista ou digitar nome livre.
+const CANONICAL_DISCIPLINES = [
+  // Conhecimentos básicos
+  'Língua Portuguesa','Redação Oficial','Inglês','Espanhol',
+  'Raciocínio Lógico','Matemática','Matemática Financeira','Estatística',
+  'Informática','Noções de Informática','Tecnologia da Informação','Lógica de Programação',
+  'Atualidades','Conhecimentos Gerais','História do Brasil','Geografia do Brasil',
+  // Direito
+  'Direito Constitucional','Direito Administrativo','Direito Civil','Direito Processual Civil',
+  'Direito Penal','Direito Processual Penal','Direito Penal Militar','Direito Processual Penal Militar',
+  'Direito do Trabalho','Direito Processual do Trabalho','Direito Tributário','Direito Financeiro',
+  'Direito Empresarial','Direito Comercial','Direito Internacional','Direito Internacional Público',
+  'Direito Ambiental','Direito Eleitoral','Direito Previdenciário','Direito Agrário',
+  'Direito do Consumidor','Direito da Criança e do Adolescente','Direitos Humanos',
+  'Legislação Específica','Legislação Aplicada','Ética no Serviço Público',
+  // Administração e gestão
+  'Administração Pública','Administração Geral','Administração Financeira e Orçamentária',
+  'Gestão de Pessoas','Gestão de Projetos','Gestão de Processos','Gestão da Qualidade',
+  'Gestão Estratégica','Gestão de Contratos','Licitações e Contratos','Logística',
+  'Arquivologia','Biblioteconomia','Auditoria','Controle Interno',
+  // Contabilidade e economia
+  'Contabilidade Geral','Contabilidade Pública','Contabilidade de Custos','Contabilidade Avançada',
+  'Análise de Demonstrações Contábeis','Auditoria Contábil',
+  'Economia','Macroeconomia','Microeconomia','Economia Brasileira','Finanças Públicas',
+  // Segurança pública (PF, PRF, PCs, PMs)
+  'Legislação de Trânsito','Direção Defensiva','Mecânica Básica','Primeiros Socorros',
+  'Investigação Criminal','Polícia Judiciária','Criminologia','Medicina Legal','Identificação Criminal',
+  'Inteligência Policial','Análise Criminal','Defesa Pessoal','Tiro Policial',
+  // Tributário e fiscal
+  'Auditoria Fiscal','Tributos Federais','Tributos Estaduais','Tributos Municipais',
+  'ICMS','ISS','IPI','Imposto de Renda','Contribuições Previdenciárias',
+  // Saúde (Coren, Crefono, etc.)
+  'Saúde Pública','SUS','Epidemiologia','Vigilância Sanitária','Enfermagem',
+  // Engenharia / técnico
+  'Desenho Técnico','Mecânica Geral','Eletricidade Básica','Hidráulica','Saneamento',
+  // Outros
+  'Sociologia','Antropologia','Filosofia','Psicologia','Pedagogia','Didática',
+  'Ciência Política','Ciências Políticas','Relações Internacionais','Defesa Nacional',
+  'Realidade Brasileira','Cultura Geral'
+];
 
 /* STATE */
 function defaultData(){
@@ -5095,17 +5299,18 @@ function renderDashboard(){
     wrap.appendChild(errorBox(`⚠ <b>Atenção:</b> você erra ${overconf}% dos "tenho certeza". Esse padrão custa pontos. Treine Calibração.`));
   }
 
-  // ===== SUMMARY NUMBERS — 4-up grid but more compact =====
+  // ===== SUMMARY NUMBERS — 4-up grid (estatísticas rápidas do progresso) =====
   if(s.total>0||DATA.srs.cards.length>0||weekFocusMin>0){
     const sg = mk('div','summary-grid');
     const items = [
-      {v:s.total?s.correct+'/'+s.total:'—',l:'Acertos',c:pct>=80?'var(--accent)':pct>=60?'var(--amber)':s.total?'var(--red)':'var(--text3)'},
-      {v:s.total?pct+'%':'—',l:'Aproveit.',c:pct>=80?'var(--accent)':pct>=60?'var(--amber)':s.total?'var(--red)':'var(--text3)'},
-      {v:DATA.srs.cards.length||'0',l:'Flashcards',c:DATA.srs.cards.length>0?'var(--accent)':'var(--text3)'},
-      {v:weekFocusMin>0?Math.round(weekFocusMin/60*10)/10+'h':'—',l:'Foco 7d',c:weekFocusMin>0?'var(--blue-text)':'var(--text3)'}
+      {v:s.total?s.correct+'/'+s.total:'—',l:'Acertos',c:pct>=80?'var(--accent)':pct>=60?'var(--amber)':s.total?'var(--red)':'var(--text3)',tt:'Questões certas / total respondidas na sessão atual'},
+      {v:s.total?pct+'%':'—',l:'Aproveit.',c:pct>=80?'var(--accent)':pct>=60?'var(--amber)':s.total?'var(--red)':'var(--text3)',tt:'% de acerto na sessão atual'},
+      {v:DATA.srs.cards.length||'0',l:'Flashcards',c:DATA.srs.cards.length>0?'var(--accent)':'var(--text3)',tt:'Total de flashcards no seu deck'},
+      {v:weekFocusMin>0?Math.round(weekFocusMin/60*10)/10+'h':'—',l:'Foco 7d',c:weekFocusMin>0?'var(--blue-text)':'var(--text3)',tt:'Tempo de foco (Pomodoro) nos últimos 7 dias'}
     ];
-    items.forEach(({v,l,c})=>{
+    items.forEach(({v,l,c,tt})=>{
       const sc = mk('div','scard');
+      if(tt) sc.title = tt;
       const sv = mk('div','scard-v');sv.style.color=c;sv.textContent=v;
       const sl = mk('div','scard-l');sl.textContent=l;
       sc.appendChild(sv);sc.appendChild(sl);sg.appendChild(sc);
@@ -5113,21 +5318,7 @@ function renderDashboard(){
     wrap.appendChild(sg);
   }
 
-  // ===== QUICK ACCESS — slim row, 3 primary actions =====
-  const qaLbl = sLabel('Acesso rápido');qaLbl.style.marginTop='1.25rem';wrap.appendChild(qaLbl);
-  const qg = mk('div','quick-row');
-  [
-    ['📝','Questões','practice'],
-    ['🎴','Cards'+(dueSrs>0?` · ${dueSrs}`:''),'srs'],
-    ['⏱','Pomodoro'+(todayFocusMin>0?` · ${todayFocusMin}m`:''),'pomodoro'],
-    ['🗺️','Mapa','mapa']
-  ].forEach(([icon,title,view])=>{
-    const mc = mk('button','quick-card');
-    mc.innerHTML = `<span class="qc-icon">${icon}</span><span class="qc-title">${title}</span>`;
-    mc.addEventListener('click',()=>{ST.view=view;render();});
-    qg.appendChild(mc);
-  });
-  wrap.appendChild(qg);
+  // (Cards de "Acesso rápido" removidos — funcionalidade já presente no menu superior)
 
   return wrap;
 }
@@ -6116,14 +6307,95 @@ function renderDisciplines(wrap){
   });
 
   const addB = mkBtn('+ Adicionar disciplina','btn mt');addB.style.marginTop='.875rem';
-  addB.addEventListener('click',()=>{
-    const used = DATA.disciplines.map(d=>d.color);
-    const free = DISC_COLORS.find(c=>!used.includes(c))||DISC_COLORS[DATA.disciplines.length%DISC_COLORS.length];
-    DATA.disciplines.push({id:'d'+Date.now(),name:'Nova disciplina',color:free,active:true});
-    save();render();
-  });
+  addB.addEventListener('click',()=>showDisciplinePickerModal());
   wrap.appendChild(addB);
   return wrap;
+}
+
+// Modal: seleção de disciplina canônica (busca + lista) ou nome livre
+function showDisciplinePickerModal(){
+  const m = mk('div');m.style.maxWidth='480px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px';
+  h.textContent = '+ Adicionar disciplina';
+  m.appendChild(h);
+  const sub = mk('p','txt3');sub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.5';
+  sub.textContent = 'Escolha da lista ou digite um nome customizado. Padronizar nomes ajuda a encontrar materiais públicos relevantes.';
+  m.appendChild(sub);
+
+  const usedNames = new Set((DATA.disciplines||[]).map(d=>(d.name||'').toLowerCase().trim()));
+
+  // Input de busca/livre
+  const inWrap = mk('div');inWrap.style.cssText='position:relative;margin-bottom:.875rem';
+  const input = mk('input');input.type='search';
+  input.placeholder='Buscar ou digitar nome customizado...';
+  input.autofocus = true;
+  input.style.cssText = 'width:100%;padding:.625rem .875rem;font-size:14px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit';
+  inWrap.appendChild(input);
+  m.appendChild(inWrap);
+
+  // Lista filtrada
+  const listWrap = mk('div');
+  listWrap.style.cssText = 'max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;background:var(--surface)';
+  m.appendChild(listWrap);
+
+  function renderList(){
+    listWrap.innerHTML = '';
+    const q = input.value.toLowerCase().trim();
+    let shown = 0;
+    CANONICAL_DISCIPLINES.forEach(name=>{
+      if(q && !name.toLowerCase().includes(q)) return;
+      const isUsed = usedNames.has(name.toLowerCase());
+      const item = mk('button','disc-picker-item'+(isUsed?' used':''));
+      item.type = 'button';
+      item.textContent = name + (isUsed ? ' (já adicionada)' : '');
+      item.disabled = isUsed;
+      item.addEventListener('click',()=>addDisciplineByName(name));
+      listWrap.appendChild(item);
+      shown++;
+    });
+    // Opção de nome livre se input não bate exatamente
+    if(q && !CANONICAL_DISCIPLINES.some(n=>n.toLowerCase()===q)){
+      const customName = input.value.trim();
+      const customUsed = usedNames.has(customName.toLowerCase());
+      if(!customUsed && customName.length >= 2){
+        const sep = mk('div','disc-picker-sep');
+        sep.textContent = 'OU customizado:';
+        listWrap.appendChild(sep);
+        const customItem = mk('button','disc-picker-item custom');
+        customItem.type = 'button';
+        customItem.innerHTML = `+ Criar "<b>${escapeHTML(customName)}</b>" como customizado`;
+        customItem.addEventListener('click',()=>addDisciplineByName(customName));
+        listWrap.appendChild(customItem);
+        shown++;
+      }
+    }
+    if(shown === 0){
+      const empty = mk('div');empty.style.cssText='padding:1.5rem;text-align:center;color:var(--text3);font-size:13px';
+      empty.textContent = 'Nenhuma disciplina encontrada. Digite um nome customizado acima.';
+      listWrap.appendChild(empty);
+    }
+  }
+  input.addEventListener('input',renderList);
+  renderList();
+
+  function addDisciplineByName(name){
+    const used = DATA.disciplines.map(d=>d.color);
+    const free = DISC_COLORS.find(c=>!used.includes(c))||DISC_COLORS[DATA.disciplines.length%DISC_COLORS.length];
+    DATA.disciplines.push({id:'d'+Date.now(),name,color:free,active:true});
+    save();
+    closeModal();
+    showToast('✓ Disciplina adicionada: '+name);
+    render();
+  }
+
+  // Footer
+  const footer = mk('div','flex');footer.style.cssText='gap:8px;justify-content:flex-end;margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border)';
+  const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+  cancelBtn.addEventListener('click',closeModal);
+  footer.appendChild(cancelBtn);
+  m.appendChild(footer);
+  showModal(m);
+  setTimeout(()=>input.focus(),50);
 }
 
 function showColorPicker(d){
@@ -6761,11 +7033,14 @@ function addQuestionsToNotebook(notebookId,questionIds){
   questionIds.forEach(qid=>{
     if(!nb.questionIds.includes(qid)){nb.questionIds.push(qid);added++;}
   });
-  if(added>0)save();return added;
+  if(added>0){nb.lastModifiedAt=Date.now();save();}
+  return added;
 }
 function removeQuestionFromNotebook(notebookId,questionId){
   const nb = getNotebook(notebookId);if(!nb)return;
-  nb.questionIds = nb.questionIds.filter(id=>id!==questionId);save();
+  nb.questionIds = nb.questionIds.filter(id=>id!==questionId);
+  nb.lastModifiedAt = Date.now();
+  save();
 }
 // Returns full question objects from a notebook (skipping any deleted)
 function notebookQuestions(notebookId){
@@ -8803,7 +9078,7 @@ function renderImportedList(wrap){
   wrap.appendChild(sortControl);
 
   const stats = mk('p','txt3');stats.style.marginBottom='.75rem';
-  stats.textContent = `${filtered.length} questão${filtered.length===1?'':'ões'} (de ${bank.length} no total)`;
+  stats.textContent = `${filtered.length} ${filtered.length===1?'questão':'questões'} (de ${bank.length} no total)`;
   wrap.appendChild(stats);
 
   if(filtered.length===0){
@@ -8870,11 +9145,27 @@ function renderImportedList(wrap){
     const gb = mk('span','badge '+(q.kind==='MC'||q.answer==='C'?'b-ok':'b-err'));
     gb.textContent='Gab: '+(q.answer||'?');
     meta.appendChild(gb);
+    // Tentativas + aproveitamento (sempre visível pra debugging de ordenação)
     if(q.attempts){
       const pct = Math.round((q.correctCount||0)/q.attempts*100);
       const at = mk('span','badge '+(pct>=60?'b-ok':'b-err'));
-      at.textContent=`${q.correctCount||0}/${q.attempts} (${pct}%)`;
+      at.title = `${q.correctCount||0} acertos em ${q.attempts} ${q.attempts===1?'tentativa':'tentativas'} (${pct}% de aproveitamento)`;
+      at.textContent=`🎯 ${q.attempts} ${q.attempts===1?'tent':'tents'} · ${pct}%`;
       meta.appendChild(at);
+    } else {
+      const at = mk('span','badge');at.style.cssText='background:var(--surface2);color:var(--text3);font-size:10.5px';
+      at.textContent='🎯 Não praticada';
+      at.title = 'Esta questão ainda não foi respondida';
+      meta.appendChild(at);
+    }
+    // Data (importadas têm importedAt; AI têm createdAt)
+    const ts = q.importedAt || q.createdAt;
+    if(ts){
+      const dateChip = mk('span','badge');dateChip.style.cssText='background:var(--surface2);color:var(--text3);font-size:10.5px';
+      const d = new Date(ts);
+      dateChip.textContent = '🕒 ' + formatRelativeDate(d.toISOString());
+      dateChip.title = `Adicionada em ${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+      meta.appendChild(dateChip);
     }
     // Show notebooks containing this question
     const inNbs = notebooksContaining(q.id);
@@ -9333,9 +9624,15 @@ function renderImportedPractice(wrap){
     const statsContainer = mk('div','qs-chip-container');
     statsContainer.style.marginTop='.625rem';
     fb.appendChild(statsContainer);
-    fetchQuestionStats(q.enunciado).then(stats=>{
-      const chip = renderQuestionStatsChip(stats);
+    // Estágio 9: chip de comparação pessoal vs global
+    const pvgContainer = mk('div','pvg-chip-container');
+    pvgContainer.style.marginTop='.5rem';
+    fb.appendChild(pvgContainer);
+    Promise.all([fetchQuestionStats(q.enunciado), fetchMyQuestionAttempt(q.enunciado)]).then(([globalStats, myAttempt])=>{
+      const chip = renderQuestionStatsChip(globalStats);
       if(chip) statsContainer.appendChild(chip);
+      const pvg = renderPersonalVsGlobalChip(myAttempt, globalStats, ok);
+      if(pvg) pvgContainer.appendChild(pvg);
     });
     const actions = mk('div','flex');actions.style.cssText='margin-top:.875rem;gap:8px;flex-wrap:wrap';
     const nb = mkBtn('Próxima →','btn btn-p');
@@ -10196,7 +10493,7 @@ function renderNotebooksList(wrap){
       titleCol.appendChild(dsc);
     }
     const counter = mk('span','badge b-info');counter.style.flexShrink='0';
-    counter.textContent = `${valid} questão${valid===1?'':'ões'}`;
+    counter.textContent = `${valid} ${valid===1?'questão':'questões'}`;
     head.appendChild(titleCol);head.appendChild(counter);
     card.appendChild(head);
 
@@ -10329,8 +10626,8 @@ function showAddToNotebookModal(questionId){
     nbs.forEach(nb=>{
       const want = toggleState[nb.id];
       const has = initialState[nb.id];
-      if(want&&!has){nb.questionIds.push(questionId);added++;}
-      else if(!want&&has){nb.questionIds=nb.questionIds.filter(id=>id!==questionId);removed++;}
+      if(want&&!has){nb.questionIds.push(questionId);nb.lastModifiedAt=Date.now();added++;}
+      else if(!want&&has){nb.questionIds=nb.questionIds.filter(id=>id!==questionId);nb.lastModifiedAt=Date.now();removed++;}
     });
     if(added>0||removed>0)save();
     closeModal();render();
@@ -10396,12 +10693,12 @@ function renderNotebookManage(wrap){
     titleWrap.appendChild(origin);
   }
   titleRow.appendChild(titleWrap);
-  // Botão publicar (só se autenticado e tem questões)
+  // Botão publicar (smart) — só se autenticado e tem questões
   if(isAuthed() && (nb.questionIds||[]).length > 0 && !nb.importedFromResource){
-    const pubBtn = mkBtn('🌐 Publicar','btn btn-sm');
-    pubBtn.title = 'Compartilhar este caderno com a comunidade';
-    pubBtn.addEventListener('click',()=>showPublishNotebookModal(nb));
-    titleRow.appendChild(pubBtn);
+    const pubBtnSlot = mk('div','pub-btn-slot');
+    titleRow.appendChild(pubBtnSlot);
+    // Carrega status de publicação async e renderiza botão apropriado
+    renderSmartPublishButton(pubBtnSlot, nb);
   }
   head.appendChild(titleRow);
   wrap.appendChild(head);
@@ -10709,9 +11006,15 @@ function renderNotebookPractice(wrap){
     const statsContainer = mk('div','qs-chip-container');
     statsContainer.style.marginTop='.625rem';
     fb.appendChild(statsContainer);
-    fetchQuestionStats(q.enunciado).then(stats=>{
-      const chip = renderQuestionStatsChip(stats);
+    // Estágio 9: chip de comparação pessoal vs global
+    const pvgContainer = mk('div','pvg-chip-container');
+    pvgContainer.style.marginTop='.5rem';
+    fb.appendChild(pvgContainer);
+    Promise.all([fetchQuestionStats(q.enunciado), fetchMyQuestionAttempt(q.enunciado)]).then(([globalStats, myAttempt])=>{
+      const chip = renderQuestionStatsChip(globalStats);
       if(chip) statsContainer.appendChild(chip);
+      const pvg = renderPersonalVsGlobalChip(myAttempt, globalStats, ok);
+      if(pvg) pvgContainer.appendChild(pvg);
     });
     const actions = mk('div','flex');actions.style.cssText='margin-top:.875rem;gap:8px;flex-wrap:wrap';
     const isLast = ST.notebookPracticeIdx>=ST.notebookPracticeOrder.length-1;
@@ -12162,9 +12465,19 @@ function renderSRSManage(wrap,allCards){
       }
     }
     const daysNext = Math.round(((c.nextReview||0)-Date.now())/(1000*60*60*24));
-    const info = mk('span','txt3');info.style.marginLeft='auto';
-    info.textContent=`${c.reviews||0} rev · ${daysNext<=0?'devido':'em '+daysNext+'d'}`;
+    // Info detalhada (suporta visualizar todas as ordenações possíveis)
+    const reviewsLbl = (c.reviews||0)===1?'rev':'revs';
+    const info = mk('span','txt3');info.style.marginLeft='auto';info.style.fontSize='11px';
+    info.innerHTML = `🎯 <b>${c.reviews||0}</b> ${reviewsLbl} · ⏰ ${daysNext<=0?'<b style="color:var(--red)">devido</b>':'em '+daysNext+'d'}`;
+    info.title = `${c.reviews||0} revisões · próxima revisão ${daysNext<=0?'agora':'em '+daysNext+' dias'}`;
     meta.appendChild(info);
+    if(c.createdAt){
+      const dateChip = mk('span','badge');dateChip.style.cssText='background:var(--surface2);color:var(--text3);font-size:10.5px';
+      dateChip.textContent = '🕒 ' + formatRelativeDate(new Date(c.createdAt).toISOString());
+      const d = new Date(c.createdAt);
+      dateChip.title = `Criado em ${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+      meta.appendChild(dateChip);
+    }
     it.appendChild(meta);
     wrap.appendChild(it);
   });
@@ -14385,6 +14698,7 @@ function renderPomodoro(){
   const mins = Math.floor(p.secLeft/60);
   const secs = p.secLeft%60;
   const tDisp = mk('div','pomo-time');tDisp.textContent=`${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  tDisp.setAttribute('data-pomo-time','main');
   main.appendChild(tDisp);
 
   const cyclesW = mk('div','pomo-cycles');
@@ -14509,11 +14823,26 @@ function pomoStart(){
   if(ST.pomoRun.intervalId)clearInterval(ST.pomoRun.intervalId);
   ST.pomoRun.intervalId = setInterval(()=>{
     ST.pomoRun.secLeft-=1;
-    if(ST.pomoRun.secLeft<=0){pomoBell();pomoNext(true);}
-    if(ST.view==='pomodoro')render();
+    if(ST.pomoRun.secLeft<=0){pomoBell();pomoNext(true);return;}
+    // Atualiza apenas display do timer, sem re-render global
+    updatePomoTimerDisplay();
     renderPomoFloat();  // atualiza widget flutuante a cada segundo
   },1000);
   render();
+}
+
+// Atualiza apenas o texto do timer, sem re-render
+// Evita que menu/dropdowns se fechem durante navegação
+function updatePomoTimerDisplay(){
+  const p = ST.pomoRun;
+  if(!p) return;
+  const min = Math.floor(p.secLeft/60);
+  const sec = p.secLeft % 60;
+  const txt = String(min).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+  // Atualiza todos os elementos com data-pomo-time (página pomodoro tem isso)
+  document.querySelectorAll('[data-pomo-time]').forEach(el=>{
+    el.textContent = txt;
+  });
 }
 function pomoPause(){
   ST.pomoRun.running=false;
@@ -15037,6 +15366,32 @@ function renderUserProfile(){
   }
   header.appendChild(headInfo);
 
+  // Linha de informações do concurso alvo (cargo / banca / data) — opcional, opt-in
+  const examChips = [];
+  if(p.target_exam_name) examChips.push({icon:'🎯', label:'Cargo', value: p.target_exam_name});
+  if(p.target_exam_board) examChips.push({icon:'⚖️', label:'Banca', value: p.target_exam_board});
+  if(p.target_exam_date){
+    const d = new Date(p.target_exam_date);
+    if(!isNaN(d.getTime())){
+      const days = Math.ceil((d.getTime() - Date.now()) / 86400000);
+      const dateStr = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
+      let suffix = '';
+      if(days > 0) suffix = ' · ' + days + ' ' + (days === 1 ? 'dia' : 'dias');
+      else if(days === 0) suffix = ' · hoje';
+      else if(days >= -7) suffix = ' · concluída';
+      examChips.push({icon:'📅', label:'Prova', value: dateStr + suffix});
+    }
+  }
+  if(examChips.length > 0){
+    const examRow = mk('div','up-exam-info');
+    examChips.forEach(c=>{
+      const chip = mk('div','up-exam-chip');
+      chip.innerHTML = `<span class="uec-icon">${c.icon}</span><div class="uec-text"><div class="uec-lbl">${c.label}</div><div class="uec-val">${escapeHTML(c.value)}</div></div>`;
+      examRow.appendChild(chip);
+    });
+    header.appendChild(examRow);
+  }
+
   // Linha de contadores (followers + following) — embaixo do header info
   const counts = mk('div','up-counts');
   counts.innerHTML = `
@@ -15230,6 +15585,9 @@ function renderDiscover(){
       ST.discoverFilter.type = t;
       ST.discoverPage = 0;
       ST.discoverItems = [];
+      // Atualiza estado visual dos botões
+      typeSeg.querySelectorAll('.df-seg-opt').forEach(b=>b.classList.remove('on'));
+      opt.classList.add('on');
       loadDiscover();
     });
     typeSeg.appendChild(opt);
@@ -15919,6 +16277,181 @@ async function showMyPublishedModal(){
 }
 
 // Modal: publicar caderno
+// Renderiza botão de publicação inteligente — detecta se já publicado e se há mudanças locais
+async function renderSmartPublishButton(slot, notebook){
+  // Inicial: botão "verificando"
+  slot.innerHTML = '';
+  const placeholder = mkBtn('Verificando...','btn btn-sm');
+  placeholder.disabled = true;
+  slot.appendChild(placeholder);
+
+  const status = await checkPublishStatus(notebook.id, 'caderno');
+  slot.innerHTML = '';
+
+  if(!status.published){
+    // Nunca publicado
+    const pubBtn = mkBtn('🌐 Publicar','btn btn-sm');
+    pubBtn.title = 'Compartilhar este caderno com a comunidade';
+    pubBtn.addEventListener('click',()=>showPublishNotebookModal(notebook));
+    slot.appendChild(pubBtn);
+    return;
+  }
+
+  // Já publicado — verifica se há mudanças locais
+  const localModifiedAt = notebook.lastModifiedAt || 0;
+  const isOutdated = localModifiedAt > status.lastPublishAt;
+
+  if(isOutdated){
+    // Mudanças locais não publicadas
+    const updBtn = mkBtn('🔄 Atualizar publicação','btn btn-sm btn-p');
+    updBtn.title = 'Há mudanças locais não publicadas';
+    updBtn.addEventListener('click',()=>showUpdatePublicationModal(notebook, status.resource));
+    slot.appendChild(updBtn);
+  } else {
+    // Publicado e atualizado
+    const okBtn = mkBtn('✓ Publicado','btn btn-sm btn-secondary');
+    okBtn.title = 'Caderno publicado e atualizado';
+    okBtn.addEventListener('click',()=>showManagePublicationModal(notebook, status.resource));
+    slot.appendChild(okBtn);
+  }
+}
+
+// Modal pra gerenciar publicação existente (despublicar, ver, atualizar)
+function showManagePublicationModal(notebook, resource){
+  const m = mk('div');m.style.maxWidth='420px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px';
+  h.textContent = '✓ Caderno publicado';
+  m.appendChild(h);
+  const sub = mk('p','txt3');sub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.5';
+  sub.textContent = 'Este caderno está publicado e atualizado na descoberta.';
+  m.appendChild(sub);
+
+  const info = mk('div');info.style.cssText='font-size:12.5px;padding:.75rem;background:var(--surface2);border-radius:8px;margin-bottom:1rem;line-height:1.6';
+  info.innerHTML = `<b>Título público:</b> ${escapeHTML(resource.title)}<br>
+<b>Publicado em:</b> ${formatRelativeDate(resource.created_at)}<br>
+<b>Última atualização:</b> ${formatRelativeDate(resource.updated_at||resource.created_at)}`;
+  m.appendChild(info);
+
+  const actions = mk('div');actions.style.cssText='display:flex;flex-direction:column;gap:8px';
+  const updBtn = mkBtn('🔄 Atualizar publicação (forçar)','btn btn-sm');
+  updBtn.title = 'Reenvia versão local pra publicação, mesmo sem mudanças';
+  updBtn.addEventListener('click',()=>{closeModal();showUpdatePublicationModal(notebook, resource);});
+  actions.appendChild(updBtn);
+  const editBtn = mkBtn('✏️ Editar título/descrição','btn btn-sm');
+  editBtn.addEventListener('click',()=>{closeModal();showUpdatePublicationModal(notebook, resource, {editOnly:true});});
+  actions.appendChild(editBtn);
+  const unpubBtn = mkBtn('Despublicar','btn btn-sm btn-danger');
+  unpubBtn.addEventListener('click',async()=>{
+    if(!confirm('Despublicar este caderno? Some da descoberta. (Cópias já importadas por outros usuários permanecem nas contas deles.)'))return;
+    try{
+      await unpublishResource(resource.id);
+      showToast('✓ Despublicado');
+      closeModal();
+      render();
+    }catch(err){ alert('Erro: '+err.message); }
+  });
+  actions.appendChild(unpubBtn);
+  m.appendChild(actions);
+
+  const footer = mk('div');footer.style.cssText='margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border);text-align:right';
+  const closeBtn = mkBtn('Fechar','btn btn-sm');
+  closeBtn.addEventListener('click',closeModal);
+  footer.appendChild(closeBtn);
+  m.appendChild(footer);
+
+  showModal(m);
+}
+
+// Modal pra atualizar publicação existente
+function showUpdatePublicationModal(notebook, resource, opts){
+  opts = opts || {};
+  const m = mk('div');m.style.cssText='max-width:480px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px';
+  h.textContent = opts.editOnly ? '✏️ Editar publicação' : '🔄 Atualizar publicação';
+  m.appendChild(h);
+  const sub = mk('p','txt3');sub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.5';
+  sub.textContent = opts.editOnly
+    ? 'Edite título, descrição ou disciplina. As questões publicadas permanecem inalteradas.'
+    : 'Reenvia a versão atual do caderno (questões + metadados) pra publicação. Quem já importou não é afetado.';
+  m.appendChild(sub);
+
+  const titleRow = mk('div');titleRow.style.marginBottom='.75rem';
+  titleRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Título público</label>';
+  const titleIn = mk('input');titleIn.type='text';titleIn.maxLength=120;titleIn.value=resource.title||notebook.name||'';
+  titleRow.appendChild(titleIn);
+  m.appendChild(titleRow);
+
+  const descRow = mk('div');descRow.style.marginBottom='.75rem';
+  descRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Descrição</label>';
+  const descIn = mk('textarea');descIn.maxLength=500;descIn.rows=3;descIn.value = resource.description||'';
+  descRow.appendChild(descIn);
+  m.appendChild(descRow);
+
+  const discRow = mk('div');discRow.style.marginBottom='.75rem';
+  discRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Disciplina</label>';
+  const discIn = mk('input');discIn.type='text';discIn.maxLength=80;discIn.value=resource.discipline||'';
+  discRow.appendChild(discIn);
+  m.appendChild(discRow);
+
+  if(!opts.editOnly){
+    const info = mk('div','txt3');info.style.cssText='font-size:11.5px;margin:.5rem 0 1rem;padding:.625rem;background:var(--surface2);border-radius:8px';
+    const localQs = notebookQuestions(notebook.id);
+    info.innerHTML = `📝 Versão local: <b>${localQs.length}</b> questões${resource.payload && resource.payload.questions ? ' · publicadas: <b>'+resource.payload.questions.length+'</b>' : ''}`;
+    m.appendChild(info);
+  }
+
+  const actions = mk('div','flex');actions.style.cssText='gap:8px;justify-content:flex-end';
+  const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+  cancelBtn.addEventListener('click',closeModal);
+  actions.appendChild(cancelBtn);
+  const okBtn = mkBtn(opts.editOnly?'Salvar':'🔄 Atualizar agora','btn btn-sm btn-p');
+  actions.appendChild(okBtn);
+  m.appendChild(actions);
+
+  okBtn.addEventListener('click',async()=>{
+    okBtn.disabled = true;
+    okBtn.textContent = 'Atualizando...';
+    try{
+      const updateOpts = {
+        title: titleIn.value,
+        description: descIn.value,
+        discipline: discIn.value
+      };
+      if(!opts.editOnly){
+        // Reenvia payload completo
+        const questions = notebookQuestions(notebook.id);
+        if(questions.length === 0) throw new Error('Caderno vazio');
+        updateOpts.payload = {
+          local_id: notebook.id,
+          notebook_name: notebook.name,
+          questions: questions.map(q => ({
+            enunciado: q.enunciado || '',
+            alternativas: q.alternativas || null,
+            gabarito: q.gabarito || null,
+            tipo: q.tipo || 'CE',
+            comentario: q.comentario || '',
+            disciplineId: q.disciplineId || null,
+            topic: q.topic || null
+          }))
+        };
+        updateOpts.question_count = questions.length;
+      }
+      await updatePublishedResource(resource.id, updateOpts);
+      // Atualiza lastModifiedAt do notebook pra dar match com lastPublishAt
+      notebook.lastPublishedAt = Date.now();
+      save();
+      closeModal();
+      showToast('✓ Publicação atualizada');
+      render();
+    }catch(err){
+      okBtn.disabled = false;
+      okBtn.textContent = opts.editOnly?'Salvar':'🔄 Atualizar agora';
+      alert('Erro: ' + err.message);
+    }
+  });
+  showModal(m);
+}
+
 function showPublishNotebookModal(notebook){
   if(!AUTH.profile){
     alert('Crie seu perfil em Configurações antes de publicar materiais.');
@@ -15983,8 +16516,12 @@ function showPublishNotebookModal(notebook){
       });
       // Marco social: publicou material
       try{ recordPublishMilestone(result); }catch(e){}
+      // Track timestamp pra detecção de "outdated" no botão smart
+      notebook.lastPublishedAt = Date.now();
+      save();
       closeModal();
       showToast('✓ Caderno publicado na descoberta');
+      render();
     }catch(err){
       pubBtn.disabled = false;
       pubBtn.textContent = '🌐 Publicar agora';
@@ -16340,6 +16877,45 @@ function renderSocialProfileCard(){
     vRow.appendChild(vSeg);
     body.appendChild(vRow);
 
+    // Campos opcionais do concurso alvo (mostrados no perfil público)
+    const examWrap = mk('div');examWrap.style.cssText='margin-bottom:.875rem;padding:.875rem;background:var(--surface2);border-radius:10px;border:1px solid var(--border)';
+    const examTitle = mk('div');examTitle.style.cssText='font-size:12px;font-weight:700;color:var(--text);margin-bottom:.25rem;display:flex;align-items:center;gap:6px';
+    examTitle.innerHTML = '🎯 Concurso alvo <span style="font-size:10px;color:var(--text3);font-weight:600;background:var(--surface);padding:2px 7px;border-radius:999px;text-transform:uppercase;letter-spacing:.3px">opcional · público</span>';
+    examWrap.appendChild(examTitle);
+    const examSub = mk('p','txt3');examSub.style.cssText='margin:0 0 .75rem;font-size:11.5px;line-height:1.5';
+    examSub.textContent = 'Aparecerá no seu perfil público pra outros concurseiros saberem qual concurso você prepara.';
+    examWrap.appendChild(examSub);
+
+    // Cargo
+    const cgRow = mk('div');cgRow.style.marginBottom='.625rem';
+    cgRow.innerHTML = '<label style="display:block;font-size:10.5px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">Nome do cargo / concurso</label>';
+    const cgIn = mk('input');cgIn.type='text';cgIn.maxLength=120;cgIn.value=p.target_exam_name || '';
+    cgIn.placeholder='Ex: Polícia Federal, Auditor da Receita...';
+    cgIn.style.cssText='width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit';
+    cgRow.appendChild(cgIn);
+    examWrap.appendChild(cgRow);
+
+    // Banca
+    const bkRow = mk('div');bkRow.style.marginBottom='.625rem';
+    bkRow.innerHTML = '<label style="display:block;font-size:10.5px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">Banca examinadora</label>';
+    const bkIn = mk('input');bkIn.type='text';bkIn.maxLength=60;bkIn.value=p.target_exam_board || '';
+    bkIn.placeholder='Ex: Cebraspe, FCC, FGV, Vunesp...';
+    bkIn.style.cssText='width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit';
+    bkRow.appendChild(bkIn);
+    examWrap.appendChild(bkRow);
+
+    // Data
+    const dtRow = mk('div');
+    dtRow.innerHTML = '<label style="display:block;font-size:10.5px;font-weight:700;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">Data prevista da prova</label>';
+    const dtIn = mk('input');dtIn.type='date';
+    if(p.target_exam_date){
+      try{ dtIn.value = new Date(p.target_exam_date).toISOString().slice(0,10); }catch(e){}
+    }
+    dtIn.style.cssText='width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit';
+    dtRow.appendChild(dtIn);
+    examWrap.appendChild(dtRow);
+    body.appendChild(examWrap);
+
     // Botão salvar + Ver meu perfil
     const actions = mk('div','flex');actions.style.cssText='gap:8px;margin-top:.875rem;flex-wrap:wrap';
     const saveBtn = mkBtn('Salvar alterações','btn btn-sm btn-p');
@@ -16380,6 +16956,20 @@ function renderSocialProfileCard(){
         }
         if(pendingVisibility !== p.visibility){
           await updateVisibility(pendingVisibility);
+        }
+        // Salva campos do concurso alvo
+        const newCargo = cgIn.value.trim();
+        const newBanca = bkIn.value.trim();
+        const newData = dtIn.value ? new Date(dtIn.value+'T13:00:00').toISOString() : null;
+        const cargoChanged = newCargo !== (p.target_exam_name||'');
+        const bancaChanged = newBanca !== (p.target_exam_board||'');
+        const dataChanged = newData !== (p.target_exam_date||null);
+        if(cargoChanged || bancaChanged || dataChanged){
+          await updateExamFields({
+            target_exam_name: newCargo,
+            target_exam_board: newBanca,
+            target_exam_date: newData
+          });
         }
         showToast('✓ Perfil atualizado');
         renderState();
@@ -18686,11 +19276,23 @@ function updateSyncIndicator(){
   el.classList.toggle('error',!!AUTH.syncError);
   if(AUTH.syncError){
     el.title='Erro ao sincronizar: '+AUTH.syncError;
+    el.classList.remove('hidden','fading');
   } else if(AUTH.syncing){
     el.title='Sincronizando...';
+    el.classList.remove('hidden','fading');
   } else if(AUTH.lastSyncAt){
     const mins = Math.round((Date.now()-AUTH.lastSyncAt)/60000);
     el.title='Sincronizado '+(mins<1?'agora':'há '+mins+' min');
+    // Auto-fade após 3s, depois esconde de fato após 5s (sem erro)
+    if(el._fadeTimer) clearTimeout(el._fadeTimer);
+    if(el._hideTimer) clearTimeout(el._hideTimer);
+    el.classList.remove('fading','hidden');
+    el._fadeTimer = setTimeout(()=>{
+      if(!AUTH.syncError && !AUTH.syncing) el.classList.add('fading');
+    }, 3000);
+    el._hideTimer = setTimeout(()=>{
+      if(!AUTH.syncError && !AUTH.syncing) el.classList.add('hidden');
+    }, 5000);
   }
 }
 
