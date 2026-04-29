@@ -1480,6 +1480,144 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
   .erm-pct{font-size:50px}
   .exam-type-row{grid-template-columns:1fr}
 }
+
+/* === V4 — Editais (Síntese com IA) === */
+.editals-page{padding-bottom:2rem}
+.editals-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:1.25rem;flex-wrap:wrap}
+.editals-empty{padding:2.5rem 1.75rem;text-align:center;background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));border:1px dashed rgba(128,66,250,.25);border-radius:14px}
+.editals-empty .ee-icon{font-size:46px;margin-bottom:.5rem}
+.editals-empty ul{text-align:left;display:inline-block}
+
+.editals-limit-info{display:flex;align-items:center;gap:10px;padding:.75rem 1rem;background:rgba(73,197,137,.06);border:1px solid rgba(73,197,137,.20);border-radius:10px;margin-bottom:1.25rem;font-size:12.5px;line-height:1.5}
+.editals-limit-info.full{background:rgba(232,76,76,.05);border-color:rgba(232,76,76,.20)}
+.eli-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 8px;border-radius:999px;background:var(--accent);color:#fff;font-size:12px;font-weight:800;flex-shrink:0}
+.eli-badge.full{background:var(--red)}
+.eli-badge.admin{background:var(--gralia-purple)}
+.eli-text{flex:1;color:var(--text2)}
+.eli-text b{color:var(--text)}
+
+.editals-list{display:flex;flex-direction:column;gap:10px}
+.edital-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.125rem 1.25rem;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;gap:8px}
+.edital-card:hover{border-color:var(--gralia-purple);transform:translateY(-1px);box-shadow:0 4px 14px rgba(128,66,250,.08)}
+.edital-card .ec-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ec-status{font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;line-height:1.5;display:inline-flex;align-items:center;gap:6px}
+.ec-status.ready{background:rgba(73,197,137,.15);color:var(--accent-text)}
+.ec-status.analyzing{background:rgba(128,66,250,.13);color:var(--gralia-purple)}
+.ec-status.failed{background:rgba(232,76,76,.10);color:var(--red-text)}
+.ec-pub-badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(24,95,165,.12);color:var(--blue-text);letter-spacing:.3px}
+.ec-title{margin:0;font-size:16px;font-weight:700;letter-spacing:-.2px;line-height:1.3;color:var(--text)}
+.ec-meta{font-size:12px;color:var(--text3);line-height:1.5}
+.ec-preview{margin:0;font-size:13px;line-height:1.55;color:var(--text2);padding-top:6px;border-top:1px solid var(--border)}
+.ec-stats{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--text3);padding-top:6px;border-top:1px solid var(--border)}
+.ec-stats b{color:var(--gralia-purple);font-weight:700}
+
+/* Modal de criação */
+.create-edital-info{display:flex;align-items:flex-start;gap:10px;padding:.75rem .875rem;background:rgba(232,164,60,.06);border:1px solid rgba(232,164,60,.20);border-radius:10px;margin-bottom:1rem;font-size:12px;line-height:1.55;color:var(--text2)}
+.create-edital-info span:first-child{font-size:18px;flex-shrink:0;line-height:1}
+.create-edital-info b{color:var(--text);font-weight:700}
+.create-edital-mode{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--surface2);padding:4px;border-radius:10px}
+.cem-btn{background:transparent;border:none;padding:.625rem .75rem;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;border-radius:8px;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .15s}
+.cem-btn:hover{color:var(--text)}
+.cem-btn.on{background:var(--surface);color:var(--gralia-purple);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.cem-icon{font-size:16px;line-height:1}
+
+.create-edital-drop{padding:1.5rem 1rem;border:2px dashed var(--border);border-radius:10px;text-align:center;cursor:pointer;transition:all .15s;background:var(--surface)}
+.create-edital-drop:hover,.create-edital-drop.drop-hover{border-color:var(--gralia-purple);background:rgba(128,66,250,.03)}
+.ced-prompt{display:flex;flex-direction:column;align-items:center;gap:4px}
+.ced-icon{font-size:32px;line-height:1;margin-bottom:6px}
+.ced-prompt b{font-size:13.5px;color:var(--text);font-weight:700}
+.ced-prompt span{font-size:11.5px;color:var(--text3)}
+.ced-file-info{display:flex;align-items:center;gap:12px;text-align:left}
+.ced-file-info > span{font-size:24px;flex-shrink:0;line-height:1}
+.ced-file-info b{font-size:13px;color:var(--text);font-weight:700;display:block}
+.ced-file-info > div{flex:1;min-width:0}
+.ced-file-info > div span{font-size:11px;color:var(--text3);display:block;margin-top:2px}
+.ced-remove{background:transparent;border:none;font-size:22px;color:var(--text3);cursor:pointer;padding:4px 10px;line-height:1;font-family:inherit;flex-shrink:0;border-radius:6px}
+.ced-remove:hover{background:rgba(232,76,76,.08);color:var(--red-text)}
+
+/* Detalhe do edital */
+.edital-detail{padding-bottom:2rem}
+.ed-header{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin:.75rem 0 1.5rem;flex-wrap:wrap}
+.ed-head-meta{font-size:12.5px;color:var(--text3);margin-top:4px;line-height:1.55}
+.ed-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ed-pub-info{font-size:11.5px;color:var(--blue-text);font-weight:600;padding:5px 10px;background:rgba(24,95,165,.08);border-radius:999px}
+
+.ed-section{padding:1.25rem 1.375rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:1rem}
+.ed-section.ed-exec{background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));border-color:rgba(128,66,250,.18)}
+.ed-section.ed-strategy{background:linear-gradient(135deg,rgba(232,164,60,.04),var(--surface));border-color:rgba(232,164,60,.18)}
+.ed-section.ed-meta{background:var(--surface2)}
+.ed-section-label{font-size:10.5px;font-weight:800;letter-spacing:1.4px;color:var(--accent);text-transform:uppercase;margin-bottom:8px}
+.ed-section-title{margin:0 0 .375rem;font-size:18px;font-weight:700;letter-spacing:-.4px;line-height:1.25;color:var(--text)}
+.ed-section-sub{font-size:12.5px;color:var(--text3);margin:0 0 1rem;line-height:1.55}
+.ed-exec-text{margin:0;font-size:14.5px;line-height:1.65;color:var(--text)}
+
+/* Pontos críticos */
+.ed-cp-list{display:flex;flex-direction:column;gap:8px;margin-top:.875rem}
+.ed-cp-item{padding:.875rem 1rem;background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--text3);border-radius:10px}
+.ed-cp-item.imp-alta{border-left-color:var(--red);background:linear-gradient(to right,rgba(232,76,76,.04),var(--surface) 30%)}
+.ed-cp-item.imp-media{border-left-color:var(--amber-text);background:linear-gradient(to right,rgba(232,164,60,.04),var(--surface) 30%)}
+.ed-cp-item.imp-baixa{border-left-color:var(--accent);background:linear-gradient(to right,rgba(73,197,137,.04),var(--surface) 30%)}
+.ed-cp-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.ed-cp-imp{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--surface2);text-transform:uppercase;letter-spacing:.3px;line-height:1.5}
+.ed-cp-cat{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--surface2);color:var(--text3);text-transform:uppercase;letter-spacing:.3px;line-height:1.5}
+.ed-cp-title{margin:0 0 4px;font-size:13.5px;font-weight:700;color:var(--text)}
+.ed-cp-desc{margin:0;font-size:12.5px;line-height:1.6;color:var(--text2)}
+
+/* Tabela de disciplinas */
+.ed-disc-table{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:.5rem}
+.edt-head{display:grid;grid-template-columns:1.4fr .8fr 2fr 1.2fr;gap:10px;padding:.625rem .875rem;background:var(--surface2);font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)}
+.edt-row{display:grid;grid-template-columns:1.4fr .8fr 2fr 1.2fr;gap:10px;padding:.75rem .875rem;border-bottom:1px solid var(--border);font-size:12.5px;line-height:1.5}
+.edt-row:last-child{border-bottom:none}
+.edt-row:hover{background:var(--surface2)}
+.edt-disc b{color:var(--text);font-weight:700}
+.edt-weight{color:var(--gralia-purple);font-weight:700;font-size:13px}
+.edt-topics{color:var(--text2)}
+.edt-notes{color:var(--text3);font-style:italic}
+
+/* Cronograma */
+.ed-schedule{display:flex;flex-direction:column;gap:6px;margin-top:.5rem}
+.ed-sch-item{display:grid;grid-template-columns:140px 1fr;gap:14px;padding:.625rem .875rem;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--text3);border-radius:10px;align-items:center}
+.ed-sch-item.critical{border-left-color:var(--red);background:rgba(232,76,76,.03)}
+.ed-sch-date{font-size:13px;font-weight:700;color:var(--text);font-family:'SF Mono',Menlo,monospace}
+.ed-sch-event{font-size:13px;color:var(--text2);line-height:1.5}
+
+/* Cargos */
+.ed-cargo-table{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:.5rem}
+.ect-head{display:grid;grid-template-columns:1.5fr .7fr 1fr 1.5fr;gap:10px;padding:.625rem .875rem;background:var(--surface2);font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)}
+.ect-row{display:grid;grid-template-columns:1.5fr .7fr 1fr 1.5fr;gap:10px;padding:.75rem .875rem;border-bottom:1px solid var(--border);font-size:12.5px;line-height:1.5}
+.ect-row:last-child{border-bottom:none}
+.ect-name b{color:var(--text);font-weight:700}
+.ect-qty{color:var(--gralia-purple);font-weight:700}
+.ect-sal{color:var(--accent-text);font-weight:600}
+.ect-req{color:var(--text3);font-size:12px}
+.ed-vc-info{font-size:13px;color:var(--text2);margin:.625rem 0 0;line-height:1.55}
+.ed-vc-info b{color:var(--text)}
+
+/* Estratégia */
+.ed-st-block{padding:.875rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-top:.625rem}
+.ed-st-block.ed-warning{border-color:rgba(232,164,60,.30);background:rgba(232,164,60,.04)}
+.ed-st-block h4{margin:0 0 6px;font-size:13px;font-weight:700;color:var(--text)}
+.ed-st-block p{margin:0;font-size:12.5px;line-height:1.6;color:var(--text2)}
+
+/* Atenção */
+.ed-attention{margin:.5rem 0 0;padding-left:1.25rem;display:flex;flex-direction:column;gap:6px}
+.ed-attention li{font-size:13px;line-height:1.55;color:var(--text2)}
+
+/* Meta info */
+.ed-meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.ed-meta-item{padding:.625rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.emi-k{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-bottom:3px}
+.emi-v{font-size:13px;color:var(--text);font-weight:600;line-height:1.4}
+
+.ed-footer{margin-top:1.5rem;padding-top:.75rem;border-top:1px solid var(--border);text-align:center}
+.ed-footer small{font-size:11px;color:var(--text3)}
+
+@media(max-width:640px){
+  .hide-mobile{display:none !important}
+  .edt-head,.edt-row{grid-template-columns:1.5fr .8fr}
+  .ect-head,.ect-row{grid-template-columns:1.5fr .7fr}
+  .ed-sch-item{grid-template-columns:100px 1fr}
+}
 .loading-spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--surface2);border-top-color:var(--gralia-purple);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
 .shexpl-gen-row{display:flex;gap:6px;margin-top:.625rem;flex-wrap:wrap;padding-top:.625rem;border-top:1px solid var(--border)}
@@ -2735,6 +2873,32 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 <div id="pomo-float-root"></div>
 <!-- Supabase client — CDN com fallback automático (se uma falhar, tenta a próxima) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<!-- PDF.js — carregado SOB DEMANDA pela função loadPdfJs() (lazy). Não bloqueia carregamento inicial -->
+<script>
+// Helper que carrega pdf.js apenas quando o usuário precisa extrair PDF.
+// Evita aumentar o peso da landing pra usuário não logado.
+window._pdfJsLoadPromise = null;
+window.loadPdfJs = function(){
+  if(window._pdfJsLoadPromise) return window._pdfJsLoadPromise;
+  if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  window._pdfJsLoadPromise = new Promise((resolve, reject)=>{
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    script.onload = ()=>{
+      if(window.pdfjsLib){
+        // Worker do pdf.js (necessário pra processamento)
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      } else {
+        reject(new Error('pdfjsLib nao carregou'));
+      }
+    };
+    script.onerror = ()=>reject(new Error('falha ao carregar pdf.js'));
+    document.head.appendChild(script);
+  });
+  return window._pdfJsLoadPromise;
+};
+</script>
 <script>
 // Fallback: se jsdelivr falhou, tenta outras CDNs antes de desistir
 if(typeof window.supabase==='undefined'){
@@ -5487,6 +5651,12 @@ function defaultData(){
     //   stats: {totalCorrect, totalQuestions, percentByDiscipline, ...}
     // }
     exams:[],
+    // V4 — Editais sintetizados com Sonnet 4.6
+    // Cada edital: {id, name, examName, banca, year, sourceText (truncado), sourceFile (nome só),
+    //   analysis: {executiveSummary, criticalPoints[], disciplinesTable, schedule, vacancies,
+    //              strategy, attentionPoints, fullJson}, createdAt, modelUsed, costUSD,
+    //   status: 'analyzing'|'ready'|'failed', isPublished, publishedResourceId}
+    editals:[],
     // Usage log
     usageLog:[],
     // Usage preferences
@@ -5510,6 +5680,7 @@ function load(){
     if(!parsed.usagePrefs)parsed.usagePrefs={currency:'BRL',weeklyBudgetUSD:5.00,dashboardExpanded:false};
     if(!parsed.simulados)parsed.simulados=[];
     if(!parsed.exams)parsed.exams=[];
+    if(!parsed.editals)parsed.editals=[];
     // Migrate old fromErrorId → sourceErrorId for backward compatibility
     if(parsed.srs&&parsed.srs.cards){
       parsed.srs.cards.forEach(c=>{
@@ -5699,6 +5870,9 @@ const ST = {
   examEditId:null,            // id do exam sendo editado
   examEditTab:'questions',    // 'questions' | 'results' | 'info'
   examBulkOpen:false,         // modal de cola em massa aberto
+  // V4 — Editais
+  editalViewId: null,         // id do edital em visualização detalhada
+  editalAnalyzing: false,     // flag durante análise IA
   srcSubview:'list',
   srcInput:{name:'',type:'relatorio',contentType:'misto',content:'',disciplineId:'d1'},
   calibHist:[],calibQ:null,calibConf:null,calibFb:null,calibLoading:false,calibAnswered:false,
@@ -6498,10 +6672,19 @@ function showConfirmModal(config){
 /* RENDER */
 const APP = $('app');
 function render(){
-  // Scroll to top quando trocar de view (não em re-renders da mesma view).
+  // Scroll to top quando trocar de "tela" (não em re-renders da mesma).
   // Bug clássico de SPA: o conteúdo é trocado mas o scroll do window mantém posição.
-  if(render._lastView !== ST.view){
-    render._lastView = ST.view;
+  // Calcula a "tela atual" considerando todos os estados (landing, auth, setup, view).
+  let _currentScreen;
+  if(AUTH.loading) _currentScreen = '_loading';
+  else if(!isAuthed() && !ST.showAuth && !DATA.welcomeShown) _currentScreen = '_welcome';
+  else if(supabaseConfigured() && !isAuthed()) _currentScreen = '_auth_'+(ST.authMode||'login');
+  else if(!DATA.welcomeShown) _currentScreen = '_welcome';
+  else if(typeof needsSetup==='function' && needsSetup()) _currentScreen = '_setup';
+  else _currentScreen = ST.view || 'dashboard';
+
+  if(render._lastScreen !== _currentScreen){
+    render._lastScreen = _currentScreen;
     // Pequeno timeout pra garantir que o conteúdo novo já foi renderizado
     setTimeout(()=>{
       try{ window.scrollTo({top:0, behavior:'auto'}); }catch(e){ window.scrollTo(0,0); }
@@ -6542,7 +6725,8 @@ function render(){
     calibration:renderCalibration,examiner:renderExaminer,drill:renderDrill,
     elaborative:renderElaborative,practice:renderPractice,simulado:renderSimulado,
     interleaving:renderInterleaving,srs:renderSRS,mapa:renderMapa,usage:renderUsage,goals:renderGoals,userProfile:renderUserProfile,discover:renderDiscover,feed:renderFeed,about:renderAbout,simulado:renderSimulado,
-    exams:renderExams,examEdit:renderExamEdit
+    exams:renderExams,examEdit:renderExamEdit,
+    editals:renderEditals,editalView:renderEditalView
   };
   // Contextual breadcrumb — shows where user came from
   if(ST.navStack.length>0){
@@ -7039,6 +7223,7 @@ function renderWelcome(){
     {icon:'🎴',title:'Flashcard do erro',desc:'Errou? Em 1 clique vira flashcard inteligente que ataca aquela armadilha.'},
     {icon:'📄',title:'Importação TEC',desc:'Cole o link do TEC. A IA extrai e estrutura. Pratique sem retrabalho.'},
     {icon:'📚',title:'Perfil de matéria',desc:'A IA gera estudo profundo do tópico: conceitos, pegadinhas, mnemônicos, tabelas — fica salvo.'},
+    {icon:'📋',title:'Síntese de editais',desc:'Cole o edital ou anexe o PDF. A IA Sonnet 4.6 extrai cronograma, vagas, disciplinas, pegadinhas — em 1 minuto você tem o que importa.'},
     {icon:'📝',title:'Provas e simulados',desc:'Registre provas reais que fez, simulados externos. Análise por disciplina.'},
     {icon:'⏱️',title:'Pomodoro flutuante',desc:'Timer em todas as páginas. Background que sincroniza entre dispositivos.'},
     {icon:'🌍',title:'Comunidade',desc:'Compartilhe cadernos e fontes. Siga concurseiros. Encontre material relevante.'}
@@ -7273,6 +7458,7 @@ function renderWelcome(){
     {q:'Tem chat de conversa entre usuários?', a:'Não. O Gralia foca em estudo. A parte social existe pra compartilhar cadernos de questões, fontes de estudo e perfis de matéria. Sem mensagens privadas, sem chat.'},
     {q:'Vai funcionar pra minha banca / minha prova?', a:'Sim. Você define no seu perfil qual concurso, vestibular ou prova vai fazer, qual banca, qual cargo. A IA adapta as questões pro estilo de cobrança da banca escolhida.'},
     {q:'Posso usar com a apostila que eu já tenho?', a:'Sim, e é o ideal. Você adiciona suas fontes (apostilas, PDFs, resumos próprios). A IA usa esse material como base pra gerar questões fiéis ao que você estudou.'},
+    {q:'A síntese de edital realmente lê o edital inteiro?', a:'Sim. A IA Sonnet 4.6 lê até 200 mil caracteres (suficiente pra editais grandes) e extrai: resumo, pontos críticos por importância (alta/média/baixa), tabela de disciplinas com pesos, cronograma com datas-chave, vagas e cargos, estratégia de estudo e pegadinhas que costumam passar despercebidas. Você pode anexar o PDF ou colar o texto. Limite de 1 edital por mês na versão atual.'},
     {q:'A IA pode errar nas questões?', a:'Pode acontecer. Por isso, cada questão passa por 5 filtros de qualidade, descartamos as ruins automaticamente, e a comunidade avalia as explicações. Em qualquer questão você reporta erro com 1 clique. Sempre confirme conceitos críticos com sua fonte oficial de teoria.'},
     {q:'Substitui o estudo de teoria?', a:'Não. Vídeo-aulas e PDFs continuam sendo essenciais pra você entender o conteúdo. O Gralia é a camada de prática ativa que vem depois — pra fixar e detectar suas dificuldades.'},
     {q:'Meus dados ficam seguros?', a:'Sim. Tudo em servidor com criptografia. Por padrão, sua conta é privada. Se quiser compartilhar materiais, você opta — nada é público sem você decidir.'}
@@ -7482,6 +7668,7 @@ function renderTopbar(){
     ]},
     {type:'group',key:'plan',label:'Planejar',icon:'🗺',children:[
       {view:'goals',label:'Metas',icon:'🎯',desc:'Metas mensais/semanais com fasamento automático'},
+      {view:'editals',label:'Síntese de Editais',icon:'📋',desc:'IA lê o edital e te entrega o que importa, organizado por importância'},
       {view:'exams',label:'Provas e Simulados',icon:'📝',desc:'Registre provas reais, simulados externos e analise por disciplina'},
       {view:'simulado',label:'Simulado Gralia',icon:'⏰',desc:'Simulados cronometrados estilo prova real (gerados pela IA)'},
       {view:'mapa',label:'Mapa da Matéria',icon:'🗺️',desc:'Visão integrada por tópico'},
@@ -7926,9 +8113,11 @@ function renderDashboard(){
   const tl = buildActivityTimeline();
   if(tl)wrap.appendChild(tl);
 
-  // ===== USAGE =====
-  const uc = buildUsageCard();
-  if(uc)wrap.appendChild(uc);
+  // ===== USAGE — admin only (usuário comum vê créditos restantes na chip) =====
+  if(isAdminUser()){
+    const uc = buildUsageCard();
+    if(uc)wrap.appendChild(uc);
+  }
 
   // ===== PROGRESS BY DISCIPLINE — only if there's data =====
   const byD = {};
@@ -15618,7 +15807,24 @@ const USAGE_KINDS = {
 // Compact card for dashboard: shows 5h + 7d usage, with inline expand
 // É admin? Habilita visão monetária detalhada (USD/BRL gastos, budgets etc).
 // Usuário comum só vê créditos, sem expor custo da API.
+// Whitelist de emails com acesso admin. Mantida client-side pra controlar UI;
+// a validação real de operações admin deve ser feita no backend (Vercel + Supabase RLS).
+const ADMIN_EMAILS = new Set([
+  // Adicione aqui os emails dos administradores reais
+  // Usuários com esses emails veem opções extras em Config (modo admin, testar API, uso de IA, orçamento)
+  'jeancarvalho01@hotmail.com'
+]);
+
+// Verifica se o usuário logado é admin (baseado no email do auth)
+function isAdminUser(){
+  if(!AUTH || !AUTH.user || !AUTH.user.email) return false;
+  return ADMIN_EMAILS.has(AUTH.user.email.toLowerCase().trim());
+}
+
 function isAdminMode(){
+  // Modo admin só é "ativo" se o usuário também for admin de fato (whitelist)
+  // Isso evita que usuário comum ative o modo via console e veja opções escondidas
+  if(!isAdminUser()) return false;
   return DATA.config && DATA.config.adminMode === true;
 }
 
@@ -15784,6 +15990,16 @@ function buildUsageCard(){
 
 function renderUsage(){
   const wrap = mk('div','fade');
+  // Página admin-only — bloqueia acesso direto pra usuários comuns
+  if(!isAdminUser()){
+    wrap.appendChild(backBtn('settings'));
+    const h = mk('h1');h.textContent='Acesso restrito';
+    wrap.appendChild(h);
+    const msg = mk('p','txt2');msg.style.cssText='margin-top:.5rem';
+    msg.textContent='Esta página é exclusiva para administradores da plataforma.';
+    wrap.appendChild(msg);
+    return wrap;
+  }
   wrap.appendChild(backBtn('settings'));
   const h = mk('h1');h.textContent='💳 Uso da IA';
   wrap.appendChild(h);
@@ -18927,7 +19143,7 @@ function invalidateDiscoverCache(){
 // Card compacto de recomendação (versão menor que renderResourceCard)
 function renderRecoCard(item){
   const card = mk('div','reco-card');
-  const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : '🧠';
+  const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : item.resource_type === 'edital' ? '📋' : '🧠';
   // Badge de motivo da recomendação
   const reasonLabel = {
     'exam_tag': '🎯 Pro seu concurso',
@@ -18966,7 +19182,7 @@ function renderRecoCard(item){
 function renderResourceCard(item){
   const card = mk('div','resource-card card');
   // Badge de tipo
-  const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : '🧠';
+  const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : item.resource_type === 'edital' ? '📋' : '🧠';
   // Header: título + tipo
   const header = mk('div','rc-header');
   const titleEl = mk('h3','rc-title');
@@ -19088,9 +19304,10 @@ function formatRelativeDate(iso){
 // Modal: confirmar importação
 function showImportConfirmModal(item){
   const m = mk('div');m.style.maxWidth='460px';
-  const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : '🧠';
+  const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : item.resource_type === 'edital' ? '📋' : '🧠';
   const h = mk('h2');h.style.cssText='margin:0 0 .5rem;font-size:18px';
-  h.textContent = '📥 Importar pra sua conta';
+  // Editais não são importados — apenas visualizados
+  h.textContent = item.resource_type === 'edital' ? '👁 Visualizar análise do edital' : '📥 Importar pra sua conta';
   m.appendChild(h);
 
   // Texto descritivo adaptado por tipo
@@ -19101,6 +19318,8 @@ function showImportConfirmModal(item){
     p.innerHTML = `${typeIcon} Vai criar uma fonte chamada <b>"${escapeHTML(item.title)}"</b> na sua conta.<br><br>Selecione abaixo a disciplina destino.`;
   } else if(item.resource_type === 'perfil_topico'){
     p.innerHTML = `${typeIcon} Vai criar um perfil de tópico <b>"${escapeHTML(item.title)}"</b> na sua conta.<br><br>Selecione abaixo em qual disciplina o tópico se encaixa.`;
+  } else if(item.resource_type === 'edital'){
+    p.innerHTML = `${typeIcon} Análise do edital <b>"${escapeHTML(item.title)}"</b> compartilhada por outro usuário.<br><br>Editais não são importados — você visualiza a síntese (resumo, pontos críticos, disciplinas, cronograma e pegadinhas) direto aqui.`;
   }
   m.appendChild(p);
 
@@ -19140,13 +19359,18 @@ function showImportConfirmModal(item){
   const cancelBtn = mkBtn('Cancelar','btn btn-sm');
   cancelBtn.addEventListener('click',closeModal);
   actions.appendChild(cancelBtn);
-  const okBtn = mkBtn('Importar agora','btn btn-sm btn-p');
+  // Editais usam "Visualizar" em vez de "Importar" — não são incorporados ao app local,
+  // apenas abertos em modal de leitura
+  const isEdital = item.resource_type === 'edital';
+  const okBtnLabel = isEdital ? '👁 Visualizar análise' : 'Importar agora';
+  const okBtnLoading = isEdital ? 'Abrindo...' : 'Importando...';
+  const okBtn = mkBtn(okBtnLabel,'btn btn-sm btn-p');
   actions.appendChild(okBtn);
   m.appendChild(actions);
 
   okBtn.addEventListener('click',async()=>{
     okBtn.disabled = true;
-    okBtn.textContent = 'Importando...';
+    okBtn.textContent = okBtnLoading;
     try{
       let toastMsg = '';
       if(item.resource_type === 'caderno'){
@@ -19162,6 +19386,11 @@ function showImportConfirmModal(item){
         if(!targetDiscId) throw new Error('Selecione uma disciplina destino');
         await importTopicProfileToLocal(item.id, targetDiscId);
         toastMsg = '✓ Perfil importado';
+      } else if(item.resource_type === 'edital'){
+        // Editais são apenas visualizados (não importados — visualização direta na descoberta)
+        closeModal();
+        showEditalSharedView(item);
+        return;
       } else {
         throw new Error('Tipo de recurso desconhecido');
       }
@@ -19171,7 +19400,7 @@ function showImportConfirmModal(item){
       render();
     }catch(err){
       okBtn.disabled = false;
-      okBtn.textContent = 'Importar agora';
+      okBtn.textContent = okBtnLabel;
       alert('Erro ao importar: ' + err.message);
     }
   });
@@ -19181,7 +19410,7 @@ function showImportConfirmModal(item){
 // Modal: preview de recurso
 function showResourcePreviewModal(item){
   const m = mk('div');m.style.maxWidth='560px';
-  const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : '🧠';
+  const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : item.resource_type === 'edital' ? '📋' : '🧠';
   const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px;line-height:1.3';
   h.innerHTML = `${typeIcon} ${escapeHTML(item.title)}`;
   m.appendChild(h);
@@ -21711,6 +21940,1095 @@ function renderExamInfoTab(wrap, exam){
   return wrap;
 }
 
+// ============================================================================
+// EDITAIS — Sintetização com IA (V4)
+// ============================================================================
+// Permite ao usuário colar texto ou enviar PDF de edital. A IA (Sonnet 4.6)
+// analisa e gera estrutura organizada por importância: resumo, pontos críticos,
+// disciplinas + pesos, cronograma, cargos/vagas, estratégia, pegadinhas.
+// O usuário pode publicar a análise como recurso na descoberta da plataforma.
+// Limitação: 1 edital por mês por usuário (admin sem limite).
+// ============================================================================
+
+// Limite mensal pra análise de edital (não-admin)
+const EDITAL_MONTHLY_LIMIT = 1;
+
+// Verifica quantos editais o usuário criou no mês atual
+function editalsThisMonth(){
+  const editals = DATA.editals || [];
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  return editals.filter(e=>e.createdAt >= monthStart && e.status !== 'failed').length;
+}
+
+function canCreateEdital(){
+  if(isAdminUser()) return {ok:true};
+  const count = editalsThisMonth();
+  if(count >= EDITAL_MONTHLY_LIMIT){
+    return {ok:false, reason:'monthly_limit', count};
+  }
+  return {ok:true};
+}
+
+function editalNew(opts){
+  const id = 'edital-' + Date.now() + '-' + Math.floor(Math.random()*1000);
+  return {
+    id,
+    name: (opts && opts.name) || 'Edital sem nome',
+    examName: (opts && opts.examName) || '',
+    banca: (opts && opts.banca) || '',
+    year: (opts && opts.year) || new Date().getFullYear(),
+    sourceText: (opts && opts.sourceText) || '',
+    sourceFile: (opts && opts.sourceFile) || null,
+    analysis: null,
+    createdAt: Date.now(),
+    modelUsed: null,
+    costUSD: null,
+    status: 'analyzing',  // 'analyzing' | 'ready' | 'failed'
+    failureReason: null,
+    isPublished: false,
+    publishedResourceId: null
+  };
+}
+
+// Extrai texto de um arquivo PDF usando pdf.js (lazy-loaded).
+// Retorna string concatenada de todas as páginas.
+async function extractTextFromPdf(file, onProgress){
+  const lib = await loadPdfJs();
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await lib.getDocument({data: arrayBuffer}).promise;
+  const pages = pdf.numPages;
+  let fullText = '';
+  for(let i=1; i<=pages; i++){
+    if(onProgress) onProgress(i, pages);
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const pageText = content.items.map(item=>item.str).join(' ');
+    fullText += '\n\n--- Página ' + i + ' ---\n\n' + pageText;
+  }
+  return fullText.trim();
+}
+
+// Limita texto pra não estourar tokens (Sonnet 4.6 lida bem com até ~80k tokens).
+// 1 token ≈ 4 chars em PT, então 80k tokens ≈ 320k chars. Vamos com margem: 200k chars max.
+function truncateEditalText(text, max=200000){
+  if(text.length <= max) return text;
+  const half = Math.floor(max/2);
+  return text.slice(0, half) + '\n\n[... TEXTO TRUNCADO PRA CABER NO LIMITE — MEIO OMITIDO ...]\n\n' + text.slice(-half);
+}
+
+// Chama a IA pra analisar o edital. Retorna a análise estruturada.
+async function analyzeEditalWithAI(edital){
+  const text = truncateEditalText(edital.sourceText);
+
+  const SYSTEM = `Você é um especialista em análise de editais de concursos públicos brasileiros, vestibulares e provas em geral. Sua missão é extrair as informações mais relevantes de um edital e organizá-las em ordem de importância para o candidato.
+
+REGRAS:
+- Foque no que o candidato PRECISA SABER primeiro
+- Identifique armadilhas e pontos que costumam passar despercebidos
+- Use linguagem clara e objetiva, sem juridiquês desnecessário
+- Cite trechos exatos quando relevante
+- Estime importância de cada ponto (alta, média, baixa)
+- Seja específico em datas, valores e prazos
+- NÃO invente informação que não está no edital — se não souber, deixe vazio
+- Responda SEMPRE em JSON puro válido, sem markdown nem texto antes/depois`;
+
+  const PROMPT = `Analise o edital abaixo e gere uma síntese estruturada. O concurso/prova é: "${edital.examName}" da banca "${edital.banca}" (${edital.year}).
+
+EDITAL:
+${text}
+
+Responda em JSON com EXATAMENTE essa estrutura:
+
+{
+  "executiveSummary": "Resumo executivo em 3-4 frases. O que é o concurso, pra quem se destina, qual o nível de competitividade, prazo e estratégia geral.",
+  "criticalPoints": [
+    {
+      "importance": "alta",
+      "title": "Título curto do ponto",
+      "description": "Descrição detalhada com números, datas, prazos exatos",
+      "category": "datas|requisitos|eliminatorios|pagamento|recursos|outros"
+    }
+  ],
+  "disciplinesTable": [
+    {
+      "discipline": "Nome da disciplina",
+      "topics": "Principais tópicos (resumo, não copia tudo)",
+      "weight": "peso ou nº de questões",
+      "notes": "observações relevantes (ex: eliminatória, conhecimento específico)"
+    }
+  ],
+  "schedule": [
+    {"date": "YYYY-MM-DD ou texto", "event": "Inscrições, prova objetiva, etc.", "isCritical": true}
+  ],
+  "vacancies": {
+    "totalVacancies": "ex: 1500 (ou texto descritivo se não houver número fechado)",
+    "byCargo": [{"cargo": "Nome do cargo", "qty": "número", "salary": "salário inicial", "requirements": "requisitos chave"}],
+    "reservations": "Cotas, PCD, indígenas, etc.",
+    "salaryNotes": "Observações sobre composição salarial, gratificações"
+  },
+  "strategy": {
+    "studyPriority": "Quais matérias priorizar e por quê (com base nos pesos e na cobrança da banca)",
+    "timeline": "Quanto tempo até a prova e como dividir",
+    "warnings": "O que cuidar (ex: mudanças de banca, novidades no edital)"
+  },
+  "attentionPoints": [
+    "Pontos que costumam passar despercebidos: cláusula de exclusão, requisito de entrega de documentos, pegadinhas no estilo de cobrança, prazos de recurso, etc."
+  ],
+  "metaInfo": {
+    "validityYears": "validade do concurso",
+    "examDate": "data provável da prova objetiva (se especificada)",
+    "applicationFee": "valor da taxa de inscrição",
+    "registrationPeriod": "período de inscrição"
+  }
+}`;
+
+  // Modelo: Sonnet 4.6 (premium — análise profunda)
+  const startTime = Date.now();
+  const result = await callAPI(SYSTEM, [{role:'user', content: PROMPT}], {
+    model: 'claude-sonnet-4-6',
+    max_tokens: 8000  // resposta pode ser longa
+  });
+  const duration = Date.now() - startTime;
+
+  // Estima custo: Sonnet 4.6 ≈ $3/Mtok input + $15/Mtok output. Edital típico: 30k input + 4k output
+  // Aproximação: input chars/4 + output chars/4 (em tokens)
+  const inputChars = SYSTEM.length + PROMPT.length;
+  const outputChars = JSON.stringify(result).length;
+  const inputTokens = inputChars / 4;
+  const outputTokens = outputChars / 4;
+  const costUSD = (inputTokens / 1000000) * 3 + (outputTokens / 1000000) * 15;
+
+  return {
+    analysis: result,
+    modelUsed: 'claude-sonnet-4-6',
+    costUSD: parseFloat(costUSD.toFixed(4)),
+    durationMs: duration
+  };
+}
+
+// Publica edital como recurso na descoberta
+async function publishEditalAsResource(edital){
+  if(!isAuthed()) throw new Error('Login necessário pra publicar');
+  const profile = AUTH.profile;
+  if(!profile || !profile.username) throw new Error('Perfil necessário pra publicar');
+  if(!supa) throw new Error('Supabase não disponível');
+
+  // Sanitiza conteúdo antes de publicar (remove referências a cursos, IAs, etc.)
+  const sanitized = sanitizeContentForSharing(JSON.stringify(edital.analysis));
+  let analysis;
+  try{ analysis = JSON.parse(sanitized); }catch(e){ analysis = edital.analysis; }
+
+  const payload = {
+    type: 'edital',
+    name: sanitizeContentForSharing(edital.name),
+    examName: sanitizeContentForSharing(edital.examName||''),
+    banca: edital.banca,
+    year: edital.year,
+    analysis,
+    local_id: edital.id,
+    publishedAt: new Date().toISOString()
+  };
+
+  const {data, error} = await supa.from('shared_resources').insert([{
+    owner_id: AUTH.user.id,
+    title: edital.name,
+    description: (edital.examName ? edital.examName + ' · ' : '') + (edital.banca ? edital.banca + ' · ' : '') + (edital.year || ''),
+    resource_type: 'edital',
+    discipline: null,
+    topic: null,
+    payload,
+    is_public: true
+  }]).select().single();
+
+  if(error) throw error;
+
+  edital.isPublished = true;
+  edital.publishedResourceId = data.id;
+  if(typeof invalidateDiscoverCache === 'function') invalidateDiscoverCache();
+  save();
+  return data.id;
+}
+
+async function unpublishEdital(edital){
+  if(!edital.publishedResourceId) return;
+  if(!supa) throw new Error('Supabase não disponível');
+  const {error} = await supa.from('shared_resources').delete().eq('id', edital.publishedResourceId);
+  if(error && error.code !== 'PGRST116') throw error;
+  edital.isPublished = false;
+  edital.publishedResourceId = null;
+  if(typeof invalidateDiscoverCache === 'function') invalidateDiscoverCache();
+  save();
+}
+
+// ============================================================================
+// VIEWS — Editais
+// ============================================================================
+
+function renderEditals(){
+  const wrap = mk('div','fade editals-page');
+
+  // Header
+  const head = mk('div','editals-head');
+  const titleBlock = mk('div');
+  const h = mk('h1');h.style.cssText='margin:0 0 4px;font-size:24px;letter-spacing:-.5px';
+  h.textContent = 'Síntese de Editais';
+  const sub = mk('p','txt2');sub.style.cssText='margin:0;font-size:13.5px;line-height:1.55;max-width:600px';
+  sub.textContent='Cole o texto do edital ou anexe o PDF — a IA Sonnet 4.6 lê o documento inteiro e organiza pra você o que é mais importante: cronograma, disciplinas, vagas, pegadinhas e estratégia.';
+  titleBlock.appendChild(h);
+  titleBlock.appendChild(sub);
+  head.appendChild(titleBlock);
+
+  const newBtn = mkBtn('+ Sintetizar edital', 'btn btn-p btn-sm');
+  newBtn.addEventListener('click', ()=>showCreateEditalModal());
+  head.appendChild(newBtn);
+  wrap.appendChild(head);
+
+  // Limite info card
+  const monthlyCount = editalsThisMonth();
+  const limitInfo = mk('div','editals-limit-info');
+  if(isAdminUser()){
+    limitInfo.innerHTML = `<span class="eli-badge admin">🔧 Admin</span><span class="eli-text">Você tem limite ilimitado. Total este mês: <b>${monthlyCount}</b>.</span>`;
+  } else {
+    const remaining = EDITAL_MONTHLY_LIMIT - monthlyCount;
+    if(remaining > 0){
+      limitInfo.innerHTML = `<span class="eli-badge ok">${remaining}</span><span class="eli-text">Você ainda pode sintetizar <b>${remaining}</b> edita${remaining===1?'l':'is'} este mês. O limite renova no início do próximo mês.</span>`;
+    } else {
+      limitInfo.classList.add('full');
+      limitInfo.innerHTML = `<span class="eli-badge full">!</span><span class="eli-text">Você atingiu o limite mensal de <b>${EDITAL_MONTHLY_LIMIT}</b> edital${EDITAL_MONTHLY_LIMIT===1?'':'is'}. O limite renova no dia 1º do próximo mês.</span>`;
+    }
+  }
+  wrap.appendChild(limitInfo);
+
+  const editals = (DATA.editals||[]).slice().sort((a,b)=>b.createdAt - a.createdAt);
+
+  if(editals.length === 0){
+    const empty = mk('div','card editals-empty');
+    empty.innerHTML = `
+      <div class="ee-icon">📋</div>
+      <h3 style="margin:0 0 .5rem;font-size:17px">Você ainda não sintetizou nenhum edital</h3>
+      <p class="txt2" style="margin:0 0 1rem;font-size:13px;line-height:1.6;max-width:500px">A síntese é uma ferramenta poderosa pra economizar tempo. Em vez de ler 60-100 páginas de edital, você recebe:</p>
+      <ul style="margin:0 0 1.25rem;padding-left:1.25rem;font-size:13px;color:var(--text2);line-height:1.7;text-align:left;display:inline-block">
+        <li><b>Resumo executivo</b> em 3-4 frases</li>
+        <li><b>Pontos críticos</b> ordenados por importância (alta/média/baixa)</li>
+        <li><b>Tabela de disciplinas</b> com pesos e tópicos</li>
+        <li><b>Cronograma</b> com datas-chave</li>
+        <li><b>Vagas + cargos + salários</b> consolidados</li>
+        <li><b>Estratégia</b> de estudo personalizada</li>
+        <li><b>Pegadinhas</b> que costumam passar despercebidas</li>
+      </ul>
+      <button class="btn btn-p btn-sm" id="ee-new">+ Sintetizar primeiro edital</button>`;
+    wrap.appendChild(empty);
+    setTimeout(()=>{
+      const b = empty.querySelector('#ee-new');
+      if(b) b.addEventListener('click', ()=>showCreateEditalModal());
+    }, 0);
+    return wrap;
+  }
+
+  // Lista
+  const list = mk('div','editals-list');
+  editals.forEach(e=>list.appendChild(renderEditalCard(e)));
+  wrap.appendChild(list);
+
+  return wrap;
+}
+
+function renderEditalCard(edital){
+  const card = mk('div','edital-card');
+
+  // Status badge no topo
+  const cHead = mk('div','ec-head');
+  const statusBadge = mk('span','ec-status');
+  if(edital.status === 'ready'){
+    statusBadge.classList.add('ready');
+    statusBadge.innerHTML = '✓ Pronto';
+  } else if(edital.status === 'analyzing'){
+    statusBadge.classList.add('analyzing');
+    statusBadge.innerHTML = '<span class="loading-spinner"></span> Analisando...';
+  } else {
+    statusBadge.classList.add('failed');
+    statusBadge.innerHTML = '✗ Falhou';
+  }
+  cHead.appendChild(statusBadge);
+
+  if(edital.isPublished){
+    const pubBadge = mk('span','ec-pub-badge');
+    pubBadge.innerHTML = '🌐 Publicado';
+    cHead.appendChild(pubBadge);
+  }
+
+  card.appendChild(cHead);
+
+  // Title
+  const title = mk('h3','ec-title');
+  title.textContent = edital.name;
+  card.appendChild(title);
+
+  // Meta
+  const meta = mk('div','ec-meta');
+  const parts = [];
+  if(edital.examName) parts.push(escapeHTML(edital.examName));
+  if(edital.banca) parts.push(`📌 ${escapeHTML(edital.banca)}`);
+  if(edital.year) parts.push(`📅 ${edital.year}`);
+  meta.innerHTML = parts.join(' · ');
+  card.appendChild(meta);
+
+  // Quick info da análise
+  if(edital.status === 'ready' && edital.analysis){
+    const anal = edital.analysis;
+    const previewText = (anal.executiveSummary||'').slice(0, 180);
+    const preview = mk('p','ec-preview');
+    preview.textContent = previewText + (anal.executiveSummary?.length > 180 ? '...' : '');
+    card.appendChild(preview);
+
+    // Stats row
+    const stats = mk('div','ec-stats');
+    const statItems = [];
+    if(Array.isArray(anal.criticalPoints)) statItems.push(`<span><b>${anal.criticalPoints.length}</b> pontos críticos</span>`);
+    if(Array.isArray(anal.disciplinesTable)) statItems.push(`<span><b>${anal.disciplinesTable.length}</b> disciplinas</span>`);
+    if(Array.isArray(anal.schedule)) statItems.push(`<span><b>${anal.schedule.length}</b> datas</span>`);
+    stats.innerHTML = statItems.join('');
+    card.appendChild(stats);
+  } else if(edital.status === 'analyzing'){
+    const wait = mk('p','ec-wait');
+    wait.style.cssText = 'font-size:12px;color:var(--text3);margin:0;font-style:italic';
+    wait.textContent = 'A análise está sendo gerada. Pode levar 1-2 minutos...';
+    card.appendChild(wait);
+  } else if(edital.status === 'failed'){
+    const fail = mk('p','ec-fail');
+    fail.style.cssText = 'font-size:12px;color:var(--red-text);margin:0';
+    fail.textContent = 'Erro: ' + (edital.failureReason||'desconhecido');
+    card.appendChild(fail);
+  }
+
+  // Action click pra abrir detalhe
+  card.addEventListener('click',()=>{
+    if(edital.status === 'ready'){
+      ST.editalViewId = edital.id;
+      ST.view = 'editalView';
+      render();
+    } else if(edital.status === 'failed'){
+      // Opção de excluir falhos
+      if(confirm('Esta análise falhou. Deseja excluí-la pra tentar novamente?')){
+        DATA.editals = (DATA.editals||[]).filter(e=>e.id !== edital.id);
+        save();render();
+      }
+    }
+  });
+
+  return card;
+}
+
+// === DETALHE — Visualização completa do edital ===
+function renderEditalView(){
+  const wrap = mk('div','fade edital-detail');
+  const edital = (DATA.editals||[]).find(e=>e.id === ST.editalViewId);
+  if(!edital){
+    const back = mkBtn('← Voltar', 'back-btn');
+    back.addEventListener('click',()=>{ST.view='editals';render();});
+    wrap.appendChild(back);
+    const err = mk('p','txt2');err.style.cssText='padding:2rem;text-align:center';
+    err.textContent='Edital não encontrado.';
+    wrap.appendChild(err);
+    return wrap;
+  }
+
+  // Back + actions row
+  const back = mkBtn('← Voltar pra lista', 'back-btn');
+  back.addEventListener('click',()=>{ST.view='editals';ST.editalViewId=null;render();});
+  wrap.appendChild(back);
+
+  // Header
+  const headDiv = mk('div','ed-header');
+  const headLeft = mk('div','ed-head-left');
+  const headTitle = mk('h1');headTitle.style.cssText='margin:0 0 4px;font-size:24px;letter-spacing:-.5px';
+  headTitle.textContent = edital.name;
+  const headMeta = mk('div','ed-head-meta');
+  const metaParts = [];
+  if(edital.examName) metaParts.push(escapeHTML(edital.examName));
+  if(edital.banca) metaParts.push(`📌 ${escapeHTML(edital.banca)}`);
+  if(edital.year) metaParts.push(`📅 ${edital.year}`);
+  headMeta.innerHTML = metaParts.join(' · ');
+  headLeft.appendChild(headTitle);
+  headLeft.appendChild(headMeta);
+  headDiv.appendChild(headLeft);
+
+  // Action row
+  const actions = mk('div','ed-actions');
+  if(edital.isPublished){
+    const pubInfo = mk('span','ed-pub-info');
+    pubInfo.innerHTML = '🌐 Publicado na descoberta';
+    actions.appendChild(pubInfo);
+    const unpubBtn = mkBtn('Despublicar', 'btn btn-sm');
+    unpubBtn.addEventListener('click', async()=>{
+      if(!confirm('Despublicar este edital? Outros usuários não poderão mais vê-lo na descoberta.')) return;
+      try{
+        await unpublishEdital(edital);
+        showToast('✓ Despublicado');
+        render();
+      }catch(e){
+        alert('Erro: ' + (e.message||e));
+      }
+    });
+    actions.appendChild(unpubBtn);
+  } else {
+    const pubBtn = mkBtn('🌐 Publicar na descoberta', 'btn btn-sm btn-p');
+    pubBtn.addEventListener('click', async()=>{
+      if(!isAuthed()){alert('Você precisa estar logado pra publicar.');return;}
+      if(!AUTH.profile || !AUTH.profile.username){
+        alert('Você precisa ter um nome de usuário (@username) configurado em Config pra publicar.');
+        return;
+      }
+      if(!confirm('Publicar este edital na descoberta? Outros usuários da plataforma poderão vê-lo. Conteúdo será sanitizado automaticamente (referências a cursos, plataformas e nomes próprios são removidas).')) return;
+      pubBtn.disabled = true;
+      pubBtn.textContent = 'Publicando...';
+      try{
+        await publishEditalAsResource(edital);
+        showToast('✓ Edital publicado');
+        render();
+      }catch(e){
+        alert('Erro: ' + (e.message||e));
+        pubBtn.disabled = false;
+        pubBtn.textContent = '🌐 Publicar na descoberta';
+      }
+    });
+    actions.appendChild(pubBtn);
+  }
+  const delBtn = mkBtn('🗑 Excluir', 'btn btn-sm');
+  delBtn.style.cssText = 'border-color:var(--red);color:var(--red-text)';
+  delBtn.addEventListener('click', async()=>{
+    if(!confirm('Excluir definitivamente este edital? Essa ação não pode ser desfeita.')) return;
+    if(edital.isPublished){
+      try{ await unpublishEdital(edital); }catch(e){}
+    }
+    DATA.editals = (DATA.editals||[]).filter(e=>e.id !== edital.id);
+    save();
+    ST.view = 'editals';
+    ST.editalViewId = null;
+    render();
+  });
+  actions.appendChild(delBtn);
+  headDiv.appendChild(actions);
+  wrap.appendChild(headDiv);
+
+  // Análise
+  const a = edital.analysis;
+  if(!a){
+    const noData = mk('p','txt2');noData.style.cssText='padding:2rem;text-align:center';
+    noData.textContent='Análise não disponível.';
+    wrap.appendChild(noData);
+    return wrap;
+  }
+
+  // Resumo executivo
+  if(a.executiveSummary){
+    const exec = mk('section','ed-section ed-exec');
+    const execLbl = mk('div','ed-section-label');execLbl.textContent='Resumo executivo';
+    exec.appendChild(execLbl);
+    const execText = mk('p','ed-exec-text');
+    execText.textContent = a.executiveSummary;
+    exec.appendChild(execText);
+    wrap.appendChild(exec);
+  }
+
+  // Pontos críticos (organizados por importância)
+  if(Array.isArray(a.criticalPoints) && a.criticalPoints.length > 0){
+    const cp = mk('section','ed-section');
+    const cpLbl = mk('div','ed-section-label');cpLbl.textContent='Pontos críticos';
+    cp.appendChild(cpLbl);
+    const cpHead = mk('h2','ed-section-title');
+    cpHead.textContent = `${a.criticalPoints.length} pontos importantes`;
+    cp.appendChild(cpHead);
+    const cpSub = mk('p','ed-section-sub');
+    cpSub.textContent='Ordenados pelo nível de importância. Atente-se primeiro aos de alta.';
+    cp.appendChild(cpSub);
+
+    const cpList = mk('div','ed-cp-list');
+    // Ordena: alta → média → baixa
+    const order = {alta: 0, média: 1, media: 1, baixa: 2};
+    const sorted = a.criticalPoints.slice().sort((x,y)=>{
+      return (order[String(x.importance||'').toLowerCase()] ?? 3) - (order[String(y.importance||'').toLowerCase()] ?? 3);
+    });
+    sorted.forEach(p=>{
+      const item = mk('div','ed-cp-item');
+      const imp = String(p.importance||'').toLowerCase();
+      item.classList.add('imp-' + (imp==='média'||imp==='media' ? 'media' : (imp==='baixa' ? 'baixa' : 'alta')));
+      const itemHead = mk('div','ed-cp-head');
+      const impBadge = mk('span','ed-cp-imp');
+      impBadge.textContent = imp === 'alta' ? '🔴 Alta' : (imp==='média'||imp==='media' ? '🟡 Média' : '🟢 Baixa');
+      itemHead.appendChild(impBadge);
+      if(p.category){
+        const catBadge = mk('span','ed-cp-cat');
+        catBadge.textContent = p.category;
+        itemHead.appendChild(catBadge);
+      }
+      item.appendChild(itemHead);
+      const itemTitle = mk('h4','ed-cp-title');
+      itemTitle.textContent = p.title || '';
+      item.appendChild(itemTitle);
+      const itemDesc = mk('p','ed-cp-desc');
+      itemDesc.textContent = p.description || '';
+      item.appendChild(itemDesc);
+      cpList.appendChild(item);
+    });
+    cp.appendChild(cpList);
+    wrap.appendChild(cp);
+  }
+
+  // Disciplinas (tabela)
+  if(Array.isArray(a.disciplinesTable) && a.disciplinesTable.length > 0){
+    const ds = mk('section','ed-section');
+    const dsLbl = mk('div','ed-section-label');dsLbl.textContent='Disciplinas e pesos';
+    ds.appendChild(dsLbl);
+    const dsHead = mk('h2','ed-section-title');
+    dsHead.textContent = `${a.disciplinesTable.length} disciplinas no edital`;
+    ds.appendChild(dsHead);
+
+    const tbl = mk('div','ed-disc-table');
+    const tblHead = mk('div','edt-head');
+    tblHead.innerHTML = `<div>Disciplina</div><div>Peso/Quest.</div><div class="hide-mobile">Tópicos</div><div class="hide-mobile">Notas</div>`;
+    tbl.appendChild(tblHead);
+    a.disciplinesTable.forEach(d=>{
+      const row = mk('div','edt-row');
+      row.innerHTML = `
+        <div class="edt-disc"><b>${escapeHTML(d.discipline||'')}</b></div>
+        <div class="edt-weight">${escapeHTML(d.weight||'-')}</div>
+        <div class="edt-topics hide-mobile">${escapeHTML(d.topics||'-')}</div>
+        <div class="edt-notes hide-mobile">${escapeHTML(d.notes||'')}</div>
+      `;
+      tbl.appendChild(row);
+    });
+    ds.appendChild(tbl);
+    wrap.appendChild(ds);
+  }
+
+  // Cronograma
+  if(Array.isArray(a.schedule) && a.schedule.length > 0){
+    const sc = mk('section','ed-section');
+    const scLbl = mk('div','ed-section-label');scLbl.textContent='Cronograma';
+    sc.appendChild(scLbl);
+    const scHead = mk('h2','ed-section-title');
+    scHead.textContent = 'Datas-chave';
+    sc.appendChild(scHead);
+    const scTimeline = mk('div','ed-schedule');
+    a.schedule.forEach(s=>{
+      const item = mk('div','ed-sch-item'+(s.isCritical?' critical':''));
+      const date = mk('div','ed-sch-date');
+      date.textContent = s.date || '?';
+      const ev = mk('div','ed-sch-event');
+      ev.textContent = s.event || '';
+      item.appendChild(date);item.appendChild(ev);
+      scTimeline.appendChild(item);
+    });
+    sc.appendChild(scTimeline);
+    wrap.appendChild(sc);
+  }
+
+  // Vagas + cargos
+  if(a.vacancies){
+    const v = a.vacancies;
+    const vc = mk('section','ed-section');
+    const vcLbl = mk('div','ed-section-label');vcLbl.textContent='Vagas e cargos';
+    vc.appendChild(vcLbl);
+    const vcHead = mk('h2','ed-section-title');
+    vcHead.textContent = v.totalVacancies ? String(v.totalVacancies) + (String(v.totalVacancies).match(/^\d+$/) ? ' vagas no total' : '') : 'Vagas';
+    vc.appendChild(vcHead);
+
+    if(Array.isArray(v.byCargo) && v.byCargo.length > 0){
+      const cargoTbl = mk('div','ed-cargo-table');
+      const cTHead = mk('div','ect-head');
+      cTHead.innerHTML = `<div>Cargo</div><div>Vagas</div><div class="hide-mobile">Salário</div><div class="hide-mobile">Requisitos</div>`;
+      cargoTbl.appendChild(cTHead);
+      v.byCargo.forEach(c=>{
+        const r = mk('div','ect-row');
+        r.innerHTML = `
+          <div class="ect-name"><b>${escapeHTML(c.cargo||'-')}</b></div>
+          <div class="ect-qty">${escapeHTML(c.qty||'-')}</div>
+          <div class="ect-sal hide-mobile">${escapeHTML(c.salary||'-')}</div>
+          <div class="ect-req hide-mobile">${escapeHTML(c.requirements||'-')}</div>
+        `;
+        cargoTbl.appendChild(r);
+      });
+      vc.appendChild(cargoTbl);
+    }
+    if(v.reservations){
+      const res = mk('p','ed-vc-info');
+      res.innerHTML = `<b>Reservas:</b> ${escapeHTML(v.reservations)}`;
+      vc.appendChild(res);
+    }
+    if(v.salaryNotes){
+      const sn = mk('p','ed-vc-info');
+      sn.innerHTML = `<b>Composição salarial:</b> ${escapeHTML(v.salaryNotes)}`;
+      vc.appendChild(sn);
+    }
+    wrap.appendChild(vc);
+  }
+
+  // Estratégia
+  if(a.strategy){
+    const s = a.strategy;
+    const ss = mk('section','ed-section ed-strategy');
+    const ssLbl = mk('div','ed-section-label');ssLbl.textContent='Estratégia';
+    ss.appendChild(ssLbl);
+    const ssHead = mk('h2','ed-section-title');
+    ssHead.textContent = 'Como atacar este edital';
+    ss.appendChild(ssHead);
+    if(s.studyPriority){
+      const sp = mk('div','ed-st-block');
+      sp.innerHTML = `<h4>📚 Prioridades de estudo</h4><p>${escapeHTML(s.studyPriority)}</p>`;
+      ss.appendChild(sp);
+    }
+    if(s.timeline){
+      const tl = mk('div','ed-st-block');
+      tl.innerHTML = `<h4>⏰ Timing</h4><p>${escapeHTML(s.timeline)}</p>`;
+      ss.appendChild(tl);
+    }
+    if(s.warnings){
+      const w = mk('div','ed-st-block ed-warning');
+      w.innerHTML = `<h4>⚠️ Cuidados</h4><p>${escapeHTML(s.warnings)}</p>`;
+      ss.appendChild(w);
+    }
+    wrap.appendChild(ss);
+  }
+
+  // Pegadinhas / pontos de atenção
+  if(Array.isArray(a.attentionPoints) && a.attentionPoints.length > 0){
+    const ap = mk('section','ed-section');
+    const apLbl = mk('div','ed-section-label');apLbl.textContent='Pegadinhas';
+    ap.appendChild(apLbl);
+    const apHead = mk('h2','ed-section-title');
+    apHead.textContent = 'O que costuma passar despercebido';
+    ap.appendChild(apHead);
+    const apList = mk('ul','ed-attention');
+    a.attentionPoints.forEach(p=>{
+      const li = mk('li');li.textContent = p;
+      apList.appendChild(li);
+    });
+    ap.appendChild(apList);
+    wrap.appendChild(ap);
+  }
+
+  // Meta info
+  if(a.metaInfo){
+    const mi = a.metaInfo;
+    const miItems = [];
+    if(mi.validityYears) miItems.push(['Validade', mi.validityYears]);
+    if(mi.examDate) miItems.push(['Data da prova', mi.examDate]);
+    if(mi.applicationFee) miItems.push(['Taxa de inscrição', mi.applicationFee]);
+    if(mi.registrationPeriod) miItems.push(['Período de inscrição', mi.registrationPeriod]);
+    if(miItems.length > 0){
+      const meta = mk('section','ed-section ed-meta');
+      const metaLbl = mk('div','ed-section-label');metaLbl.textContent='Informações';
+      meta.appendChild(metaLbl);
+      const grid = mk('div','ed-meta-grid');
+      miItems.forEach(([k,v])=>{
+        const item = mk('div','ed-meta-item');
+        item.innerHTML = `<div class="emi-k">${k}</div><div class="emi-v">${escapeHTML(v)}</div>`;
+        grid.appendChild(item);
+      });
+      meta.appendChild(grid);
+      wrap.appendChild(meta);
+    }
+  }
+
+  // Footer com info de geração
+  const footer = mk('div','ed-footer');
+  const created = new Date(edital.createdAt).toLocaleDateString('pt-BR');
+  footer.innerHTML = `<small>Análise gerada em ${created} pelo modelo <b>${edital.modelUsed||'?'}</b>${isAdminUser() && edital.costUSD ? ` · custo: <b>$${edital.costUSD.toFixed(4)}</b>` : ''}</small>`;
+  wrap.appendChild(footer);
+
+  return wrap;
+}
+
+// === Modal de criação ===
+function showCreateEditalModal(){
+  const lim = canCreateEdital();
+  if(!lim.ok && lim.reason === 'monthly_limit'){
+    alert(`Você atingiu o limite mensal de ${EDITAL_MONTHLY_LIMIT} edital${EDITAL_MONTHLY_LIMIT===1?'':'is'}. O limite renova no início do próximo mês.`);
+    return;
+  }
+
+  const m = mk('div');m.style.cssText='max-width:560px';
+
+  const title = mk('h2');title.style.cssText='margin:0 0 .375rem;font-size:18px;font-weight:700';
+  title.textContent='📋 Sintetizar edital';
+  m.appendChild(title);
+  const sub = mk('p','txt2');sub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.55';
+  sub.innerHTML='A IA Sonnet 4.6 lê o edital e gera análise estruturada. Custo: <b>~$0,30 (~R$1,50)</b> por edital. Tempo: 1-2 minutos.';
+  m.appendChild(sub);
+
+  // Info banner
+  const info = mk('div','create-edital-info');
+  info.innerHTML = `<span>💡</span><div><b>Boas práticas:</b> use o texto oficial do edital ou um PDF que tenha texto selecionável (não imagem). Conteúdo de imagem-PDF não pode ser lido nesta versão.</div>`;
+  m.appendChild(info);
+
+  // State
+  const state = {
+    name: '',
+    examName: '',
+    banca: '',
+    year: new Date().getFullYear(),
+    inputMode: 'paste', // 'paste' | 'upload'
+    text: '',
+    file: null,
+    extractProgress: 0
+  };
+
+  // Campos
+  const grid = mk('div');grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem';
+
+  const nameWrap = mk('div');
+  nameWrap.style.cssText='grid-column:1 / -1';
+  const nLbl = mk('label');nLbl.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px';
+  nLbl.textContent = 'Nome curto da análise *';
+  nameWrap.appendChild(nLbl);
+  const nIn = mk('input');nIn.type='text';nIn.placeholder='Ex: PF Agente 2024 — análise rápida';
+  nIn.style.cssText='width:100%;padding:9px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit';
+  nIn.addEventListener('input',e=>{state.name=e.target.value;});
+  nameWrap.appendChild(nIn);
+  grid.appendChild(nameWrap);
+
+  const examWrap = mk('div');
+  const eLbl = mk('label');eLbl.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px';
+  eLbl.textContent='Concurso/Prova';
+  examWrap.appendChild(eLbl);
+  const eIn = mk('input');eIn.type='text';eIn.placeholder='Ex: Polícia Federal Agente';
+  eIn.style.cssText='width:100%;padding:9px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit';
+  eIn.addEventListener('input',e=>{state.examName=e.target.value;});
+  examWrap.appendChild(eIn);
+  grid.appendChild(examWrap);
+
+  const bancaWrap = mk('div');
+  const bLbl = mk('label');bLbl.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px';
+  bLbl.textContent='Banca';
+  bancaWrap.appendChild(bLbl);
+  const bRow = mk('div');bRow.style.cssText='display:flex;gap:6px';
+  const bIn = mk('input');bIn.type='text';bIn.placeholder='Ex: Cebraspe';
+  bIn.style.cssText='flex:1;padding:9px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit';
+  bIn.addEventListener('input',e=>{state.banca=e.target.value;});
+  bRow.appendChild(bIn);
+  const bPick = mkBtn('Lista','btn btn-sm');
+  bPick.style.cssText='padding:9px 12px;font-size:11.5px';
+  bPick.addEventListener('click',()=>{
+    showCanonicalPickerModal({
+      title:'Escolher banca',
+      list:CANONICAL_BANKS,
+      onSelect:v=>{bIn.value=v;state.banca=v;}
+    });
+  });
+  bRow.appendChild(bPick);
+  bancaWrap.appendChild(bRow);
+  grid.appendChild(bancaWrap);
+
+  m.appendChild(grid);
+
+  // Toggle modo de input
+  const modeLbl = mk('label');modeLbl.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:.75rem 0 6px';
+  modeLbl.textContent='Como vai inserir o edital';
+  m.appendChild(modeLbl);
+
+  const modeRow = mk('div','create-edital-mode');
+  const pasteBtn = mk('button','cem-btn on');
+  pasteBtn.type='button';
+  pasteBtn.innerHTML='<span class="cem-icon">📝</span><span class="cem-lbl">Colar texto</span>';
+  const uploadBtn = mk('button','cem-btn');
+  uploadBtn.type='button';
+  uploadBtn.innerHTML='<span class="cem-icon">📎</span><span class="cem-lbl">Anexar PDF</span>';
+  modeRow.appendChild(pasteBtn);
+  modeRow.appendChild(uploadBtn);
+  m.appendChild(modeRow);
+
+  // Container de input dinâmico
+  const inputContainer = mk('div');inputContainer.style.cssText='margin-top:.75rem';
+  m.appendChild(inputContainer);
+
+  function renderTextMode(){
+    inputContainer.innerHTML='';
+    const ta = mk('textarea');
+    ta.placeholder='Cole aqui o texto completo do edital. Pode ser longo — a IA aguenta até ~200 mil caracteres.';
+    ta.style.cssText='width:100%;min-height:180px;padding:.75rem;font-size:12.5px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit;line-height:1.55;resize:vertical';
+    ta.value = state.text;
+    ta.addEventListener('input',e=>{state.text=e.target.value;updateCounter();});
+    inputContainer.appendChild(ta);
+    const counter = mk('div','create-edital-counter');
+    counter.style.cssText='font-size:11px;color:var(--text3);margin-top:6px;text-align:right';
+    inputContainer.appendChild(counter);
+    function updateCounter(){
+      const chars = state.text.length;
+      const tokens = Math.ceil(chars/4);
+      const tooLong = chars > 200000;
+      counter.innerHTML = `<span style="color:${tooLong?'var(--amber-text)':'var(--text3)'}">${chars.toLocaleString('pt-BR')} chars · ~${tokens.toLocaleString('pt-BR')} tokens</span>${tooLong ? ' · <b style="color:var(--amber-text)">texto será truncado</b>' : ''}`;
+    }
+    updateCounter();
+  }
+
+  function renderUploadMode(){
+    inputContainer.innerHTML='';
+    const drop = mk('div','create-edital-drop');
+    drop.innerHTML = state.file ? `<div class="ced-file-info"><span>📄</span><div><b>${escapeHTML(state.file.name)}</b><span>${(state.file.size/1024).toFixed(0)} KB · ${state.text ? state.text.length.toLocaleString('pt-BR') + ' chars extraídos' : 'pronto pra processar'}</span></div><button type="button" class="ced-remove">×</button></div>` : `<div class="ced-prompt"><span class="ced-icon">📎</span><b>Clique pra escolher um PDF</b><span>ou arraste o arquivo aqui · até 20MB</span></div>`;
+    inputContainer.appendChild(drop);
+
+    const fileInput = mk('input');fileInput.type='file';fileInput.accept='application/pdf,.pdf';fileInput.style.display='none';
+    inputContainer.appendChild(fileInput);
+
+    const progressBar = mk('div','create-edital-progress');
+    progressBar.style.cssText='display:none;margin-top:8px;padding:8px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--text2)';
+    inputContainer.appendChild(progressBar);
+
+    drop.addEventListener('click',e=>{
+      if(e.target.classList.contains('ced-remove')){
+        state.file = null;
+        state.text = '';
+        renderUploadMode();
+        return;
+      }
+      fileInput.click();
+    });
+    drop.addEventListener('dragover',e=>{
+      e.preventDefault();
+      drop.classList.add('drop-hover');
+    });
+    drop.addEventListener('dragleave',()=>drop.classList.remove('drop-hover'));
+    drop.addEventListener('drop',e=>{
+      e.preventDefault();
+      drop.classList.remove('drop-hover');
+      const f = e.dataTransfer.files[0];
+      if(f) handleFile(f);
+    });
+
+    fileInput.addEventListener('change',e=>{
+      const f = e.target.files[0];
+      if(f) handleFile(f);
+    });
+
+    async function handleFile(file){
+      if(file.size > 20*1024*1024){
+        alert('PDF muito grande (>20MB). Use um arquivo menor ou cole o texto direto.');
+        return;
+      }
+      if(!file.type.includes('pdf')){
+        alert('Apenas arquivos PDF são aceitos nesta versão.');
+        return;
+      }
+      state.file = file;
+      progressBar.style.display='block';
+      progressBar.textContent='⏳ Carregando biblioteca PDF...';
+      try{
+        const text = await extractTextFromPdf(file, (p, total)=>{
+          progressBar.textContent = `⏳ Lendo página ${p} de ${total}...`;
+        });
+        state.text = text;
+        progressBar.style.display='none';
+        if(text.trim().length < 100){
+          alert('Não consegui extrair texto suficiente do PDF. Talvez seja um PDF com imagens digitalizadas (sem OCR). Tente colar o texto direto.');
+          state.file = null;
+          state.text = '';
+        } else {
+          showToast('✓ ' + text.length.toLocaleString('pt-BR') + ' caracteres extraídos');
+        }
+        renderUploadMode();
+      }catch(e){
+        progressBar.textContent='✗ Erro ao processar PDF: ' + (e.message||e);
+        progressBar.style.color='var(--red-text)';
+        state.file = null;
+        state.text = '';
+      }
+    }
+  }
+
+  pasteBtn.addEventListener('click',()=>{
+    state.inputMode = 'paste';
+    pasteBtn.classList.add('on');
+    uploadBtn.classList.remove('on');
+    renderTextMode();
+  });
+  uploadBtn.addEventListener('click',()=>{
+    state.inputMode = 'upload';
+    pasteBtn.classList.remove('on');
+    uploadBtn.classList.add('on');
+    renderUploadMode();
+  });
+
+  // Renderiza modo padrão
+  renderTextMode();
+
+  // Actions
+  const actions = mk('div');actions.style.cssText='display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem;padding-top:.875rem;border-top:1px solid var(--border)';
+  const cancel = mkBtn('Cancelar','btn btn-sm');
+  cancel.addEventListener('click',closeModal);
+  actions.appendChild(cancel);
+  const generate = mkBtn('Sintetizar com Sonnet 4.6 →','btn btn-sm btn-p');
+  generate.addEventListener('click',async()=>{
+    if(!state.name.trim()){alert('Dê um nome curto pra esta análise.');nIn.focus();return;}
+    if(!state.text || state.text.trim().length < 200){alert('Cole o texto do edital ou anexe um PDF (mínimo 200 caracteres).');return;}
+    if(!confirm(`Sintetizar este edital? Vai consumir ~$0,30 em créditos. A análise leva 1-2 minutos.\n\nDeseja continuar?`)) return;
+
+    // Cria o edital com status analyzing e fecha modal
+    const edital = editalNew({
+      name: state.name.trim(),
+      examName: state.examName.trim(),
+      banca: state.banca.trim(),
+      year: state.year,
+      sourceText: state.text,
+      sourceFile: state.file ? state.file.name : null
+    });
+
+    if(!DATA.editals) DATA.editals = [];
+    DATA.editals.unshift(edital);
+    save();
+    closeModal();
+
+    // Navega pra lista (vê o card "analisando...")
+    ST.view = 'editals';
+    render();
+
+    // Roda IA em background
+    try{
+      const result = await analyzeEditalWithAI(edital);
+      edital.analysis = result.analysis;
+      edital.modelUsed = result.modelUsed;
+      edital.costUSD = result.costUSD;
+      edital.status = 'ready';
+      save();
+      // Notificação
+      showToast('✓ Edital analisado com sucesso');
+      // Navega direto pro detalhe
+      ST.editalViewId = edital.id;
+      ST.view = 'editalView';
+      render();
+    }catch(e){
+      console.error('[edital] erro na análise', e);
+      edital.status = 'failed';
+      edital.failureReason = e.message || String(e);
+      save();
+      render();
+      alert('Erro ao analisar edital: ' + (e.message||e));
+    }
+  });
+  actions.appendChild(generate);
+  m.appendChild(actions);
+
+  showModal(m);
+  setTimeout(()=>nIn.focus(), 50);
+}
+
+// Visualizador modal de edital compartilhado (vindo da descoberta)
+function showEditalSharedView(item){
+  const m = mk('div');m.style.cssText='max-width:780px;max-height:85vh;overflow-y:auto';
+  const payload = item.payload || {};
+  const a = payload.analysis || {};
+
+  // Header
+  const head = mk('div');head.style.cssText='display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:1rem;padding-bottom:.875rem;border-bottom:1px solid var(--border)';
+  const headLeft = mk('div');headLeft.style.flex='1';
+  const headTitle = mk('h2');headTitle.style.cssText='margin:0 0 4px;font-size:18px;font-weight:700;letter-spacing:-.3px';
+  headTitle.innerHTML = `📋 ${escapeHTML(item.title)}`;
+  headLeft.appendChild(headTitle);
+  const headMeta = mk('div','txt3');headMeta.style.cssText='font-size:11.5px;line-height:1.5';
+  const metaParts = [];
+  if(item.owner_username) metaParts.push(`por <b>@${escapeHTML(item.owner_username)}</b>`);
+  if(payload.examName) metaParts.push(escapeHTML(payload.examName));
+  if(payload.banca) metaParts.push(escapeHTML(payload.banca));
+  if(payload.year) metaParts.push(payload.year);
+  headMeta.innerHTML = metaParts.join(' · ');
+  headLeft.appendChild(headMeta);
+  head.appendChild(headLeft);
+  const closeX = mk('button');closeX.type='button';closeX.style.cssText='background:transparent;border:none;font-size:22px;color:var(--text3);cursor:pointer;padding:0 6px;line-height:1;font-family:inherit;border-radius:6px';
+  closeX.textContent='×';
+  closeX.addEventListener('click', closeModal);
+  head.appendChild(closeX);
+  m.appendChild(head);
+
+  // Resumo
+  if(a.executiveSummary){
+    const exec = mk('div');exec.style.cssText='padding:1rem 1.125rem;background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));border:1px solid rgba(128,66,250,.18);border-radius:10px;margin-bottom:1rem';
+    const lbl = mk('div');lbl.style.cssText='font-size:10.5px;font-weight:800;letter-spacing:1.4px;color:var(--accent);text-transform:uppercase;margin-bottom:6px';
+    lbl.textContent='Resumo executivo';
+    exec.appendChild(lbl);
+    const txt = mk('p');txt.style.cssText='margin:0;font-size:13.5px;line-height:1.65;color:var(--text)';
+    txt.textContent = a.executiveSummary;
+    exec.appendChild(txt);
+    m.appendChild(exec);
+  }
+
+  // Pontos críticos
+  if(Array.isArray(a.criticalPoints) && a.criticalPoints.length > 0){
+    const sec = mk('div');sec.style.cssText='margin-bottom:1rem';
+    const h = mk('h3');h.style.cssText='margin:0 0 .5rem;font-size:14px;font-weight:700;letter-spacing:-.2px';
+    h.textContent = `⚡ ${a.criticalPoints.length} pontos críticos`;
+    sec.appendChild(h);
+    a.criticalPoints.slice(0,5).forEach(p=>{
+      const item = mk('div');item.style.cssText='padding:.625rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:12.5px;line-height:1.55';
+      const imp = String(p.importance||'').toLowerCase();
+      const impColor = imp==='alta' ? 'var(--red-text)' : imp==='média'||imp==='media' ? 'var(--amber-text)' : 'var(--accent-text)';
+      const impLbl = imp==='alta' ? '🔴' : imp==='média'||imp==='media' ? '🟡' : '🟢';
+      item.innerHTML = `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="color:${impColor};font-weight:700;font-size:11px;text-transform:uppercase">${impLbl} ${escapeHTML(imp||'-')}</span></div><b style="color:var(--text)">${escapeHTML(p.title||'')}</b><p style="margin:3px 0 0;color:var(--text2)">${escapeHTML(p.description||'')}</p>`;
+      sec.appendChild(item);
+    });
+    if(a.criticalPoints.length > 5){
+      const more = mk('p');more.style.cssText='margin:6px 0 0;font-size:12px;color:var(--text3);font-style:italic';
+      more.textContent = `... e mais ${a.criticalPoints.length - 5} pontos no edital completo.`;
+      sec.appendChild(more);
+    }
+    m.appendChild(sec);
+  }
+
+  // Disciplinas (resumo)
+  if(Array.isArray(a.disciplinesTable) && a.disciplinesTable.length > 0){
+    const sec = mk('div');sec.style.cssText='margin-bottom:1rem';
+    const h = mk('h3');h.style.cssText='margin:0 0 .5rem;font-size:14px;font-weight:700;letter-spacing:-.2px';
+    h.textContent = `📘 Disciplinas (${a.disciplinesTable.length})`;
+    sec.appendChild(h);
+    const list = mk('div');list.style.cssText='display:flex;flex-direction:column;gap:4px';
+    a.disciplinesTable.forEach(d=>{
+      const row = mk('div');row.style.cssText='display:grid;grid-template-columns:2fr 1fr;gap:8px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:12.5px';
+      row.innerHTML = `<div><b>${escapeHTML(d.discipline||'')}</b></div><div style="color:var(--gralia-purple);font-weight:600">${escapeHTML(d.weight||'-')}</div>`;
+      list.appendChild(row);
+    });
+    sec.appendChild(list);
+    m.appendChild(sec);
+  }
+
+  // Cronograma resumido
+  if(Array.isArray(a.schedule) && a.schedule.length > 0){
+    const sec = mk('div');sec.style.cssText='margin-bottom:1rem';
+    const h = mk('h3');h.style.cssText='margin:0 0 .5rem;font-size:14px;font-weight:700;letter-spacing:-.2px';
+    h.textContent = '📅 Cronograma';
+    sec.appendChild(h);
+    const list = mk('div');list.style.cssText='display:flex;flex-direction:column;gap:4px';
+    a.schedule.slice(0,5).forEach(s=>{
+      const row = mk('div');row.style.cssText='display:grid;grid-template-columns:120px 1fr;gap:10px;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:12.5px';
+      row.innerHTML = `<div style="font-weight:700;color:var(--text);font-family:monospace">${escapeHTML(s.date||'?')}</div><div style="color:var(--text2)">${escapeHTML(s.event||'')}</div>`;
+      list.appendChild(row);
+    });
+    sec.appendChild(list);
+    m.appendChild(sec);
+  }
+
+  // Pegadinhas
+  if(Array.isArray(a.attentionPoints) && a.attentionPoints.length > 0){
+    const sec = mk('div');sec.style.cssText='margin-bottom:1rem;padding:.875rem 1rem;background:rgba(232,164,60,.06);border:1px solid rgba(232,164,60,.20);border-radius:10px';
+    const h = mk('h3');h.style.cssText='margin:0 0 .5rem;font-size:14px;font-weight:700;letter-spacing:-.2px';
+    h.textContent = '⚠️ Pegadinhas';
+    sec.appendChild(h);
+    const ul = mk('ul');ul.style.cssText='margin:0;padding-left:1.25rem;font-size:12.5px;line-height:1.6;color:var(--text2)';
+    a.attentionPoints.slice(0,4).forEach(p=>{
+      const li = mk('li');li.textContent = p;li.style.marginBottom='4px';
+      ul.appendChild(li);
+    });
+    sec.appendChild(ul);
+    m.appendChild(sec);
+  }
+
+  // Footer
+  const footer = mk('div');footer.style.cssText='padding-top:.75rem;border-top:1px solid var(--border);font-size:11.5px;color:var(--text3);text-align:center;line-height:1.5';
+  footer.innerHTML = `Síntese gerada por IA. Confira sempre o edital oficial pra detalhes definitivos.`;
+  m.appendChild(footer);
+
+  showModal(m);
+}
+
 function renderSettings(){
   const wrap = mk('div','fade');
   const h = mk('h1');h.textContent='Configurações';
@@ -21834,9 +23152,10 @@ function renderSettings(){
   uxCard.appendChild(uxTip);
   wrap.appendChild(uxCard);
 
-  // Usage & budget card
-  const usgCard = mk('div','card');usgCard.style.marginTop='1rem';
-  usgCard.appendChild(sLabel('Uso da IA e orçamento'));
+  // Usage & budget card — ADMIN ONLY (usuários veem créditos restantes na chip da topbar)
+  if(isAdminUser()){
+    const usgCard = mk('div','card');usgCard.style.marginTop='1rem';
+    usgCard.appendChild(sLabel('🔧 Uso da IA e orçamento (admin)'));
   const usgDesc = mk('p','txt2');usgDesc.style.marginBottom='.875rem';
   usgDesc.textContent='Configure sua moeda preferida e um orçamento semanal aproximado. A plataforma alerta quando você se aproxima do limite.';
   usgCard.appendChild(usgDesc);
@@ -21894,6 +23213,7 @@ function renderSettings(){
   usgBtn.addEventListener('click',()=>{ST.view='usage';render();});
   usgCard.appendChild(usgBtn);
   wrap.appendChild(usgCard);
+  } // end if(isAdminUser()) — Usage & budget card
 
   // ===== MINHA CONTA — only if auth is active =====
   if(isAuthed()){
@@ -21947,64 +23267,65 @@ function renderSettings(){
     wrap.appendChild(accCard);
   }
 
-  const apiCard = mk('div','card');apiCard.style.marginTop='1rem';
-  apiCard.appendChild(sLabel('Configurações da IA'));
-  const desc = mk('p','txt2');desc.style.marginBottom='.875rem';
-  desc.innerHTML='A conexão com a IA é gerenciada pelo servidor — você não precisa configurar chave nenhuma.';
-  apiCard.appendChild(desc);
+  // === Configurações da IA — ADMIN ONLY ===
+  // Usuário comum não precisa selecionar modelo (sistema escolhe automaticamente entre Haiku/Sonnet)
+  if(isAdminUser()){
+    const apiCard = mk('div','card');apiCard.style.marginTop='1rem';
+    apiCard.appendChild(sLabel('🔧 Configurações da IA (admin)'));
+    const desc = mk('p','txt2');desc.style.marginBottom='.875rem';
+    desc.innerHTML='A conexão com a IA é gerenciada pelo servidor — você não precisa configurar chave nenhuma.';
+    apiCard.appendChild(desc);
 
-  const h2 = mk('label');h2.textContent='Modelo padrão';
-  const sel = mk('select');
-  const MODELS = [
-    ['claude-haiku-4-5-20251001','Haiku 4.5 (rápido e barato, recomendado)'],
-    ['claude-sonnet-4-5-20250929','Sonnet 4.5 (equilíbrio)'],
-    ['claude-sonnet-4-6','Sonnet 4.6'],
-    ['claude-opus-4-5','Opus 4.5'],
-    ['claude-opus-4-6','Opus 4.6 (poderoso)'],
-    ['claude-opus-4-7','Opus 4.7 (mais poderoso)']
-  ];
-  MODELS.forEach(([id,lbl])=>{
-    const o = mk('option');o.value=id;o.textContent=lbl;if(DATA.config.model===id)o.selected=true;sel.appendChild(o);
-  });
-  // If user has a model not in list, add it as custom option
-  if(!MODELS.find(m=>m[0]===DATA.config.model)){
-    const o = mk('option');o.value=DATA.config.model;o.textContent=DATA.config.model+' (custom)';o.selected=true;sel.appendChild(o);
-  }
-  sel.addEventListener('change',e=>{DATA.config.model=e.target.value;save();});
-  apiCard.appendChild(h2);apiCard.appendChild(sel);
+    const h2 = mk('label');h2.textContent='Modelo padrão';
+    const sel = mk('select');
+    // Apenas modelos ativos no app
+    const MODELS = [
+      ['claude-haiku-4-5-20251001','Haiku 4.5 (rápido e barato, padrão)'],
+      ['claude-sonnet-4-6','Sonnet 4.6 (premium)']
+    ];
+    MODELS.forEach(([id,lbl])=>{
+      const o = mk('option');o.value=id;o.textContent=lbl;if(DATA.config.model===id)o.selected=true;sel.appendChild(o);
+    });
+    // If user has a model not in list, add it as custom option
+    if(!MODELS.find(m=>m[0]===DATA.config.model)){
+      const o = mk('option');o.value=DATA.config.model;o.textContent=DATA.config.model+' (custom)';o.selected=true;sel.appendChild(o);
+    }
+    sel.addEventListener('change',e=>{DATA.config.model=e.target.value;save();});
+    apiCard.appendChild(h2);apiCard.appendChild(sel);
 
-  const hintModel = mk('p','hint');hintModel.style.marginTop='6px';
-  hintModel.textContent='⚠ Se aparecer "Error API 400" ou "404" ao usar algum método, troque aqui para Haiku 4.5 (o mais barato e confiável).';
-  apiCard.appendChild(hintModel);
+    const hintModel = mk('p','hint');hintModel.style.marginTop='6px';
+    hintModel.textContent='⚠ Se aparecer erro ao usar algum método, volte para Haiku 4.5 (padrão).';
+    apiCard.appendChild(hintModel);
 
-  // Test API button
-  const testRow = mk('div','flex');testRow.style.marginTop='1rem';testRow.style.gap='8px';
-  const testBtn = mkBtn('🔌 Testar conexão com a API','btn');
-  const testOut = mk('span','txt2');testOut.style.flex='1';
-  testBtn.addEventListener('click',async()=>{
-    testOut.textContent='';testOut.style.color='var(--text2)';
-    testBtn.disabled=true;testBtn.textContent='Testando...';
-    try{
-      const r = await apiGenerate({model:DATA.config.model,max_tokens:20,messages:[{role:'user',content:'oi'}]});
-      if(r.ok){
-        testOut.textContent='✓ Conexão OK. Servidor e modelo respondendo.';
-        testOut.style.color='var(--accent-text)';
-      } else {
-        const t = await r.text();
-        console.error('Test API error',r.status,t);
-        testOut.textContent=`✗ Erro ${r.status}: ${t.slice(0,150)}`;
+    // Test API button
+    const testRow = mk('div','flex');testRow.style.marginTop='1rem';testRow.style.gap='8px';
+    const testBtn = mkBtn('🔌 Testar conexão com a API','btn');
+    const testOut = mk('span','txt2');testOut.style.flex='1';
+    testBtn.addEventListener('click',async()=>{
+      testOut.textContent='';testOut.style.color='var(--text2)';
+      testBtn.disabled=true;testBtn.textContent='Testando...';
+      try{
+        const r = await apiGenerate({model:DATA.config.model,max_tokens:20,messages:[{role:'user',content:'oi'}]});
+        if(r.ok){
+          testOut.textContent='✓ Conexão OK. Servidor e modelo respondendo.';
+          testOut.style.color='var(--accent-text)';
+        } else {
+          const t = await r.text();
+          console.error('Test API error',r.status,t);
+          testOut.textContent=`✗ Erro ${r.status}: ${t.slice(0,150)}`;
+          testOut.style.color='var(--red-text)';
+        }
+      }catch(e){
+        testOut.textContent='✗ Falha de rede: '+(e.message||e);
         testOut.style.color='var(--red-text)';
       }
-    }catch(e){
-      testOut.textContent='✗ Falha de rede: '+(e.message||e);
-      testOut.style.color='var(--red-text)';
-    }
-    testBtn.disabled=false;testBtn.textContent='🔌 Testar conexão com a API';
-  });
-  testRow.appendChild(testBtn);testRow.appendChild(testOut);
-  apiCard.appendChild(testRow);
+      testBtn.disabled=false;testBtn.textContent='🔌 Testar conexão com a API';
+    });
+    testRow.appendChild(testBtn);testRow.appendChild(testOut);
+    apiCard.appendChild(testRow);
 
-  wrap.appendChild(apiCard);
+    wrap.appendChild(apiCard);
+  }
 
   const nCard = mk('div','card');nCard.style.marginTop='1rem';
   nCard.appendChild(sLabel('Notificações'));
@@ -22119,26 +23440,28 @@ function renderSettings(){
   fbCard.appendChild(fbActions);
   wrap.appendChild(fbCard);
 
-  // ==== Modo Admin (oculto, só pra dev) ====
-  const adminCard = mk('div','card');adminCard.style.marginTop='1rem';
-  const adminLbl = mk('div','flex');adminLbl.style.cssText='justify-content:space-between;align-items:center;gap:8px';
-  const adminTxt = mk('div');
-  const adminTitle = mk('div');adminTitle.style.cssText='font-size:12.5px;font-weight:600';
-  adminTitle.textContent = '🔧 Modo administrador';
-  const adminDesc = mk('div','txt3');adminDesc.style.cssText='font-size:11px;margin-top:2px';
-  adminDesc.textContent = 'Mostra detalhes de custo da API. Só ative se você for dev.';
-  adminTxt.appendChild(adminTitle);adminTxt.appendChild(adminDesc);
-  const adminToggle = mk('button','btn btn-sm');
-  const isOn = isAdminMode();
-  adminToggle.textContent = isOn?'Desligar':'Ativar';
-  adminToggle.style.flexShrink='0';
-  adminToggle.addEventListener('click',()=>{
-    DATA.config.adminMode = !isOn;
-    save();render();
-  });
-  adminLbl.appendChild(adminTxt);adminLbl.appendChild(adminToggle);
-  adminCard.appendChild(adminLbl);
-  wrap.appendChild(adminCard);
+  // ==== Modo Admin — APENAS pra usuários com email na whitelist ADMIN_EMAILS ====
+  if(isAdminUser()){
+    const adminCard = mk('div','card');adminCard.style.marginTop='1rem';
+    const adminLbl = mk('div','flex');adminLbl.style.cssText='justify-content:space-between;align-items:center;gap:8px';
+    const adminTxt = mk('div');
+    const adminTitle = mk('div');adminTitle.style.cssText='font-size:12.5px;font-weight:600';
+    adminTitle.textContent = '🔧 Modo administrador';
+    const adminDesc = mk('div','txt3');adminDesc.style.cssText='font-size:11px;margin-top:2px';
+    adminDesc.textContent = 'Mostra detalhes de custo da API e ferramentas internas. Só ative se for dev.';
+    adminTxt.appendChild(adminTitle);adminTxt.appendChild(adminDesc);
+    const adminToggle = mk('button','btn btn-sm');
+    const isOn = isAdminMode();
+    adminToggle.textContent = isOn?'Desligar':'Ativar';
+    adminToggle.style.flexShrink='0';
+    adminToggle.addEventListener('click',()=>{
+      DATA.config.adminMode = !isOn;
+      save();render();
+    });
+    adminLbl.appendChild(adminTxt);adminLbl.appendChild(adminToggle);
+    adminCard.appendChild(adminLbl);
+    wrap.appendChild(adminCard);
+  }
 
   // ==== Exportar Perfis ====
   const profileCount = Object.keys(DATA.topicProfiles||{}).length;
@@ -22854,62 +24177,70 @@ async function renderStoryCanvas(canvas, data){
   ctx.fillStyle = topBorder;
   ctx.fillRect(0, 0, W, 4);
 
-  // === HEADER: Gralha (mascote) + Logo "GRALIA" ===
-  // Carrega logo de forma assíncrona (espera onload pra desenhar)
+  // === HEADER: Logo Gralia completa (mascote + texto) ===
+  // Carrega a logo completa do BRAND e desenha preservando aspect ratio.
+  // Não geramos mais texto "GRALIA" via canvas — a imagem já contém marca completa.
   const logoImg = await loadShareLogo();
 
   const headY = 220;
-  const FONT_BRAND = '900 110px Sora,system-ui,-apple-system,sans-serif';
   const FONT_SUB = '500 30px Sora,system-ui,sans-serif';
 
-  // Mede largura do texto pra centralizar logo+nome juntos
-  ctx.font = FONT_BRAND;
-  const gralWidth = ctx.measureText('GRAL').width;
-  const iaWidth = ctx.measureText('IA').width;
-  const textW = gralWidth + iaWidth;
-
-  // Layout: [gralha 140px] [gap 30px] [GRALIA texto]
-  const birdSize = 140;
-  const gap = 30;
-  const totalContentW = birdSize + gap + textW;
-  const startX = (W - totalContentW) / 2;
-
-  // Desenha gralha à esquerda do texto (se logo carregou)
   if(logoImg){
-    // Gralha — desenhada com glow roxo sutil ao redor pra "destacar"
+    // Aspect ratio da logo (largura/altura). Limita altura máxima a 220px
+    // pra ficar bem proporcionado no canvas (1080x1920).
+    const maxLogoHeight = 220;
+    const maxLogoWidth = W - 160; // margem lateral
+    const aspect = logoImg.naturalWidth / logoImg.naturalHeight;
+
+    // Calcula tamanho final preservando proporção
+    let logoH = maxLogoHeight;
+    let logoW = logoH * aspect;
+    if(logoW > maxLogoWidth){
+      logoW = maxLogoWidth;
+      logoH = logoW / aspect;
+    }
+
+    // Centraliza horizontalmente
+    const logoX = (W - logoW) / 2;
+    const logoYTop = headY - logoH + 30;
+
+    // Desenha com glow roxo sutil
     ctx.save();
-    ctx.shadowColor = 'rgba(128, 66, 250, 0.45)';
-    ctx.shadowBlur = 32;
-    ctx.drawImage(logoImg, startX, headY - birdSize + 10, birdSize, birdSize);
+    ctx.shadowColor = 'rgba(128, 66, 250, 0.40)';
+    ctx.shadowBlur = 36;
+    ctx.drawImage(logoImg, logoX, logoYTop, logoW, logoH);
     ctx.restore();
+  } else {
+    // Fallback: se imagem não carregar, desenha texto "GRALIA"
+    const FONT_BRAND = '900 110px Sora,system-ui,-apple-system,sans-serif';
+    ctx.font = FONT_BRAND;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    const gralWidth = ctx.measureText('GRAL').width;
+    const iaWidth = ctx.measureText('IA').width;
+    const textW = gralWidth + iaWidth;
+    const startX = (W - textW) / 2;
+    ctx.shadowColor = 'rgba(26, 42, 82, 0.6)';
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetY = 4;
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'left';
+    ctx.fillText('GRAL', startX, headY);
+    const iaGrad = ctx.createLinearGradient(startX+gralWidth, headY-100, startX+textW, headY+15);
+    iaGrad.addColorStop(0, GRALIA_PURPLE);
+    iaGrad.addColorStop(0.5, GRALIA_PURPLE_LIGHT);
+    iaGrad.addColorStop(1, GRALIA_PURPLE_GLOW);
+    ctx.fillStyle = iaGrad;
+    ctx.fillText('IA', startX+gralWidth, headY);
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.textAlign = 'center';
   }
 
-  // Texto GRALIA ao lado direito
-  const textStartX = startX + birdSize + gap;
-  ctx.font = FONT_BRAND;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
-
-  // GRAL — branco com leve sombra azul
-  ctx.shadowColor = 'rgba(26, 42, 82, 0.6)';
-  ctx.shadowBlur = 30;
-  ctx.shadowOffsetY = 4;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText('GRAL', textStartX, headY);
-
-  // IA — gradient roxo Gralia
-  const iaGrad = ctx.createLinearGradient(textStartX+gralWidth, headY-100, textStartX+textW, headY+15);
-  iaGrad.addColorStop(0, GRALIA_PURPLE);
-  iaGrad.addColorStop(0.5, GRALIA_PURPLE_LIGHT);
-  iaGrad.addColorStop(1, GRALIA_PURPLE_GLOW);
-  ctx.fillStyle = iaGrad;
-  ctx.fillText('IA', textStartX+gralWidth, headY);
-
-  // Reset
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetY = 0;
+  // Reset textAlign para próximas escritas
   ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
 
   // Subtitle
   ctx.font = FONT_SUB;
@@ -25756,6 +27087,10 @@ async function initAuth(){
       _initialSessionHandled = true;
       // Sessão já existente — apenas carrega dados, sem prompt de merge
       ST.showAuth = false;
+      // Se não tem view definida ou tava em alguma tela transitória, manda pro dashboard
+      if(!ST.view || ST.view === 'settings' && !DATA.welcomeShown){
+        ST.view = 'dashboard';
+      }
       // Carrega dados em background sem bloquear/perguntar
       syncDown().then(remote=>{
         if(remote){
@@ -25776,6 +27111,13 @@ async function initAuth(){
       // Login novo de fato (usuário acabou de fazer signin/signup nesta sessão)
       ST.showAuth = false;
       DATA.welcomeShown = true;
+      // Força redirecionamento pra Painel (dashboard) — é o ponto de entrada natural
+      ST.view = 'dashboard';
+      ST.navStack = [];
+      // Garante que setup foi marcado (CTA da landing setou, mas se entrou direto no /auth pode não ter setado)
+      if(DATA.setup === undefined || DATA.setup === false){
+        DATA.setup = true;
+      }
       save();
       // First login of this session — merge data
       await handleFirstLoginMerge();
@@ -25783,6 +27125,10 @@ async function initAuth(){
       fetchUserProfile(true).then(()=>render()).catch(err=>{
         console.warn('[profile] failed to load on SIGNED_IN:', err.message);
       });
+      // Mostra hint amigável avisando sobre a aba Config
+      setTimeout(()=>{
+        try{ showToast('👋 Bem-vindo ao Gralia! Não esqueça de personalizar seu perfil em Config quando puder.'); }catch(e){}
+      }, 1200);
     }
     if(event==='SIGNED_OUT'){
       // Clear sync state. Keep DATA as-is — user may log in to another account
