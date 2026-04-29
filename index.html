@@ -1661,6 +1661,19 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 .adm-rec-type{color:var(--gralia-purple);margin-left:4px;font-weight:600}
 .adm-rec-date{color:var(--text3);font-size:11px;font-family:monospace;flex-shrink:0}
 .adm-rev-empty p{margin:0;font-size:13px;line-height:1.6;color:var(--text2)}
+/* V12 parte 2: distribuição de assinantes por plano */
+.admin-rev-dist{display:flex;flex-direction:column;gap:.5rem;margin-top:.5rem}
+.adm-rev-row{display:grid;grid-template-columns:140px 1fr 90px;gap:10px;align-items:center}
+.arr-label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);min-width:0}
+.arr-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.arr-label b{color:var(--text);font-weight:600}
+.arr-price{font-size:10.5px;color:var(--text3);margin-left:4px}
+.arr-track{height:8px;background:var(--surface2);border-radius:999px;overflow:hidden}
+.arr-fill{height:100%;border-radius:999px;transition:width .3s ease}
+.arr-num{font-size:12px;color:var(--text);text-align:right;font-weight:600}
+.arr-num b{font-weight:700}
+.arr-pct{font-size:10.5px;color:var(--text3);font-weight:500}
+@media(max-width:640px){.adm-rev-row{grid-template-columns:120px 1fr 70px;gap:6px}.arr-price{display:none}}
 .admin-health-list{display:flex;flex-direction:column;gap:8px}
 .adm-health-item{display:flex;align-items:center;gap:10px;padding:.625rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:8px}
 .adm-health-item.ok{border-left:3px solid var(--accent)}
@@ -2236,14 +2249,28 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 
 .forest-scene-card{padding:0;background:transparent;border:1px solid var(--border);border-radius:14px;margin-bottom:1.5rem;overflow:hidden}
 .forest-svg-wrap{width:100%;display:block}
-.forest-svg{width:100%;height:auto;display:block;max-height:400px}
-.forest-bird{transform-origin:0 0;animation:forest-bird-fly 18s ease-in-out infinite}
+.forest-svg{width:100%;height:auto;display:block;max-height:420px}
+.forest-bird{transform-origin:0 0;animation:forest-bird-fly 22s ease-in-out infinite}
 @keyframes forest-bird-fly{
-  0%{transform:translate(120px, 110px)}
-  20%{transform:translate(280px, 80px)}
-  45%{transform:translate(440px, 120px)}
-  70%{transform:translate(600px, 90px)}
-  100%{transform:translate(120px, 110px)}
+  0%{transform:translate(80px, 130px) scale(0.8) rotate(-4deg)}
+  15%{transform:translate(180px, 100px) scale(0.85) rotate(-2deg)}
+  30%{transform:translate(320px, 130px) scale(0.9) rotate(0deg)}
+  45%{transform:translate(460px, 95px) scale(0.95) rotate(-3deg)}
+  60%{transform:translate(580px, 120px) scale(1) rotate(-1deg)}
+  75%{transform:translate(680px, 95px) scale(0.9) rotate(-3deg)}
+  90%{transform:translate(720px, 130px) scale(0.8) rotate(-2deg)}
+  100%{transform:translate(80px, 130px) scale(0.8) rotate(-4deg)}
+}
+/* Bater de asas — sutil, em ciclo curto */
+.forest-bird-wing-l{transform-origin:-5px -2px;animation:bird-wing-l 0.45s ease-in-out infinite}
+.forest-bird-wing-r{transform-origin:5px -2px;animation:bird-wing-r 0.45s ease-in-out infinite}
+@keyframes bird-wing-l{
+  0%, 100%{transform:rotate(0deg) scaleY(1)}
+  50%{transform:rotate(-12deg) scaleY(0.7)}
+}
+@keyframes bird-wing-r{
+  0%, 100%{transform:rotate(0deg) scaleY(1)}
+  50%{transform:rotate(12deg) scaleY(0.7)}
 }
 
 .forest-list-sec{margin-bottom:1.5rem}
@@ -2405,6 +2432,49 @@ button .ai-cost-badge{margin-left:6px;background:rgba(255,255,255,.18);color:inh
 .milestone-item.clickable{cursor:pointer;transition:all .15s;border-radius:8px}
 .milestone-item.clickable:hover{background:rgba(128,66,250,.04);transform:translateY(-1px)}
 .milestone-item.clickable:hover .ms-text{color:var(--gralia-purple)}
+
+/* === V12: Modal de gerenciamento de usuários (admin) === */
+.admin-um-warn{padding:.75rem 1rem;background:rgba(232,164,60,.06);border:1px solid rgba(232,164,60,.25);border-radius:8px;font-size:12px;line-height:1.55;color:var(--text2);margin-bottom:.875rem}
+.admin-um-warn b{color:var(--amber-text)}
+.admin-um-search{display:flex;gap:8px;margin-bottom:.875rem}
+.admin-um-list{display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow-y:auto;padding:0 4px}
+.admin-um-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:.625rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;transition:all .15s}
+.admin-um-row:hover{border-color:rgba(128,66,250,.20)}
+.aum-info{flex:1;min-width:0}
+.aum-info b{font-size:13px;color:var(--text);font-weight:700}
+.aum-self{font-size:10.5px;color:var(--gralia-purple);background:rgba(128,66,250,.10);padding:1px 6px;border-radius:999px;margin-left:4px;font-weight:700}
+.aum-meta{font-size:11px;color:var(--text3);margin-top:2px;line-height:1.5}
+.aum-actions{display:flex;gap:6px;flex-shrink:0;align-items:center}
+
+/* === V12: Focus picker (TOC + métodos) === */
+.focus-picker{padding:.75rem .875rem;background:rgba(128,66,250,.04);border:1px dashed rgba(128,66,250,.30);border-radius:10px;margin-bottom:.875rem;display:flex;flex-direction:column;gap:.5rem}
+.focus-picker-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.focus-picker-lbl{font-size:12px;font-weight:700;color:var(--text);letter-spacing:-.1px}
+.focus-picker-status{font-size:11.5px;color:var(--text2);background:var(--surface);padding:3px 9px;border-radius:999px;border:1px solid var(--border);max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.focus-picker-btns{display:flex;gap:6px;flex-wrap:wrap}
+.focus-src-block{margin-bottom:.875rem}
+.focus-src-name{font-size:12.5px;color:var(--text);padding:6px 8px;background:var(--surface2);border-radius:6px;margin-bottom:6px}
+.focus-src-meta{font-weight:400;color:var(--text3);font-size:11px}
+.focus-toc-list{display:flex;flex-direction:column;gap:2px;max-height:250px;overflow-y:auto;padding:2px;border:1px solid var(--border);border-radius:8px}
+.focus-toc-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 10px;background:transparent;border:none;border-radius:6px;cursor:pointer;text-align:left;font-family:inherit;color:var(--text2);transition:all .12s;width:100%}
+.focus-toc-item:hover{background:var(--surface2);color:var(--text)}
+.focus-toc-item.on{background:rgba(128,66,250,.10);color:var(--gralia-purple);font-weight:600}
+.ftoc-title{font-size:12.5px;line-height:1.4;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ftoc-meta{font-size:10.5px;color:var(--text3);flex-shrink:0;white-space:nowrap}
+
+/* === V12: Seção combinada do painel (Acompanhar) === */
+.dash-accompany{margin-bottom:1.25rem;padding:0;overflow:hidden}
+.dasha-head{padding:1rem 1.125rem .625rem;border-bottom:1px solid var(--border)}
+.dasha-title{font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.1px;display:flex;align-items:center;gap:6px}
+.dasha-title::before{content:'';width:4px;height:14px;background:var(--gralia-purple);border-radius:2px;display:inline-block}
+.dasha-tabs{display:flex;background:var(--surface2);padding:4px;margin:.5rem .875rem 0;border-radius:10px;gap:2px}
+.dasha-tab{flex:1;background:transparent;border:none;padding:.5rem .75rem;border-radius:7px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
+.dasha-tab:hover{color:var(--text)}
+.dasha-tab.active{background:var(--surface);color:var(--gralia-purple);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.dasha-body{padding:.875rem 1.125rem 1.125rem}
+.dasha-content-timeline{padding:0!important;margin:0!important;background:transparent!important;border:none!important}
+.dasha-content-timeline > .activity-v2-head{display:none}
+.dasha-disciplines-list{display:flex;flex-direction:column;gap:.5rem}
 
 /* ====== MAPA DA MATÉRIA ====== */
 .map-filters{display:flex;flex-direction:column;gap:.4rem;margin-bottom:.875rem;padding:.75rem;background:var(--surface2);border-radius:var(--rs)}
@@ -3078,6 +3148,41 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 .wel-banca-hint b{color:var(--text);font-weight:700}
 
 /* === Seção BETA + descontos === */
+
+/* === V12: Comparação de planos na landing === */
+.wel-plans-section{padding:2rem 1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:18px;margin-bottom:2rem}
+.wel-plans-billing-toggle{display:flex;background:var(--surface2);padding:4px;border-radius:12px;margin:1rem auto 1.75rem;width:fit-content;gap:2px}
+.wpbt-btn{background:transparent;border:none;padding:.625rem 1.25rem;border-radius:9px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;transition:all .15s}
+.wpbt-btn:hover{color:var(--text)}
+.wpbt-btn.on{background:var(--surface);color:var(--gralia-purple);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.wpbt-save{font-size:10.5px;background:rgba(73,197,137,.18);color:var(--accent-text);padding:2px 8px;border-radius:999px;font-weight:800;letter-spacing:.2px}
+.wel-plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:1.25rem}
+@media(max-width:880px){.wel-plans-grid{grid-template-columns:1fr;max-width:420px;margin-left:auto;margin-right:auto}}
+.wel-plan-card{padding:1.75rem 1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:16px;display:flex;flex-direction:column;position:relative;text-align:left;transition:all .2s}
+.wel-plan-card:hover{border-color:rgba(128,66,250,.30);transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,.08)}
+.wel-plan-card.featured{border-color:var(--gralia-purple);background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));box-shadow:0 6px 20px rgba(128,66,250,.12)}
+.wel-plan-card.featured:hover{box-shadow:0 18px 42px rgba(128,66,250,.20)}
+.wpc-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--gralia-purple);color:#fff;padding:4px 16px;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase}
+.wpc-name{margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-.4px;color:var(--text)}
+.wpc-tagline{margin:0 0 1.25rem;font-size:12.5px;color:var(--text3);line-height:1.5;min-height:36px}
+.wpc-price{display:flex;align-items:baseline;gap:4px;margin-bottom:4px}
+.wpc-currency{font-size:15px;color:var(--text2);font-weight:600}
+.wpc-value{font-size:42px;font-weight:900;color:var(--text);letter-spacing:-2px;line-height:1}
+.wpc-period{font-size:14px;color:var(--text3);font-weight:500}
+.wpc-monthly-equiv{font-size:11.5px;color:var(--accent-text);margin-bottom:.625rem;font-weight:600}
+.wpc-credits{padding:.75rem 1rem;background:var(--surface2);border-radius:10px;text-align:center;font-size:13px;color:var(--text2);margin:.875rem 0}
+.wpc-credits b{color:var(--gralia-purple);font-size:18px;font-weight:800;display:block}
+.wpc-features{list-style:none;padding:0;margin:.5rem 0 1.25rem;display:flex;flex-direction:column;gap:8px;flex:1}
+.wpc-features li{font-size:12.5px;color:var(--text2);line-height:1.5;display:flex;align-items:flex-start;gap:6px}
+.wpc-features li b{color:var(--text);font-weight:700}
+.wpc-cta{width:100%;font-size:13.5px;padding:.75rem 1rem}
+.wel-topup-info{display:flex;align-items:flex-start;gap:14px;padding:1rem 1.25rem;background:rgba(128,66,250,.04);border:1px solid rgba(128,66,250,.18);border-radius:12px;margin:1.25rem 0 .875rem}
+.wti-icon{font-size:20px;line-height:1;flex-shrink:0;color:var(--gralia-purple)}
+.wti-text{font-size:12.5px;line-height:1.6;color:var(--text2)}
+.wti-text b{color:var(--text);font-weight:700}
+.wel-trial-info{margin:0;padding:.875rem 1rem;text-align:center;font-size:13px;color:var(--text2);background:rgba(73,197,137,.04);border:1px dashed rgba(73,197,137,.30);border-radius:10px;line-height:1.6}
+.wel-trial-info b{color:var(--accent-text)}
+
 .wel-beta-section{padding:1.75rem 1.5rem;background:linear-gradient(135deg,rgba(128,66,250,.06),rgba(26,42,82,.03));border:1px solid rgba(128,66,250,.22);border-radius:18px;text-align:center}
 .wel-beta-section .wel-section-title,.wel-beta-section .wel-section-sub{margin-left:auto;margin-right:auto}
 .wel-beta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:1.5rem 0 1.25rem;max-width:780px;margin-left:auto;margin-right:auto}
@@ -4150,7 +4255,37 @@ async function importSourceToLocal(resourceId, targetDisciplineId){
   }catch(e){
     console.warn('[import] falha ao registrar:', e);
   }
+  // V12: Pré-carrega 1 questão em background pra agilizar o primeiro uso
+  // O usuário não espera — quando clicar em "Praticar" depois, a questão já estará pronta
+  preloadQuestionForSource(newSource).catch(err=>{
+    console.warn('[preload] falhou silenciosamente:', err.message);
+  });
   return {source: newSource};
+}
+
+// V12: Pré-carrega uma questão em background pra uma fonte recém-importada
+// A questão fica disponível em DATA.preloadedQuestions.practice pra ser usada
+// na próxima entrada em "Resolver questões". Roda assíncrono — usuário não espera.
+async function preloadQuestionForSource(src){
+  if(!src || !src.content) return;
+  // Não pré-carrega se já tem uma fila com questão recente (<1h)
+  const existing = DATA.preloadedQuestions?.practice;
+  if(existing && existing.generatedAt && (Date.now() - existing.generatedAt) < 3600000){
+    return;
+  }
+  try{
+    const seed = avoidRepeatPrompt('practice');
+    const res = await timedCallAPI('practice','question',SYS_PRACT,
+      [{role:'user',content:'Primeira questão.'+seed}],
+      {model:getMethodModel('practice')});
+    if(res && res.question){
+      DATA.preloadedQuestions = DATA.preloadedQuestions || {};
+      DATA.preloadedQuestions.practice = {q: res, generatedAt: Date.now(), preloadedFromSource: src.id};
+      save();
+    }
+  }catch(e){
+    // Falha silenciosa — usuário não foi avisado, então não precisa avisar
+  }
 }
 
 // Importa perfil de tópico: clona pra DATA.topicProfiles
@@ -6156,6 +6291,11 @@ function defaultData(){
       trees: [],                  // [{id, plantedAt, type, reason, label}]
       lastCheckedMilestones: {}   // chaves de marcos já contabilizados
     },
+    // V12 — Cache de questões pré-carregadas mas não respondidas
+    // Estrutura: {practice: {q, generatedAt, fingerprint}, calibration: {...}, ...}
+    // Quando o usuário sai da view antes de responder, a questão fica salva
+    // aqui pra ser reutilizada na próxima vez (economiza créditos de IA)
+    preloadedQuestions: {},
     // Usage log
     usageLog:[],
     // Usage preferences
@@ -6183,6 +6323,8 @@ function load(){
     if(!parsed.adminConfig)parsed.adminConfig={monthlyBudgetUSD:50,alertThresholdPct:80,lastUpdated:null};
     // V8 — Pinhal de araucárias (visualização do progresso)
     if(!parsed.forest)parsed.forest={trees:[],lastCheckedMilestones:{}};
+    // V12 — Pré-carregadas (questões geradas mas não respondidas, persistem entre sessões)
+    if(!parsed.preloadedQuestions)parsed.preloadedQuestions={};
     // Migrate old fromErrorId → sourceErrorId for backward compatibility
     if(parsed.srs&&parsed.srs.cards){
       parsed.srs.cards.forEach(c=>{
@@ -6464,6 +6606,84 @@ const SUBSCRIPTION = {
 };
 
 const SUBSCRIPTION_TTL = 60 * 1000; // refetch após 60 segundos
+
+// ============================================================================
+// V12 — Notificações in-app de eventos de assinatura
+// ============================================================================
+// Mostra toast ao usuário quando:
+// - Top-up foi aprovado (créditos chegaram)
+// - Plano foi renovado (créditos do plano resetados)
+// - Assinatura foi ativada pela primeira vez
+//
+// Usa localStorage pra rastrear o último evento notificado e evitar repetir.
+// ============================================================================
+
+const NOTIFICATION_KEYS = {
+  lastTopupNotified: 'gralia_notif_topup_last_id',
+  lastRenewalNotified: 'gralia_notif_renewal_last_at',
+  lastActivationNotified: 'gralia_notif_activation_last_at'
+};
+
+async function checkSubscriptionNotifications(){
+  if(!isAuthed() || !supa) return;
+  try{
+    // === 1. Verificar top-ups aprovados recentes ===
+    const lastTopupId = localStorage.getItem(NOTIFICATION_KEYS.lastTopupNotified);
+    const sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+    const {data: recentTopups, error: topupErr} = await supa
+      .from('topup_purchases')
+      .select('id, credits, mp_status, approved_at')
+      .eq('user_id', AUTH.user.id)
+      .eq('mp_status', 'approved')
+      .gte('approved_at', sevenDaysAgo)
+      .order('approved_at', {ascending: false})
+      .limit(1);
+    if(!topupErr && recentTopups && recentTopups.length > 0){
+      const topup = recentTopups[0];
+      if(topup.id !== lastTopupId){
+        // Notificar
+        try{
+          showToast(`✓ ${topup.credits} créditos avulsos foram adicionados ao seu saldo!`);
+        }catch(_){}
+        localStorage.setItem(NOTIFICATION_KEYS.lastTopupNotified, topup.id);
+      }
+    }
+
+    // === 2. Verificar renovação mensal recente (last_reset_at mudou) ===
+    const lastRenewalAt = localStorage.getItem(NOTIFICATION_KEYS.lastRenewalNotified);
+    if(SUBSCRIPTION.data && SUBSCRIPTION.data.last_reset_at){
+      const currentReset = SUBSCRIPTION.data.last_reset_at;
+      const oneDayAgo = Date.now() - 24*60*60*1000;
+      const resetTime = new Date(currentReset).getTime();
+      // Se reset aconteceu nas últimas 24h E é diferente do último notificado
+      if(resetTime > oneDayAgo && currentReset !== lastRenewalAt){
+        // E se não é trial inicial (que já deu welcome toast)
+        if(SUBSCRIPTION.data.plan_id !== 'trial'){
+          try{
+            showToast(`🔄 Seu plano renovou! ${SUBSCRIPTION.data.credits_per_month} créditos disponíveis.`);
+          }catch(_){}
+          localStorage.setItem(NOTIFICATION_KEYS.lastRenewalNotified, currentReset);
+        }
+      }
+    }
+
+    // === 3. Verificar ativação inicial (subscription mudou de pending/trial pra active) ===
+    const lastActivation = localStorage.getItem(NOTIFICATION_KEYS.lastActivationNotified);
+    if(SUBSCRIPTION.data && SUBSCRIPTION.data.subscription_status === 'active'
+       && SUBSCRIPTION.data.plan_id !== 'trial'){
+      const subId = SUBSCRIPTION.data.subscription_id;
+      if(subId && subId !== lastActivation){
+        // Notifica primeira ativação
+        try{
+          showToast(`🎉 Bem-vindo ao plano ${SUBSCRIPTION.data.plan_name}! Suas funções premium estão liberadas.`);
+        }catch(_){}
+        localStorage.setItem(NOTIFICATION_KEYS.lastActivationNotified, subId);
+      }
+    }
+  }catch(e){
+    console.warn('[notifications] error:', e.message);
+  }
+}
 
 async function fetchSubscription(force){
   if(!isAuthed()) return null;
@@ -6795,6 +7015,25 @@ function inferDiscipline(topic){
   return active[0].id;
 }
 function buildContent(){
+  // V12: Se houver foco em seção específica de uma fonte (via TOC), usar só ela
+  if(ST.activeFocus && ST.activeFocus.sourceId && ST.activeFocus.sectionId){
+    const focused = (DATA.sources||[]).find(s => s.id === ST.activeFocus.sourceId);
+    if(focused && focused.toc){
+      const sec = focused.toc.find(t => t.id === ST.activeFocus.sectionId);
+      if(sec && focused.content){
+        // Extrai trecho da seção
+        const start = Math.max(0, sec.startChar || 0);
+        const end = Math.min(focused.content.length, sec.endChar || focused.content.length);
+        const sectionText = focused.content.slice(start, end);
+        if(sectionText && sectionText.trim().length > 50){
+          const disc = getDiscipline(focused.disciplineId);
+          const dLbl = disc ? ` (disciplina: ${disc.name})` : '';
+          return `[FOCO ESPECÍFICO — ${focused.name}${dLbl} → seção: ${sec.title}]\n\nGere questões EXCLUSIVAMENTE sobre o conteúdo abaixo, sem extrapolar pra outros temas:\n\n${sectionText}`;
+        }
+      }
+    }
+  }
+
   const srcs = activeSources();
   if(srcs.length===0)return '';
   // Detect dominant content type for directive injection
@@ -7475,6 +7714,117 @@ function setMethodModel(methodKey,model){
   ST.methodModel[methodKey] = model;
 }
 // Returns a model picker element; onChange called with new model id
+// V12: Picker de "foco" — permite ao usuário restringir geração de questões
+// a uma seção específica de um PDF indexado. Só aparece se há fontes com TOC.
+function buildFocusPicker(){
+  // Lista fontes ativas que têm TOC válido
+  const sourcesWithToc = (DATA.sources||[]).filter(s =>
+    s.toc && Array.isArray(s.toc) && s.toc.length >= 2
+  );
+  if(sourcesWithToc.length === 0) return null;
+
+  const wrap = mk('div','focus-picker');
+  const head = mk('div','focus-picker-head');
+  const lbl = mk('span','focus-picker-lbl');
+  lbl.innerHTML = '🎯 Foco em seção <span style="font-weight:400;font-size:10.5px;color:var(--text3)">(opcional)</span>';
+  head.appendChild(lbl);
+
+  // Status atual
+  let currentLabel = 'Toda fonte ativa';
+  if(ST.activeFocus && ST.activeFocus.sourceId && ST.activeFocus.sectionId){
+    const s = sourcesWithToc.find(x => x.id === ST.activeFocus.sourceId);
+    if(s){
+      const sec = (s.toc||[]).find(t => t.id === ST.activeFocus.sectionId);
+      if(sec){
+        currentLabel = s.name + ' → ' + sec.title;
+      }
+    }
+  }
+  const status = mk('span','focus-picker-status');
+  status.textContent = currentLabel;
+  head.appendChild(status);
+  wrap.appendChild(head);
+
+  // Botão pra abrir modal de seleção
+  const btnRow = mk('div','focus-picker-btns');
+  const pickBtn = mk('button','btn btn-sm');
+  pickBtn.style.cssText = 'font-size:11.5px;padding:5px 10px';
+  pickBtn.textContent = ST.activeFocus?.sectionId ? 'Trocar seção' : 'Escolher seção';
+  pickBtn.addEventListener('click', ()=>showFocusPickerModal(sourcesWithToc));
+  btnRow.appendChild(pickBtn);
+  if(ST.activeFocus?.sectionId){
+    const clearBtn = mk('button','btn btn-sm');
+    clearBtn.style.cssText = 'font-size:11.5px;padding:5px 10px';
+    clearBtn.textContent = '✕ Limpar foco';
+    clearBtn.addEventListener('click', ()=>{
+      ST.activeFocus = null;
+      // Limpa pré-carregadas pra não usar questão de foco antigo
+      if(DATA.preloadedQuestions) DATA.preloadedQuestions = {};
+      save();
+      render();
+    });
+    btnRow.appendChild(clearBtn);
+  }
+  wrap.appendChild(btnRow);
+  return wrap;
+}
+
+function showFocusPickerModal(sourcesWithToc){
+  const m = mk('div'); m.style.cssText = 'max-width:680px;max-height:80vh;overflow-y:auto';
+  const head = mk('div','source-toc-head');
+  head.innerHTML = `
+    <div class="sth-icon">🎯</div>
+    <div class="sth-info">
+      <h2>Focar em seção específica</h2>
+      <p>A IA vai gerar questões usando APENAS o trecho escolhido</p>
+    </div>
+    <button type="button" class="sth-close" id="fpm-close">×</button>
+  `;
+  m.appendChild(head);
+  setTimeout(()=>{
+    const c = head.querySelector('#fpm-close');
+    if(c) c.addEventListener('click', closeModal);
+  },0);
+
+  const tip = mk('div'); tip.style.cssText = 'padding:.75rem 1rem;background:rgba(128,66,250,.05);border:1px solid rgba(128,66,250,.18);border-radius:8px;font-size:12px;line-height:1.55;color:var(--text2);margin-bottom:.875rem';
+  tip.innerHTML = '<b>Como funciona:</b> escolha uma seção do índice de um PDF indexado. As próximas questões vão sair só desse trecho — útil pra praticar capítulos específicos antes da prova.';
+  m.appendChild(tip);
+
+  // Limpa preload se troca foco (próximas questões devem ser do novo escopo)
+  function applyFocus(sourceId, sectionId){
+    ST.activeFocus = {sourceId, sectionId};
+    if(DATA.preloadedQuestions) DATA.preloadedQuestions = {};
+    save();
+    closeModal();
+    render();
+  }
+
+  // Lista por fonte
+  sourcesWithToc.forEach(src => {
+    const block = mk('div','focus-src-block');
+    block.innerHTML = `<div class="focus-src-name">📚 <b>${escapeHTML(src.name)}</b> <span class="focus-src-meta">· ${(src.toc||[]).length} seções</span></div>`;
+
+    const tocList = mk('div','focus-toc-list');
+    (src.toc||[]).forEach(sec => {
+      const item = mk('button','focus-toc-item' + (ST.activeFocus?.sourceId===src.id && ST.activeFocus?.sectionId===sec.id ? ' on' : ''));
+      const indent = (sec.level || 1) - 1;
+      item.style.paddingLeft = (10 + indent * 16) + 'px';
+      const charsInSection = (sec.endChar || src.content?.length || 0) - (sec.startChar || 0);
+      const sizeHint = charsInSection > 1000 ? Math.round(charsInSection/1000) + 'k chars' : charsInSection + ' chars';
+      item.innerHTML = `
+        <span class="ftoc-title">${escapeHTML(sec.title)}</span>
+        <span class="ftoc-meta">${sizeHint}</span>
+      `;
+      item.addEventListener('click', ()=>applyFocus(src.id, sec.id));
+      tocList.appendChild(item);
+    });
+    block.appendChild(tocList);
+    m.appendChild(block);
+  });
+
+  showModal(m);
+}
+
 function buildModelPicker(methodKey,onChange){
   const wrap = mk('div','model-picker-row');
   const lbl = mk('span','mp-lbl');lbl.textContent='Modelo de IA';wrap.appendChild(lbl);
@@ -8428,28 +8778,170 @@ function renderWelcome(){
   credSec.appendChild(trialBox);
   wrap.appendChild(credSec);
 
-  // ====== BETA + DESCONTOS PROGRESSIVOS ======
+  // ====== PLANOS — Comparação completa (V12) ======
+  const plansSec = mk('section','wel-section wel-plans-section');
+  const plansLbl = mk('div','wel-section-label');plansLbl.textContent='Planos';
+  plansSec.appendChild(plansLbl);
+  const plansHead = mk('h2','wel-section-title');plansHead.textContent='Escolha o ritmo que combina com você';
+  plansSec.appendChild(plansHead);
+  const plansSub = mk('p','wel-section-sub');
+  plansSub.textContent='Cancele quando quiser, sem fidelidade. Pagamento via Mercado Pago — aceita PIX, cartão e boleto.';
+  plansSec.appendChild(plansSub);
+
+  // Toggle Mensal/Anual (state local da landing)
+  if(!ST.landingBilling) ST.landingBilling = 'monthly';
+  const billingToggle = mk('div','wel-plans-billing-toggle');
+  billingToggle.innerHTML = `
+    <button class="wpbt-btn ${ST.landingBilling==='monthly'?'on':''}" data-p="monthly">Mensal</button>
+    <button class="wpbt-btn ${ST.landingBilling==='yearly'?'on':''}" data-p="yearly">Anual <span class="wpbt-save">−2 meses grátis</span></button>
+  `;
+  plansSec.appendChild(billingToggle);
+  setTimeout(()=>{
+    billingToggle.querySelectorAll('.wpbt-btn').forEach(btn=>{
+      btn.addEventListener('click',()=>{
+        ST.landingBilling = btn.dataset.p;
+        render();
+      });
+    });
+  },0);
+
+  // Plans data — espelha catálogo SQL
+  const isYearly = ST.landingBilling === 'yearly';
+  const plansData = [
+    {
+      id: 'estudante',
+      name: 'Estudante',
+      tagline: 'Pra quem estuda casualmente',
+      monthlyPrice: 19.90,
+      yearlyPrice: 199.00,
+      credits: 250,
+      features: [
+        'Todos os 8 métodos de estudo',
+        'Questões geradas por IA (Haiku 4.5)',
+        'Síntese de edital · 1 por mês',
+        'Flashcards com revisão espaçada',
+        'Pomodoro flutuante',
+        'Comunidade — compartilhe e siga',
+        'Importação de PDFs ilimitada'
+      ]
+    },
+    {
+      id: 'concurseiro',
+      name: 'Concurseiro',
+      tagline: 'Pra quem estuda intensivamente',
+      monthlyPrice: 39.90,
+      yearlyPrice: 399.00,
+      credits: 700,
+      featured: true,
+      features: [
+        'Tudo do Estudante',
+        '<b>700 créditos/mês</b> · ~700 questões',
+        'Síntese de edital · 3 por mês',
+        '<b>Suporte prioritário</b> via e-mail',
+        '<b>Pinhal de Araucárias</b> · gamificação',
+        'Mapa da matéria por disciplina',
+        'Mentor / Examinador / Drill liberados'
+      ]
+    },
+    {
+      id: 'pro',
+      name: 'Pro',
+      tagline: 'Concurseiro full-time / múltiplas provas',
+      monthlyPrice: 89.90,
+      yearlyPrice: 899.00,
+      credits: 2000,
+      features: [
+        'Tudo do Concurseiro',
+        '<b>2000 créditos/mês</b> · uso intensivo',
+        'Síntese de edital · ilimitado',
+        '<b>Acesso antecipado</b> a novos recursos',
+        'Modelo Sonnet 4.6 (mais profundo) liberado',
+        'Sugestões adaptadas com IA premium',
+        'Foco em alta performance'
+      ]
+    }
+  ];
+
+  const plansGrid = mk('div','wel-plans-grid');
+  plansData.forEach(plan=>{
+    const card = mk('div','wel-plan-card'+(plan.featured?' featured':''));
+    const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
+    const period = isYearly ? '/ano' : '/mês';
+    const monthlyEquiv = isYearly ? (plan.yearlyPrice / 12).toFixed(2).replace('.',',') : null;
+    let html = '';
+    if(plan.featured) html += '<div class="wpc-badge">Recomendado</div>';
+    html += `<h3 class="wpc-name">${plan.name}</h3>`;
+    html += `<p class="wpc-tagline">${plan.tagline}</p>`;
+    html += `<div class="wpc-price"><span class="wpc-currency">R$</span><span class="wpc-value">${price.toFixed(2).replace('.',',')}</span><span class="wpc-period">${period}</span></div>`;
+    if(isYearly && monthlyEquiv){
+      html += `<div class="wpc-monthly-equiv">equivale a R$ ${monthlyEquiv} / mês</div>`;
+    }
+    html += `<div class="wpc-credits"><b>${plan.credits}</b> créditos / mês</div>`;
+    html += '<ul class="wpc-features">';
+    plan.features.forEach(f=>{
+      html += `<li>✓ ${f}</li>`;
+    });
+    html += '</ul>';
+    card.innerHTML = html;
+
+    const cta = mk('button','btn'+(plan.featured?' btn-p':'')+' wpc-cta');
+    cta.textContent = 'Começar com '+plan.name+' →';
+    cta.addEventListener('click',()=>{
+      // Redireciona pra signup; após login vai pra Plans com plano pré-selecionado
+      DATA.welcomeShown=true;
+      DATA.setup=true;
+      ST.preselectedPlan = plan.id;
+      ST.preselectedBilling = ST.landingBilling;
+      ST.view='dashboard';
+      save();
+      if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;ST.authMode='signup';}
+      render();
+    });
+    card.appendChild(cta);
+
+    plansGrid.appendChild(card);
+  });
+  plansSec.appendChild(plansGrid);
+
+  // Top-ups info
+  const topupInfo = mk('div','wel-topup-info');
+  topupInfo.innerHTML = `
+    <div class="wti-icon">⚡</div>
+    <div class="wti-text">
+      <b>Acabaram os créditos antes do mês?</b> Compre pacotes avulsos: 100 créditos por R$ 9,90, 300 por R$ 24,90 ou 1000 por R$ 69,90. Top-ups <b>não expiram</b> — acumulam mesmo se você cancelar a assinatura.
+    </div>
+  `;
+  plansSec.appendChild(topupInfo);
+
+  // Trial info
+  const trialInfo = mk('p','wel-trial-info');
+  trialInfo.innerHTML = '🎁 <b>Quer testar antes?</b> Crie uma conta grátis e use 25 créditos por 14 dias. Sem cartão, sem compromisso.';
+  plansSec.appendChild(trialInfo);
+
+  wrap.appendChild(plansSec);
+
+  // ====== BETA + DESCONTOS PROGRESSIVOS (V12: 200 cupons, contar por assinante) ======
   const betaSec = mk('section','wel-section wel-beta-section');
   const betaLbl = mk('div','wel-section-label');betaLbl.textContent='Versão BETA';
   betaSec.appendChild(betaLbl);
-  const betaHead = mk('h2','wel-section-title');betaHead.textContent='Construa o Gralia com a gente — e ganhe desconto vitalício';
+  const betaHead = mk('h2','wel-section-title');betaHead.textContent='Construa o Gralia com a gente — e ganhe desconto BETA';
   betaSec.appendChild(betaHead);
   const betaSub = mk('p','wel-section-sub');
-  betaSub.textContent='Estamos nas primeiras versões. Os 500 primeiros usuários ganham desconto progressivo em todas as assinaturas futuras — pra sempre.';
+  betaSub.textContent='Estamos nas primeiras versões. Os 200 primeiros assinantes ganham desconto progressivo nos primeiros meses de assinatura.';
   betaSec.appendChild(betaSub);
   const betaGrid = mk('div','wel-beta-grid');
   [
-    {pos:'1-100', pct:'30%', label:'desconto vitalício', tag:'Pioneiros'},
-    {pos:'101-300', pct:'20%', label:'desconto vitalício', tag:'Veteranos'},
-    {pos:'301-500', pct:'10%', label:'desconto vitalício', tag:'Beta'}
+    {pos:'1-50', pct:'30%', label:'pelos 6 primeiros meses', tag:'Pioneiros'},
+    {pos:'51-150', pct:'20%', label:'pelos 3 primeiros meses', tag:'Veteranos'},
+    {pos:'151-200', pct:'10%', label:'pelo 1º mês', tag:'Beta'}
   ].forEach((b,i)=>{
     const card = mk('div','wel-beta-card'+(i===0?' wbc-featured':''));
-    card.innerHTML = `<div class="wbc-tag">${b.tag}</div><div class="wbc-pos">Usuários ${b.pos}</div><div class="wbc-pct">${b.pct}</div><div class="wbc-lbl">${b.label}</div>`;
+    card.innerHTML = `<div class="wbc-tag">${b.tag}</div><div class="wbc-pos">Assinantes ${b.pos}</div><div class="wbc-pct">${b.pct}</div><div class="wbc-lbl">${b.label}</div>`;
     betaGrid.appendChild(card);
   });
   betaSec.appendChild(betaGrid);
   const betaFooter = mk('p','wel-beta-footer');
-  betaFooter.innerHTML = '⚡ Os planos pagos serão lançados em breve. Quem entra agora estuda com créditos iniciais grátis e garante o desconto.';
+  betaFooter.innerHTML = '⚡ A contagem é por <b>quem assina</b> — só cria conta não vale. Garanta seu desconto sendo um dos primeiros a apoiar o projeto.';
   betaSec.appendChild(betaFooter);
   wrap.appendChild(betaSec);
 
@@ -8662,27 +9154,35 @@ function renderTopbar(){
   });
 
   // Estrutura: grupos + abas soltas
+  // V12: Reorganizado pra iniciante achar caminho natural
+  // - Estudar: fontes + métodos + banco (tudo que é prática direta)
+  // - Revisar: flashcards + erros + pomodoro + revisão turbo (fixação/recuperação)
+  // - Planejar: metas + editais + simulados + mapa (visão geral)
+  // - Comunidade: descobrir + pinhal (social/gamificação)
   const NAV_STRUCTURE = [
     {type:'tab',view:'dashboard',label:'Painel',icon:'🏠'},
     {type:'group',key:'study',label:'Estudar',icon:'📘',children:[
-      {view:'methods',label:'Métodos de Estudo',icon:'🎯',desc:'8 técnicas de prática adaptativa'},
-      {view:'imported',label:'Banco de Questões',icon:'📝',desc:'Questões importadas do TEC'},
-      {view:'discover',label:'Descobrir',icon:'🌐',desc:'Materiais públicos da comunidade'}
+      {view:'sources',label:'Minhas fontes',icon:'📚',desc:'Apostilas, PDFs e materiais de estudo'},
+      {view:'methods',label:'Métodos de estudo',icon:'🎯',desc:'8 técnicas de prática adaptativa com IA'},
+      {view:'imported',label:'Banco de questões',icon:'📝',desc:'Questões importadas e suas estatísticas'}
     ]},
     {type:'group',key:'review',label:'Revisar',icon:'🔄',children:[
       {view:'srs',label:'Flashcards',icon:'🎴',desc:'Revisão espaçada (SRS)'},
-      {view:'review',label:'Revisão Turbo / Véspera',icon:'⚡',desc:'Ciclos adaptativos e gerador de material'},
-      {view:'history',label:'Histórico de Erros',icon:'📜',desc:'Todos os erros registrados'},
-      {view:'pomodoro',label:'Pomodoro',icon:'⏱',desc:'Timer de foco'},
-      {view:'forest',label:'Pinhal de Araucárias',icon:'🌲',desc:'Acompanhe seu progresso visualmente — cada marco planta uma araucária'}
+      {view:'history',label:'Histórico de erros',icon:'📜',desc:'Todos os erros pra revisar e aprender'},
+      {view:'review',label:'Revisão Turbo',icon:'⚡',desc:'Ciclos adaptativos e véspera de prova'},
+      {view:'pomodoro',label:'Pomodoro',icon:'⏱',desc:'Timer de foco'}
     ]},
     {type:'group',key:'plan',label:'Planejar',icon:'🗺',children:[
-      {view:'goals',label:'Metas',icon:'🎯',desc:'Metas mensais/semanais com fasamento automático'},
-      {view:'editals',label:'Síntese de Editais',icon:'📋',desc:'IA lê o edital e te entrega o que importa, organizado por importância'},
-      {view:'exams',label:'Provas e Simulados',icon:'📝',desc:'Registre provas reais, simulados externos e analise por disciplina'},
-      {view:'simulado',label:'Simulado Gralia',icon:'⏰',desc:'Simulados cronometrados estilo prova real (gerados pela IA)'},
-      {view:'mapa',label:'Mapa da Matéria',icon:'🗺️',desc:'Visão integrada por tópico'},
-      {view:'sources',label:'Fontes de Estudo',icon:'📚',desc:'Materiais e disciplinas'}
+      {view:'goals',label:'Metas',icon:'🎯',desc:'Metas mensais/semanais com fasamento'},
+      {view:'editals',label:'Síntese de editais',icon:'📋',desc:'IA lê o edital e organiza o que importa'},
+      {view:'exams',label:'Provas e simulados',icon:'📝',desc:'Registre provas e analise por disciplina'},
+      {view:'simulado',label:'Simulado Gralia',icon:'⏰',desc:'Simulados cronometrados gerados pela IA'},
+      {view:'mapa',label:'Mapa da matéria',icon:'🗺️',desc:'Visão integrada por tópico'}
+    ]},
+    {type:'group',key:'community',label:'Comunidade',icon:'🌐',children:[
+      {view:'discover',label:'Descobrir',icon:'🔍',desc:'Materiais públicos da comunidade'},
+      {view:'feed',label:'Da rede',icon:'📡',desc:'Atividade de quem você segue'},
+      {view:'forest',label:'Pinhal de Araucárias',icon:'🌲',desc:'Acompanhe seu progresso visualmente'}
     ]},
     {type:'tab',view:'settings',label:'Config',icon:'⚙'}
   ];
@@ -9073,48 +9573,8 @@ function renderDashboard(){
     wrap.appendChild(streakCard);
   }
 
-  // ===== Feed de marcos sociais (sutil) =====
-  // V12: só aparece se o usuário tem alguma atividade real (>= 5 atividades)
-  // pra novos usuários não verem essa seção logo de cara
-  const totalActivityForFeed = (DATA.session?.total||0) + (DATA.errors||[]).length + (DATA.sources||[]).length;
-  if(isAuthed() && AUTH.profile && totalActivityForFeed >= 5){
-    const feedCard = mk('div','dash-feed-card card');
-    feedCard.innerHTML = `
-      <div class="dfc-head">
-        <div class="dfc-title">📡 Da rede</div>
-        <button class="dfc-see-all link-btn" type="button">Ver todos →</button>
-      </div>
-      <div class="dfc-body"><div class="txt3" style="font-size:12px;padding:.5rem 0">Carregando...</div></div>
-    `;
-    feedCard.querySelector('.dfc-see-all').addEventListener('click',()=>{
-      ST.view='feed';render();
-    });
-    let appended = false;
-    // Carrega feed em background
-    fetchFeed(5, 0).then(result=>{
-      const body = feedCard.querySelector('.dfc-body');
-      if(!body) return;
-      body.innerHTML = '';
-      if(!result.items || result.items.length === 0){
-        // V12: se vazio, não mostra o card de jeito nenhum (estava mostrando "você não segue ninguém")
-        // O usuário pode ir pro Descobrir via outro caminho
-        if(feedCard.parentNode) feedCard.parentNode.removeChild(feedCard);
-        return;
-      }
-      // Mostra o card só se TEM conteúdo
-      if(!appended && wrap){
-        appended = true;
-        // O card já foi appendado se chegou aqui
-      }
-      result.items.forEach(item=>{
-        body.appendChild(renderMilestoneItem(item));
-      });
-    }).catch(()=>{
-      // Em caso de erro, esconde
-      if(feedCard.parentNode) feedCard.parentNode.removeChild(feedCard);
-    });
-    wrap.appendChild(feedCard);
-  }
+  // ===== Feed de marcos sociais — V12: agora dentro da seção "Acompanhar" =====
+  // (Removido daqui — foi movido pra tabs em buildAccompanyingSection)
 
   // ===== WARNINGS — empty state or missing config =====
   if(!hasContent()){
@@ -9136,17 +9596,22 @@ function renderDashboard(){
   const insightCard = buildInsightCard();
   if(insightCard) wrap.appendChild(insightCard);
 
-  // ===== TIMELINE — atividade recente =====
-  const tl = buildActivityTimeline();
-  if(tl)wrap.appendChild(tl);
-
-  // ===== USAGE — admin only (usuário comum vê créditos restantes na chip) =====
+  // ===== USAGE — admin only =====
   if(isAdminUser()){
     const uc = buildUsageCard();
     if(uc)wrap.appendChild(uc);
   }
 
-  // ===== PROGRESS BY DISCIPLINE — only if there's data =====
+  // ===== SEÇÃO COMBINADA — Acompanhar atividade + Disciplinas (V12) =====
+  // Só renderiza se tiver conteúdo em alguma aba.
+  // Reduz poluição visual juntando timeline + erros por disciplina + (opcionalmente) feed
+  // numa interface com abas. Iniciante vê 1 card, não 3 cards empilhados.
+  const tabbedSec = buildAccompanyingSection();
+  if(tabbedSec) wrap.appendChild(tabbedSec);
+
+  // ===== PROGRESS BY DISCIPLINE — V12: agora dentro da seção tabbed acima.
+  // Mantemos a coleta de dados aqui só por não causar regressão se outras
+  // partes esperam isso, mas NÃO renderizamos mais o card antigo.
   const byD = {};
   DATA.disciplines.forEach(d=>{byD[d.id]={total:0,recent:0,score:0}});
   const DAY_MS = 24*60*60*1000;
@@ -9160,39 +9625,8 @@ function renderDashboard(){
   const discWithErr = DATA.disciplines.filter(d=>byD[d.id].total>0)
     .sort((a,b)=>byD[b.id].score-byD[a.id].score);
 
-  if(discWithErr.length>0){
-    const discCard = mk('div','card');discCard.style.cssText='margin-bottom:1.25rem';
-    const head = mk('div','flex');head.style.cssText='justify-content:space-between;align-items:center;margin-bottom:.625rem';
-    const t = mk('h3');t.style.cssText='margin:0;font-size:14px';t.textContent='📊 Erros por disciplina';
-    head.appendChild(t);
-    const hint = mk('span','txt3');hint.style.fontSize='10.5px';hint.textContent='mais recentes pesam mais';
-    head.appendChild(hint);
-    discCard.appendChild(head);
-    const maxScore = Math.max(...discWithErr.map(d=>byD[d.id].score),1);
-    discWithErr.slice(0,5).forEach(d=>{
-      const data = byD[d.id];
-      const row = mk('div','dna-row');
-      const lbl = mk('div','dna-lbl');
-      lbl.style.cssText='display:flex;align-items:center;gap:6px;justify-content:flex-end';
-      const nm = mk('span');nm.textContent=d.name;
-      const dot = mk('span');dot.style.cssText=`width:8px;height:8px;border-radius:50%;background:${d.color};flex-shrink:0`;
-      lbl.appendChild(nm);lbl.appendChild(dot);
-      const track = mk('div','dna-track');
-      const fill = mk('div','dna-fill');fill.style.width=(data.score/maxScore*100)+'%';fill.style.background=d.color;
-      track.appendChild(fill);
-      const num = mk('div','dna-num');num.style.minWidth='70px';
-      num.innerHTML = data.recent>0?`${data.total} <span style="color:var(--red)">(${data.recent} recentes)</span>`:String(data.total);
-      row.appendChild(lbl);row.appendChild(track);row.appendChild(num);
-      discCard.appendChild(row);
-    });
-    if(discWithErr.length>5){
-      const more = mk('p','txt3');more.style.cssText='margin:.5rem 0 0;text-align:right;font-size:11.5px';
-      more.innerHTML = `<a href="#" id="mapLink">Ver mapa completo →</a>`;
-      discCard.appendChild(more);
-      setTimeout(()=>{const l=$('mapLink');if(l)l.addEventListener('click',e=>{e.preventDefault();ST.view='mapa';render();});},0);
-    }
-    wrap.appendChild(discCard);
-  }
+  // Card antigo removido — agora aparece em "Acompanhar > Disciplinas" no topo.
+  // (deixado vazio aqui por segurança; remover bloco completamente seria outra mudança)
 
   // ===== CALIBRATION WARNING — sits compactly =====
   if(overconf!==null&&overconf>25){
@@ -9314,6 +9748,170 @@ function buildNextActionCard(dueSrs,errorsNoCard,overconf,sess){
 
 /* Activity timeline on dashboard — mostra eventos recentes de forma visual e navegável.
    Reúne: erros, flashcards criados, sessões de pomodoro, questões importadas. */
+// V12 — Seção combinada do painel: agrupa Linha do tempo + Disciplinas + Da rede em abas
+// Reduz poluição visual: 1 card com abas em vez de 3 cards empilhados.
+// Só aparece se há conteúdo em pelo menos uma aba.
+function buildAccompanyingSection(){
+  // === Coleta dados pra cada aba ===
+  // 1. Linha do tempo: usa buildActivityTimeline pra detectar se tem eventos
+  // 2. Disciplinas: usa DATA.errors agrupados por discipline
+  // 3. Feed: depende de fetch async — opcional
+
+  // Linha do tempo: detecta se tem ao menos 1 evento
+  const now = Date.now();
+  const TWO_DAYS = 2*24*60*60*1000;
+  const hasErrors = (DATA.errors||[]).some(e => e.date && (now - e.date) <= TWO_DAYS);
+  const hasCards = (DATA.srs?.cards||[]).some(c => c.createdAt && (now - c.createdAt) <= TWO_DAYS);
+  const hasPomos = ((DATA.pomo||{}).sessions||[]).some(s => s.date && (now - s.date) <= TWO_DAYS && (s.durationSec||0) >= 300);
+  const hasSources = (DATA.sources||[]).some(s => s.createdAt && (now - s.createdAt) <= TWO_DAYS);
+  const hasTimeline = hasErrors || hasCards || hasPomos || hasSources;
+
+  // Disciplinas: detecta se tem erros agrupáveis
+  const byD = {};
+  (DATA.disciplines||[]).forEach(d => byD[d.id] = {total:0, recent:0, score:0});
+  (DATA.errors||[]).forEach(e => {
+    if(e.disciplineId && byD[e.disciplineId]){
+      byD[e.disciplineId].total += 1;
+      byD[e.disciplineId].score += errorWeight(e);
+      if(now - (e.date||0) <= 24*60*60*1000) byD[e.disciplineId].recent += 1;
+    }
+  });
+  const discWithErr = (DATA.disciplines||[]).filter(d => byD[d.id].total > 0)
+    .sort((a,b) => byD[b.id].score - byD[a.id].score);
+  const hasDisciplines = discWithErr.length > 0;
+
+  // Feed: depende de carregamento async, e usuário com atividade mínima
+  const totalActivityForFeed = (DATA.session?.total||0) + (DATA.errors||[]).length + (DATA.sources||[]).length;
+  const canHaveFeed = isAuthed() && AUTH.profile && totalActivityForFeed >= 5;
+
+  // Se não tem nada em nenhuma aba, não renderiza a seção
+  if(!hasTimeline && !hasDisciplines && !canHaveFeed) return null;
+
+  // Decide qual aba mostrar inicialmente
+  if(!ST.dashTabActive) ST.dashTabActive = 'timeline';
+  // Se a aba salva não tem conteúdo, vai pra primeira que tem
+  if(ST.dashTabActive === 'timeline' && !hasTimeline){
+    ST.dashTabActive = hasDisciplines ? 'disciplines' : 'feed';
+  } else if(ST.dashTabActive === 'disciplines' && !hasDisciplines){
+    ST.dashTabActive = hasTimeline ? 'timeline' : 'feed';
+  } else if(ST.dashTabActive === 'feed' && !canHaveFeed){
+    ST.dashTabActive = hasTimeline ? 'timeline' : 'disciplines';
+  }
+
+  const card = mk('div','card dash-accompany');
+  // Header com título sutil + tabs
+  const head = mk('div','dasha-head');
+  head.innerHTML = `
+    <div class="dasha-title">
+      <span>Acompanhe seu progresso</span>
+    </div>
+  `;
+  card.appendChild(head);
+
+  // Tabs
+  const tabs = mk('div','dasha-tabs');
+  const tabDefs = [];
+  if(hasTimeline) tabDefs.push({key:'timeline', label:'Linha do tempo', icon:'🕐'});
+  if(hasDisciplines) tabDefs.push({key:'disciplines', label:'Disciplinas', icon:'📊'});
+  if(canHaveFeed) tabDefs.push({key:'feed', label:'Da rede', icon:'📡'});
+
+  // Se só tem 1 aba, não mostra a barra de tabs (vai direto pro conteúdo)
+  if(tabDefs.length > 1){
+    tabDefs.forEach(t=>{
+      const btn = mk('button','dasha-tab' + (ST.dashTabActive === t.key ? ' active' : ''));
+      btn.type = 'button';
+      btn.innerHTML = `<span>${t.icon}</span><span>${t.label}</span>`;
+      btn.addEventListener('click', ()=>{
+        ST.dashTabActive = t.key;
+        render();
+      });
+      tabs.appendChild(btn);
+    });
+    card.appendChild(tabs);
+  }
+
+  const body = mk('div','dasha-body');
+  card.appendChild(body);
+
+  // Renderiza conteúdo da aba ativa
+  if(ST.dashTabActive === 'timeline' && hasTimeline){
+    const tl = buildActivityTimeline();
+    if(tl){
+      // Remove o "card" wrapper externo se houver, pra integrar com o nosso card
+      tl.classList.remove('card');
+      tl.classList.add('dasha-content-timeline');
+      body.appendChild(tl);
+    }
+  } else if(ST.dashTabActive === 'disciplines' && hasDisciplines){
+    const maxScore = Math.max(...discWithErr.map(d => byD[d.id].score), 1);
+    const list = mk('div','dasha-disciplines-list');
+    discWithErr.slice(0, 5).forEach(d => {
+      const data = byD[d.id];
+      const row = mk('div','dna-row');
+      const lbl = mk('div','dna-lbl');
+      lbl.style.cssText = 'display:flex;align-items:center;gap:6px;justify-content:flex-end';
+      const nm = mk('span'); nm.textContent = d.name;
+      const dot = mk('span'); dot.style.cssText = `width:8px;height:8px;border-radius:50%;background:${d.color};flex-shrink:0`;
+      lbl.appendChild(nm); lbl.appendChild(dot);
+      const track = mk('div','dna-track');
+      const fill = mk('div','dna-fill');
+      fill.style.width = (data.score / maxScore * 100) + '%';
+      fill.style.background = d.color;
+      track.appendChild(fill);
+      const num = mk('div','dna-num'); num.style.minWidth = '70px';
+      num.innerHTML = data.recent > 0 ? `${data.total} <span style="color:var(--red)">(${data.recent} recentes)</span>` : String(data.total);
+      row.appendChild(lbl); row.appendChild(track); row.appendChild(num);
+      list.appendChild(row);
+    });
+    body.appendChild(list);
+    if(discWithErr.length > 5){
+      const more = mk('p','txt3');
+      more.style.cssText = 'margin:.625rem 0 0;text-align:right;font-size:11.5px';
+      more.innerHTML = `<a href="#" id="dashaMapLink">Ver mapa completo →</a>`;
+      body.appendChild(more);
+      setTimeout(() => {
+        const l = document.getElementById('dashaMapLink');
+        if(l) l.addEventListener('click', e => {e.preventDefault(); ST.view='mapa'; render();});
+      }, 0);
+    }
+    const hint = mk('p','txt3');
+    hint.style.cssText = 'margin:.5rem 0 0;font-size:10.5px;text-align:center';
+    hint.textContent = 'Erros mais recentes pesam mais no ranking';
+    body.appendChild(hint);
+  } else if(ST.dashTabActive === 'feed' && canHaveFeed){
+    body.innerHTML = '<div class="txt3" style="font-size:12px;padding:.875rem 0;text-align:center">Carregando...</div>';
+    fetchFeed(5, 0).then(result => {
+      body.innerHTML = '';
+      if(!result.items || result.items.length === 0){
+        body.innerHTML = `
+          <div style="padding:1.25rem .5rem;text-align:center">
+            <p class="txt3" style="font-size:12.5px;line-height:1.6;margin:0 0 .625rem">Você ainda não segue ninguém — ou as pessoas que segue ainda não atingiram marcos.</p>
+            <button class="link-btn" id="dashaDiscoverLink" style="font-size:12.5px;font-weight:600">Descobrir pessoas →</button>
+          </div>
+        `;
+        setTimeout(() => {
+          const l = document.getElementById('dashaDiscoverLink');
+          if(l) l.addEventListener('click', () => {ST.view='discover'; render();});
+        }, 0);
+        return;
+      }
+      result.items.forEach(item => body.appendChild(renderMilestoneItem(item)));
+      const seeAll = mk('p');
+      seeAll.style.cssText = 'margin:.625rem 0 0;text-align:right';
+      seeAll.innerHTML = `<button class="link-btn" id="dashaFeedAll" style="font-size:12px;font-weight:600">Ver todos →</button>`;
+      body.appendChild(seeAll);
+      setTimeout(() => {
+        const l = document.getElementById('dashaFeedAll');
+        if(l) l.addEventListener('click', () => {ST.view='feed'; render();});
+      }, 0);
+    }).catch(() => {
+      body.innerHTML = '<div class="txt3" style="font-size:12px">Não foi possível carregar o feed</div>';
+    });
+  }
+
+  return card;
+}
+
 function buildActivityTimeline(){
   const events = [];
   const now = Date.now();
@@ -10182,6 +10780,10 @@ function renderSourceAdd(wrap){
       save();
       ST.srcInput={name:'',type:'relatorio',contentType:'misto',content:'',disciplineId:ST.srcInput.disciplineId};
       ST.srcImportState = {mode:'saved',justSavedId:newSrc.id,organizing:false,pdfLoading:false,organizedResult:null,pdfMeta:null};
+      // V12: Pré-carrega 1 questão em background
+      if(typeof preloadQuestionForSource === 'function'){
+        preloadQuestionForSource(newSrc).catch(()=>{});
+      }
       render();
     });
     btnRow.appendChild(confirmBtn);
@@ -10567,6 +11169,10 @@ function renderSourceAdd(wrap){
     save();
     ST.srcInput={name:'',type:'relatorio',contentType:'misto',content:'',disciplineId:ST.srcInput.disciplineId};
     ST.srcImportState = {mode:'saved',justSavedId:newSrc.id,organizing:false,pdfLoading:false,organizedResult:null,pdfMeta:null};
+    // V12: Pré-carrega 1 questão em background pra agilizar primeiro uso
+    if(typeof preloadQuestionForSource === 'function'){
+      preloadQuestionForSource(newSrc).catch(()=>{});
+    }
     render();
   });
   addCard.appendChild(saveBtn);
@@ -16078,9 +16684,12 @@ function renderCalibration(){
   if(ST.calibLoading&&!ST.calibQ){wrap.appendChild(dynamicLoading('question','Gerando questão...'));return wrap;}
   if(!ST.calibQ){
     wrap.appendChild(buildModelPicker('calibration'));
+    const fpCalib = buildFocusPicker();
+    if(fpCalib) wrap.appendChild(fpCalib);
     const lastB = buildLastGenBadge('calibration','question');
     if(lastB){lastB.style.marginBottom='.875rem';wrap.appendChild(lastB);}
-    const b = mkBtn('Iniciar calibração →','btn btn-p');
+    const b = mk('button','btn btn-p');
+    b.innerHTML = 'Iniciar calibração → ' + aiCostBadgeHTML('practice_question');
     b.addEventListener('click',()=>calibStart(wrap));
     wrap.appendChild(b);return wrap;
   }
@@ -16118,6 +16727,18 @@ function renderCalibration(){
   return wrap;
 }
 async function calibStart(container){
+  // V12: Reaproveita questão pré-carregada
+  if(DATA.preloadedQuestions?.calibration?.q){
+    ST.calibQ = DATA.preloadedQuestions.calibration.q;
+    ST.calibHist = DATA.preloadedQuestions.calibration.hist || [
+      {role:'user',content:'Gere a primeira questão.'},
+      {role:'assistant',content:JSON.stringify(ST.calibQ)}
+    ];
+    delete DATA.preloadedQuestions.calibration;
+    save();
+    render();
+    return;
+  }
   ST.calibLoading=true;render();
   try{
     const seed = avoidRepeatPrompt('calibration');
@@ -16146,10 +16767,27 @@ async function calibSubmit(answer){
       errCtx=logError({question:ST.calibQ.question,correct_answer:ST.calibQ.correct_answer,explanation:res.explanation,trap:res.trap,keyword:res.keyword,trap_type:res.trap_type,topic:ST.calibQ.topic,method:'calibration'});
     }
     ST.calibFb={ok,explanation:res.explanation,trap:res.trap,keyword:res.keyword,confKey:ck,next:res.next,errCtx};
+    // V12: persiste a próxima questão pré-carregada
+    if(res.next && res.next.question){
+      DATA.preloadedQuestions = DATA.preloadedQuestions || {};
+      DATA.preloadedQuestions.calibration = {q: res.next, generatedAt: Date.now()};
+      save();
+    }
   }catch(e){ST.calibAnswered=false;console.error(e);}
   ST.calibLoading=false;render();
 }
-function calibNext(){if(ST.calibFb?.next){ST.calibQ=ST.calibFb.next;saveAIQuestion('calibration',ST.calibQ,getMethodModel('calibration'));ST.calibFb=null;ST.calibConf=null;ST.calibAnswered=false;render();}}
+function calibNext(){
+  if(ST.calibFb?.next){
+    ST.calibQ=ST.calibFb.next;
+    saveAIQuestion('calibration',ST.calibQ,getMethodModel('calibration'));
+    ST.calibFb=null;ST.calibConf=null;ST.calibAnswered=false;
+    if(DATA.preloadedQuestions?.calibration){
+      delete DATA.preloadedQuestions.calibration;
+      save();
+    }
+    render();
+  }
+}
 
 /* EXAMINER */
 function renderExaminer(){
@@ -16171,7 +16809,8 @@ function renderExaminer(){
     wrap.appendChild(buildModelPicker('examiner'));
     const lastB = buildLastGenBadge('examiner','question');
     if(lastB){lastB.style.marginBottom='.875rem';wrap.appendChild(lastB);}
-    const b = mkBtn('Receber conceito →','btn btn-p');
+    const b = mk('button','btn btn-p');
+    b.innerHTML = 'Receber conceito → ' + aiCostBadgeHTML('examiner_review');
     b.addEventListener('click',()=>examFetch(wrap));
     wrap.appendChild(b);return wrap;
   }
@@ -16256,6 +16895,8 @@ function renderDrill(){
 
   if(ST.drillTarget===null&&!ST.drillQ){
     wrap.appendChild(buildModelPicker('drill'));
+    const fpDrill = buildFocusPicker();
+    if(fpDrill) wrap.appendChild(fpDrill);
     const lastB = buildLastGenBadge('drill','question');
     if(lastB){lastB.style.marginBottom='.875rem';wrap.appendChild(lastB);}
     const totalErr = Object.values(s.dna).reduce((a,b)=>a+b,0);
@@ -16298,7 +16939,8 @@ function renderDrill(){
       t.textContent = `Pronto pra treinar "${TRAP_TYPES[ST.drillTarget]}"?`;
       const d = mk('p','txt2');d.style.cssText='margin:0 0 1.25rem;font-size:13px;line-height:1.55';
       d.textContent = 'A IA vai gerar questões focadas exclusivamente nessa armadilha até você dominar o padrão.';
-      const startBtn = mkBtn('▶ Começar drill','btn btn-p btn-lg');
+      const startBtn = mk('button','btn btn-p btn-lg');
+      startBtn.innerHTML = '▶ Começar drill ' + aiCostBadgeHTML('practice_question');
       startBtn.addEventListener('click',()=>drillStart(ST.drillTarget,cta));
       cta.appendChild(em);cta.appendChild(t);cta.appendChild(d);cta.appendChild(startBtn);
       wrap.appendChild(cta);
@@ -16319,6 +16961,19 @@ function renderDrill(){
 }
 async function drillStart(idx,container){
   ST.drillTarget=idx;ST.drillQ=null;ST.drillFb=null;ST.drillAnswered=false;
+  // V12: Reaproveita questão pré-carregada se for do mesmo target
+  const preload = DATA.preloadedQuestions?.['drill_'+idx];
+  if(preload && preload.q){
+    ST.drillQ = preload.q;
+    ST.drillHist = preload.hist || [
+      {role:'user',content:`Gere uma questão usando EXCLUSIVAMENTE o tipo ${idx} (${TRAP_TYPES[idx]}).`},
+      {role:'assistant',content:JSON.stringify(preload.q)}
+    ];
+    delete DATA.preloadedQuestions['drill_'+idx];
+    save();
+    render();
+    return;
+  }
   ST.drillLoading=true;ST.drillHist=[];render();
   try{
     const msg = `Gere uma questão usando EXCLUSIVAMENTE o tipo ${idx} (${TRAP_TYPES[idx]}).`+avoidRepeatPrompt('drill');
@@ -16346,10 +17001,27 @@ async function drillSubmit(answer){
       errCtx=logError({question:ST.drillQ.question,correct_answer:ST.drillQ.correct_answer,explanation:res.explanation,trap:res.trap,keyword:res.keyword,trap_type:res.trap_type??ST.drillTarget,topic:ST.drillQ.topic,method:'drill'});
     }
     ST.drillFb={ok,explanation:res.explanation,trap:res.trap,keyword:res.keyword,next:res.next,errCtx};
+    // V12: persiste a próxima como pré-carregada (por target)
+    if(res.next && res.next.question){
+      DATA.preloadedQuestions = DATA.preloadedQuestions || {};
+      DATA.preloadedQuestions['drill_'+ST.drillTarget] = {q: res.next, generatedAt: Date.now()};
+      save();
+    }
   }catch(e){ST.drillAnswered=false;console.error(e);}
   ST.drillLoading=false;render();
 }
-function drillNext(){if(ST.drillFb?.next){ST.drillQ=ST.drillFb.next;saveAIQuestion('drill',ST.drillQ,getMethodModel('drill'));ST.drillFb=null;ST.drillAnswered=false;render();}}
+function drillNext(){
+  if(ST.drillFb?.next){
+    ST.drillQ=ST.drillFb.next;
+    saveAIQuestion('drill',ST.drillQ,getMethodModel('drill'));
+    ST.drillFb=null;ST.drillAnswered=false;
+    if(DATA.preloadedQuestions?.['drill_'+ST.drillTarget]){
+      delete DATA.preloadedQuestions['drill_'+ST.drillTarget];
+      save();
+    }
+    render();
+  }
+}
 
 /* ELABORATIVE */
 function renderElaborative(){
@@ -16364,7 +17036,8 @@ function renderElaborative(){
     wrap.appendChild(buildModelPicker('elaborative'));
     const lastB = buildLastGenBadge('elaborative','question');
     if(lastB){lastB.style.marginBottom='.875rem';wrap.appendChild(lastB);}
-    const b = mkBtn('Receber pergunta →','btn btn-p');
+    const b = mk('button','btn btn-p');
+    b.innerHTML = 'Receber pergunta → ' + aiCostBadgeHTML('practice_question');
     b.addEventListener('click',()=>elabFetch(wrap));
     wrap.appendChild(b);return wrap;
   }
@@ -16495,10 +17168,14 @@ function renderPractice(){
 
     // Model selector for AI mode
     wrap.appendChild(buildModelPicker('practice'));
+    // V12: Foco em seção (se houver fontes indexadas)
+    const fpPract = buildFocusPicker();
+    if(fpPract) wrap.appendChild(fpPract);
     const lastBadge = buildLastGenBadge('practice','question');
     if(lastBadge){lastBadge.style.marginBottom='.875rem';wrap.appendChild(lastBadge);}
 
-    const b = mkBtn('Iniciar →','btn btn-p');
+    const b = mk('button','btn btn-p');
+    b.innerHTML = 'Iniciar → ' + aiCostBadgeHTML('practice_question');
     b.addEventListener('click',()=>practStart(wrap));
     wrap.appendChild(b);
     return wrap;
@@ -16526,6 +17203,19 @@ function renderPractice(){
   return wrap;
 }
 async function practStart(container){
+  // V12: Reaproveita questão pré-carregada (de sessão anterior ou da próxima já gerada)
+  // Economia de IA: usuário que sai da prática e volta não regenera questão
+  if(DATA.preloadedQuestions?.practice?.q){
+    ST.practQ = DATA.preloadedQuestions.practice.q;
+    ST.practHist = DATA.preloadedQuestions.practice.hist || [
+      {role:'user',content:'Primeira questão.'},
+      {role:'assistant',content:JSON.stringify(ST.practQ)}
+    ];
+    delete DATA.preloadedQuestions.practice;
+    save();
+    render();
+    return;
+  }
   ST.practLoading=true;ST.practHist=[];render();
   try{
     const seed = avoidRepeatPrompt('practice');
@@ -16555,10 +17245,32 @@ async function practSubmit(answer){
       errCtx=logError({question:ST.practQ.question,correct_answer:ST.practQ.correct_answer,explanation:res.explanation,trap:res.trap,keyword:res.keyword,trap_type:res.trap_type,topic:ST.practQ.topic,method:'practice'});
     }
     ST.practFb={ok,explanation:res.explanation,trap:res.trap,keyword:res.keyword,next:res.next,errCtx};
+    // V12: persiste a 'next' como pré-carregada — se o usuário sair sem clicar em "próxima",
+    // ela está salva pra próxima sessão (economia de IA)
+    if(res.next && res.next.question){
+      DATA.preloadedQuestions = DATA.preloadedQuestions || {};
+      DATA.preloadedQuestions.practice = {
+        q: res.next,
+        generatedAt: Date.now()
+      };
+      save();
+    }
   }catch(e){ST.practAnswered=false;handleErr(e,container||document.body);}
   ST.practLoading=false;render();
 }
-function practNext(){if(ST.practFb?.next){ST.practQ=ST.practFb.next;saveAIQuestion('practice',ST.practQ,getMethodModel('practice'));ST.practFb=null;ST.practAnswered=false;render();}}
+function practNext(){
+  if(ST.practFb?.next){
+    ST.practQ=ST.practFb.next;
+    saveAIQuestion('practice',ST.practQ,getMethodModel('practice'));
+    ST.practFb=null;ST.practAnswered=false;
+    // V12: limpa o preload (já consumimos)
+    if(DATA.preloadedQuestions?.practice){
+      delete DATA.preloadedQuestions.practice;
+      save();
+    }
+    render();
+  }
+}
 
 /* SIMULADO */
 function renderSimulado(){
@@ -16797,7 +17509,8 @@ function renderInterleaving(){
     wrap.appendChild(buildModelPicker('interleaving'));
     const lastB = buildLastGenBadge('interleaving','question');
     if(lastB){lastB.style.marginBottom='.875rem';wrap.appendChild(lastB);}
-    const b = mkBtn('Iniciar intercalação →','btn btn-p');
+    const b = mk('button','btn btn-p');
+    b.innerHTML = 'Iniciar intercalação → ' + aiCostBadgeHTML('practice_question');
     b.addEventListener('click',()=>interStart(wrap));
     wrap.appendChild(b);return wrap;
   }
@@ -16816,6 +17529,19 @@ function renderInterleaving(){
   return wrap;
 }
 async function interStart(container){
+  // V12: Reaproveita questão pré-carregada
+  if(DATA.preloadedQuestions?.interleaving?.q){
+    ST.interQ = DATA.preloadedQuestions.interleaving.q;
+    ST.interHist = DATA.preloadedQuestions.interleaving.hist || [
+      {role:'user',content:'Primeira.'},
+      {role:'assistant',content:JSON.stringify(ST.interQ)}
+    ];
+    ST.interTopics = ST.interQ.topic ? [ST.interQ.topic] : [];
+    delete DATA.preloadedQuestions.interleaving;
+    save();
+    render();
+    return;
+  }
   ST.interLoading=true;ST.interHist=[];ST.interTopics=[];render();
   try{
     const res = await timedCallAPI('interleaving','question',SYS_INTER,[{role:'user',content:'Primeira questão. Escolha um tópico inicial.'+avoidRepeatPrompt('interleaving')}],{model:getMethodModel('interleaving')});
@@ -16842,10 +17568,28 @@ async function interSubmit(answer){
       errCtx=logError({question:ST.interQ.question,correct_answer:ST.interQ.correct_answer,explanation:res.explanation,trap:res.trap,keyword:res.keyword,trap_type:res.trap_type,topic:ST.interQ.topic,method:'interleaving'});
     }
     ST.interFb={ok,explanation:res.explanation,trap:res.trap,keyword:res.keyword,next:res.next,errCtx};
+    // V12: persiste a próxima como pré-carregada
+    if(res.next && res.next.question){
+      DATA.preloadedQuestions = DATA.preloadedQuestions || {};
+      DATA.preloadedQuestions.interleaving = {q: res.next, generatedAt: Date.now()};
+      save();
+    }
   }catch(e){ST.interAnswered=false;console.error(e);}
   ST.interLoading=false;render();
 }
-function interNext(){if(ST.interFb?.next){ST.interQ=ST.interFb.next;saveAIQuestion('interleaving',ST.interQ,getMethodModel('interleaving'));ST.interTopics.push(ST.interFb.next.topic);ST.interFb=null;ST.interAnswered=false;render();}}
+function interNext(){
+  if(ST.interFb?.next){
+    ST.interQ=ST.interFb.next;
+    saveAIQuestion('interleaving',ST.interQ,getMethodModel('interleaving'));
+    ST.interTopics.push(ST.interFb.next.topic);
+    ST.interFb=null;ST.interAnswered=false;
+    if(DATA.preloadedQuestions?.interleaving){
+      delete DATA.preloadedQuestions.interleaving;
+      save();
+    }
+    render();
+  }
+}
 
 /* SRS */
 function srsDue(){return DATA.srs.cards.filter(c=>(c.nextReview||0)<=Date.now())}
@@ -18096,14 +18840,19 @@ async function extractPdfTextRich(file, onProgress){
     pages.push(pageText);
   }
   const text = pages.join('\n\n--- página ---\n\n');
-  const charsPerPage = total > 0 ? text.length / total : 0;
+  // V12: Limpa PII (informação pessoal/comercial) do texto extraído
+  // Remove: URLs, emails, redes sociais, nomes de professores, telefones
+  // Pra que: respeitar privacidade dos autores das apostilas e evitar que
+  // a IA gere conteúdo com referências pessoais não desejadas pelo usuário
+  const cleanText = sanitizePdfText(text);
+  const charsPerPage = total > 0 ? cleanText.length / total : 0;
 
   // Heurística pra detectar PDF escaneado: muito poucos caracteres por página
   // Texto normal tem 1500-3000 chars/pág. Menos de 100 chars/pág é provável imagem.
   const isScanned = total > 0 && charsPerPage < 100;
 
   return {
-    text,
+    text: cleanText,
     pageCount: total,
     fileSize: file.size,
     fileName: file.name,
@@ -18113,6 +18862,57 @@ async function extractPdfTextRich(file, onProgress){
     isScanned,
     charsPerPage: Math.round(charsPerPage)
   };
+}
+
+// V12: Sanitização de PII e referências comerciais em texto extraído de PDFs
+// Remove referências que não fazem parte do CONTEÚDO didático em si:
+// - URLs e domínios
+// - E-mails
+// - @username (Instagram, Twitter, TikTok, etc.)
+// - Telefones brasileiros
+// - Nomes de professores e cumprimentos do tipo "Prof. Fulano", "Professor Fulano"
+// - Linhas de copyright e crédito de autoria
+// Mantém o conteúdo didático intacto. Aplicado AUTOMATICAMENTE no parse do PDF.
+function sanitizePdfText(rawText){
+  if(!rawText) return rawText;
+  let text = rawText;
+
+  // 1. URLs (http://, https://, www.)
+  text = text.replace(/\b(?:https?:\/\/|www\.)[\w\-._~:\/?#\[\]@!$&'()*+,;=%]+/gi, '[link removido]');
+
+  // 2. E-mails
+  text = text.replace(/\b[\w._%+\-]+@[\w.\-]+\.[A-Za-z]{2,}\b/g, '[e-mail removido]');
+
+  // 3. @username (com pelo menos 3 chars depois do @)
+  text = text.replace(/(^|\s)@[\w.\-]{3,}/g, '$1[arroba removido]');
+
+  // 4. Telefones brasileiros — formatos comuns: (XX) XXXXX-XXXX, +55 XX XXXXX-XXXX
+  text = text.replace(/\(\d{2}\)\s*\d{4,5}[\s\-]?\d{4}/g, '[telefone removido]');
+  text = text.replace(/\+\s*55\s*\d{2}\s*\d{4,5}[\s\-]?\d{4}/g, '[telefone removido]');
+
+  // 5. Referências a professores — "Prof. Nome", "Professor Nome", "Prof.ª Nome"
+  // Captura nome com 1-3 palavras após "Prof"
+  text = text.replace(/\b(Prof(?:essor[a]?|ª|\.)?)\s+([A-ZÁÂÃÀÄÉÊÈËÍÎÌÏÓÔÕÒÖÚÛÙÜÇÑ][a-záâãàäéêèëíîìïóôõòöúûùüçñ]+(?:\s+(?:de|da|do|dos|das)?\s*[A-ZÁÂÃÀÄÉÊÈËÍÎÌÏÓÔÕÒÖÚÛÙÜÇÑ][a-záâãàäéêèëíîìïóôõòöúûùüçñ]+){0,2})/g, '[professor]');
+
+  // 6. Linhas que claramente são autoria/copyright
+  // Padrão "Prof. X" no início da linha já tratado acima
+  text = text.replace(/^\s*[©®™]\s*.{0,80}$/gm, '');
+  text = text.replace(/^\s*(?:Todos os direitos reservados|All rights reserved|Direitos autorais).{0,120}$/gim, '');
+
+  // 7. Redes sociais explícitas
+  text = text.replace(/\b(?:Instagram|Twitter|TikTok|Facebook|YouTube|LinkedIn|Telegram|WhatsApp)\s*:?\s*[\w.@\/\-]+/gi, '[rede social]');
+
+  // 8. CPF/CNPJ aparente
+  text = text.replace(/\b\d{3}\.\d{3}\.\d{3}\-\d{2}\b/g, '[CPF removido]');
+  text = text.replace(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2}\b/g, '[CNPJ removido]');
+
+  // 9. Limpa linhas que ficaram só com placeholders + espaços
+  text = text.replace(/^[\s\[\]a-záê]*remoção[\s\[\]]*$/gim, '');
+
+  // 10. Colapsa quebras de linha excessivas que possam ter sido criadas
+  text = text.replace(/\n{4,}/g, '\n\n\n');
+
+  return text.trim();
 }
 
 // Helper pra formatar tamanho de arquivo amigavelmente
@@ -25011,11 +25811,12 @@ function showCreateEditalModal(){
   const cancel = mkBtn('Cancelar','btn btn-sm');
   cancel.addEventListener('click',closeModal);
   actions.appendChild(cancel);
-  const generate = mkBtn('Sintetizar com Sonnet 4.6 →','btn btn-sm btn-p');
+  const generate = mk('button','btn btn-sm btn-p');
+  generate.innerHTML = 'Sintetizar com Sonnet 4.6 → ' + aiCostBadgeHTML('edital_synthesis');
   generate.addEventListener('click',async()=>{
     if(!state.name.trim()){alert('Dê um nome curto pra esta análise.');nIn.focus();return;}
     if(!state.text || state.text.trim().length < 200){alert('Cole o texto do edital ou anexe um PDF (mínimo 200 caracteres).');return;}
-    if(!confirm(`Sintetizar este edital? Vai consumir ~$0,30 em créditos. A análise leva 1-2 minutos.\n\nDeseja continuar?`)) return;
+    if(!confirm(`Sintetizar este edital? Vai consumir ~30 créditos (~$0,30). A análise leva 1-2 minutos.\n\nDeseja continuar?`)) return;
 
     // Cria o edital com status analyzing e fecha modal
     const edital = editalNew({
@@ -25363,21 +26164,18 @@ function renderAdminDashboard(){
 
   loadAdminContentStats(contentBody);
 
-  // === Card: Receita (placeholder até integrar Stripe/MP) ===
+  // === Card: Receita (V12 — dados reais via Supabase) ===
   const revCard = mk('section','admin-card admin-revenue');
   revCard.appendChild(adminSectionLabel('💰 Receita'));
   const revHead = mk('h2','admin-section-title');
-  revHead.textContent = 'Receita estimada';
+  revHead.textContent = 'Receita e assinantes';
   revCard.appendChild(revHead);
   const revBody = mk('div','admin-rev-body');
-  revBody.innerHTML = `
-    <div class="adm-rev-empty">
-      <p>📋 <b>Sistema de assinaturas ainda não implementado.</b></p>
-      <p style="margin:.5rem 0;color:var(--text3);font-size:12.5px;line-height:1.6">Quando os planos pagos estiverem ativos (V12 da fila), esta seção mostrará: receita mensal recorrente (MRR), assinantes ativos, churn, conversões da página BETA, etc.</p>
-      <p style="font-size:12px;color:var(--text3)"><b>Próxima etapa:</b> integrar Stripe ou Mercado Pago. Discussão pendente sobre planos.</p>
-    </div>`;
+  revBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando dados de receita...</div>';
   revCard.appendChild(revBody);
   wrap.appendChild(revCard);
+
+  loadAdminRevenueStats(revBody);
 
   // === Card: Health checks ===
   const healthCard = mk('section','admin-card');
@@ -25427,6 +26225,165 @@ function adminSectionLabel(text){
 }
 
 // Carrega dados de usuários (Supabase queries)
+// ============================================================================
+// V12 — Modal de gerenciamento de usuários (admin only)
+// ============================================================================
+// Permite ao admin listar, buscar e excluir usuários da plataforma.
+// Útil pra limpar contas de teste durante desenvolvimento.
+//
+// IMPORTANTE: A exclusão depende da função RPC admin_delete_user no Supabase.
+// Esta função usa SECURITY DEFINER e verifica que o caller é admin.
+// ============================================================================
+
+function showAdminUserManagementModal(){
+  if(!isAdminUser()){
+    alert('Apenas admins podem acessar essa função.');
+    return;
+  }
+  const m = mk('div');m.style.cssText='max-width:720px;max-height:85vh;overflow-y:auto';
+
+  const head = mk('div','source-toc-head');
+  head.innerHTML = `
+    <div class="sth-icon">👥</div>
+    <div class="sth-info">
+      <h2>Gerenciar usuários</h2>
+      <p>Listar, buscar e excluir contas (admin)</p>
+    </div>
+    <button type="button" class="sth-close" id="sth-close">×</button>
+  `;
+  m.appendChild(head);
+  setTimeout(()=>{
+    const c = head.querySelector('#sth-close');
+    if(c) c.addEventListener('click', closeModal);
+  },0);
+
+  // Aviso pra ser explícito
+  const warn = mk('div','admin-um-warn');
+  warn.innerHTML = `<b>⚠ Atenção:</b> exclusão é PERMANENTE. Remove o auth user, profile, dados sincronizados e todas as referências em outras tabelas. Confirme antes de excluir uma conta real.`;
+  m.appendChild(warn);
+
+  // Busca
+  const searchRow = mk('div','admin-um-search');
+  const searchInp = mk('input');
+  searchInp.type='text';
+  searchInp.placeholder='Buscar por username, email ou nome...';
+  searchInp.style.cssText='flex:1;padding:9px 12px;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text)';
+  searchRow.appendChild(searchInp);
+  const reloadBtn = mkBtn('🔄 Recarregar','btn btn-sm');
+  searchRow.appendChild(reloadBtn);
+  m.appendChild(searchRow);
+
+  // Lista
+  const listWrap = mk('div','admin-um-list');
+  listWrap.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--text3);font-size:13px"><span class="loading-spinner"></span> Carregando usuários...</div>';
+  m.appendChild(listWrap);
+
+  let allUsers = [];
+  let currentSearch = '';
+
+  async function loadUsers(){
+    listWrap.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--text3);font-size:13px"><span class="loading-spinner"></span> Carregando...</div>';
+    try{
+      const {data, error} = await supa
+        .from('profiles')
+        .select('id, username, display_name, created_at, target_type, target_exam_name')
+        .order('created_at', {ascending:false})
+        .limit(200);
+      if(error) throw error;
+      allUsers = data || [];
+      render();
+    }catch(e){
+      listWrap.innerHTML = `<p style="padding:1rem;color:var(--red-text)">Erro: ${escapeHTML(e.message||String(e))}</p>`;
+    }
+  }
+
+  function render(){
+    listWrap.innerHTML = '';
+    const filtered = currentSearch ? allUsers.filter(u=>{
+      const q = currentSearch.toLowerCase();
+      return (u.username||'').toLowerCase().includes(q) ||
+             (u.display_name||'').toLowerCase().includes(q) ||
+             (u.target_exam_name||'').toLowerCase().includes(q);
+    }) : allUsers;
+
+    if(filtered.length === 0){
+      listWrap.innerHTML = '<p style="padding:1.5rem;text-align:center;color:var(--text3);font-style:italic">Nenhum usuário encontrado.</p>';
+      return;
+    }
+
+    const info = mk('p');info.style.cssText='font-size:11.5px;color:var(--text3);margin:0 0 .5rem';
+    info.textContent = `Mostrando ${filtered.length} de ${allUsers.length} usuários`;
+    listWrap.appendChild(info);
+
+    filtered.forEach(u=>{
+      const row = mk('div','admin-um-row');
+      const date = new Date(u.created_at).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'});
+      const isCurrentAdmin = u.id === AUTH.user.id;
+      row.innerHTML = `
+        <div class="aum-info">
+          <div><b>@${escapeHTML(u.username||'sem username')}</b>${isCurrentAdmin ? ' <span class="aum-self">(você)</span>' : ''}</div>
+          <div class="aum-meta">${u.display_name ? escapeHTML(u.display_name) + ' · ' : ''}${u.target_exam_name ? escapeHTML(u.target_exam_name) + ' · ' : ''}${date}</div>
+        </div>
+        <div class="aum-actions"></div>
+      `;
+
+      const actions = row.querySelector('.aum-actions');
+      if(!isCurrentAdmin){
+        const delBtn = mkBtn('🗑 Excluir','btn btn-sm');
+        delBtn.style.cssText='color:var(--red-text);border-color:rgba(232,76,76,.30);font-size:11px;padding:4px 10px';
+        delBtn.addEventListener('click', async()=>{
+          // Dupla confirmação
+          if(!confirm(`Tem certeza que deseja excluir @${u.username}?\n\nIsso remove:\n• Conta de autenticação\n• Perfil público\n• Dados sincronizados\n• Recursos compartilhados\n• Todos os marcos e seguidores\n\nESSA AÇÃO É PERMANENTE.`)){
+            return;
+          }
+          const confirmText = prompt('Pra confirmar, digite o username "' + u.username + '":');
+          if(confirmText !== u.username){
+            alert('Confirmação não confere. Exclusão cancelada.');
+            return;
+          }
+          delBtn.disabled = true;
+          delBtn.textContent = 'Excluindo...';
+          try{
+            const {data: result, error} = await supa.rpc('admin_delete_user', {target_user_id: u.id});
+            if(error) throw error;
+            showToast(`✓ Usuário @${u.username} excluído`);
+            allUsers = allUsers.filter(x => x.id !== u.id);
+            render();
+          }catch(e){
+            // Se a função RPC ainda não existe no Supabase, mostra mensagem clara
+            const msg = (e.message || String(e)).toLowerCase();
+            if(msg.includes('admin_delete_user') || msg.includes('does not exist') || msg.includes('function')){
+              alert('A função admin_delete_user ainda não está configurada no Supabase. Você precisa rodar o SQL gralia-admin-functions.sql primeiro.\n\nErro: ' + e.message);
+            } else {
+              alert('Erro ao excluir: ' + e.message);
+            }
+            delBtn.disabled = false;
+            delBtn.textContent = '🗑 Excluir';
+          }
+        });
+        actions.appendChild(delBtn);
+      } else {
+        const note = mk('span');note.style.cssText='font-size:11px;color:var(--text3)';
+        note.textContent = 'conta admin';
+        actions.appendChild(note);
+      }
+      listWrap.appendChild(row);
+    });
+  }
+
+  let searchTimer;
+  searchInp.addEventListener('input', e=>{
+    currentSearch = e.target.value.trim();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(render, 200);
+  });
+  reloadBtn.addEventListener('click', loadUsers);
+
+  showModal(m);
+  loadUsers();
+  setTimeout(()=>searchInp.focus(), 100);
+}
+
 async function loadAdminUsersData(container){
   if(!supa){
     container.innerHTML = '<p class="admin-error">Supabase não configurado.</p>';
@@ -25493,7 +26450,7 @@ async function loadAdminUsersData(container){
       </div>
       <div class="ast-cell">
         <div class="ast-label">Vagas BETA restantes</div>
-        <div class="ast-value" style="color:${(500-(totalProfiles||0)) < 100 ? 'var(--amber-text)' : 'var(--accent-text)'}">${Math.max(0, 500-(totalProfiles||0))}</div>
+        <div class="ast-value" style="color:${(200-(totalProfiles||0)) < 50 ? 'var(--amber-text)' : 'var(--accent-text)'}">${Math.max(0, 200-(totalProfiles||0))}</div>
       </div>
     `;
     container.appendChild(stats);
@@ -25520,12 +26477,223 @@ async function loadAdminUsersData(container){
       });
       container.appendChild(rList);
     }
+
+    // V12: Botão pra abrir gerenciamento (deletar usuários teste etc.)
+    const manageBtn = mkBtn('🗑 Gerenciar usuários (excluir contas teste)','btn btn-sm');
+    manageBtn.style.cssText='margin-top:12px';
+    manageBtn.addEventListener('click', ()=>showAdminUserManagementModal());
+    container.appendChild(manageBtn);
   }catch(e){
     container.innerHTML = `<p class="admin-error">Erro ao carregar dados: ${escapeHTML(e.message||String(e))}</p>`;
   }
 }
 
 // Carrega stats de conteúdo
+// ============================================================================
+// V12 parte 2 — Stats de receita pra admin (MRR, assinantes ativos, churn)
+// ============================================================================
+// Mostra os números essenciais de produto pra você acompanhar saúde do negócio:
+// - MRR estimado (Monthly Recurring Revenue)
+// - Assinantes ativos por plano
+// - Novos assinantes nos últimos 7 e 30 dias
+// - Churn (cancelados nos últimos 30 dias)
+// - Taxa de conversão Trial → Pago
+// - Top-ups vendidos no mês corrente
+// ============================================================================
+async function loadAdminRevenueStats(container){
+  if(!supa){
+    container.innerHTML = '<p class="admin-error">Supabase não configurado.</p>';
+    return;
+  }
+  try{
+    const now = Date.now();
+    const day = 24*60*60*1000;
+    const sevenDaysAgo = new Date(now - 7*day).toISOString();
+    const thirtyDaysAgo = new Date(now - 30*day).toISOString();
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0,0,0,0);
+    const startOfMonthIso = startOfMonth.toISOString();
+
+    // === 1. Assinantes ativos por plano ===
+    // Conta apenas plans pagos com status active/trialing
+    const {data: activeSubsRaw, error: e1} = await supa
+      .from('subscriptions')
+      .select('plan_id, status, created_at, current_period_end')
+      .in('status', ['active','trialing']);
+    if(e1) throw e1;
+
+    const subsByPlan = {trial:0, estudante:0, concurseiro:0, pro:0};
+    let totalActive = 0;
+    let totalTrial = 0;
+    (activeSubsRaw||[]).forEach(s=>{
+      if(subsByPlan[s.plan_id] !== undefined) subsByPlan[s.plan_id]++;
+      if(s.plan_id === 'trial') totalTrial++;
+      else totalActive++;
+    });
+
+    // === 2. Buscar preços dos planos pra calcular MRR ===
+    const {data: plansRaw, error: e2} = await supa
+      .from('plans')
+      .select('id, price_brl, credits_per_month');
+    if(e2) throw e2;
+
+    const planPrices = {};
+    (plansRaw||[]).forEach(p => planPrices[p.id] = parseFloat(p.price_brl) || 0);
+
+    // MRR = soma de (assinantes_no_plano × preço_do_plano)
+    let mrr = 0;
+    Object.keys(subsByPlan).forEach(planId => {
+      if(planId === 'trial') return; // trial não conta pra MRR
+      mrr += subsByPlan[planId] * (planPrices[planId] || 0);
+    });
+
+    // ARR (Annual Recurring Revenue) = MRR × 12
+    const arr = mrr * 12;
+
+    // === 3. Novos assinantes (últimos 7 e 30 dias) ===
+    // "novo assinante" = primeira subscription paga (não trial)
+    const {count: newWeek, error: e3} = await supa
+      .from('subscriptions')
+      .select('*', {count:'exact', head:true})
+      .neq('plan_id','trial')
+      .gte('created_at', sevenDaysAgo);
+    if(e3) throw e3;
+
+    const {count: newMonth, error: e4} = await supa
+      .from('subscriptions')
+      .select('*', {count:'exact', head:true})
+      .neq('plan_id','trial')
+      .gte('created_at', thirtyDaysAgo);
+    if(e4) throw e4;
+
+    // === 4. Churn — cancelamentos nos últimos 30 dias ===
+    const {count: churnedMonth, error: e5} = await supa
+      .from('subscriptions')
+      .select('*', {count:'exact', head:true})
+      .eq('status','cancelled')
+      .gte('updated_at', thirtyDaysAgo);
+    if(e5) throw e5;
+
+    // Taxa de churn (%) = churn no mês ÷ assinantes no início do mês
+    // Aproximação simples: churn ÷ (ativo + churn)
+    const baseChurn = totalActive + (churnedMonth||0);
+    const churnRate = baseChurn > 0 ? Math.round(((churnedMonth||0) / baseChurn) * 100 * 10) / 10 : 0;
+
+    // === 5. Top-ups vendidos no mês corrente ===
+    const {data: topupsThisMonth, error: e6} = await supa
+      .from('topup_purchases')
+      .select('credits, price_brl')
+      .eq('mp_status','approved')
+      .gte('approved_at', startOfMonthIso);
+    if(e6) throw e6;
+
+    let topupRevenue = 0;
+    let topupCount = 0;
+    (topupsThisMonth||[]).forEach(t => {
+      topupRevenue += parseFloat(t.price_brl) || 0;
+      topupCount++;
+    });
+
+    // === Renderiza ===
+    container.innerHTML = '';
+
+    // Linha 1 — destaques principais
+    const mainStats = mk('div','admin-stats-grid');
+    const formatBrl = (v) => 'R$ ' + v.toFixed(2).replace('.',',');
+    mainStats.innerHTML = `
+      <div class="ast-cell">
+        <div class="ast-label">MRR estimado</div>
+        <div class="ast-value" style="color:var(--accent-text)">${formatBrl(mrr)}</div>
+      </div>
+      <div class="ast-cell">
+        <div class="ast-label">ARR (anualizado)</div>
+        <div class="ast-value">${formatBrl(arr)}</div>
+      </div>
+      <div class="ast-cell">
+        <div class="ast-label">Assinantes pagos</div>
+        <div class="ast-value" style="color:var(--gralia-purple)">${totalActive}</div>
+      </div>
+      <div class="ast-cell">
+        <div class="ast-label">Em trial</div>
+        <div class="ast-value">${totalTrial}</div>
+      </div>
+    `;
+    container.appendChild(mainStats);
+
+    // Linha 2 — métricas de movimento
+    const moveStats = mk('div','admin-stats-grid');
+    moveStats.style.cssText = 'margin-top:.875rem';
+    moveStats.innerHTML = `
+      <div class="ast-cell">
+        <div class="ast-label">Novos pagos (7d)</div>
+        <div class="ast-value" style="color:${(newWeek||0)>0?'var(--accent-text)':'var(--text3)'}">${newWeek||0}</div>
+      </div>
+      <div class="ast-cell">
+        <div class="ast-label">Novos pagos (30d)</div>
+        <div class="ast-value">${newMonth||0}</div>
+      </div>
+      <div class="ast-cell">
+        <div class="ast-label">Churn (30d)</div>
+        <div class="ast-value" style="color:${churnRate>5?'var(--red-text)':'var(--text)'}">${churnedMonth||0} <span style="font-size:11px;font-weight:500;color:var(--text3)">(${churnRate}%)</span></div>
+      </div>
+      <div class="ast-cell">
+        <div class="ast-label">Top-ups no mês</div>
+        <div class="ast-value">${formatBrl(topupRevenue)} <span style="font-size:11px;font-weight:500;color:var(--text3)">(${topupCount})</span></div>
+      </div>
+    `;
+    container.appendChild(moveStats);
+
+    // Distribuição por plano
+    if(totalActive > 0 || totalTrial > 0){
+      const distH = mk('h3','admin-sub-title');
+      distH.textContent = 'Distribuição por plano';
+      container.appendChild(distH);
+
+      const distList = mk('div','admin-rev-dist');
+      const planLabels = {trial:'Trial (grátis)', estudante:'Estudante', concurseiro:'Concurseiro', pro:'Pro'};
+      const planColors = {trial:'var(--text3)', estudante:'var(--blue-text)', concurseiro:'var(--gralia-purple)', pro:'var(--accent-text)'};
+      const total = totalActive + totalTrial;
+      Object.keys(subsByPlan).forEach(planId => {
+        const count = subsByPlan[planId];
+        if(count === 0) return;
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+        const row = mk('div','adm-rev-row');
+        row.innerHTML = `
+          <div class="arr-label">
+            <span class="arr-dot" style="background:${planColors[planId]}"></span>
+            <b>${planLabels[planId] || planId}</b>
+            ${planId !== 'trial' ? `<span class="arr-price">${formatBrl(planPrices[planId] || 0)}/mês</span>` : ''}
+          </div>
+          <div class="arr-track">
+            <div class="arr-fill" style="width:${pct}%;background:${planColors[planId]}"></div>
+          </div>
+          <div class="arr-num"><b>${count}</b> <span class="arr-pct">(${pct}%)</span></div>
+        `;
+        distList.appendChild(row);
+      });
+      container.appendChild(distList);
+    }
+
+    // Estado vazio amigável
+    if(totalActive === 0 && totalTrial === 0 && (newMonth||0) === 0){
+      const empty = mk('div','adm-rev-empty');
+      empty.style.marginTop = '1rem';
+      empty.innerHTML = `<p style="font-size:12.5px;color:var(--text3);line-height:1.6">📊 Sem assinantes ativos ainda. Os números vão aparecer aqui assim que os primeiros usuários assinarem.</p>`;
+      container.appendChild(empty);
+    }
+
+    // Hint sobre webhook
+    const hint = mk('p');
+    hint.style.cssText = 'margin:.875rem 0 0;font-size:11px;color:var(--text3);line-height:1.55;text-align:center';
+    hint.innerHTML = `MRR atualiza em tempo real conforme webhooks do Mercado Pago confirmam pagamentos.`;
+    container.appendChild(hint);
+
+  }catch(e){
+    container.innerHTML = `<p class="admin-error">Erro ao carregar receita: ${escapeHTML(e.message||String(e))}</p>`;
+  }
+}
+
 async function loadAdminContentStats(container){
   if(!supa){
     container.innerHTML = '<p class="admin-error">Supabase não configurado.</p>';
@@ -25872,6 +27040,20 @@ function renderPlans(){
   if(!isAuthed()){
     wrap.appendChild(infoBox('Faça login pra ver e assinar os planos.'));
     return wrap;
+  }
+
+  // V12: Se o usuário veio da landing com plano pré-selecionado, abre o modal direto
+  if(ST.preselectedPlan){
+    const preId = ST.preselectedPlan;
+    const preBilling = ST.preselectedBilling || 'monthly';
+    delete ST.preselectedPlan;
+    delete ST.preselectedBilling;
+    fetchPlans().then(plans=>{
+      const plan = plans.find(p => p.id === preId);
+      if(plan){
+        showSubscribeModal(plan, preBilling);
+      }
+    });
   }
 
   // Header
@@ -26599,115 +27781,244 @@ function renderForest(){
 
 // Constrói a cena SVG do pinhal
 function buildForestScene(trees){
-  // Grid: organiza árvores em formação natural
-  // Tamanho grande no fundo, pequeno na frente, posicionamento aleatório-controlado
-  const W = 800, H = 360;
+  // Cena estilizada do Pinhal de Araucárias
+  // Inspiração: ilustração de livro infantil contemporâneo, paleta sóbria do Paraná ao entardecer
+  // Profundidade em 5 camadas (céu/sol/montanhas/neblina/árvores) + gralha-azul detalhada
+  const W = 800, H = 380;
   const grouped = {ancient:[], mature:[], young:[], seed:[]};
   trees.forEach(t=>{
     if(grouped[t.type]) grouped[t.type].push(t);
     else grouped.seed.push(t);
   });
 
-  // Hash determinístico de posição (mesma árvore sempre no mesmo lugar)
+  // Hash determinístico de posição
   const hashPos = (id, max)=>{
     let hash = 0;
     for(let i=0;i<id.length;i++) hash = ((hash<<5) - hash) + id.charCodeAt(i);
     return Math.abs(hash) % max;
   };
 
-  // Container SVG
   const container = mk('div','forest-svg-wrap');
   let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" class="forest-svg">`;
 
-  // Sky gradient
+  // === DEFS — gradientes, filtros, padrões ===
   svg += `<defs>
+    <!-- Céu: do violeta profundo ao laranja-pessego do crepúsculo -->
     <linearGradient id="forSky" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1a3654"/>
-      <stop offset="60%" stop-color="#2c5b8a"/>
-      <stop offset="100%" stop-color="#4a7fa8"/>
+      <stop offset="0%" stop-color="#1e2548"/>
+      <stop offset="40%" stop-color="#3d3a5e"/>
+      <stop offset="75%" stop-color="#a96d6d"/>
+      <stop offset="100%" stop-color="#f0a878"/>
     </linearGradient>
-    <linearGradient id="forGround" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#3a5a3a"/>
-      <stop offset="100%" stop-color="#1f3a1f"/>
-    </linearGradient>
+    <!-- Sol/lua suave -->
     <radialGradient id="forSun" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#ffd28a" stop-opacity="0.8"/>
-      <stop offset="100%" stop-color="#ffd28a" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#ffe9b8" stop-opacity="0.95"/>
+      <stop offset="40%" stop-color="#ffd496" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#ffb070" stop-opacity="0"/>
     </radialGradient>
+    <!-- Halo do sol -->
+    <radialGradient id="forSunCore" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff5dc" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#ffd496" stop-opacity="0.85"/>
+    </radialGradient>
+    <!-- Montanhas distantes (azul-arroxeado) -->
+    <linearGradient id="forMtnFar" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3d3858" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#2a2640" stop-opacity="0.85"/>
+    </linearGradient>
+    <!-- Montanhas próximas (mais densas) -->
+    <linearGradient id="forMtnNear" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1f3138" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#0e1a1f" stop-opacity="1"/>
+    </linearGradient>
+    <!-- Solo verde profundo -->
+    <linearGradient id="forGround" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1f3328"/>
+      <stop offset="50%" stop-color="#162922"/>
+      <stop offset="100%" stop-color="#0a1612"/>
+    </linearGradient>
+    <!-- Neblina entre camadas -->
+    <linearGradient id="forMist" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#a96d6d" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#c08a7a" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#d4a08c" stop-opacity="0"/>
+    </linearGradient>
+    <!-- Cor das araucárias (4 tons por camada de profundidade) -->
+    <linearGradient id="treeAncient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1d3528"/>
+      <stop offset="100%" stop-color="#0f2018"/>
+    </linearGradient>
+    <linearGradient id="treeMature" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#264636"/>
+      <stop offset="100%" stop-color="#15291f"/>
+    </linearGradient>
+    <linearGradient id="treeYoung" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2e5644"/>
+      <stop offset="100%" stop-color="#1c3829"/>
+    </linearGradient>
+    <linearGradient id="treeSeed" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3d6e54"/>
+      <stop offset="100%" stop-color="#264a37"/>
+    </linearGradient>
+    <!-- Sombra suave para a gralha -->
+    <filter id="birdShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1.2"/>
+      <feOffset dx="0" dy="1" result="offsetblur"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.4"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
   </defs>`;
 
-  // Sky
-  svg += `<rect x="0" y="0" width="${W}" height="${H*0.7}" fill="url(#forSky)"/>`;
-  // Sol/lua sutil
-  svg += `<circle cx="${W*0.78}" cy="${H*0.20}" r="38" fill="url(#forSun)"/>`;
-  svg += `<circle cx="${W*0.78}" cy="${H*0.20}" r="14" fill="#ffe4a8" opacity="0.9"/>`;
-  // Pequenas estrelas (3 brilhos)
-  svg += `<circle cx="${W*0.15}" cy="${H*0.10}" r="1.2" fill="#fff" opacity="0.7"/>`;
-  svg += `<circle cx="${W*0.32}" cy="${H*0.18}" r="0.8" fill="#fff" opacity="0.6"/>`;
-  svg += `<circle cx="${W*0.55}" cy="${H*0.08}" r="1" fill="#fff" opacity="0.7"/>`;
-  // Ground
-  svg += `<rect x="0" y="${H*0.7}" width="${W}" height="${H*0.3}" fill="url(#forGround)"/>`;
-  // Distant mountains
-  svg += `<polygon points="0,${H*0.7} 120,${H*0.45} 220,${H*0.55} 350,${H*0.40} 480,${H*0.55} 600,${H*0.42} 720,${H*0.55} 800,${H*0.50} 800,${H*0.7}" fill="#1a2a3e" opacity="0.6"/>`;
+  // === CÉU ===
+  svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="url(#forSky)"/>`;
 
-  // Árvores em camadas — fundo (ancient grandes), depois mature, young, seed na frente
-  // Cada árvore: tronco + 3 níveis de copa de araucária (formato característico)
+  // === SOL/LUA — disco suave no horizonte ===
+  const sunCx = W*0.72, sunCy = H*0.42;
+  svg += `<circle cx="${sunCx}" cy="${sunCy}" r="80" fill="url(#forSun)"/>`;
+  svg += `<circle cx="${sunCx}" cy="${sunCy}" r="22" fill="url(#forSunCore)"/>`;
 
+  // === ESTRELAS — pontos discretos no alto ===
+  const stars = [
+    [0.08, 0.10, 1.2], [0.18, 0.06, 0.9], [0.26, 0.13, 1.0],
+    [0.42, 0.08, 1.1], [0.55, 0.05, 0.8], [0.88, 0.12, 0.9]
+  ];
+  stars.forEach(([sx, sy, r])=>{
+    svg += `<circle cx="${W*sx}" cy="${H*sy}" r="${r}" fill="#fff5dc" opacity="0.7"/>`;
+  });
+
+  // === MONTANHAS DISTANTES (camada mais clara, atrás) ===
+  // Path suave com curvas Bezier, não polígono geométrico
+  const groundY = H*0.72;
+  svg += `<path d="M 0 ${H*0.55}
+    Q ${W*0.08} ${H*0.42}, ${W*0.16} ${H*0.50}
+    T ${W*0.32} ${H*0.46}
+    Q ${W*0.42} ${H*0.38}, ${W*0.52} ${H*0.48}
+    T ${W*0.70} ${H*0.44}
+    Q ${W*0.82} ${H*0.36}, ${W*0.92} ${H*0.50}
+    L ${W} ${H*0.55} L ${W} ${groundY} L 0 ${groundY} Z"
+    fill="url(#forMtnFar)"/>`;
+
+  // === MONTANHAS PRÓXIMAS (camada mais escura, mais densa) ===
+  svg += `<path d="M 0 ${H*0.65}
+    Q ${W*0.10} ${H*0.55}, ${W*0.20} ${H*0.62}
+    T ${W*0.36} ${H*0.58}
+    Q ${W*0.48} ${H*0.50}, ${W*0.58} ${H*0.60}
+    T ${W*0.76} ${H*0.56}
+    Q ${W*0.88} ${H*0.48}, ${W} ${H*0.62}
+    L ${W} ${groundY} L 0 ${groundY} Z"
+    fill="url(#forMtnNear)"/>`;
+
+  // === NEBLINA ENTRE MONTANHAS E ÁRVORES ===
+  svg += `<rect x="0" y="${H*0.55}" width="${W}" height="${H*0.20}" fill="url(#forMist)"/>`;
+
+  // === SOLO ===
+  svg += `<rect x="0" y="${groundY}" width="${W}" height="${H - groundY}" fill="url(#forGround)"/>`;
+
+  // === NEBLINA RASTEIRA NO SOLO (ondas suaves) ===
+  svg += `<path d="M 0 ${groundY + 8}
+    Q ${W*0.15} ${groundY + 2}, ${W*0.30} ${groundY + 7}
+    T ${W*0.55} ${groundY + 5}
+    T ${W*0.80} ${groundY + 8}
+    L ${W} ${groundY + 6} L ${W} ${groundY + 16} L 0 ${groundY + 16} Z"
+    fill="#d4a08c" opacity="0.10"/>`;
+
+  // === ARAUCÁRIAS — silhuetas mais realistas ===
+  // Araucária angustifolia tem formato característico: tronco reto, copa em "guarda-chuva"
+  // com galhos horizontais que formam coroa achatada no topo
   function drawAraucaria(cx, cy, scale, type){
-    const cfg = TREE_TYPES[type];
-    const trunkW = 4 * scale;
-    const trunkH = 38 * scale;
+    const trunkW = 3.5 * scale;
+    const trunkH = 55 * scale;
     const top = cy - trunkH;
+    const grad = type==='ancient' ? 'treeAncient' :
+                 type==='mature' ? 'treeMature' :
+                 type==='young' ? 'treeYoung' : 'treeSeed';
     let s = '';
-    // Trunk
-    s += `<rect x="${cx - trunkW/2}" y="${top}" width="${trunkW}" height="${trunkH}" fill="${cfg.fillTrunk}" rx="1"/>`;
-    // Copa em 3-4 níveis (quanto mais velha, mais níveis)
-    const levels = type==='ancient'?5 : type==='mature'?4 : type==='young'?3 : 2;
-    const branchColor = cfg.fillTop;
-    for(let i=0; i<levels; i++){
-      const lvlY = top - (i * 14 * scale);
-      const lvlW = (24 - i*3.5) * scale;
-      s += `<ellipse cx="${cx}" cy="${lvlY}" rx="${lvlW}" ry="${5*scale}" fill="${branchColor}" opacity="${0.85 - i*0.05}"/>`;
+    // Tronco — afunilando levemente
+    s += `<path d="M ${cx - trunkW/2} ${cy}
+      L ${cx - trunkW*0.4} ${top + trunkH*0.3}
+      L ${cx - trunkW*0.3} ${top}
+      L ${cx + trunkW*0.3} ${top}
+      L ${cx + trunkW*0.4} ${top + trunkH*0.3}
+      L ${cx + trunkW/2} ${cy} Z"
+      fill="url(#${grad})" opacity="0.95"/>`;
+
+    // Galhos horizontais com pontas penduradas (coroa em guarda-chuva)
+    // Camadas de baixo pra cima, cada vez menores até o topo achatado
+    const layers = type==='ancient' ? 6 : type==='mature' ? 5 : type==='young' ? 4 : 3;
+    for(let i=0; i<layers; i++){
+      const ratio = i / layers;
+      const layerY = top - (i * 14 * scale) + 4*scale;
+      const layerW = (32 * (1 - ratio*0.55)) * scale;
+      const layerH = 4 * scale;
+      // Galho horizontal (elipse achatada)
+      s += `<ellipse cx="${cx}" cy="${layerY}" rx="${layerW}" ry="${layerH}" fill="url(#${grad})" opacity="${0.95 - i*0.04}"/>`;
+      // Pequenas pontas penduradas (3 por galho)
+      const tipCount = 3 + Math.floor((1-ratio)*2);
+      for(let k=0; k<tipCount; k++){
+        const tx = cx + (k - (tipCount-1)/2) * (layerW * 1.7 / tipCount);
+        const ty = layerY + layerH;
+        s += `<line x1="${tx}" y1="${layerY}" x2="${tx}" y2="${ty + 5*scale}" stroke="url(#${grad})" stroke-width="${0.7*scale}" opacity="0.85" stroke-linecap="round"/>`;
+      }
     }
-    // Topo pontiagudo
-    const tipY = top - levels*14*scale;
-    s += `<polygon points="${cx-3*scale},${tipY+3} ${cx+3*scale},${tipY+3} ${cx},${tipY-8*scale}" fill="${branchColor}"/>`;
+    // Topo achatado — coroa final
+    const crownY = top - layers*14*scale + 4*scale;
+    const crownW = 14 * scale;
+    s += `<ellipse cx="${cx}" cy="${crownY - 3*scale}" rx="${crownW}" ry="${3*scale}" fill="url(#${grad})" opacity="0.92"/>`;
+    s += `<ellipse cx="${cx}" cy="${crownY - 6*scale}" rx="${crownW*0.7}" ry="${2.5*scale}" fill="url(#${grad})" opacity="0.88"/>`;
     return s;
   }
 
-  // Camada 1: ancients (mais ao fundo)
+  // Camadas (mais distantes maiores e atrás, mais próximos menores e na frente)
   grouped.ancient.forEach((t, i)=>{
-    const x = 60 + hashPos(t.id, W - 120);
-    const y = H * 0.78 + hashPos(t.id+'y', 30);
-    svg += drawAraucaria(x, y, 1.4, 'ancient');
+    const x = 80 + hashPos(t.id, W - 160);
+    const y = H * 0.76 + hashPos(t.id+'y', 14);
+    svg += drawAraucaria(x, y, 1.5, 'ancient');
   });
-  // Camada 2: mature
   grouped.mature.forEach((t, i)=>{
-    const x = 50 + hashPos(t.id, W - 100);
-    const y = H * 0.83 + hashPos(t.id+'y', 25);
-    svg += drawAraucaria(x, y, 1.0, 'mature');
+    const x = 60 + hashPos(t.id, W - 120);
+    const y = H * 0.82 + hashPos(t.id+'y', 18);
+    svg += drawAraucaria(x, y, 1.1, 'mature');
   });
-  // Camada 3: young
   grouped.young.forEach((t, i)=>{
     const x = 40 + hashPos(t.id, W - 80);
-    const y = H * 0.88 + hashPos(t.id+'y', 20);
-    svg += drawAraucaria(x, y, 0.7, 'young');
+    const y = H * 0.89 + hashPos(t.id+'y', 14);
+    svg += drawAraucaria(x, y, 0.75, 'young');
   });
-  // Camada 4: seeds (mudas — na frente)
   grouped.seed.forEach((t, i)=>{
-    const x = 30 + hashPos(t.id, W - 60);
-    const y = H * 0.93 + hashPos(t.id+'y', 15);
-    svg += drawAraucaria(x, y, 0.45, 'seed');
+    const x = 25 + hashPos(t.id, W - 50);
+    const y = H * 0.94 + hashPos(t.id+'y', 10);
+    svg += drawAraucaria(x, y, 0.5, 'seed');
   });
 
-  // Gralha-azul voando (1 sempre, símbolo da marca)
-  // Posição animada via CSS
+  // === GRALHA-AZUL DETALHADA ===
+  // Cyanocorax caeruleus tem corpo azul-escuro intenso, peito creme,
+  // crista preta característica, asas azul-cobalto, cauda longa
+  // Animação CSS faz a posição variar em loop
   svg += `
-    <g class="forest-bird" transform="translate(${W*0.15},${H*0.30})">
-      <ellipse cx="0" cy="0" rx="9" ry="4" fill="#2c5b8a"/>
-      <path d="M -8 -2 Q -14 -8 -22 -4 L -10 0 Z" fill="#1a3654"/>
-      <path d="M 8 -2 Q 14 -8 22 -4 L 10 0 Z" fill="#1a3654"/>
-      <circle cx="6" cy="-1" r="1.5" fill="#000"/>
+    <g class="forest-bird" filter="url(#birdShadow)">
+      <!-- Corpo / barriga (creme claro pra contrastar com a silhueta escura) -->
+      <ellipse cx="0" cy="2" rx="9" ry="6" fill="#f5e8d8" opacity="0.95"/>
+      <!-- Peito + corpo principal (azul-cobalto profundo) -->
+      <path d="M -8 -1 Q -10 -5 -7 -7 Q -2 -9 4 -8 Q 9 -6 11 -2 Q 11 3 8 5 Q 3 6 -2 5 Q -7 3 -8 -1 Z"
+            fill="#2c5b9e"/>
+      <!-- Cabeça (mais escura, azul-marinho) -->
+      <circle cx="6" cy="-3" r="5" fill="#1a3a6e"/>
+      <!-- Crista característica (penas pretas pra cima) -->
+      <path d="M 4 -7 Q 5 -11 7 -10 M 6 -8 Q 7 -12 9 -10 M 8 -7 Q 9 -10 10 -8"
+            stroke="#0a1f3d" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+      <!-- Asa esquerda (estendida, animada) -->
+      <path d="M -5 -2 Q -14 -7 -22 -4 Q -18 1 -10 2 Q -7 1 -5 -2 Z"
+            fill="#1f4480" class="forest-bird-wing-l"/>
+      <!-- Asa direita (estendida, animada) -->
+      <path d="M 5 -2 Q 14 -7 22 -4 Q 18 1 10 2 Q 7 1 5 -2 Z"
+            fill="#1f4480" class="forest-bird-wing-r"/>
+      <!-- Cauda comprida (azul-cobalto) -->
+      <path d="M -8 1 L -16 5 L -14 7 L -7 4 Z" fill="#2c5b9e"/>
+      <!-- Bico curto e amarelado -->
+      <path d="M 11 -3 L 14 -3 L 12 -1 Z" fill="#d8a040"/>
+      <!-- Olho com brilho -->
+      <circle cx="7" cy="-4" r="1.4" fill="#0a1020"/>
+      <circle cx="7.4" cy="-4.4" r="0.5" fill="#fff" opacity="0.9"/>
     </g>
   `;
 
@@ -31221,8 +32532,12 @@ async function initAuth(){
       });
       fetchQuota().then(()=>render()).catch(()=>{});
       fetchUserProfile(true).then(()=>render()).catch(()=>{});
-      // V12: Carrega dados de assinatura do usuário
-      fetchSubscription(true).then(()=>render()).catch(()=>{});
+      // V12: Carrega dados de assinatura do usuário + checa notificações
+      fetchSubscription(true).then(()=>{
+        render();
+        // Após carregar subscription, checa eventos pra notificar
+        setTimeout(()=>checkSubscriptionNotifications(), 800);
+      }).catch(()=>{});
       render();
       return;
     }
@@ -31231,8 +32546,13 @@ async function initAuth(){
       // Login novo de fato (usuário acabou de fazer signin/signup nesta sessão)
       ST.showAuth = false;
       DATA.welcomeShown = true;
-      // Força redirecionamento pra Painel (dashboard) — é o ponto de entrada natural
-      ST.view = 'dashboard';
+      // V12: se usuário veio da landing escolhendo um plano, redireciona pra Plans
+      if(ST.preselectedPlan){
+        ST.view = 'plans';
+      } else {
+        // Força redirecionamento pra Painel (dashboard) — é o ponto de entrada natural
+        ST.view = 'dashboard';
+      }
       ST.navStack = [];
       // Garante que setup foi marcado (CTA da landing setou, mas se entrou direto no /auth pode não ter setado)
       if(DATA.setup === undefined || DATA.setup === false){
@@ -31245,8 +32565,11 @@ async function initAuth(){
       fetchUserProfile(true).then(()=>render()).catch(err=>{
         console.warn('[profile] failed to load on SIGNED_IN:', err.message);
       });
-      // V12: Carrega dados de assinatura do usuário
-      fetchSubscription(true).then(()=>render()).catch(()=>{});
+      // V12: Carrega dados de assinatura do usuário + checa notificações
+      fetchSubscription(true).then(()=>{
+        render();
+        setTimeout(()=>checkSubscriptionNotifications(), 1500);
+      }).catch(()=>{});
       // Mostra hint amigável avisando sobre a aba Config
       setTimeout(()=>{
         try{ showToast('👋 Bem-vindo ao Gralia! Não esqueça de personalizar seu perfil em Config quando puder.'); }catch(e){}
@@ -31264,6 +32587,10 @@ async function initAuth(){
       SUBSCRIPTION.data = null;
       SUBSCRIPTION.loaded = false;
       SUBSCRIPTION.lastFetchedAt = null;
+      // V12: Limpa notification keys pra não mostrar notificações de conta anterior
+      try{
+        Object.values(NOTIFICATION_KEYS).forEach(k => localStorage.removeItem(k));
+      }catch(_){}
     }
     render();
   });
