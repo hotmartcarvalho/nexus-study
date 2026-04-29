@@ -1665,9 +1665,11 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 .adm-health-item{display:flex;align-items:center;gap:10px;padding:.625rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:8px}
 .adm-health-item.ok{border-left:3px solid var(--accent)}
 .adm-health-item.fail{border-left:3px solid var(--red);background:rgba(232,76,76,.03)}
+.adm-health-item.pending{border-left:3px solid var(--text3);opacity:.85}
 .ahi-icon{font-size:18px;flex-shrink:0;width:22px;text-align:center;font-weight:800}
 .adm-health-item.ok .ahi-icon{color:var(--accent-text)}
 .adm-health-item.fail .ahi-icon{color:var(--red-text)}
+.adm-health-item.pending .ahi-icon{color:var(--text3)}
 .ahi-text{flex:1}
 .ahi-text b{display:block;font-size:13px;color:var(--text);font-weight:700;margin-bottom:2px}
 .ahi-text span{font-size:11.5px;color:var(--text3)}
@@ -2379,6 +2381,30 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 .retention-buttons{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 
 .cancel-final-card{padding:1.25rem 1.375rem;background:var(--surface);border:1px solid var(--border);border-radius:12px}
+
+/* ============================================================ */
+/* V12 — Badge de custo de IA */
+/* ============================================================ */
+.ai-cost-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:rgba(128,66,250,.10);color:var(--gralia-purple);border:1px solid rgba(128,66,250,.20);border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.2px;line-height:1.4;white-space:nowrap;vertical-align:middle}
+.ai-cost-badge.lg{font-size:11px;padding:3px 9px}
+.ai-cost-badge .acb-icon{font-size:9px;line-height:1}
+.ai-cost-badge.lg .acb-icon{font-size:10.5px}
+.ai-cost-badge .acb-text{font-weight:700}
+button .ai-cost-badge{margin-left:6px;background:rgba(255,255,255,.18);color:inherit;border-color:rgba(255,255,255,.30)}
+.btn-p .ai-cost-badge{background:rgba(255,255,255,.22);color:#fff;border-color:rgba(255,255,255,.35)}
+
+/* Timeline modal de paginação */
+.timeline-modal-list{display:flex;flex-direction:column;gap:0;max-height:55vh;overflow-y:auto;padding:0 4px;margin-bottom:1rem;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
+.timeline-modal-list .av2-item{margin:0;padding:.75rem .875rem;border-bottom:1px solid var(--border)}
+.timeline-modal-list .av2-item:last-child{border-bottom:none}
+.timeline-modal-pag{display:flex;justify-content:center;align-items:center;gap:14px;padding-top:.75rem;border-top:1px solid var(--border);flex-wrap:wrap}
+.tmp-info{font-size:12px;color:var(--text2);text-align:center}
+.tmp-info b{color:var(--text);font-weight:700}
+
+/* Milestone item clicável (publicações da rede) */
+.milestone-item.clickable{cursor:pointer;transition:all .15s;border-radius:8px}
+.milestone-item.clickable:hover{background:rgba(128,66,250,.04);transform:translateY(-1px)}
+.milestone-item.clickable:hover .ms-text{color:var(--gralia-purple)}
 
 /* ====== MAPA DA MATÉRIA ====== */
 .map-filters{display:flex;flex-direction:column;gap:.4rem;margin-bottom:.875rem;padding:.75rem;background:var(--surface2);border-radius:var(--rs)}
@@ -4429,6 +4455,8 @@ async function detectAndRecordMilestones(){
 async function recordPublishMilestone(resource){
   if(!resource || !resource.id) return;
   await recordMilestone('resource_published', resource.id, {
+    resource_id: resource.id,           // V12: pra clicar e abrir
+    resource_type: resource.resource_type, // V12: pra mostrar tipo correto
     title: resource.title,
     type: resource.resource_type,
     discipline: resource.discipline
@@ -6063,11 +6091,10 @@ function defaultData(){
   return {
     setup:false,
     welcomeShown:false,
-    config:{apiKey:'',model:'claude-haiku-4-5-20251001',notifications:true,examName:'Polícia Legislativa Federal',examDate:'2026-04-26T13:00:00-03:00',userName:'',examBank:'',examRole:''},
+    // Config inicial vem VAZIO — usuário preenche em "Sobre o concurso" no Painel
+    // V12: corrige bug onde toda nova conta vinha com dados específicos do dev
+    config:{apiKey:'',model:'claude-haiku-4-5-20251001',notifications:true,examName:'',examDate:null,userName:'',examBank:'',examRole:''},
     disciplines:[
-      {id:'d1',name:'Atividade de Inteligência',color:'#0F6E56',active:true},
-      {id:'d2',name:'Criminologia',color:'#185FA5',active:true},
-      {id:'d3',name:'Criminalística',color:'#6C5CE7',active:true},
       {id:'d4',name:'Outros',color:'#B07316',active:true}
     ],
     sources:[],
@@ -9021,8 +9048,9 @@ function renderDashboard(){
   }
 
   // ===== Streak contemplativo (sutil) =====
+  // V12: só mostra se houver pelo menos 2 dias ativos (não pra usuário que entrou hoje)
   const streak = computeStreakStats();
-  if(streak.totalActiveDays > 0){
+  if(streak.totalActiveDays >= 2){
     const streakCard = mk('div','dash-streak-card');
     let mainText, mainNum, secText;
     if(streak.current>0){
@@ -9046,8 +9074,10 @@ function renderDashboard(){
   }
 
   // ===== Feed de marcos sociais (sutil) =====
-  // Mostra os últimos 5 marcos das pessoas que você segue
-  if(isAuthed() && AUTH.profile){
+  // V12: só aparece se o usuário tem alguma atividade real (>= 5 atividades)
+  // pra novos usuários não verem essa seção logo de cara
+  const totalActivityForFeed = (DATA.session?.total||0) + (DATA.errors||[]).length + (DATA.sources||[]).length;
+  if(isAuthed() && AUTH.profile && totalActivityForFeed >= 5){
     const feedCard = mk('div','dash-feed-card card');
     feedCard.innerHTML = `
       <div class="dfc-head">
@@ -9059,23 +9089,31 @@ function renderDashboard(){
     feedCard.querySelector('.dfc-see-all').addEventListener('click',()=>{
       ST.view='feed';render();
     });
-    wrap.appendChild(feedCard);
+    let appended = false;
     // Carrega feed em background
     fetchFeed(5, 0).then(result=>{
       const body = feedCard.querySelector('.dfc-body');
       if(!body) return;
       body.innerHTML = '';
       if(!result.items || result.items.length === 0){
-        body.innerHTML = '<div class="txt3" style="font-size:12.5px;padding:.5rem 0;line-height:1.5">Você ainda não segue ninguém — ou as pessoas que segue ainda não atingiram marcos. <button class="link-btn" onclick="ST.view=\'discover\';render()">Descobrir pessoas →</button></div>';
+        // V12: se vazio, não mostra o card de jeito nenhum (estava mostrando "você não segue ninguém")
+        // O usuário pode ir pro Descobrir via outro caminho
+        if(feedCard.parentNode) feedCard.parentNode.removeChild(feedCard);
         return;
+      }
+      // Mostra o card só se TEM conteúdo
+      if(!appended && wrap){
+        appended = true;
+        // O card já foi appendado se chegou aqui
       }
       result.items.forEach(item=>{
         body.appendChild(renderMilestoneItem(item));
       });
     }).catch(()=>{
-      const body = feedCard.querySelector('.dfc-body');
-      if(body) body.innerHTML = '<div class="txt3" style="font-size:12px">Não foi possível carregar o feed</div>';
+      // Em caso de erro, esconde
+      if(feedCard.parentNode) feedCard.parentNode.removeChild(feedCard);
     });
+    wrap.appendChild(feedCard);
   }
 
   // ===== WARNINGS — empty state or missing config =====
@@ -9094,8 +9132,9 @@ function renderDashboard(){
   const nextAction = buildNextActionCard(dueSrs,errorsNoCard,overconf,s);
   if(nextAction)wrap.appendChild(nextAction);
 
-  // ===== INSIGHT =====
-  wrap.appendChild(buildInsightCard());
+  // ===== INSIGHT (só aparece com atividade mínima) =====
+  const insightCard = buildInsightCard();
+  if(insightCard) wrap.appendChild(insightCard);
 
   // ===== TIMELINE — atividade recente =====
   const tl = buildActivityTimeline();
@@ -9185,6 +9224,56 @@ function renderDashboard(){
 }
 
 // Build a single "next action" recommendation card — only 1 CTA, zero ambiguity
+// ============================================================================
+// V12 — Indicação de custo em créditos das funções de IA
+// ============================================================================
+// Cada função de IA tem um custo aproximado em créditos. Esta tabela permite
+// mostrar pro usuário quantos créditos ele vai gastar antes de clicar.
+// Os valores são baseados no histórico de uso típico com Haiku 4.5 + cache.
+// ============================================================================
+
+const AI_COSTS = {
+  // Métodos de estudo
+  practice_question: 1,        // Gerar 1 questão (Prática, Drill, Calibração, etc.)
+  practice_batch: 5,           // Gerar lote de 5 questões
+  flashcard_create: 1,         // Criar flashcard via IA
+  flashcard_explanation: 1,    // Explicar flashcard ("Não entendi")
+  topic_profile: 8,            // Perfil de matéria completo
+  smart_organize: 3,           // Organizar conteúdo de fonte
+  insight_daily: 1,            // Insight diário do painel
+  question_explanation: 1,     // Explicação de uma questão
+
+  // Funções avançadas
+  edital_synthesis: 30,        // Síntese de edital (Sonnet 4.6, mais caro)
+  topic_summary: 2,            // Resumo de tópico
+  examiner_review: 2,          // Modo Examinador
+  simulado_generation: 30,     // Geração de simulado completo (15-20 questões)
+  drill_session: 5             // Sessão completa de Drill (várias questões)
+};
+
+// Cria o badge visual "~X créditos"
+function aiCostBadge(costKey, options){
+  const cost = typeof costKey === 'number' ? costKey : (AI_COSTS[costKey] || 1);
+  const opts = options || {};
+  const span = document.createElement('span');
+  span.className = 'ai-cost-badge' + (opts.size === 'lg' ? ' lg' : '') + (opts.tone || '');
+  const prefix = opts.prefix === false ? '' : '~';
+  const label = opts.label || (cost === 1 ? 'crédito' : 'créditos');
+  span.innerHTML = `<span class="acb-icon">⚡</span><span class="acb-text">${prefix}${cost} ${label}</span>`;
+  span.title = `Esta ação consome aproximadamente ${cost} ${label} de IA`;
+  return span;
+}
+
+// Helper conveniente: retorna HTML inline pra usar em innerHTML
+function aiCostBadgeHTML(costKey, options){
+  const cost = typeof costKey === 'number' ? costKey : (AI_COSTS[costKey] || 1);
+  const opts = options || {};
+  const cls = 'ai-cost-badge' + (opts.size === 'lg' ? ' lg' : '');
+  const prefix = opts.prefix === false ? '' : '~';
+  const label = opts.label || (cost === 1 ? 'crédito' : 'créditos');
+  return `<span class="${cls}" title="Esta ação consome aproximadamente ${cost} ${label} de IA"><span class="acb-icon">⚡</span><span class="acb-text">${prefix}${cost} ${label}</span></span>`;
+}
+
 function buildNextActionCard(dueSrs,errorsNoCard,overconf,sess){
   // Priority order: SRS due > recent errors without card > calibration warning > practice
   let rec = null;
@@ -9363,7 +9452,11 @@ function buildActivityTimeline(){
 
   // Ordena mais recente primeiro
   filtered.sort((a,b)=>b.at-a.at);
-  const shown = filtered.slice(0,10);
+
+  // V12: Reduzido de 10 pra 5 eventos visíveis por padrão; "Ver todos" abre modal
+  const TIMELINE_VISIBLE = 5;
+  const shown = filtered.slice(0, TIMELINE_VISIBLE);
+  const hasMore = filtered.length > TIMELINE_VISIBLE;
 
   // Agrupa em "Hoje" / "Ontem" / "Antes"
   const today = new Date();today.setHours(0,0,0,0);
@@ -9437,7 +9530,84 @@ function buildActivityTimeline(){
   });
 
   card.appendChild(body);
+
+  // V12: Botão "Ver todos" se houver mais eventos (paginação via modal)
+  if(hasMore){
+    const seeAllBtn = mkBtn('Ver todos os ' + filtered.length + ' eventos →', 'btn btn-sm');
+    seeAllBtn.style.cssText='width:100%;margin-top:.625rem;justify-content:center';
+    seeAllBtn.addEventListener('click', ()=>{
+      showFullTimelineModal(filtered);
+    });
+    card.appendChild(seeAllBtn);
+  }
   return card;
+}
+
+// V12: Modal pra ver linha do tempo completa com paginação
+function showFullTimelineModal(allEvents){
+  const m = mk('div');m.style.cssText='max-width:680px;max-height:85vh;overflow-y:auto';
+  let currentPage = 0;
+  const PER_PAGE = 20;
+
+  const head = mk('div','source-toc-head');
+  head.innerHTML = `
+    <div class="sth-icon">📜</div>
+    <div class="sth-info">
+      <h2>Linha do tempo completa</h2>
+      <p>${allEvents.length} eventos nas últimas 48h</p>
+    </div>
+    <button type="button" class="sth-close" id="sth-close">×</button>
+  `;
+  m.appendChild(head);
+  setTimeout(()=>{
+    const c = head.querySelector('#sth-close');
+    if(c) c.addEventListener('click', closeModal);
+  }, 0);
+
+  const listWrap = mk('div','timeline-modal-list');
+  m.appendChild(listWrap);
+
+  const pagControls = mk('div','timeline-modal-pag');
+  m.appendChild(pagControls);
+
+  function renderPage(){
+    listWrap.innerHTML = '';
+    const start = currentPage * PER_PAGE;
+    const end = Math.min(start + PER_PAGE, allEvents.length);
+    const slice = allEvents.slice(start, end);
+    let idx = 0;
+    slice.forEach(ev=>{
+      listWrap.appendChild(buildTimelineItem(ev, idx++));
+    });
+    pagControls.innerHTML = '';
+    const totalPages = Math.ceil(allEvents.length / PER_PAGE);
+    if(totalPages > 1){
+      const prev = mkBtn('← Anterior', 'btn btn-sm');
+      prev.disabled = currentPage === 0;
+      prev.addEventListener('click', ()=>{
+        currentPage--;
+        renderPage();
+        listWrap.scrollTo({top:0, behavior:'smooth'});
+      });
+      pagControls.appendChild(prev);
+
+      const info = mk('span','tmp-info');
+      info.innerHTML = `Página <b>${currentPage+1}</b> de <b>${totalPages}</b> · mostrando <b>${start+1}-${end}</b> de <b>${allEvents.length}</b>`;
+      pagControls.appendChild(info);
+
+      const next = mkBtn('Próxima →', 'btn btn-sm');
+      next.disabled = currentPage >= totalPages - 1;
+      next.addEventListener('click', ()=>{
+        currentPage++;
+        renderPage();
+        listWrap.scrollTo({top:0, behavior:'smooth'});
+      });
+      pagControls.appendChild(next);
+    }
+  }
+  renderPage();
+
+  showModal(m);
 }
 
 // Renderiza um item individual da timeline
@@ -12651,7 +12821,8 @@ function renderMapTopicDetail(map){
     const info = mk('p','txt3');info.style.marginBottom='.5rem';
     info.textContent='Ainda sem resumo. Gere um agora (usa o conteúdo carregado, cacheado permanentemente).';
     teoriaSec.appendChild(info);
-    const genBtn = mkBtn('📖 Gerar resumo','btn btn-p btn-sm');
+    const genBtn = mk('button','btn btn-p btn-sm');
+    genBtn.innerHTML = '📖 Gerar resumo ' + aiCostBadgeHTML('topic_summary');
     genBtn.addEventListener('click',async()=>{
       genBtn.disabled=true;genBtn.textContent='Gerando...';
       try{await generateTopicSummary(sel.disciplineId,sel.rawTopic||entry.name);}catch(e){alert('Erro: '+(e.message||e));}
@@ -16414,7 +16585,8 @@ function renderSimulado(){
     card.appendChild(buildModelPicker('simulado'));
     const lastB = buildLastGenBadge('simulado','question');
     if(lastB){lastB.style.marginBottom='.5rem';card.appendChild(lastB);}
-    const b = mkBtn('Gerar simulado →','btn btn-p');
+    const b = mk('button','btn btn-p');
+    b.innerHTML = 'Gerar simulado → ' + aiCostBadgeHTML('simulado_generation');
     b.style.marginTop='.5rem';
     b.addEventListener('click',()=>simGenerate(parseInt(s1.value),parseInt(s2.value),wrap));
     card.appendChild(b);
@@ -19574,6 +19746,19 @@ SAÍDA (JSON puro, sem markdown):
 
 // Render the insight card component on dashboard
 function buildInsightCard(){
+  // V12: Threshold mínimo — não mostra insight se conta tem pouca atividade.
+  // Evita poluição visual pra usuários novos que ainda não usaram a plataforma.
+  const totalQuestions = (DATA.session?.total||0);
+  const totalErrors = (DATA.errors||[]).length;
+  const totalCards = (DATA.srs?.cards||[]).length;
+  const totalSources = (DATA.sources||[]).length;
+  const totalActivity = totalQuestions + totalErrors + totalCards + totalSources;
+
+  // Threshold: pelo menos 10 atividades acumuladas pra considerar "usuário ativo"
+  if(totalActivity < 10){
+    return null;
+  }
+
   const wrap = mk('div','insight-card');
   const dk = dayKey();
   const cached = DATA.insights[dk];
@@ -20215,6 +20400,9 @@ function renderMilestoneItem(m){
   const item = mk('div','milestone-item');
   // Determina ícone e texto por tipo
   let icon = '🎯', text = '', subtext = '';
+  // V12: marca pra abrir resource quando é publicação
+  let resourceId = null;
+  let resourceType = null;
   const author = `<button class="link-btn ms-author" onclick="navigateToProfile('${escapeHTML(m.username)}')">@${escapeHTML(m.username)}</button>`;
   switch(m.kind){
     case 'goal_completed':{
@@ -20245,10 +20433,22 @@ function renderMilestoneItem(m){
       break;
     }
     case 'resource_published':{
-      icon = '🌐';
+      // V12 fix: detecta o tipo correto pelo payload (caderno/fonte/perfil/edital)
+      const rType = m.payload?.resource_type || m.payload?.type || 'caderno';
+      const typeLabels = {
+        caderno: {icon:'📝', label:'um caderno'},
+        fonte: {icon:'📚', label:'uma fonte'},
+        perfil_topico: {icon:'🧠', label:'um perfil de tópico'},
+        edital: {icon:'📋', label:'a síntese de um edital'}
+      };
+      const cfg = typeLabels[rType] || typeLabels.caderno;
+      icon = cfg.icon;
       const title = m.payload?.title || 'um material';
-      text = `${author} publicou um caderno`;
+      text = `${author} publicou ${cfg.label}`;
       subtext = title;
+      // Marca pra abrir o recurso ao clicar
+      resourceId = m.payload?.resource_id || null;
+      resourceType = rType;
       break;
     }
     case 'resource_useful_milestone':{
@@ -20268,6 +20468,46 @@ function renderMilestoneItem(m){
       <div class="ms-when">${formatRelativeDate(m.created_at)}</div>
     </div>
   `;
+  // V12: Se é publicação com resource_id, torna clicável pra abrir o recurso
+  if(resourceId && resourceType){
+    item.classList.add('clickable');
+    item.style.cursor = 'pointer';
+    item.title = 'Clique pra abrir o ' + resourceType;
+    item.addEventListener('click', async(e)=>{
+      // Evita que clique no @username (que tem seu próprio handler) abra recurso
+      if(e.target.closest('.ms-author')) return;
+      try{
+        // Busca o recurso na shared_resources e abre modal de visualização
+        const {data: res, error} = await supa
+          .from('shared_resources')
+          .select('*, profiles!shared_resources_owner_id_fkey(username)')
+          .eq('id', resourceId)
+          .single();
+        if(error || !res){
+          alert('Esse recurso não está mais disponível.');
+          return;
+        }
+        // Mapeia pro formato esperado pelo modal de import
+        const item = {
+          id: res.id,
+          owner_id: res.owner_id,
+          title: res.title,
+          description: res.description,
+          resource_type: res.resource_type,
+          discipline: res.discipline,
+          topic: res.topic,
+          payload: res.payload,
+          owner_username: res.profiles?.username
+        };
+        if(typeof showImportConfirmModal === 'function'){
+          showImportConfirmModal(item);
+        }
+      }catch(e){
+        console.error('[milestone-click]', e);
+        alert('Erro ao abrir recurso: ' + (e.message || e));
+      }
+    });
+  }
   return item;
 }
 
@@ -25377,19 +25617,28 @@ async function loadAdminContentStats(container){
 }
 
 // Health checks
-async function renderHealthChecks(container){
-  container.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Testando serviços...</div>';
+async function renderHealthChecks(container, opts){
+  // V12 fix: por padrão, NÃO testa API (consome créditos!).
+  // Só testa Supabase DB e Auth (queries normais, sem custo).
+  // Pra testar API, usuário precisa clicar no botão "Testar API agora" (custo 1 crédito).
+  const includeApiTest = opts && opts.includeApiTest;
+
+  container.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Verificando serviços...</div>';
   const checks = [];
 
-  // Test API endpoint
-  try{
-    const r = await apiGenerate({model:'claude-haiku-4-5-20251001',max_tokens:5,messages:[{role:'user',content:'oi'}]});
-    checks.push({name:'API Anthropic (via Vercel)', ok: r.ok, detail: r.ok?'Respondendo normalmente':`Erro ${r.status}`});
-  }catch(e){
-    checks.push({name:'API Anthropic (via Vercel)', ok:false, detail:'Falha de rede: '+(e.message||e)});
+  // Test API endpoint — APENAS se solicitado explicitamente
+  if(includeApiTest){
+    try{
+      const r = await apiGenerate({model:'claude-haiku-4-5-20251001',max_tokens:5,messages:[{role:'user',content:'oi'}]});
+      checks.push({name:'API Anthropic (via Vercel)', ok: r.ok, detail: r.ok?'Respondendo normalmente':`Erro ${r.status}`});
+    }catch(e){
+      checks.push({name:'API Anthropic (via Vercel)', ok:false, detail:'Falha de rede: '+(e.message||e)});
+    }
+  } else {
+    checks.push({name:'API Anthropic (via Vercel)', ok: null, detail:'Não testado (clique "Testar API agora" pra verificar — custa 1 crédito)'});
   }
 
-  // Test Supabase
+  // Test Supabase — queries não custam nada
   try{
     const {error} = await supa.from('profiles').select('id', {count:'exact', head:true}).limit(1);
     checks.push({name:'Supabase (DB)', ok: !error, detail: error ? error.message : 'Conexão OK'});
@@ -25403,9 +25652,10 @@ async function renderHealthChecks(container){
   container.innerHTML = '';
   const list = mk('div','admin-health-list');
   checks.forEach(c=>{
-    const item = mk('div','adm-health-item'+(c.ok?' ok':' fail'));
+    const item = mk('div','adm-health-item'+(c.ok===true?' ok':c.ok===false?' fail':' pending'));
+    const icon = c.ok===true ? '✓' : c.ok===false ? '✗' : '○';
     item.innerHTML = `
-      <span class="ahi-icon">${c.ok ? '✓' : '✗'}</span>
+      <span class="ahi-icon">${icon}</span>
       <div class="ahi-text">
         <b>${escapeHTML(c.name)}</b>
         <span>${escapeHTML(c.detail)}</span>
@@ -25414,6 +25664,17 @@ async function renderHealthChecks(container){
     list.appendChild(item);
   });
   container.appendChild(list);
+
+  // Botão pra testar API explicitamente (consome 1 crédito)
+  if(!includeApiTest){
+    const testBtn = mkBtn('🔌 Testar API agora (1 crédito)','btn btn-sm');
+    testBtn.style.cssText='margin-top:.625rem';
+    testBtn.addEventListener('click', ()=>{
+      if(!confirm('Esse teste vai gastar 1 crédito de IA. Continuar?')) return;
+      renderHealthChecks(container, {includeApiTest:true});
+    });
+    container.appendChild(testBtn);
+  }
 }
 
 // ============================================================================
@@ -30541,16 +30802,31 @@ function updateSyncIndicator(){
   } else if(AUTH.lastSyncAt){
     const mins = Math.round((Date.now()-AUTH.lastSyncAt)/60000);
     el.title='Sincronizado '+(mins<1?'agora':'há '+mins+' min');
-    // Auto-fade após 3s, depois esconde de fato após 5s (sem erro)
+
+    // V12 fix: lógica de auto-fade mais robusta
+    // - Reseta timers anteriores
+    // - Mostra com mensagem "Sincronizado" por 1.5s
+    // - Inicia fade
+    // - Esconde de fato em 3s
     if(el._fadeTimer) clearTimeout(el._fadeTimer);
     if(el._hideTimer) clearTimeout(el._hideTimer);
-    el.classList.remove('fading','hidden');
+    el.classList.remove('hidden','fading');
+
     el._fadeTimer = setTimeout(()=>{
       if(!AUTH.syncError && !AUTH.syncing) el.classList.add('fading');
-    }, 3000);
+    }, 1500);
     el._hideTimer = setTimeout(()=>{
-      if(!AUTH.syncError && !AUTH.syncing) el.classList.add('hidden');
-    }, 5000);
+      if(!AUTH.syncError && !AUTH.syncing){
+        el.classList.add('hidden');
+        // Bloqueia futuros saves de re-mostrar a menos que tenha erro
+        // Limpa timers pra não acumular
+        clearTimeout(el._fadeTimer);
+        clearTimeout(el._hideTimer);
+      }
+    }, 3000);
+  } else {
+    // Sem lastSyncAt e sem erro = nunca sincronizou ainda; esconde
+    el.classList.add('hidden');
   }
 }
 
@@ -30627,6 +30903,16 @@ async function handleFirstLoginMerge(){
 // Signup with email + password (com username escolhido no momento)
 async function authSignUp(email, password, username, displayName){
   if(!supa)throw new Error('Supabase não configurado');
+  // V12 fix: reseta DATA local pra evitar contaminação de dados de outra conta
+  // Cenário: usuário cria conta NOVA num browser que tinha dados de outra conta.
+  // Antes: DATA herdava errors/cards/sources/sessões da conta anterior.
+  // Agora: reseta pra defaultData() limpos. Se houver merge necessário (raro),
+  // handleFirstLoginMerge pode oferecer.
+  DATA = defaultData();
+  // Marca que o setup foi visto (já passou pela landing antes do signup)
+  DATA.welcomeShown = true;
+  save();
+
   // Passa username + display_name como metadata do user — o trigger handle_new_user usa isso
   const meta = {};
   if(username) meta.username = username;
