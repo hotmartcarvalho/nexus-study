@@ -86,7 +86,7 @@ a{color:var(--accent)}
 .brand-interactive{cursor:pointer;position:relative;padding:4px 8px 4px 4px;margin-left:-4px;border-radius:8px;transition:background .15s}
 .brand-interactive:hover{background:rgba(128,66,250,.06)}
 .brand-interactive:focus{outline:2px solid var(--gralia-purple);outline-offset:2px}
-.brand-tooltip{position:absolute;top:calc(100% + 8px);left:0;width:280px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem 1.125rem;box-shadow:0 8px 28px rgba(0,0,0,.15),0 2px 6px rgba(0,0,0,.05);font-weight:400;letter-spacing:0;opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .18s,transform .18s,visibility .18s;z-index:1000;pointer-events:none}
+.brand-tooltip{position:absolute;top:calc(100% + 8px);left:0;width:320px;max-width:calc(100vw - 24px);background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem 1.125rem;box-shadow:0 8px 28px rgba(0,0,0,.15),0 2px 6px rgba(0,0,0,.05);font-weight:400;letter-spacing:0;opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .18s,transform .18s,visibility .18s;z-index:1000;pointer-events:none;white-space:normal;word-wrap:break-word;overflow-wrap:break-word}
 .brand-interactive:hover .brand-tooltip,.brand-interactive:focus .brand-tooltip{opacity:1;visibility:visible;transform:translateY(0);pointer-events:auto}
 .bt-head{display:flex;align-items:center;gap:8px;margin-bottom:.625rem}
 .bt-emoji{font-size:18px;line-height:1}
@@ -2369,7 +2369,8 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 .wel-inspiration i{font-style:normal}
 
 /* === V10 Welcome — Beta badge no hero === */
-.wel-beta-badge{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;background:linear-gradient(135deg,rgba(128,66,250,.12),rgba(128,66,250,.06));border:1px solid rgba(128,66,250,.30);border-radius:999px;font-size:11.5px;font-weight:700;color:var(--gralia-purple);margin-bottom:14px}
+.wel-beta-badge{display:flex;align-items:center;gap:8px;padding:5px 12px;background:linear-gradient(135deg,rgba(128,66,250,.12),rgba(128,66,250,.06));border:1px solid rgba(128,66,250,.30);border-radius:999px;font-size:11.5px;font-weight:700;color:var(--gralia-purple);margin-bottom:1rem;width:fit-content;max-width:100%}
+.wel-beta-badge .wbb-text{flex:1;min-width:0}
 .wbb-pulse{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gralia-purple);box-shadow:0 0 0 0 rgba(128,66,250,.6);animation:wbb-pulse 2s infinite}
 @keyframes wbb-pulse{0%{box-shadow:0 0 0 0 rgba(128,66,250,.6)}70%{box-shadow:0 0 0 8px rgba(128,66,250,0)}100%{box-shadow:0 0 0 0 rgba(128,66,250,0)}}
 .wbb-text{letter-spacing:.3px}
@@ -2378,6 +2379,23 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 
 /* === Seção: Estudo passivo + ativo (transparência) === */
 .wel-base-section{background:linear-gradient(135deg,rgba(73,197,137,.04),var(--surface));border:1px solid rgba(73,197,137,.18);border-radius:18px;padding:2rem 1.75rem}
+.wel-base-section .wel-section-label,.wel-base-section .wel-section-title{max-width:780px;margin-left:auto;margin-right:auto}
+
+/* === Trial credits box (créditos iniciais grátis) === */
+.wel-trial-box{margin:1.5rem auto 0;max-width:680px;padding:1.25rem 1.375rem;background:linear-gradient(135deg,rgba(73,197,137,.06),var(--surface));border:1px solid rgba(73,197,137,.25);border-radius:14px}
+.wtb-head{display:flex;align-items:center;gap:14px;margin-bottom:1rem;flex-wrap:wrap}
+.wtb-icon{font-size:32px;line-height:1;flex-shrink:0}
+.wtb-title-block{flex:1;min-width:200px}
+.wtb-title{font-size:15px;color:var(--text);font-weight:600;letter-spacing:-.2px;line-height:1.3}
+.wtb-title b{color:var(--accent-text);font-weight:800}
+.wtb-sub{font-size:12px;color:var(--text3);margin-top:3px;line-height:1.5}
+.wtb-grid{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;padding:.875rem 0;border-top:1px solid rgba(73,197,137,.15);border-bottom:1px solid rgba(73,197,137,.15);margin-bottom:.75rem}
+.wtb-cell{flex:1;min-width:90px;text-align:center;padding:0 .25rem}
+.wtb-num{font-size:30px;font-weight:900;color:var(--accent-text);line-height:1;letter-spacing:-1px}
+.wtb-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-top:5px;line-height:1.3}
+.wtb-or{font-size:10.5px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}
+.wtb-foot{margin:0;font-size:12px;line-height:1.55;color:var(--text2);text-align:center}
+.wtb-foot b{color:var(--text);font-weight:700}
 .wel-base-body{max-width:780px;margin:0 auto}
 .wel-base-text{font-size:14px;line-height:1.7;color:var(--text);margin:0 0 .875rem}
 .wel-base-text:last-child{margin-bottom:1.5rem}
@@ -2435,6 +2453,7 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 /* === Seção: Transparência IA === */
 .wel-ai-transparency{padding:1.75rem 1.5rem;background:linear-gradient(135deg,rgba(232,164,60,.04),var(--surface));border:1px solid rgba(232,164,60,.18);border-radius:18px}
 .wel-ait-body{display:flex;flex-direction:column;gap:10px;max-width:780px;margin:1rem auto 0}
+.wel-ai-transparency .wel-section-label,.wel-ai-transparency .wel-section-title,.wel-ai-transparency .wel-section-sub{max-width:780px;margin-left:auto;margin-right:auto}
 .wait-row{display:flex;gap:14px;padding:.875rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;align-items:flex-start}
 .wait-row.wait-warn{background:rgba(232,76,76,.04);border-color:rgba(232,76,76,.20)}
 .wait-icon{font-size:20px;flex-shrink:0;line-height:1.4;width:30px;text-align:center}
@@ -2458,6 +2477,7 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 
 /* === Seção BETA + descontos === */
 .wel-beta-section{padding:1.75rem 1.5rem;background:linear-gradient(135deg,rgba(128,66,250,.06),rgba(26,42,82,.03));border:1px solid rgba(128,66,250,.22);border-radius:18px;text-align:center}
+.wel-beta-section .wel-section-title,.wel-beta-section .wel-section-sub{margin-left:auto;margin-right:auto}
 .wel-beta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:1.5rem 0 1.25rem;max-width:780px;margin-left:auto;margin-right:auto}
 .wel-beta-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1rem;text-align:center;position:relative;transition:all .2s}
 .wel-beta-card.wbc-featured{border-color:var(--gralia-purple);background:linear-gradient(135deg,rgba(128,66,250,.06),var(--surface));box-shadow:0 4px 18px rgba(128,66,250,.12);transform:translateY(-3px)}
@@ -2471,6 +2491,7 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 
 /* === Seção FAQ === */
 .wel-faq-section{padding:0}
+.wel-faq-section .wel-section-label,.wel-faq-section .wel-section-title,.wel-faq-section .wel-section-sub{max-width:780px;margin-left:auto;margin-right:auto}
 .wel-faq-list{display:flex;flex-direction:column;gap:6px;max-width:780px;margin:1rem auto 0}
 .wel-faq-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .15s}
 .wel-faq-item[open]{border-color:rgba(128,66,250,.30)}
@@ -6477,6 +6498,15 @@ function showConfirmModal(config){
 /* RENDER */
 const APP = $('app');
 function render(){
+  // Scroll to top quando trocar de view (não em re-renders da mesma view).
+  // Bug clássico de SPA: o conteúdo é trocado mas o scroll do window mantém posição.
+  if(render._lastView !== ST.view){
+    render._lastView = ST.view;
+    // Pequeno timeout pra garantir que o conteúdo novo já foi renderizado
+    setTimeout(()=>{
+      try{ window.scrollTo({top:0, behavior:'auto'}); }catch(e){ window.scrollTo(0,0); }
+    }, 0);
+  }
   APP.innerHTML='';
   // Loading state while we restore session on first boot
   if(AUTH.loading){
@@ -6561,6 +6591,56 @@ function render(){
 
 /* SETUP */
 /* WELCOME — onboarding screen explaining the tool */
+// Modal de FAQ completo — acessível para qualquer visitante, mesmo sem login.
+// Usado pelo footer da landing. A versão "logada" do FAQ está em renderAboutFAQ.
+function showFAQModal(){
+  const m = mk('div');m.style.cssText='max-width:680px;max-height:80vh;overflow-y:auto';
+  const t = mk('h2');t.style.cssText='margin:0 0 .375rem;font-size:18px;font-weight:700';
+  t.textContent = '❓ Perguntas frequentes';
+  m.appendChild(t);
+  const sub = mk('p','txt2');sub.style.cssText='margin:0 0 1.25rem;font-size:13px;line-height:1.55';
+  sub.textContent='Não achou sua dúvida aqui? Cria conta e acessa o "Fale conosco" — respondemos pelo próprio app.';
+  m.appendChild(sub);
+
+  const FAQ = [
+    {q:'O Gralia é grátis?', a:'Pra começar sim. Cada conta nova ganha créditos iniciais grátis pra testar todos os recursos com IA. Estudar com seus próprios materiais, fazer pomodoros e revisar flashcards prontos não consome crédito. Em breve haverá planos pagos pra quem quer usar mais.'},
+    {q:'O que são "créditos"?', a:'Unidades consumidas só quando a IA faz algo: gerar questões, flashcards, perfis de matéria, análises do mentor. Cada operação mostra o custo aproximado antes de rodar. Estudar suas próprias questões importadas, revisar flashcards prontos, fazer pomodoros e usar o mapa da matéria não custam nada.'},
+    {q:'Tem chat de conversa?', a:'Não. O foco é estudo, não rede social. Você pode compartilhar cadernos de questões, fontes e perfis de matéria, e seguir outros usuários — mas não há mensagens privadas entre estudantes.'},
+    {q:'Vai funcionar pra minha banca/prova?', a:'Sim. Você define no perfil qual concurso, vestibular ou prova vai fazer, qual banca, qual cargo. A IA adapta o estilo das questões pra banca escolhida. Funciona pra Cebraspe, FCC, FGV, Vunesp, IBFC e dezenas de outras.'},
+    {q:'Posso usar com a apostila que eu já tenho?', a:'Sim, e é o ideal. Você adiciona suas fontes (apostilas, PDFs, resumos próprios). A IA usa esse material como base pra gerar questões fiéis ao que você estudou.'},
+    {q:'A IA pode errar nas questões?', a:'Pode acontecer, principalmente em legislações muito recentes ou jurisprudência atualizada. Por isso, cada questão passa por 5 filtros automáticos antes de chegar a você (~15% são descartadas), a comunidade vota nas explicações geradas e você reporta erro com 1 clique. Sempre confirme conceitos críticos com sua fonte oficial de teoria.'},
+    {q:'Substitui o estudo de teoria?', a:'Não. Vídeo-aulas e PDFs continuam sendo essenciais pra você entender o conteúdo. O Gralia é a camada de prática ativa que vem depois — pra fixar e detectar suas dificuldades.'},
+    {q:'Meus dados ficam seguros?', a:'Sim. Tudo em servidor com criptografia (Supabase). Sua conta é privada por padrão. Se quiser compartilhar materiais, você opta — nada é público sem você decidir. Em conformidade com a LGPD.'},
+    {q:'Como funciona o sistema social?', a:'Opcional e opt-in. Se quiser, você cria um perfil público com username e pode publicar cadernos/fontes na descoberta. Pode seguir outros concurseiros e ver o feed de marcos. Sem perfil público, você usa o app em modo totalmente privado.'},
+    {q:'O que é "perfil de matéria"?', a:'Material gerado por IA que aprofunda um tópico específico (ex: "Princípios da Administração Pública"). Inclui resumo teórico, mnemônicos, tabelas comparativas, mapa de armadilhas comuns na banca, exemplos de questões prováveis. Material pra revisar com profundidade dias antes da prova.'},
+    {q:'Como funcionam os flashcards?', a:'Repetição espaçada (SRS) com algoritmo similar ao SM-2 do Anki. Você classifica como Errei/Difícil/Bom/Fácil e o sistema agenda a próxima revisão. Cards podem ser gerados pela IA a partir das suas fontes, criados manualmente ou nascer dos seus erros em questões.'},
+    {q:'Tem app pra celular?', a:'O site funciona muito bem em celular (responsivo). Apps nativos iOS/Android estão no plano de longo prazo. Hoje a versão web cobre tudo.'},
+    {q:'Posso baixar meus dados?', a:'Sim. Em Configurações → Privacidade → "Baixar todos os meus dados" (JSON completo). Conta também pode ser apagada permanentemente.'},
+    {q:'Como denuncio um erro?', a:'Em qualquer questão tem botão de reportar. Erros técnicos do app também: quando algo quebra, aparece um botão "Reportar erro" automaticamente. Você recebe resposta no próprio app na aba "Minhas mensagens".'},
+    {q:'Como vocês escolhem o que melhorar?', a:'Pelas mensagens do Fale conosco. Se 5 pessoas pedem a mesma coisa, vai pra cima da fila. Sem campanhas de marketing inflado — quem fala mais, é mais ouvido.'}
+  ];
+
+  const list = mk('div','faq-list');
+  FAQ.forEach(item=>{
+    const det = mk('details','faq-item');
+    const sum = mk('summary','faq-q');
+    sum.innerHTML = `<span>${escapeHTML(item.q)}</span><span class="faq-chev">▾</span>`;
+    det.appendChild(sum);
+    const ans = mk('div','faq-a');
+    ans.innerHTML = `<p>${escapeHTML(item.a)}</p>`;
+    det.appendChild(ans);
+    list.appendChild(det);
+  });
+  m.appendChild(list);
+
+  const closeBtn = mkBtn('Fechar','btn btn-sm');
+  closeBtn.style.cssText='margin-top:1.25rem';
+  closeBtn.addEventListener('click', closeModal);
+  m.appendChild(closeBtn);
+
+  showModal(m);
+}
+
 // Modal com textos legais (termos, privacidade, copyright, IA)
 function showLegalModal(kind){
   const m = mk('div');m.style.cssText='max-width:680px;max-height:80vh;overflow-y:auto';
@@ -7123,6 +7203,37 @@ function renderWelcome(){
   const credNote = mk('p','wel-credits-note');
   credNote.innerHTML = 'Valores máximos aproximados em cada categoria separadamente. Combinando usos, o total se ajusta proporcionalmente. Modelo Claude Haiku 4.5 com cache ativo.';
   credSec.appendChild(credNote);
+
+  // === CRÉDITOS INICIAIS GRÁTIS (trial) ===
+  // Usuário ganha 50 créditos ao criar conta pra testar a plataforma
+  const trialBox = mk('div','wel-trial-box');
+  trialBox.innerHTML = `
+    <div class="wtb-head">
+      <span class="wtb-icon">🎁</span>
+      <div class="wtb-title-block">
+        <div class="wtb-title">Você começa com <b>50 créditos grátis</b></div>
+        <div class="wtb-sub">Sem cartão · suficientes pra testar a plataforma com calma</div>
+      </div>
+    </div>
+    <div class="wtb-grid">
+      <div class="wtb-cell">
+        <div class="wtb-num">~50</div>
+        <div class="wtb-lbl">questões<br>geradas</div>
+      </div>
+      <div class="wtb-or">ou</div>
+      <div class="wtb-cell">
+        <div class="wtb-num">~30</div>
+        <div class="wtb-lbl">flashcards<br>criados</div>
+      </div>
+      <div class="wtb-or">ou</div>
+      <div class="wtb-cell">
+        <div class="wtb-num">~10</div>
+        <div class="wtb-lbl">análises<br>do mentor</div>
+      </div>
+    </div>
+    <p class="wtb-foot">Tempo médio nos créditos iniciais: <b>3 a 7 dias</b> de uso ativo, dependendo do mix de funções que você explorar. Tempo suficiente pra entender se o Gralia funciona pro seu jeito de estudar.</p>
+  `;
+  credSec.appendChild(trialBox);
   wrap.appendChild(credSec);
 
   // ====== BETA + DESCONTOS PROGRESSIVOS ======
@@ -7245,15 +7356,39 @@ function renderWelcome(){
     footer.querySelectorAll('[data-action="faq-full"]').forEach(a=>{
       a.addEventListener('click',e=>{
         e.preventDefault();
-        DATA.welcomeShown=true;save();
-        ST.view='about';ST.aboutTab='faq';render();
+        // Mostra FAQ em modal — funciona pra usuário não logado também
+        showFAQModal();
       });
     });
     footer.querySelectorAll('[data-action="contact"]').forEach(a=>{
       a.addEventListener('click',e=>{
         e.preventDefault();
-        if(typeof showFeedbackModal==='function') showFeedbackModal();
-        else alert('Disponível após login.');
+        if(isAuthed() && typeof showFeedbackModal==='function'){
+          showFeedbackModal();
+        } else {
+          // Visitante não logado — mostra modal explicativo simples
+          const m = mk('div');m.style.cssText='max-width:440px';
+          const t = mk('h2');t.style.cssText='margin:0 0 .5rem;font-size:18px;font-weight:700';
+          t.textContent = '💬 Fale conosco';
+          m.appendChild(t);
+          const p = mk('p');p.style.cssText='font-size:13.5px;line-height:1.65;color:var(--text2);margin:0 0 1rem';
+          p.textContent='O canal de mensagens fica disponível depois que você cria sua conta. Lá você manda dúvidas, sugestões, reporta bugs — e recebe a resposta direto no app.';
+          m.appendChild(p);
+          const actions = mk('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem';
+          const cancelB = mkBtn('Fechar','btn btn-sm');
+          cancelB.addEventListener('click',closeModal);
+          actions.appendChild(cancelB);
+          const goB = mkBtn('Criar conta →','btn btn-sm btn-p');
+          goB.addEventListener('click',()=>{
+            closeModal();
+            DATA.welcomeShown=true;save();
+            if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;ST.authMode='signup';}
+            render();
+          });
+          actions.appendChild(goB);
+          m.appendChild(actions);
+          showModal(m);
+        }
       });
     });
   },50);
@@ -7307,12 +7442,12 @@ function renderTopbar(){
       <span class="bt-emoji">🪶</span>
       <span class="bt-title">Por que Gralia?</span>
     </div>
-    <p class="bt-text"><b>Gralha-azul do Paraná</b> — ave nativa que espalha pinhões pelas matas e faz nascer novas araucárias.</p>
-    <p class="bt-text">Como ela, queremos plantar conhecimento que cresce com você — espalhando questões, explicações e flashcards entre estudantes que se ajudam mutuamente.</p>
+    <p class="bt-text"><b>Gralha-azul do Paraná</b> — ave nativa que planta araucárias por onde passa.</p>
+    <p class="bt-text">Aqui plantamos conhecimento que cresce com você.</p>
     <div class="bt-divider"></div>
     <div class="bt-feature"><span>🧠</span><b>Estudos com IA</b></div>
     <div class="bt-feature"><span>🌐</span><b>Comunidade colaborativa</b></div>
-    <div class="bt-feature"><span>🎯</span><b>Foco no que você precisa</b></div>
+    <div class="bt-feature"><span>🎯</span><b>Foco no que importa</b></div>
     <div class="bt-cta">Click pra saber mais →</div>
   `;
   brand.appendChild(brandTip);
@@ -11529,6 +11664,7 @@ async function turboSubmitAnswer(answer){
     if(!ok){const tt=res.trap_type??0;DATA.session.dna[tt]=(DATA.session.dna[tt]||0)+1;}
     const discId = inferDiscipline(t.q.topic||'');
     updateByDisc(discId,ok);
+    recordQuestionForGoal(discId, ok);
     save();
     let errCtx=null;
     if(!ok){
@@ -12284,6 +12420,7 @@ function renderImportedPractice(wrap){
           if(ok)q.correctCount=(q.correctCount||0)+1;
           DATA.session.total+=1;if(ok)DATA.session.correct+=1;
           updateByDisc(q.disciplineId,ok);
+          recordQuestionForGoal(q.disciplineId, ok);
           if(!ok){
             const errRec = logError({question:q.enunciado+'\n\nAlternativas:\n'+q.alternatives.map(a=>`${a.letter}) ${a.text}`).join('\n'),correct_answer:q.answer,explanation:'(questão importada — múltipla escolha)',trap:'',keyword:'',trap_type:0,topic:q.topic||'',method:'imported',sourceBankId:q.id});
             ST.importedLastErrId = errRec.id;
@@ -12310,6 +12447,7 @@ function renderImportedPractice(wrap){
           if(ok)q.correctCount=(q.correctCount||0)+1;
           DATA.session.total+=1;if(ok)DATA.session.correct+=1;
           updateByDisc(q.disciplineId,ok);
+          recordQuestionForGoal(q.disciplineId, ok);
           if(!ok){
             const errRec = logError({question:q.enunciado,correct_answer:q.answer,explanation:'(questão importada)',trap:'',keyword:'',trap_type:0,topic:q.topic||'',method:'imported',sourceBankId:q.id});
             ST.importedLastErrId = errRec.id;
@@ -13778,6 +13916,7 @@ function notebookSubmitAnswer(answer){
   // Global session stats
   DATA.session.total+=1;if(ok)DATA.session.correct+=1;
   updateByDisc(q.disciplineId,ok);
+  recordQuestionForGoal(q.disciplineId, ok);
   ST.notebookLastErrId = null;
   if(!ok){
     const errRec = logError({
@@ -14027,6 +14166,7 @@ async function calibSubmit(answer){
     DATA.session.total+=1;if(ok)DATA.session.correct+=1;
     DATA.session.calibration[ck].t+=1;if(ok)DATA.session.calibration[ck].c+=1;
     if(!ok){const tt=res.trap_type??0;DATA.session.dna[tt]=(DATA.session.dna[tt]||0)+1;}
+    recordQuestionForGoal(inferDiscipline((ST.calibQ&&ST.calibQ.topic)||''), ok);
     save();
     let errCtx=null;
     if(!ok){
@@ -14124,7 +14264,10 @@ async function examSubmit(container){
     const res = await timedCallAPI('examiner','question',SYS_EXAM,nh,{model:getMethodModel('examiner')});
     ST.examHist=[...nh,{role:'assistant',content:JSON.stringify(res)}];
     ST.examEval=res;
-    DATA.session.examTotal+=1;if(res.stars>=2)DATA.session.examScore+=1;save();
+    DATA.session.examTotal+=1;if(res.stars>=2)DATA.session.examScore+=1;
+    // Examinador conta como questão pra meta (estrelas >= 2 = "ok")
+    recordQuestionForGoal(inferDiscipline((ST.examConcept||'')), res.stars>=2);
+    save();
   }catch(e){handleErr(e,container);}
   ST.examLoading=false;render();
 }
@@ -14223,6 +14366,7 @@ async function drillSubmit(answer){
     const ok = res.is_correct;
     DATA.session.total+=1;if(ok)DATA.session.correct+=1;
     if(!ok){const tt=res.trap_type??ST.drillTarget;DATA.session.dna[tt]=(DATA.session.dna[tt]||0)+1;}
+    recordQuestionForGoal(inferDiscipline((ST.drillQ&&ST.drillQ.topic)||''), ok);
     save();
     let errCtx=null;
     if(!ok){
@@ -14319,6 +14463,12 @@ async function elabSubmit(container){
   try{
     const res = await timedCallAPI('elaborative','question',SYS_ELAB,nh,{model:getMethodModel('elaborative')});
     ST.elabEval=res;
+    // Conta como questão respondida pra meta (sucesso se score adequado)
+    if(res){
+      const ok = (res.stars>=2)||(res.score>=70)||(res.is_correct===true);
+      recordQuestionForGoal(inferDiscipline((ST.elabQ&&ST.elabQ.topic)||''), ok);
+      save();
+    }
   }catch(e){handleErr(e,container);}
   ST.elabLoading=false;render();
 }
@@ -14423,7 +14573,9 @@ async function practSubmit(answer){
     const ok = res.is_correct;
     DATA.session.total+=1;if(ok)DATA.session.correct+=1;
     if(!ok){const tt=res.trap_type??0;DATA.session.dna[tt]=(DATA.session.dna[tt]||0)+1;}
-    updateByDisc(inferDiscipline(ST.practQ.topic||''),ok);
+    const _practDisc = inferDiscipline(ST.practQ.topic||'');
+    updateByDisc(_practDisc,ok);
+    recordQuestionForGoal(_practDisc, ok);
     save();
     let errCtx=null;
     if(!ok){
@@ -14552,6 +14704,7 @@ function renderSimulado(){
         DATA.session.total+=1;
         const given = ST.simAnswers[i];
         const ok = given===q.correct_answer;
+        recordQuestionForGoal(inferDiscipline(q.topic||''), ok);
         if(ok)DATA.session.correct+=1;
         else {
           const tt=q.trap_type??0;
@@ -14708,6 +14861,7 @@ async function interSubmit(answer){
     const ok = res.is_correct;
     DATA.session.total+=1;if(ok)DATA.session.correct+=1;
     if(!ok){const tt=res.trap_type??0;DATA.session.dna[tt]=(DATA.session.dna[tt]||0)+1;}
+    recordQuestionForGoal(inferDiscipline((ST.interQ&&ST.interQ.topic)||''), ok);
     save();
     let errCtx=null;
     if(!ok){
@@ -23063,6 +23217,26 @@ function goalProgressQuestions(g){
   return count;
 }
 
+// Registra uma questão respondida na disciplina correspondente — alimenta metas.
+// Cada disciplina tem .sessions[] com {date, total, correct} agregados por DIA.
+// Chamado em TODOS os pontos onde uma questão é respondida (Prática, Banco TEC, Drill, Calibração, etc.)
+function recordQuestionForGoal(disciplineId, ok){
+  if(!disciplineId) disciplineId = 'd4'; // fallback "Outros"
+  const disc = (DATA.disciplines||[]).find(d=>d.id===disciplineId);
+  if(!disc) return;
+  if(!disc.sessions) disc.sessions = [];
+  // Agrupa por dia (UTC zero-hora) pra evitar inflar a lista
+  const now = new Date();
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  let session = disc.sessions.find(s=>s.date === dayStart);
+  if(!session){
+    session = {date: dayStart, total: 0, correct: 0};
+    disc.sessions.push(session);
+  }
+  session.total += 1;
+  if(ok) session.correct += 1;
+}
+
 // Conta pomodoros completados no período da meta
 function goalProgressPomos(g){
   if(!g)return 0;
@@ -25495,7 +25669,12 @@ function renderAuthScreen(){
     }catch(e){
       googleBtn.disabled = false;
       googleBtn.querySelector('span').textContent = 'Continuar com Google';
-      ST.authError = e.message || 'Erro ao iniciar login com Google';
+      const msg = String(e.message||'').toLowerCase();
+      if(msg.includes('provider is not enabled') || msg.includes('unsupported provider')){
+        ST.authError = 'Login com Google ainda está sendo configurado pela equipe. Por enquanto, use email + senha.';
+      } else {
+        ST.authError = e.message || 'Erro ao iniciar login com Google';
+      }
       render();
     }
   });
