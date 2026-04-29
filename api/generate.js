@@ -64,12 +64,12 @@ export default async function handler(req, res) {
   }
 
   // 2. Whitelist (opcional, recomendado durante beta)
-  const allowedEmails = (process.env.ALLOWED_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
-  if (allowedEmails.length > 0 && !allowedEmails.includes(user.email)) {
-    return res.status(403).json({
-      error: 'Este site está em teste privado. Seu email não está na lista de convidados.'
-    });
-  }
+  // const allowedEmails = (process.env.ALLOWED_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
+  // if (allowedEmails.length > 0 && !allowedEmails.includes(user.email)) {
+  //  return res.status(403).json({
+  //    error: 'Este site está em teste privado. Seu email não está na lista de convidados.'
+  //  });
+ // }
 
   // 3. Checa quota — se não existir, cria automaticamente (fallback do trigger)
   try {
