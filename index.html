@@ -1083,6 +1083,13 @@ html.dark .fc-highlight{background:rgba(73,197,137,.20);color:rgb(120,220,160)}
 html.dark .wfb-tag-free{color:#7dd3a8}
 html.dark .wfb-tag-ai{color:#b08aff}
 
+/* V12: CTA inline pra criar conta — aparece em momentos da landing que mencionam o trial */
+.wel-trial-info-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px;margin-top:1rem;padding:1rem 1.25rem;background:linear-gradient(135deg,rgba(73,197,137,.06),rgba(128,66,250,.04));border:1px solid rgba(73,197,137,.25);border-radius:12px;text-align:center}
+.wel-trial-info-box .wel-trial-info{margin:0;font-size:13px;line-height:1.5;color:var(--text)}
+.wel-trial-info-box .wel-inline-cta{flex-shrink:0}
+.wel-inline-cta{padding:10px 18px !important;font-size:13px !important;font-weight:700 !important;background:linear-gradient(135deg,var(--gralia-blue) 0%,var(--gralia-purple) 100%) !important;color:#fff !important;border:none !important;box-shadow:0 3px 12px rgba(124,92,255,.25)}
+.wel-inline-cta:hover{transform:translateY(-1px);box-shadow:0 5px 18px rgba(124,92,255,.40)}
+
 /* V12: Carrossel de demos navegáveis na landing */
 .wel-demo-section{padding:3rem 1rem;text-align:center}
 .wel-demo-box{max-width:780px;margin:1.75rem auto 0}
@@ -1118,8 +1125,8 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .cl-min,.cl-max{font-size:9.5px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
 .cl-cell{display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--gralia-purple)}
 .chart-body{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.chart-heatmap{display:block;max-width:100%;height:auto;min-width:340px}
-.hm-axis-lbl{font-size:10px;font-weight:600;fill:var(--text3);font-family:inherit}
+.chart-heatmap{display:block;max-width:100%;height:auto;min-width:280px}
+.hm-axis-lbl{font-size:8.5px;font-weight:600;fill:var(--text3);font-family:inherit}
 .chart-heatmap rect{cursor:pointer;transition:fill-opacity .15s}
 .chart-heatmap rect:hover{stroke:var(--text);stroke-width:1.5;fill-opacity:1!important}
 .chart-insight{margin:1rem 0 0;padding:.75rem 1rem;background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.20);border-radius:8px;font-size:12.5px;color:var(--text);line-height:1.55}
@@ -1181,8 +1188,10 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .wpc-row.wpc-tec .wpc-total{color:#d4683a}
 .wpc-row.wpc-tradicional .wpc-total{color:rgb(232,76,76)}
 /* Legenda */
-.wel-prod-legend{max-width:840px;margin:1.25rem auto 0;display:flex;flex-wrap:wrap;justify-content:center;gap:14px;padding:.875rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px}
-.wpl-item{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);font-weight:500}
+.wel-prod-legend{max-width:840px;margin:1.25rem auto 0;display:flex;flex-direction:column;gap:6px;padding:.875rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px}
+.wpl-group{display:flex;flex-wrap:wrap;align-items:center;gap:14px;justify-content:flex-start}
+.wpl-group-label{font-size:11.5px;font-weight:700;color:var(--text);min-width:100px;text-align:left}
+.wpl-item{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);font-weight:500}
 .wpl-dot{display:inline-block;width:11px;height:11px;border-radius:3px;flex-shrink:0}
 /* Insight final */
 .wel-prod-insight{max-width:760px;margin:1.5rem auto 0;display:flex;align-items:center;gap:18px;padding:1.25rem 1.5rem;background:linear-gradient(135deg,rgba(73,197,137,.10),rgba(128,66,250,.06));border:1px solid rgba(73,197,137,.30);border-radius:14px;text-align:left}
@@ -3028,6 +3037,12 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 
 /* Daily insight card */
 .insight-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.125rem;margin-bottom:1.25rem;border-left:4px solid var(--blue-text,#185FA5)}
+/* V12: Insight card colapsado — só mostra header */
+.insight-card.collapsed{padding:.75rem 1rem}
+.insight-card.collapsed .insight-head{margin:0}
+.insight-card .insight-head:hover{opacity:.85}
+.insight-card.collapsed .ic-chev{transform:rotate(0deg)}
+.insight-card:not(.collapsed) .ic-chev{transform:rotate(180deg)}
 .insight-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
 .insight-stats{display:flex;gap:14px;padding:.5rem 0;border-top:1px dashed var(--border);border-bottom:1px dashed var(--border);margin-top:.5rem;flex-wrap:wrap}
 
@@ -3580,9 +3595,11 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 .wel-plan-card.tier-basic{}
 .wel-plan-card.tier-recommended{border-color:var(--gralia-purple);background:linear-gradient(135deg,rgba(128,66,250,.06),var(--surface) 60%);box-shadow:0 6px 22px rgba(128,66,250,.14)}
 .wel-plan-card.tier-recommended:hover{box-shadow:0 18px 42px rgba(128,66,250,.22)}
-.wel-plan-card.tier-premium{border:1.5px solid transparent;background:linear-gradient(var(--surface),var(--surface)) padding-box,linear-gradient(135deg,#a78bfa,#7c3aed,#5b21b6,#3aa57e,#7c3aed) border-box;box-shadow:0 8px 30px rgba(124,58,237,.18)}
+.wel-plan-card.tier-premium{border:1.5px solid transparent;background:linear-gradient(var(--surface),var(--surface)) padding-box,linear-gradient(135deg,#a78bfa,#7c3aed,#5b21b6,#3aa57e,#7c3aed) border-box;box-shadow:0 8px 30px rgba(124,58,237,.18);overflow:hidden}
 .wel-plan-card.tier-premium:hover{box-shadow:0 22px 52px rgba(124,58,237,.32);transform:translateY(-5px)}
-.wel-plan-card.tier-premium::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#a78bfa,#7c3aed,#3aa57e,#7c3aed);border-radius:14px 14px 0 0}
+/* V12 fix: barra do topo precisa respeitar a borda do card. Antes ultrapassava as bordas verticais.
+   Solução: posição absoluta com inset: -1.5px (compensar a borda transparente do card). */
+.wel-plan-card.tier-premium::before{content:'';position:absolute;top:-1.5px;left:-1.5px;right:-1.5px;height:4px;background:linear-gradient(90deg,#a78bfa,#7c3aed,#3aa57e,#7c3aed);border-radius:14px 14px 0 0;z-index:1}
 .wel-plan-card.tier-premium .wpc-name{background:linear-gradient(135deg,#7c3aed,#3aa57e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .wel-plan-card.tier-premium .wpc-credits b{color:#7c3aed}
 .wel-plan-card.featured{border-color:var(--gralia-purple);background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));box-shadow:0 6px 20px rgba(128,66,250,.12)}
@@ -3705,6 +3722,21 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 .wel-section-label{font-size:11px;font-weight:700;letter-spacing:1.8px;color:var(--accent);text-transform:uppercase;margin-bottom:.625rem}
 .wel-section-title{font-size:28px;font-weight:700;letter-spacing:-0.8px;line-height:1.2;color:var(--text);margin:0 0 .875rem;max-width:600px}
 .wel-section-sub{font-size:14.5px;line-height:1.6;color:var(--text2);margin:0 0 2rem;max-width:560px}
+/* V12: Quando seção é text-align:center, força título e sub a centralizarem com max-width */
+.wel-chart-section .wel-section-label,.wel-chart-section .wel-section-title,.wel-chart-section .wel-section-sub,
+.wel-prod-section .wel-section-label,.wel-prod-section .wel-section-title,.wel-prod-section .wel-section-sub,
+.wel-forest-section .wel-section-label,.wel-forest-section .wel-section-title,.wel-forest-section .wel-section-sub,
+.wel-demo-section .wel-section-label,.wel-demo-section .wel-section-title,.wel-demo-section .wel-section-sub{
+  max-width:780px;margin-left:auto;margin-right:auto
+}
+.wel-chart-section .wel-section-title,
+.wel-prod-section .wel-section-title,
+.wel-forest-section .wel-section-title,
+.wel-demo-section .wel-section-title{max-width:680px}
+.wel-chart-section .wel-section-sub,
+.wel-prod-section .wel-section-sub,
+.wel-forest-section .wel-section-sub,
+.wel-demo-section .wel-section-sub{max-width:620px}
 @media(max-width:640px){
   .wel-section-title{font-size:22px}
   .wel-section{margin-bottom:2.5rem}
@@ -9600,25 +9632,37 @@ function renderWelcome(){
   `;
   prodSec.appendChild(prodChart);
 
-  // Legenda das etapas
+  // Legenda das etapas — V12: organizada por plataforma pra ficar clara
   const prodLegend = mk('div','wel-prod-legend');
   prodLegend.innerHTML = `
-    <span class="wpl-item"><span class="wpl-dot seg-resolve"></span>Resolver questão</span>
-    <span class="wpl-item"><span class="wpl-dot seg-explain"></span>Entender (IA)</span>
-    <span class="wpl-item"><span class="wpl-dot seg-flashcard"></span>Flashcard automático</span>
-    <span class="wpl-item"><span class="wpl-dot seg-wait"></span>Espera / comentários</span>
-    <span class="wpl-item"><span class="wpl-dot seg-research"></span>Pesquisar teoria</span>
-    <span class="wpl-item"><span class="wpl-dot seg-manual"></span>Criar card manual</span>
+    <div class="wpl-group">
+      <span class="wpl-group-label">Gralia:</span>
+      <span class="wpl-item"><span class="wpl-dot seg-resolve"></span>Resolver</span>
+      <span class="wpl-item"><span class="wpl-dot seg-explain"></span>IA explica imediatamente</span>
+      <span class="wpl-item"><span class="wpl-dot seg-flashcard"></span>Flashcard 1 clique</span>
+    </div>
+    <div class="wpl-group">
+      <span class="wpl-group-label">Sites + Anki:</span>
+      <span class="wpl-item"><span class="wpl-dot seg-wait"></span>Espera explicação</span>
+      <span class="wpl-item"><span class="wpl-dot seg-research"></span>Busca teoria fora</span>
+      <span class="wpl-item"><span class="wpl-dot seg-manual"></span>Cria card manual</span>
+    </div>
+    <div class="wpl-group">
+      <span class="wpl-group-label">Tradicional:</span>
+      <span class="wpl-item"><span class="wpl-dot seg-wait-long"></span>Acha na apostila</span>
+      <span class="wpl-item"><span class="wpl-dot seg-read"></span>Lê o trecho</span>
+      <span class="wpl-item"><span class="wpl-dot seg-write"></span>Resume no caderno</span>
+    </div>
   `;
   prodSec.appendChild(prodLegend);
 
   // Insight final do gráfico
   const prodInsight = mk('div','wel-prod-insight');
   prodInsight.innerHTML = `
-    <div class="wpi-num">5-9×</div>
+    <div class="wpi-num">3-5×</div>
     <div class="wpi-text">
       <b>mais rápido pra fechar o ciclo de aprendizado.</b>
-      <span>Em 1h de estudo, você fixa <b>40+ questões</b> com Gralia vs <b>~7-10</b> no método tradicional. Isso é mais material absorvido até a prova chegar.</span>
+      <span>Em 1h de estudo focado, você fixa cerca de <b>20-25 questões com Gralia</b>, contra <b>~7 com TEC+Anki</b> ou <b>~4 no método tradicional</b>. É mais conteúdo absorvido por dia até a prova chegar — sem queimar etapas.</span>
     </div>
   `;
   prodSec.appendChild(prodInsight);
@@ -9772,26 +9816,28 @@ function renderWelcome(){
   featSub.textContent = 'A maioria dos recursos do Gralia funciona sem IA. Os créditos só entram quando você quer geração inteligente — questões novas, perfis aprofundados, análises do mentor.';
   featSec.appendChild(featSub);
 
-  // V12: Features divididas em GRÁTIS (sem IA) vs COM IA (consome créditos)
+  // V12: Features divididas em GRÁTIS (sem IA) vs COM IA (consome créditos / planos pagos)
   const FREE_FEATURES = [
-    {icon:'🎴',title:'Flashcards com SRS',desc:'Repetição espaçada (algoritmo SM-2). Crie cards manualmente, importe ou gere a partir de erros — todos revisáveis sem custo.'},
-    {icon:'🗺️',title:'Mapa da matéria',desc:'Visão geral por disciplina/tópico. Onde você acerta, onde erra, o que falta cobrir. Atualizado automaticamente.'},
-    {icon:'⏱️',title:'Pomodoro com background',desc:'Timer em todas as páginas. Sincroniza entre dispositivos. Notificação ao completar ciclo.'},
-    {icon:'🌲',title:'Pinhal de Araucárias',desc:'Cada marco vira árvore. Visualize sua constância como floresta crescendo.'},
-    {icon:'📊',title:'Histórico e estatísticas',desc:'Gráficos de progresso, padrões temporais, evolução por disciplina. Dados ricos pra você.'},
-    {icon:'📝',title:'Importar questões TEC',desc:'Cole texto do TEC Concursos ou outras plataformas — vira banco organizado pra praticar.'},
-    {icon:'⏰',title:'Simulado cronometrado',desc:'Treino estilo prova real com timer e correção. Funciona com suas questões importadas.'},
-    {icon:'🎯',title:'Metas e calendário',desc:'Define objetivos diários/semanais. Sistema rastreia progresso automaticamente.'},
-    {icon:'🌍',title:'Comunidade',desc:'Siga concurseiros, importe materiais públicos, compartilhe cadernos. Tudo opcional.'}
+    {icon:'🎴',title:'Flashcards com revisão espaçada (SRS)',desc:'Algoritmo SM-2 (mesmo do Anki) agenda automaticamente o melhor momento pra revisar cada card. Importe decks da comunidade, crie manualmente ou gere a partir de erros — todos revisáveis sem custo. Funciona offline-first com sync entre dispositivos.'},
+    {icon:'🗺️',title:'Mapa da matéria com filtros inteligentes',desc:'Visão por disciplina, tópico e até subtópico. Veja % de acerto por área, número de questões resolvidas, status (não estudado / estudando / dominado). Filtros por banca, tipo de questão e dificuldade. Você sabe exatamente onde investir tempo, sem chutar.'},
+    {icon:'⏱️',title:'Pomodoro com background sincronizado',desc:'Timer disponível em todas as páginas, persiste se você fechar a aba e sincroniza entre celular e PC. Notificação push quando o ciclo termina. Background de aquário, floresta ou foco escuro. Histórico de blocos completados rastreado automaticamente.'},
+    {icon:'📊',title:'Estatísticas profundas e padrões temporais',desc:'Heatmap mostrando seus melhores horários, evolução por disciplina ao longo das semanas, taxa de calibração ("falsa segurança"), curva de retenção dos cards. Dados que você não vê em planilha — decisões baseadas em evidência, não em achismo.'},
+    {icon:'📝',title:'Importação inteligente de questões',desc:'Cole texto do TEC Concursos, QConcursos, Estratégia, Gran Cursos, Direção ou outras plataformas. O parser detecta enunciado, alternativas, gabarito, banca, ano, comentários e organiza automaticamente. Pratique com cronômetro e correção sem retrabalho.'},
+    {icon:'⏰',title:'Simulado cronometrado completo',desc:'Treino estilo prova real: timer regressivo, navegação livre entre questões, marcação pra revisar depois, calibração de confiança em cada resposta, correção detalhada com análise por disciplina e tópico. Funciona com suas questões importadas (sem custo de IA).'},
+    {icon:'🎯',title:'Metas, calendário e rotina sustentável',desc:'Define meta diária ou semanal (questões, flashcards, pomodoros) com sistema rastreando "adiantado/no ritmo/atrasado". Calendário visual mostra constância. Funciona com Google Calendar pra agendar sessões de estudo direto.'},
+    {icon:'📚',title:'Importar fontes ricas (PDFs, leis, jurisprudência)',desc:'Anexe apostilas em PDF, transcrições de aula, resumos próprios, lei seca completa, jurisprudência selecionada, doutrinas. A plataforma extrai texto, detecta capítulos automaticamente e organiza. Sua biblioteca pessoal de estudo, com busca rápida.'},
+    {icon:'🌍',title:'Comunidade aberta com material curado',desc:'Importe materiais já criados e validados pela comunidade: cadernos de questões organizados por edital, perfis aprofundados de tópicos densos (controle de constitucionalidade, princípios da AP, etc.), fontes de lei seca e jurisprudência, decks de flashcards. Tudo com avaliação de outros usuários — sem precisar criar tudo do zero.'}
   ];
 
   const AI_FEATURES = [
-    {icon:'🤖',title:'Geração de questões',desc:'A IA cria questões C/E ou múltipla escolha do seu material — estilo da banca alvo. Estilo Cebraspe, FCC, FGV, etc.'},
-    {icon:'🎴',title:'Flashcard a partir do erro',desc:'Errou uma questão? 1 clique e a IA cria flashcard que ataca exatamente aquela armadilha.'},
-    {icon:'📚',title:'Perfil de matéria',desc:'A IA aprofunda 1 tópico: conceitos, pegadinhas, mnemônicos, tabelas comparativas. Fica salvo pra revisar antes da prova.'},
-    {icon:'📋',title:'Síntese de editais',desc:'Cole o edital. Em 1min a IA extrai cronograma, vagas, disciplinas, peso de cada matéria.'},
-    {icon:'🎯',title:'Análise do mentor',desc:'Diariamente, a IA analisa seus erros do dia e sugere ajustes específicos: drills, revisões, foco.'},
-    {icon:'🌐',title:'Cache compartilhado',desc:'Explicações que outros usuários já geraram ficam disponíveis. Você economiza créditos sem perder qualidade.'}
+    {icon:'🤖',title:'Geração de questões personalizadas',desc:'A IA cria questões C/E ou múltipla escolha baseadas no SEU material — adaptadas ao estilo da banca alvo (Cebraspe, FCC, FGV, Vunesp, IBFC, Quadrix, Cesgranrio). Cada questão é única, foca seus pontos fracos detectados pelo mapa e inclui explicação detalhada com referência legal.'},
+    {icon:'🎯',title:'Questões por tópico específico (NOVO)',desc:'Escolha um tópico exato do seu edital ou fonte (ex: "Princípios da Administração Pública", "Controle Difuso de Constitucionalidade"). A IA gera questões focadas só naquilo. Ideal pra reta final ou pra atacar tópicos onde você tem dificuldade específica.'},
+    {icon:'🎴',title:'Flashcard automático a partir do erro',desc:'Errou uma questão? 1 clique e a IA cria flashcard que ataca exatamente aquela armadilha — com palavras-chave destacadas, mnemônico e referência legal. Vai pra revisão espaçada (SRS) automaticamente. Cada erro vira aprendizado fixado.'},
+    {icon:'📚',title:'Perfil aprofundado de matéria',desc:'A IA gera estudo completo de 1 tópico: conceitos, jurisprudência relevante (STF/STJ), mnemônicos, tabelas comparativas, mapa de armadilhas que a banca usa, exemplos de questões prováveis com gabarito comentado. Material salvo pra revisar nos dias finais antes da prova — substitui horas de pesquisa solta.'},
+    {icon:'📋',title:'Síntese de editais com Sonnet 4.6',desc:'Cole o edital ou anexe o PDF. Em 1 minuto a IA Sonnet 4.6 (modelo premium) extrai: cronograma com datas-chave, vagas por cargo, distribuição e peso de cada disciplina, tópicos cobrados, mudanças em relação ao último edital. Você vê o que importa em vez de ler 80 páginas.'},
+    {icon:'🧠',title:'Análise diária do mentor IA',desc:'Diariamente a IA analisa seus erros, padrões temporais, taxa de calibração e sugere ajustes específicos pro próximo dia: drills focados em tópicos fracos, revisões prioritárias, recomendação de horário ideal pra estudo intenso. Disponível com 20+ questões resolvidas no dia.'},
+    {icon:'🌲',title:'Pinhal de Araucárias (gamificação)',desc:'Gamificação visual da constância: cada marco que você atinge planta uma araucária no seu pinhal. Floresta cresce visualmente conforme você mantém o ritmo. Inspirado nas araucárias do Paraná, símbolo de longevidade e raízes profundas. Disponível com qualquer plano ativo.'},
+    {icon:'🌐',title:'Cache compartilhado de explicações',desc:'Quando outros usuários da comunidade já geraram explicação pra mesma questão, você acessa de graça (não consome seus créditos). Quanto mais a comunidade cresce, mais você economiza. Boa fé do projeto: a IA fica mais barata pra todo mundo conforme o tempo passa.'}
   ];
 
   // Grupo: features grátis
@@ -9842,10 +9888,10 @@ function renderWelcome(){
   forestSub.textContent='Em vez de só números frios, sua jornada de estudo vira um pinhal de araucárias inspirado no Paraná. Quanto mais você pratica, foca, acerta — mais a floresta amadurece. Aqui está o pinhal de quem está há ~6 meses no Gralia.';
   forestSec.appendChild(forestSub);
 
-  // SVG pinhal cheio (simulado)
+  // SVG pinhal cheio (simulado) — V12: mais densidade, variedade e profundidade
   const forestBox = mk('div','wel-forest-preview');
   forestBox.innerHTML = `
-    <svg viewBox="0 0 800 360" class="wel-forest-svg" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 800 380" class="wel-forest-svg" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#fde9b9"/>
@@ -9864,94 +9910,145 @@ function renderWelcome(){
       </defs>
 
       <!-- Céu -->
-      <rect x="0" y="0" width="800" height="280" fill="url(#skyGrad)"/>
+      <rect x="0" y="0" width="800" height="290" fill="url(#skyGrad)"/>
       <!-- Sol -->
-      <circle cx="640" cy="80" r="70" fill="url(#sunGlow)"/>
-      <circle cx="640" cy="80" r="32" fill="#ffd980"/>
-      <!-- Montanhas distantes -->
-      <path d="M 0 230 L 60 180 L 110 210 L 180 165 L 240 195 L 320 155 L 380 190 L 460 160 L 540 195 L 620 175 L 720 200 L 800 175 L 800 280 L 0 280 Z" fill="#9aa680" fill-opacity=".7"/>
-      <path d="M 0 250 L 70 220 L 140 240 L 220 215 L 320 245 L 410 220 L 500 240 L 600 225 L 700 245 L 800 225 L 800 280 L 0 280 Z" fill="#7a8868" fill-opacity=".75"/>
+      <circle cx="680" cy="70" r="80" fill="url(#sunGlow)"/>
+      <circle cx="680" cy="70" r="34" fill="#ffd980"/>
+      <!-- Nuvens distantes -->
+      <ellipse cx="120" cy="60" rx="40" ry="8" fill="rgba(255,255,255,.5)"/>
+      <ellipse cx="380" cy="40" rx="55" ry="10" fill="rgba(255,255,255,.4)"/>
+      <ellipse cx="540" cy="65" rx="45" ry="9" fill="rgba(255,255,255,.45)"/>
+
+      <!-- Montanhas distantes (camada 1 - mais clara) -->
+      <path d="M 0 220 L 60 175 L 110 200 L 180 160 L 240 188 L 320 150 L 380 182 L 460 155 L 540 188 L 620 168 L 720 195 L 800 168 L 800 290 L 0 290 Z" fill="#a3b08e" fill-opacity=".75"/>
+      <!-- Montanhas mais próximas (camada 2) -->
+      <path d="M 0 245 L 70 215 L 140 235 L 220 210 L 320 240 L 410 215 L 500 235 L 600 220 L 700 240 L 800 220 L 800 290 L 0 290 Z" fill="#7a8868" fill-opacity=".82"/>
       <!-- Solo -->
-      <rect x="0" y="280" width="800" height="80" fill="url(#groundGrad)"/>
+      <rect x="0" y="290" width="800" height="90" fill="url(#groundGrad)"/>
 
-      <!-- Pequenos arbustos -->
-      <ellipse cx="50" cy="290" rx="18" ry="6" fill="#3a4a25"/>
-      <ellipse cx="150" cy="295" rx="22" ry="7" fill="#3a4a25"/>
-      <ellipse cx="280" cy="290" rx="16" ry="5" fill="#3a4a25"/>
-      <ellipse cx="450" cy="295" rx="20" ry="6" fill="#3a4a25"/>
-      <ellipse cx="640" cy="292" rx="24" ry="7" fill="#3a4a25"/>
-      <ellipse cx="760" cy="288" rx="18" ry="6" fill="#3a4a25"/>
+      <!-- Pequenos arbustos espalhados -->
+      <ellipse cx="35" cy="298" rx="15" ry="5" fill="#3a4a25"/>
+      <ellipse cx="100" cy="302" rx="20" ry="6" fill="#3a4a25"/>
+      <ellipse cx="170" cy="305" rx="14" ry="5" fill="#3a4a25"/>
+      <ellipse cx="245" cy="300" rx="18" ry="5" fill="#3a4a25"/>
+      <ellipse cx="320" cy="305" rx="16" ry="5" fill="#3a4a25"/>
+      <ellipse cx="385" cy="302" rx="22" ry="6" fill="#3a4a25"/>
+      <ellipse cx="475" cy="305" rx="17" ry="5" fill="#3a4a25"/>
+      <ellipse cx="565" cy="300" rx="20" ry="6" fill="#3a4a25"/>
+      <ellipse cx="640" cy="305" rx="15" ry="5" fill="#3a4a25"/>
+      <ellipse cx="720" cy="302" rx="22" ry="6" fill="#3a4a25"/>
+      <ellipse cx="785" cy="305" rx="14" ry="5" fill="#3a4a25"/>
 
-      <!-- Araucária 1 (madura, centenária - lado esquerdo, grande) -->
-      <g transform="translate(120, 290)">
-        <rect x="-3" y="-90" width="6" height="90" fill="#5a3d20"/>
-        <ellipse cx="0" cy="-95" rx="42" ry="14" fill="#2d4a2a"/>
-        <ellipse cx="0" cy="-103" rx="36" ry="11" fill="#356030"/>
-        <ellipse cx="0" cy="-110" rx="28" ry="9" fill="#2d4a2a"/>
-        <ellipse cx="0" cy="-118" rx="20" ry="7" fill="#356030"/>
-        <ellipse cx="0" cy="-128" rx="14" ry="6" fill="#2d4a2a"/>
-        <ellipse cx="0" cy="-138" rx="9" ry="5" fill="#356030"/>
+      <!-- ======= ARAUCÁRIAS (back layer — mais distantes/menores) ======= -->
+      <!-- Araucárias distantes da camada de fundo -->
+      <g transform="translate(70, 295) scale(.55)" opacity=".82">
+        <rect x="-3" y="-100" width="6" height="100" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-108" rx="38" ry="12" fill="#2a4528"/>
+        <ellipse cx="0" cy="-118" rx="30" ry="10" fill="#356030"/>
+        <ellipse cx="0" cy="-128" rx="22" ry="8" fill="#2a4528"/>
+        <ellipse cx="0" cy="-138" rx="14" ry="6" fill="#356030"/>
+      </g>
+      <g transform="translate(190, 295) scale(.50)" opacity=".75">
+        <rect x="-2" y="-80" width="4" height="80" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-86" rx="28" ry="10" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-96" rx="20" ry="8" fill="#356030"/>
+        <ellipse cx="0" cy="-106" rx="13" ry="6" fill="#2d4a2a"/>
+      </g>
+      <g transform="translate(340, 295) scale(.45)" opacity=".70">
+        <rect x="-2" y="-70" width="4" height="70" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-76" rx="24" ry="8" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-86" rx="16" ry="6" fill="#356030"/>
+      </g>
+      <g transform="translate(480, 295) scale(.55)" opacity=".82">
+        <rect x="-3" y="-110" width="6" height="110" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-118" rx="42" ry="13" fill="#2a4528"/>
+        <ellipse cx="0" cy="-130" rx="33" ry="11" fill="#356030"/>
+        <ellipse cx="0" cy="-142" rx="24" ry="9" fill="#2a4528"/>
+        <ellipse cx="0" cy="-152" rx="15" ry="7" fill="#356030"/>
+      </g>
+      <g transform="translate(610, 295) scale(.48)" opacity=".75">
+        <rect x="-2" y="-78" width="4" height="78" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-84" rx="26" ry="9" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-94" rx="18" ry="7" fill="#356030"/>
+      </g>
+      <g transform="translate(760, 295) scale(.50)" opacity=".78">
+        <rect x="-2" y="-90" width="4" height="90" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-96" rx="32" ry="10" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-108" rx="22" ry="8" fill="#356030"/>
+        <ellipse cx="0" cy="-118" rx="13" ry="5" fill="#2d4a2a"/>
       </g>
 
-      <!-- Araucária 2 (pequena - jovem) -->
-      <g transform="translate(220, 290)">
-        <rect x="-2" y="-50" width="4" height="50" fill="#5a3d20"/>
-        <ellipse cx="0" cy="-55" rx="22" ry="8" fill="#2d4a2a"/>
-        <ellipse cx="0" cy="-62" rx="16" ry="6" fill="#356030"/>
-        <ellipse cx="0" cy="-71" rx="10" ry="5" fill="#2d4a2a"/>
-        <ellipse cx="0" cy="-78" rx="6" ry="4" fill="#356030"/>
+      <!-- ======= ARAUCÁRIAS (mid layer) ======= -->
+      <g transform="translate(120, 300) scale(.85)">
+        <rect x="-3" y="-92" width="6" height="92" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-100" rx="40" ry="13" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-110" rx="32" ry="11" fill="#356030"/>
+        <ellipse cx="0" cy="-120" rx="24" ry="9" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-130" rx="16" ry="7" fill="#356030"/>
+        <ellipse cx="0" cy="-140" rx="9" ry="5" fill="#2d4a2a"/>
       </g>
-
-      <!-- Araucária 3 (grande, centro) -->
-      <g transform="translate(330, 290)">
-        <rect x="-4" y="-110" width="8" height="110" fill="#5a3d20"/>
-        <ellipse cx="0" cy="-118" rx="48" ry="15" fill="#2a4528"/>
-        <ellipse cx="0" cy="-128" rx="42" ry="13" fill="#356030"/>
-        <ellipse cx="0" cy="-138" rx="34" ry="11" fill="#2a4528"/>
-        <ellipse cx="0" cy="-148" rx="26" ry="9" fill="#356030"/>
-        <ellipse cx="0" cy="-158" rx="18" ry="7" fill="#2a4528"/>
-        <ellipse cx="0" cy="-168" rx="11" ry="6" fill="#356030"/>
+      <g transform="translate(265, 300) scale(.78)">
+        <rect x="-3" y="-78" width="6" height="78" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-84" rx="30" ry="11" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-93" rx="22" ry="9" fill="#356030"/>
+        <ellipse cx="0" cy="-103" rx="14" ry="6" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-112" rx="8" ry="4" fill="#356030"/>
       </g>
-
-      <!-- Araucária 4 (média) -->
-      <g transform="translate(420, 290)">
-        <rect x="-3" y="-72" width="6" height="72" fill="#5a3d20"/>
-        <ellipse cx="0" cy="-78" rx="32" ry="11" fill="#2d4a2a"/>
-        <ellipse cx="0" cy="-86" rx="26" ry="9" fill="#356030"/>
-        <ellipse cx="0" cy="-94" rx="18" ry="7" fill="#2d4a2a"/>
-        <ellipse cx="0" cy="-103" rx="11" ry="5" fill="#356030"/>
+      <g transform="translate(420, 300) scale(.92)">
+        <rect x="-3" y="-86" width="6" height="86" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-92" rx="34" ry="12" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-103" rx="26" ry="10" fill="#356030"/>
+        <ellipse cx="0" cy="-114" rx="18" ry="8" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-124" rx="11" ry="6" fill="#356030"/>
       </g>
-
-      <!-- Araucária 5 (centenária - direita) -->
-      <g transform="translate(530, 290)">
-        <rect x="-4" y="-130" width="8" height="130" fill="#5a3d20"/>
-        <ellipse cx="0" cy="-138" rx="52" ry="16" fill="#2a4528"/>
-        <ellipse cx="0" cy="-150" rx="46" ry="14" fill="#356030"/>
-        <ellipse cx="0" cy="-162" rx="38" ry="12" fill="#2a4528"/>
-        <ellipse cx="0" cy="-174" rx="29" ry="10" fill="#356030"/>
-        <ellipse cx="0" cy="-184" rx="21" ry="8" fill="#2a4528"/>
-        <ellipse cx="0" cy="-194" rx="13" ry="6" fill="#356030"/>
-      </g>
-
-      <!-- Araucária 6 (pequena - extrema direita) -->
-      <g transform="translate(660, 290)">
-        <rect x="-2" y="-58" width="4" height="58" fill="#5a3d20"/>
-        <ellipse cx="0" cy="-64" rx="24" ry="9" fill="#2d4a2a"/>
-        <ellipse cx="0" cy="-72" rx="18" ry="7" fill="#356030"/>
-        <ellipse cx="0" cy="-81" rx="11" ry="5" fill="#2d4a2a"/>
-      </g>
-
-      <!-- Araucária 7 (média - extrema direita) -->
-      <g transform="translate(740, 290)">
+      <g transform="translate(550, 300) scale(.82)">
         <rect x="-3" y="-80" width="6" height="80" fill="#5a3d20"/>
-        <ellipse cx="0" cy="-88" rx="34" ry="12" fill="#2a4528"/>
-        <ellipse cx="0" cy="-98" rx="28" ry="10" fill="#356030"/>
-        <ellipse cx="0" cy="-108" rx="20" ry="8" fill="#2a4528"/>
-        <ellipse cx="0" cy="-118" rx="12" ry="6" fill="#356030"/>
+        <ellipse cx="0" cy="-86" rx="32" ry="11" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-96" rx="24" ry="9" fill="#356030"/>
+        <ellipse cx="0" cy="-105" rx="16" ry="7" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-114" rx="9" ry="5" fill="#356030"/>
+      </g>
+      <g transform="translate(690, 300) scale(.88)">
+        <rect x="-3" y="-92" width="6" height="92" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-98" rx="36" ry="12" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-110" rx="27" ry="10" fill="#356030"/>
+        <ellipse cx="0" cy="-122" rx="18" ry="8" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-132" rx="11" ry="6" fill="#356030"/>
+      </g>
+
+      <!-- ======= ARAUCÁRIAS GIGANTES (front — centenárias, imponentes) ======= -->
+      <g transform="translate(80, 305) scale(1.05)">
+        <rect x="-5" y="-145" width="10" height="145" fill="#4d3318"/>
+        <ellipse cx="0" cy="-155" rx="58" ry="18" fill="#284025"/>
+        <ellipse cx="0" cy="-170" rx="50" ry="15" fill="#356030"/>
+        <ellipse cx="0" cy="-184" rx="42" ry="13" fill="#284025"/>
+        <ellipse cx="0" cy="-196" rx="33" ry="11" fill="#356030"/>
+        <ellipse cx="0" cy="-208" rx="24" ry="9" fill="#284025"/>
+        <ellipse cx="0" cy="-218" rx="15" ry="7" fill="#356030"/>
+        <ellipse cx="0" cy="-228" rx="8" ry="5" fill="#284025"/>
+      </g>
+      <g transform="translate(335, 305) scale(1.0)">
+        <rect x="-5" y="-130" width="10" height="130" fill="#4d3318"/>
+        <ellipse cx="0" cy="-140" rx="54" ry="17" fill="#284025"/>
+        <ellipse cx="0" cy="-154" rx="46" ry="14" fill="#356030"/>
+        <ellipse cx="0" cy="-167" rx="38" ry="12" fill="#284025"/>
+        <ellipse cx="0" cy="-179" rx="30" ry="10" fill="#356030"/>
+        <ellipse cx="0" cy="-190" rx="21" ry="8" fill="#284025"/>
+        <ellipse cx="0" cy="-200" rx="13" ry="6" fill="#356030"/>
+      </g>
+      <g transform="translate(610, 305) scale(1.10)">
+        <rect x="-5" y="-150" width="10" height="150" fill="#4d3318"/>
+        <ellipse cx="0" cy="-162" rx="60" ry="19" fill="#284025"/>
+        <ellipse cx="0" cy="-178" rx="52" ry="16" fill="#356030"/>
+        <ellipse cx="0" cy="-194" rx="44" ry="14" fill="#284025"/>
+        <ellipse cx="0" cy="-208" rx="35" ry="12" fill="#356030"/>
+        <ellipse cx="0" cy="-220" rx="26" ry="10" fill="#284025"/>
+        <ellipse cx="0" cy="-232" rx="17" ry="8" fill="#356030"/>
+        <ellipse cx="0" cy="-242" rx="9" ry="5" fill="#284025"/>
       </g>
 
       <!-- Gralha-azul voando -->
-      <g transform="translate(380, 100) scale(2.2)">
+      <g transform="translate(420, 130) scale(2.5)">
         <ellipse cx="-1" cy="1" rx="6" ry="3" fill="#9c97a8" opacity="0.7"/>
         <path d="M -7 -1 Q -8 -4 -4 -6 Q 1 -7 5 -6 Q 8 -4 9 -1 Q 9 2 6 3 Q 1 4 -3 3 Q -6 2 -7 -1 Z" fill="#6e6878"/>
         <circle cx="5" cy="-3" r="3.8" fill="#4a4359"/>
@@ -9965,12 +10062,14 @@ function renderWelcome(){
       </g>
 
       <!-- Pinhões espalhados -->
-      <ellipse cx="100" cy="298" rx="3" ry="2" fill="#8b6f3d"/>
-      <ellipse cx="180" cy="305" rx="3" ry="2" fill="#8b6f3d"/>
-      <ellipse cx="290" cy="302" rx="3" ry="2" fill="#8b6f3d"/>
-      <ellipse cx="500" cy="305" rx="3" ry="2" fill="#8b6f3d"/>
-      <ellipse cx="600" cy="300" rx="3" ry="2" fill="#8b6f3d"/>
-      <ellipse cx="700" cy="305" rx="3" ry="2" fill="#8b6f3d"/>
+      <ellipse cx="60" cy="318" rx="3" ry="2" fill="#8b6f3d"/>
+      <ellipse cx="135" cy="322" rx="3" ry="2" fill="#8b6f3d"/>
+      <ellipse cx="220" cy="318" rx="3" ry="2" fill="#8b6f3d"/>
+      <ellipse cx="310" cy="322" rx="3" ry="2" fill="#8b6f3d"/>
+      <ellipse cx="395" cy="318" rx="3" ry="2" fill="#8b6f3d"/>
+      <ellipse cx="495" cy="322" rx="3" ry="2" fill="#8b6f3d"/>
+      <ellipse cx="585" cy="318" rx="3" ry="2" fill="#8b6f3d"/>
+      <ellipse cx="700" cy="322" rx="3" ry="2" fill="#8b6f3d"/>
     </svg>
   `;
   forestSec.appendChild(forestBox);
@@ -9978,12 +10077,12 @@ function renderWelcome(){
   const forestStats = mk('div','wel-forest-stats');
   forestStats.innerHTML = `
     <div class="wfs-stat">
-      <div class="wfs-num">7</div>
-      <div class="wfs-lbl">Araucárias plantadas<br><span>2 centenárias · 3 maduras · 2 jovens</span></div>
+      <div class="wfs-num">14+</div>
+      <div class="wfs-lbl">Araucárias plantadas<br><span>3 centenárias · 5 maduras · 6 jovens</span></div>
     </div>
     <div class="wfs-stat">
       <div class="wfs-num">182</div>
-      <div class="wfs-lbl">Dias de estudo consecutivos<br><span>6 meses sem perder o ritmo</span></div>
+      <div class="wfs-lbl">Dias de constância<br><span>~6 meses sem perder o ritmo</span></div>
     </div>
     <div class="wfs-stat">
       <div class="wfs-num">4.2k</div>
@@ -9993,8 +10092,19 @@ function renderWelcome(){
   forestSec.appendChild(forestStats);
 
   const forestNote = mk('p','wel-forest-note');
-  forestNote.innerHTML = '<i>* Exemplo simulado. Sua floresta vai crescer no seu ritmo — cada bloco de Pomodoro, cada dia de constância, cada marco vira árvore real no seu pinhal.</i>';
+  forestNote.innerHTML = '<i>* Esta é uma <b>projeção</b> de como pode ficar seu pinhal. Cada estudante cresce no seu próprio ritmo — não tem certo nem errado. Comece hoje plantando a primeira árvore.</i>';
   forestSec.appendChild(forestNote);
+
+  // V12: CTA inline na seção do pinhal — após menção de "comece hoje"
+  const forestCta = mkBtn('Criar conta grátis →','btn btn-p wel-inline-cta');
+  forestCta.style.marginTop = '1rem';
+  forestCta.addEventListener('click',()=>{
+    DATA.welcomeShown=true; DATA.setup=true;
+    ST.view='dashboard'; save();
+    if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;ST.authMode='signup';}
+    render();
+  });
+  forestSec.appendChild(forestCta);
 
   wrap.appendChild(forestSec);
 
@@ -10336,10 +10446,20 @@ function renderWelcome(){
   `;
   plansSec.appendChild(topupInfo);
 
-  // Trial info
+  // Trial info + CTA inline (V12: botão pra reforçar a ação que o texto sugere)
+  const trialInfoBox = mk('div','wel-trial-info-box');
   const trialInfo = mk('p','wel-trial-info');
   trialInfo.innerHTML = '🎁 <b>Quer testar antes?</b> Crie uma conta grátis e use 40 créditos por 14 dias. Sem cartão, sem compromisso.';
-  plansSec.appendChild(trialInfo);
+  trialInfoBox.appendChild(trialInfo);
+  const trialInfoCta = mkBtn('Criar conta grátis →','btn btn-p btn-sm wel-inline-cta');
+  trialInfoCta.addEventListener('click',()=>{
+    DATA.welcomeShown=true; DATA.setup=true;
+    ST.view='dashboard'; save();
+    if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;ST.authMode='signup';}
+    render();
+  });
+  trialInfoBox.appendChild(trialInfoCta);
+  plansSec.appendChild(trialInfoBox);
 
   wrap.appendChild(plansSec);
 
@@ -10415,160 +10535,252 @@ function renderWelcome(){
   // Conteúdo de cada slide é gerado dinamicamente pra economizar HTML estático
   const DEMO_SLIDES = [
     {
-      title:'Mapa da Matéria',
+      title:'Mapa da matéria',
       tag:'sem créditos',
       tagClass:'free',
-      caption:'Veja onde você acerta, onde erra, e o que falta cobrir — atualizado automaticamente conforme você pratica.',
-      svg:`<svg viewBox="0 0 600 360" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
-        <rect x="0" y="0" width="600" height="360" fill="var(--surface2)" rx="10"/>
-        <rect x="20" y="20" width="560" height="48" fill="var(--surface)" rx="8"/>
-        <text x="36" y="50" font-size="16" font-weight="700" fill="var(--text)">🗺 Mapa: Direito Constitucional</text>
+      caption:'Veja onde você acerta, onde erra e o que ainda não estudou — atualizado automaticamente conforme você pratica. Sem precisar planilha externa.',
+      svg:`<svg viewBox="0 0 600 380" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="600" height="380" fill="var(--surface2)" rx="10"/>
+        <rect x="20" y="20" width="560" height="50" fill="var(--surface)" rx="8"/>
+        <text x="40" y="52" font-size="15" font-weight="700" fill="var(--text)">🗺 Mapa: Direito Constitucional</text>
+        <!-- Filtro top -->
+        <rect x="430" y="32" width="130" height="26" rx="6" fill="var(--surface2)" stroke="var(--border)"/>
+        <text x="495" y="50" font-size="11" fill="var(--text2)" font-weight="600" text-anchor="middle">📋 Tudo · 📚 Estudado</text>
         <!-- Lista de tópicos -->
         <g>
-          <rect x="20" y="84" width="560" height="44" fill="var(--surface)" rx="8"/>
-          <circle cx="38" cy="106" r="6" fill="rgb(73,197,137)"/>
-          <text x="56" y="111" font-size="13" fill="var(--text)" font-weight="600">Princípios fundamentais</text>
-          <text x="500" y="111" font-size="11" fill="var(--text3)" text-anchor="end">85% acerto · 12 questões</text>
+          <rect x="20" y="86" width="560" height="48" fill="var(--surface)" rx="8"/>
+          <circle cx="42" cy="110" r="7" fill="rgb(73,197,137)"/>
+          <text x="60" y="115" font-size="13" fill="var(--text)" font-weight="600">Princípios fundamentais</text>
+          <rect x="450" y="98" width="50" height="24" rx="6" fill="rgba(73,197,137,.15)"/>
+          <text x="475" y="115" font-size="11" fill="rgb(33,140,80)" font-weight="700" text-anchor="middle">85%</text>
+          <text x="555" y="115" font-size="10.5" fill="var(--text3)" text-anchor="end">12 questões</text>
         </g>
         <g>
-          <rect x="20" y="138" width="560" height="44" fill="var(--surface)" rx="8"/>
-          <circle cx="38" cy="160" r="6" fill="rgb(232,164,60)"/>
-          <text x="56" y="165" font-size="13" fill="var(--text)" font-weight="600">Direitos e garantias fundamentais</text>
-          <text x="500" y="165" font-size="11" fill="var(--text3)" text-anchor="end">62% acerto · 8 questões</text>
+          <rect x="20" y="146" width="560" height="48" fill="var(--surface)" rx="8"/>
+          <circle cx="42" cy="170" r="7" fill="rgb(232,164,60)"/>
+          <text x="60" y="175" font-size="13" fill="var(--text)" font-weight="600">Direitos e garantias fundamentais</text>
+          <rect x="450" y="158" width="50" height="24" rx="6" fill="rgba(232,164,60,.15)"/>
+          <text x="475" y="175" font-size="11" fill="#a76e1a" font-weight="700" text-anchor="middle">62%</text>
+          <text x="555" y="175" font-size="10.5" fill="var(--text3)" text-anchor="end">8 questões</text>
         </g>
         <g>
-          <rect x="20" y="192" width="560" height="44" fill="var(--surface)" rx="8"/>
-          <circle cx="38" cy="214" r="6" fill="rgb(232,76,76)"/>
-          <text x="56" y="219" font-size="13" fill="var(--text)" font-weight="600">Controle de constitucionalidade</text>
-          <text x="500" y="219" font-size="11" fill="var(--text3)" text-anchor="end">38% acerto · 5 questões</text>
+          <rect x="20" y="206" width="560" height="48" fill="var(--surface)" rx="8"/>
+          <circle cx="42" cy="230" r="7" fill="rgb(232,76,76)"/>
+          <text x="60" y="235" font-size="13" fill="var(--text)" font-weight="600">Controle de constitucionalidade</text>
+          <rect x="450" y="218" width="50" height="24" rx="6" fill="rgba(232,76,76,.15)"/>
+          <text x="475" y="235" font-size="11" fill="rgb(180,40,40)" font-weight="700" text-anchor="middle">38%</text>
+          <text x="555" y="235" font-size="10.5" fill="var(--text3)" text-anchor="end">5 questões</text>
         </g>
         <g>
-          <rect x="20" y="246" width="560" height="44" fill="var(--surface)" rx="8" stroke="var(--border)" stroke-dasharray="4,3"/>
-          <circle cx="38" cy="268" r="6" fill="var(--text3)"/>
-          <text x="56" y="273" font-size="13" fill="var(--text2)" font-weight="500">Poder Judiciário</text>
-          <text x="500" y="273" font-size="11" fill="var(--text3)" text-anchor="end">não estudado</text>
+          <rect x="20" y="266" width="560" height="48" fill="var(--surface)" rx="8" stroke="var(--border)" stroke-dasharray="4,3"/>
+          <circle cx="42" cy="290" r="7" fill="var(--text3)" opacity=".4"/>
+          <text x="60" y="295" font-size="13" fill="var(--text2)" font-weight="500">Poder Judiciário</text>
+          <text x="555" y="295" font-size="10.5" fill="var(--text3)" text-anchor="end">não estudado</text>
         </g>
-        <text x="36" y="320" font-size="12" fill="var(--text3)">💡 Use os filtros pra focar onde você precisa melhorar</text>
+        <text x="40" y="345" font-size="11.5" fill="var(--text3)">💡 Filtros por disciplina, status e dificuldade ajudam você a focar onde precisa</text>
       </svg>`
     },
     {
-      title:'Prática com IA',
-      tag:'1 crédito por questão',
-      tagClass:'ai',
-      caption:'Você responde uma questão estilo Cebraspe (ou da sua banca). Errou? A IA explica em segundos e oferece um flashcard com 1 clique.',
-      svg:`<svg viewBox="0 0 600 360" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
-        <rect x="0" y="0" width="600" height="360" fill="var(--surface2)" rx="10"/>
-        <rect x="20" y="20" width="560" height="240" fill="var(--surface)" rx="10"/>
-        <text x="40" y="50" font-size="11" font-weight="700" fill="var(--gralia-purple)" letter-spacing="0.6">QUESTÃO 12 · CEBRASPE</text>
-        <text x="40" y="78" font-size="13" fill="var(--text)" font-weight="500">
-          <tspan x="40" dy="0">O servidor público pode acumular cargos</tspan>
-          <tspan x="40" dy="18">públicos quando houver compatibilidade</tspan>
-          <tspan x="40" dy="18">de horários, sendo um técnico e outro</tspan>
-          <tspan x="40" dy="18">científico.</tspan>
-        </text>
-        <rect x="40" y="180" width="120" height="48" rx="8" fill="rgb(73,197,137)" fill-opacity=".15" stroke="rgb(73,197,137)" stroke-width="1"/>
-        <text x="100" y="210" font-size="13" fill="rgb(33,140,80)" font-weight="700" text-anchor="middle">C - Certo</text>
-        <rect x="172" y="180" width="120" height="48" rx="8" fill="rgb(232,76,76)" stroke="rgb(232,76,76)" stroke-width="2"/>
-        <text x="232" y="210" font-size="13" fill="#fff" font-weight="700" text-anchor="middle">E - Errado ✓</text>
-        <!-- Feedback -->
-        <rect x="20" y="280" width="560" height="60" fill="rgb(73,197,137)" fill-opacity=".10" rx="10" stroke="rgb(73,197,137)" stroke-opacity=".4"/>
-        <text x="40" y="305" font-size="13" fill="rgb(33,140,80)" font-weight="700">✓ Resposta correta</text>
-        <text x="40" y="325" font-size="11" fill="var(--text2)">Faltou "técnico e científico" — a previsão é pra técnico+científico OU saúde+saúde, não exclui outras.</text>
-      </svg>`
-    },
-    {
-      title:'Flashcard automático',
+      title:'Prática com IA — questão e correção',
       tag:'1 crédito',
       tagClass:'ai',
-      caption:'A partir do erro, a IA cria um flashcard que ataca exatamente aquela armadilha. Vai pra revisão espaçada (SRS) automaticamente.',
-      svg:`<svg viewBox="0 0 600 360" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
-        <rect x="0" y="0" width="600" height="360" fill="var(--surface2)" rx="10"/>
-        <rect x="60" y="40" width="480" height="130" fill="var(--surface)" rx="14" stroke="var(--gralia-purple)" stroke-opacity=".4"/>
-        <text x="80" y="68" font-size="10.5" font-weight="700" fill="var(--gralia-purple)" letter-spacing="0.7">FRENTE</text>
-        <text x="80" y="98" font-size="14" fill="var(--text)" font-weight="600">
-          <tspan x="80" dy="0">Quais combinações de cargos públicos são</tspan>
-          <tspan x="80" dy="20">permitidas pela CF?</tspan>
+      caption:'Você responde uma questão estilo Cebraspe (ou da banca alvo). A IA explica imediatamente, identifica a armadilha e oferece criar flashcard com 1 clique.',
+      svg:`<svg viewBox="0 0 600 380" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="600" height="380" fill="var(--surface2)" rx="10"/>
+        <!-- Card da questão -->
+        <rect x="20" y="20" width="560" height="170" fill="var(--surface)" rx="10"/>
+        <text x="40" y="48" font-size="10.5" font-weight="700" fill="var(--gralia-purple)" letter-spacing="0.6">QUESTÃO 12 · CEBRASPE · DIREITO CONSTITUCIONAL</text>
+        <!-- Texto da questão (formatado em 5 linhas curtas) -->
+        <text font-size="12.5" fill="var(--text)" font-weight="500">
+          <tspan x="40" y="76">É vedado ao servidor público acumular cargos públicos remunerados,</tspan>
+          <tspan x="40" y="94">sendo permitida a acumulação somente de dois cargos de professor</tspan>
+          <tspan x="40" y="112">com horários compatíveis, ou de um cargo de professor com outro</tspan>
+          <tspan x="40" y="130">técnico, ou ainda de dois cargos privativos de profissionais de saúde,</tspan>
+          <tspan x="40" y="148">com profissões regulamentadas (CF, art. 37, XVI).</tspan>
         </text>
-        <text x="80" y="148" font-size="11" fill="var(--text3)">Tópico: Direitos e Garantias · Disciplina: Direito Constitucional</text>
-        <rect x="60" y="190" width="480" height="135" fill="var(--surface)" rx="14" stroke="var(--border)"/>
-        <text x="80" y="218" font-size="10.5" font-weight="700" fill="rgb(33,140,80)" letter-spacing="0.7">VERSO</text>
-        <text x="80" y="244" font-size="13" fill="var(--text)">
-          <tspan x="80" dy="0">2 cargos de prof. ou 1 prof. + 1 técnico/científico</tspan>
-          <tspan x="80" dy="20">ou 2 cargos de saúde com profissão regulamentada.</tspan>
+        <text x="40" y="174" font-size="10.5" fill="var(--text3)" font-style="italic">Sem peso · Tópico: Direitos e Garantias Fundamentais</text>
+        <!-- Botões C/E -->
+        <rect x="40" y="206" width="130" height="44" rx="10" fill="rgba(73,197,137,.10)" stroke="rgba(73,197,137,.5)" stroke-width="1"/>
+        <text x="105" y="234" font-size="14" fill="rgb(33,140,80)" font-weight="700" text-anchor="middle">Certo</text>
+        <rect x="180" y="206" width="130" height="44" rx="10" fill="rgb(232,76,76)" stroke="rgb(180,40,40)" stroke-width="2"/>
+        <text x="245" y="234" font-size="14" fill="#fff" font-weight="700" text-anchor="middle">Errado ✓</text>
+        <text x="320" y="234" font-size="11.5" fill="var(--text3)">Sua resposta — confirmada como correta</text>
+        <!-- Card de feedback -->
+        <rect x="20" y="270" width="560" height="92" fill="rgba(73,197,137,.07)" rx="10" stroke="rgba(73,197,137,.35)"/>
+        <text x="40" y="296" font-size="13" fill="rgb(33,140,80)" font-weight="700">✓ Correto · Pegadinha detectada: termo "técnico" usado isoladamente</text>
+        <text font-size="11.5" fill="var(--text2)">
+          <tspan x="40" y="316">A acumulação permite "professor + técnico CIENTÍFICO". A questão omitiu</tspan>
+          <tspan x="40" y="333">"científico", o que torna a alternativa errada. Cuidado com omissões assim.</tspan>
         </text>
-        <rect x="80" y="282" width="160" height="22" rx="11" fill="rgb(73,197,137)" fill-opacity=".15"/>
-        <text x="160" y="297" font-size="11" fill="rgb(33,140,80)" font-weight="700" text-anchor="middle">art. 37, XVI CF</text>
+        <text x="40" y="354" font-size="11" fill="var(--gralia-purple)" font-weight="600">🎴 Criar flashcard desse erro · 📚 Ver perfil aprofundado do tópico</text>
+      </svg>`
+    },
+    {
+      title:'Flashcard automático do erro',
+      tag:'1 crédito',
+      tagClass:'ai',
+      caption:'A partir do erro, a IA cria flashcard com formato pedagógico — destaque em palavras-chave, mnemônico e referência legal. Vai pra revisão espaçada (SRS) automaticamente.',
+      svg:`<svg viewBox="0 0 600 380" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="600" height="380" fill="var(--surface2)" rx="10"/>
+        <!-- FRENTE -->
+        <rect x="40" y="30" width="520" height="140" fill="var(--surface)" rx="14" stroke="rgba(128,66,250,.4)"/>
+        <text x="60" y="58" font-size="10.5" font-weight="800" fill="var(--gralia-purple)" letter-spacing="0.7">FRENTE · pergunta</text>
+        <text font-size="13.5" fill="var(--text)" font-weight="600">
+          <tspan x="60" y="86">Quais combinações de cargos públicos podem ser</tspan>
+          <tspan x="60" y="106">acumuladas conforme o art. 37, XVI da CF/88?</tspan>
+        </text>
+        <text x="60" y="142" font-size="11" fill="var(--text3)">📚 Direito Constitucional · Direitos e Garantias</text>
+        <text x="540" y="142" font-size="11" fill="var(--text3)" text-anchor="end">⏱ próx. revisão: amanhã</text>
+        <!-- VERSO -->
+        <rect x="40" y="190" width="520" height="170" fill="var(--surface)" rx="14" stroke="rgba(73,197,137,.4)"/>
+        <text x="60" y="218" font-size="10.5" font-weight="800" fill="rgb(33,140,80)" letter-spacing="0.7">VERSO · resposta</text>
+        <text font-size="12.5" fill="var(--text)">
+          <tspan x="60" y="244" font-weight="700">3 combinações permitidas:</tspan>
+          <tspan x="60" y="266">• 2 cargos de </tspan><tspan font-weight="700" fill="rgb(33,140,80)">professor</tspan>
+          <tspan x="60" y="286">• 1 cargo de professor + 1 cargo </tspan><tspan font-weight="700" fill="rgb(33,140,80)">técnico ou científico</tspan>
+          <tspan x="60" y="306">• 2 cargos privativos de profissionais </tspan><tspan font-weight="700" fill="rgb(33,140,80)">de saúde</tspan>
+        </text>
+        <rect x="60" y="320" width="200" height="24" rx="12" fill="rgba(73,197,137,.15)"/>
+        <text x="160" y="337" font-size="11" fill="rgb(33,140,80)" font-weight="700" text-anchor="middle">📜 art. 37, XVI CF/88</text>
+        <rect x="270" y="320" width="240" height="24" rx="12" fill="rgba(128,66,250,.10)"/>
+        <text x="390" y="337" font-size="10.5" fill="var(--gralia-purple)" font-weight="600" text-anchor="middle">💡 Pegadinha: "técnico" sem "científico"</text>
       </svg>`
     },
     {
       title:'Heatmap de produtividade',
       tag:'sem créditos',
       tagClass:'free',
-      caption:'Veja em quais dias da semana e horários você rende mais. A IA usa isso pra recomendar quando você deve fazer simulado ou drill.',
-      svg:`<svg viewBox="0 0 600 360" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
-        <rect x="0" y="0" width="600" height="360" fill="var(--surface2)" rx="10"/>
-        <text x="30" y="40" font-size="14" font-weight="700" fill="var(--text)">📈 Mapa de produtividade — últimos 30 dias</text>
+      caption:'Veja em quais dias da semana e horários você rende melhor. As cores indicam taxa de acerto: verde alta, vermelha baixa, roxa neutra. A IA usa esses dados pra recomendar quando fazer drill ou simulado.',
+      svg:`<svg viewBox="0 0 600 380" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="600" height="380" fill="var(--surface2)" rx="10"/>
+        <text x="30" y="36" font-size="14" font-weight="700" fill="var(--text)">📈 Mapa de produtividade</text>
+        <text x="30" y="54" font-size="11" fill="var(--text3)">Últimos 30 dias · cada célula = bloco de 3h</text>
+
+        <!-- Legenda das cores -->
+        <g transform="translate(360, 28)">
+          <rect x="0" y="0" width="220" height="34" rx="6" fill="var(--surface)" stroke="var(--border)"/>
+          <rect x="10" y="10" width="14" height="14" rx="3" fill="rgb(73,197,137)" fill-opacity=".75"/>
+          <text x="29" y="22" font-size="10" fill="var(--text2)" font-weight="600">Acertos</text>
+          <rect x="80" y="10" width="14" height="14" rx="3" fill="rgb(128,66,250)" fill-opacity=".75"/>
+          <text x="99" y="22" font-size="10" fill="var(--text2)" font-weight="600">Atividade</text>
+          <rect x="156" y="10" width="14" height="14" rx="3" fill="rgb(232,76,76)" fill-opacity=".75"/>
+          <text x="175" y="22" font-size="10" fill="var(--text2)" font-weight="600">Erros</text>
+        </g>
+
+        <!-- Eixo X (horas) -->
+        ${(()=>{
+          const hours = ['0','3','6','9','12','15','18','21'];
+          let s='';
+          hours.forEach((h,i)=>{
+            s += `<text x="${85 + i*55 + 25}" y="92" font-size="9.5" fill="var(--text3)" text-anchor="middle" font-weight="600">${h}h</text>`;
+          });
+          return s;
+        })()}
+
+        <!-- Grid -->
         ${(()=>{
           const days = ['DOM','SEG','TER','QUA','QUI','SEX','SAB'];
-          const hours = ['0','3','6','9','12','15','18','21'];
-          let s = '';
-          // Hour labels
-          hours.forEach((h,i)=>{
-            s += `<text x="${100 + i*60 + 30}" y="74" font-size="10" fill="var(--text3)" text-anchor="middle" font-weight="600">${h}h</text>`;
-          });
-          // Cells
+          // Padrões realistas: SEG-SEX 18-21h verde forte (estuda à noite após trabalho)
+          // SAB-DOM 9-15h verde médio (manhã/tarde de fds)
+          // Madrugada (0-6h) vazio
+          const data = [
+            // dom: 9-15 atividade média
+            [0, 0, 0, .25, .35, .25, .15, 0],
+            // seg: noite forte
+            [0, 0, 0, 0, .15, .25, .85, .55],
+            // ter: noite média
+            [0, 0, 0, 0, .15, .35, .75, .45],
+            // qua: noite forte
+            [0, 0, 0, 0, .15, .25, .80, .50],
+            // qui: noite média
+            [0, 0, 0, 0, .15, .35, .70, .40],
+            // sex: noite EXCELENTE (destaque)
+            [0, 0, 0, 0, .20, .30, .95, .85],
+            // sab: dia médio
+            [0, 0, 0, .35, .45, .30, .25, .15]
+          ];
+          // Distribuição de cores: predominante verde, alguns roxo, raros vermelhos
+          const colors = [
+            ['rgb(73,197,137)','rgb(73,197,137)','rgb(73,197,137)','rgb(128,66,250)'],
+            ['rgb(128,66,250)','rgb(73,197,137)','rgb(73,197,137)','rgb(73,197,137)'],
+            ['rgb(73,197,137)','rgb(232,76,76)','rgb(73,197,137)','rgb(73,197,137)'],
+            ['rgb(73,197,137)','rgb(73,197,137)','rgb(128,66,250)','rgb(73,197,137)'],
+            ['rgb(73,197,137)','rgb(73,197,137)','rgb(73,197,137)','rgb(73,197,137)'],
+            ['rgb(73,197,137)','rgb(73,197,137)','rgb(73,197,137)','rgb(73,197,137)'],
+            ['rgb(128,66,250)','rgb(73,197,137)','rgb(73,197,137)','rgb(232,76,76)']
+          ];
+          let s='';
           days.forEach((d,r)=>{
-            s += `<text x="50" y="${94 + r*32}" font-size="10" fill="var(--text3)" font-weight="600">${d}</text>`;
-            for(let c=0; c<8; c++){
-              const intensity = Math.random()*0.7 + 0.05;
-              const colorIdx = Math.random();
-              let fill = 'rgb(128,66,250)';
-              if(colorIdx < 0.3) fill = 'rgb(73,197,137)';
-              else if(colorIdx > 0.85) fill = 'rgb(232,76,76)';
-              s += `<rect x="${75 + c*60}" y="${82 + r*32}" width="56" height="26" rx="4" fill="${fill}" fill-opacity="${intensity.toFixed(2)}"/>`;
+            s += `<text x="78" y="${112 + r*30}" font-size="10" fill="var(--text3)" font-weight="700" text-anchor="end">${d}</text>`;
+            for(let c=0;c<8;c++){
+              const intensity = data[r][c];
+              const color = intensity > 0 ? colors[r][c % 4] : 'var(--text3)';
+              const op = intensity > 0 ? Math.max(0.15, intensity) : 0.05;
+              s += `<rect x="${88 + c*55}" y="${100 + r*30}" width="50" height="24" rx="4" fill="${color}" fill-opacity="${op}"/>`;
             }
           });
           return s;
         })()}
-        <text x="30" y="338" font-size="12" fill="var(--text)" font-weight="600">💡 Você rende melhor SEX 18h-21h</text>
+
+        <!-- Insight box -->
+        <rect x="30" y="320" width="540" height="44" rx="8" fill="rgba(128,66,250,.06)" stroke="rgba(128,66,250,.25)"/>
+        <text x="50" y="342" font-size="12" fill="var(--text)" font-weight="600">💡 Você rende melhor SEX entre 18h-21h</text>
+        <text x="50" y="358" font-size="10.5" fill="var(--text3)">Considere agendar suas sessões mais difíceis nesse horário</text>
       </svg>`
     },
     {
       title:'Pinhal de Araucárias',
-      tag:'sem créditos',
-      tagClass:'free',
-      caption:'Cada marco que você atinge — primeira semana sem falhar, primeira sequência de 10 acertos, primeira meta cumprida — planta uma araucária no seu pinhal.',
-      svg:`<svg viewBox="0 0 600 360" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
+      tag:'planos pagos',
+      tagClass:'ai',
+      caption:'Cada marco que você atinge — primeira semana sem falhar, primeira sequência de 10 acertos, primeira meta cumprida — planta uma araucária no seu pinhal. Inspirado no Paraná. Visualização da constância.',
+      svg:`<svg viewBox="0 0 600 380" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="dsky" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="#fde9b9"/>
             <stop offset="100%" stop-color="#f0b878"/>
           </linearGradient>
         </defs>
-        <rect x="0" y="0" width="600" height="280" fill="url(#dsky)" rx="10"/>
-        <rect x="0" y="280" width="600" height="80" fill="#5a6b3a" rx="0"/>
-        <circle cx="490" cy="80" r="35" fill="#ffd980"/>
+        <rect x="0" y="0" width="600" height="290" fill="url(#dsky)" rx="10"/>
+        <rect x="0" y="290" width="600" height="90" fill="#5a6b3a" rx="0"/>
+        <circle cx="500" cy="70" r="40" fill="rgba(255,235,180,.7)"/>
+        <circle cx="500" cy="70" r="22" fill="#ffd980"/>
+        <!-- Montanhas -->
+        <path d="M 0 240 L 80 200 L 160 220 L 260 195 L 380 215 L 500 200 L 600 220 L 600 290 L 0 290 Z" fill="#7a8868" fill-opacity=".7"/>
+        <!-- Arbustos -->
+        <ellipse cx="60" cy="298" rx="14" ry="5" fill="#3a4a25"/>
+        <ellipse cx="340" cy="300" rx="18" ry="5" fill="#3a4a25"/>
+        <ellipse cx="540" cy="298" rx="16" ry="5" fill="#3a4a25"/>
         <!-- Árvores -->
-        <g transform="translate(120, 290)">
+        <g transform="translate(110, 295)">
           <rect x="-3" y="-72" width="6" height="72" fill="#5a3d20"/>
           <ellipse cx="0" cy="-78" rx="32" ry="11" fill="#2d4a2a"/>
           <ellipse cx="0" cy="-90" rx="22" ry="8" fill="#356030"/>
           <ellipse cx="0" cy="-100" rx="13" ry="6" fill="#2d4a2a"/>
         </g>
-        <g transform="translate(260, 290)">
-          <rect x="-4" y="-110" width="8" height="110" fill="#5a3d20"/>
-          <ellipse cx="0" cy="-118" rx="42" ry="14" fill="#2a4528"/>
-          <ellipse cx="0" cy="-132" rx="32" ry="11" fill="#356030"/>
-          <ellipse cx="0" cy="-145" rx="22" ry="8" fill="#2a4528"/>
-          <ellipse cx="0" cy="-156" rx="12" ry="6" fill="#356030"/>
+        <g transform="translate(220, 295)">
+          <rect x="-2" y="-50" width="4" height="50" fill="#5a3d20"/>
+          <ellipse cx="0" cy="-55" rx="22" ry="8" fill="#2d4a2a"/>
+          <ellipse cx="0" cy="-64" rx="14" ry="6" fill="#356030"/>
         </g>
-        <g transform="translate(400, 290)">
-          <rect x="-3" y="-58" width="6" height="58" fill="#5a3d20"/>
-          <ellipse cx="0" cy="-64" rx="22" ry="9" fill="#2d4a2a"/>
-          <ellipse cx="0" cy="-76" rx="14" ry="6" fill="#356030"/>
+        <g transform="translate(320, 295)">
+          <rect x="-4" y="-115" width="8" height="115" fill="#4d3318"/>
+          <ellipse cx="0" cy="-122" rx="46" ry="14" fill="#284025"/>
+          <ellipse cx="0" cy="-136" rx="36" ry="11" fill="#356030"/>
+          <ellipse cx="0" cy="-148" rx="26" ry="9" fill="#284025"/>
+          <ellipse cx="0" cy="-158" rx="16" ry="7" fill="#356030"/>
         </g>
-        <text x="30" y="40" font-size="14" font-weight="700" fill="rgba(0,0,0,.7)">🌲 Seu pinhal · 3 araucárias</text>
-        <text x="30" y="60" font-size="11" fill="rgba(0,0,0,.55)">Próximo marco: 30 dias consecutivos</text>
+        <g transform="translate(420, 295)">
+          <rect x="-3" y="-60" width="6" height="60" fill="#5a3d20"/>
+          <ellipse cx="0" cy="-66" rx="24" ry="9" fill="#2d4a2a"/>
+          <ellipse cx="0" cy="-76" rx="15" ry="6" fill="#356030"/>
+        </g>
+        <!-- Header -->
+        <rect x="20" y="20" width="240" height="46" fill="var(--surface)" fill-opacity=".9" rx="10"/>
+        <text x="35" y="42" font-size="13" font-weight="700" fill="var(--text)">🌲 Seu pinhal · 4 árvores</text>
+        <text x="35" y="58" font-size="10.5" fill="var(--text2)">1 centenária · 1 madura · 2 jovens</text>
+        <!-- Próximo marco -->
+        <rect x="20" y="78" width="240" height="34" fill="rgba(128,66,250,.08)" stroke="rgba(128,66,250,.3)" rx="8"/>
+        <text x="35" y="98" font-size="11" fill="var(--gralia-purple)" font-weight="700">→ Próxima: 30 dias consecutivos</text>
       </svg>`
     }
   ];
@@ -11463,7 +11675,7 @@ function buildNextActionCard(dueSrs,errorsNoCard,overconf,sess){
   header.innerHTML = `
     <span class="nah-emoji">${rec.emoji}</span>
     <span class="nah-text">
-      <span class="nah-title">💡 Sugestão imediata</span>
+      <span class="nah-title">🎯 Próxima ação prioritária</span>
       <span class="nah-sub">${rec.title}</span>
     </span>
     <span class="nah-chev">${isCollapsed?'▾':'▴'}</span>
@@ -11565,11 +11777,12 @@ function buildPerformanceHeatmap(){
   const dayLabels = ['DOM','SEG','TER','QUA','QUI','SEX','SAB'];
   const hourLabels = ['0','3','6','9','12','15','18','21'];
 
-  const cellW = 28;
-  const cellH = 26;
-  const cellGap = 3;
-  const labelW = 30;
-  const labelH = 14;
+  // V12: Células mais sutis e fontes menores (eixos eram grandes demais)
+  const cellW = 22;
+  const cellH = 18;
+  const cellGap = 2.5;
+  const labelW = 26;
+  const labelH = 12;
   const totalW = labelW + HOUR_BUCKETS * (cellW + cellGap);
   const totalH = labelH + 7 * (cellH + cellGap) + 4;
 
@@ -11578,13 +11791,13 @@ function buildPerformanceHeatmap(){
   // Hour labels (top)
   hourLabels.forEach((lbl, h) => {
     const x = labelW + h * (cellW + cellGap) + cellW/2;
-    svg += `<text x="${x}" y="${labelH-3}" text-anchor="middle" class="hm-axis-lbl">${lbl}h</text>`;
+    svg += `<text x="${x}" y="${labelH-2}" text-anchor="middle" class="hm-axis-lbl">${lbl}h</text>`;
   });
 
   // Day rows
   for(let d=0; d<7; d++){
     const y = labelH + d * (cellH + cellGap);
-    svg += `<text x="${labelW-6}" y="${y + cellH/2 + 4}" text-anchor="end" class="hm-axis-lbl">${dayLabels[d]}</text>`;
+    svg += `<text x="${labelW-5}" y="${y + cellH/2 + 3}" text-anchor="end" class="hm-axis-lbl">${dayLabels[d]}</text>`;
 
     for(let h=0; h<HOUR_BUCKETS; h++){
       const x = labelW + h * (cellW + cellGap);
@@ -11594,16 +11807,15 @@ function buildPerformanceHeatmap(){
       if(count > 0){
         const intensity = count / maxCount;
         opacity = 0.15 + intensity * 0.78;
-        // Cor baseada em taxa de acerto
         const acc = correctGrid[d][h] / Math.max(count, 1);
-        if(count >= 2 && acc >= 0.7){ fillColor = 'rgb(73,197,137)'; }       // verde — alta acurácia
-        else if(count >= 2 && acc < 0.5){ fillColor = 'rgb(232,76,76)'; }    // vermelho — muitos erros
-        else { fillColor = 'rgb(128,66,250)'; }                              // roxo — neutro
+        if(count >= 2 && acc >= 0.7){ fillColor = 'rgb(73,197,137)'; }
+        else if(count >= 2 && acc < 0.5){ fillColor = 'rgb(232,76,76)'; }
+        else { fillColor = 'rgb(128,66,250)'; }
       }
       const tooltip = count > 0
         ? `${dayLabels[d]} ${hourLabels[h]}h-${(parseInt(hourLabels[h])+3)}h: ${count} ${count===1?'evento':'eventos'}${count >= 2 ? ` · ${Math.round(correctGrid[d][h]/count*100)}% acerto` : ''}`
         : `${dayLabels[d]} ${hourLabels[h]}h: sem atividade`;
-      svg += `<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="4" fill="${fillColor}" fill-opacity="${opacity.toFixed(2)}"><title>${tooltip}</title></rect>`;
+      svg += `<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="3" fill="${fillColor}" fill-opacity="${opacity.toFixed(2)}"><title>${tooltip}</title></rect>`;
     }
   }
   svg += `</svg>`;
@@ -22549,17 +22761,39 @@ function buildInsightCard(){
   const stats = computeDailyStats();
   const suggestions = adaptiveSuggestions(stats);
 
-  // Head
-  const head = mk('div','insight-head');
+  // V12: Card colapsável (era expandido por default e poluía visualmente)
+  if(typeof DATA.collapsedInsight === 'undefined') DATA.collapsedInsight = true;
+  const isCollapsed = !!DATA.collapsedInsight;
+  if(isCollapsed) wrap.classList.add('collapsed');
+
+  // Head clicável (sempre visível)
+  const head = mk('button','insight-head');
+  head.type = 'button';
+  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:0;border:0;background:transparent;cursor:pointer;font-family:inherit;text-align:left';
   const title = mk('h3');title.style.cssText='margin:0;font-size:15px;display:flex;align-items:center;gap:6px';
   title.innerHTML='📊 <span>Insight de hoje</span>';
   head.appendChild(title);
+  const headRight = mk('span');headRight.style.cssText='display:flex;align-items:center;gap:8px';
   const subdate = mk('span','txt3');subdate.style.fontSize='11px';
   const today = new Date();
   const pad = n=>String(n).padStart(2,'0');
   subdate.textContent = `${pad(today.getDate())}/${pad(today.getMonth()+1)}`;
-  head.appendChild(subdate);
+  headRight.appendChild(subdate);
+  const chev = mk('span','ic-chev');chev.style.cssText='font-size:14px;color:var(--text3);transition:transform .2s';
+  chev.textContent = isCollapsed ? '▾' : '▴';
+  headRight.appendChild(chev);
+  head.appendChild(headRight);
+  head.addEventListener('click', ()=>{
+    DATA.collapsedInsight = !DATA.collapsedInsight;
+    save();
+    render();
+  });
   wrap.appendChild(head);
+
+  // Resto só se expandido
+  if(isCollapsed){
+    return wrap;
+  }
 
   // Quick stats bar
   const statsBar = mk('div','insight-stats');
@@ -22576,7 +22810,7 @@ function buildInsightCard(){
 
   // Programmatic suggestions (always visible, no AI)
   if(suggestions.length>0){
-    const sugLbl = mk('div','section-label');sugLbl.textContent='Sugestões imediatas';sugLbl.style.margin='.75rem 0 .5rem';
+    const sugLbl = mk('div','section-label');sugLbl.textContent='Outras recomendações do dia';sugLbl.style.margin='.75rem 0 .5rem';
     wrap.appendChild(sugLbl);
     suggestions.forEach(sug=>{
       const row = mk('div','insight-sug');
