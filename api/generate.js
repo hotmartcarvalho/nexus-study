@@ -64,51 +64,67 @@ export default async function handler(req, res) {
   }
 
   // 2. Whitelist (opcional, recomendado durante beta)
-  // const allowedEmails = (process.env.ALLOWED_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
-  // if (allowedEmails.length > 0 && !allowedEmails.includes(user.email)) {
-  //  return res.status(403).json({
-  //    error: 'Este site está em teste privado. Seu email não está na lista de convidados.'
-  //  });
- // }
+  const allowedEmails = (process.env.ALLOWED_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (allowedEmails.length > 0 && !allowedEmails.includes(user.email)) {
+    return res.status(403).json({
+      error: 'Este site está em teste privado. Seu email não está na lista de convidados.'
+    });
+  }
 
-  // 3. Checa quota — se não existir, cria automaticamente (fallback do trigger)
+  // 3. Checa quota — V12: lê direto de user_credits (plan + topup)
+  // Antes lia de user_quota (tabela velha) que dessincronizava com admin_grant_credits.
   try {
-    let { data: quota, error: qErr } = await supabaseAdmin
-      .from('user_quota')
-      .select('credits_remaining, plan')
+    let { data: credits, error: qErr } = await supabaseAdmin
+      .from('user_credits')
+      .select('plan_credits, topup_credits')
       .eq('user_id', user.id)
       .maybeSingle();
 
     if (qErr) {
-      console.error('Quota SELECT error:', JSON.stringify(qErr));
+      console.error('Credits SELECT error:', JSON.stringify(qErr));
       return res.status(500).json({
         error: 'Erro ao verificar créditos: ' + (qErr.message || qErr.code || 'desconhecido')
       });
     }
 
-    // Auto-create quota if missing (user existed before trigger, or backfill não rodou)
-    if (!quota) {
-      console.warn('Quota missing for user', user.id, '- creating automatically');
+    // Auto-create se não existe (fallback do trigger create_trial_on_signup)
+    if (!credits) {
+      console.warn('user_credits missing for user', user.id, '- creating with 40 trial credits');
       const { data: created, error: insErr } = await supabaseAdmin
-        .from('user_quota')
+        .from('user_credits')
         .insert({
           user_id: user.id,
-          plan: 'trial',
-          credits_remaining: 50
+          plan_credits: 40,
+          topup_credits: 0,
+          last_reset_at: new Date().toISOString()
         })
-        .select('credits_remaining, plan')
+        .select('plan_credits, topup_credits')
         .single();
       if (insErr) {
-        console.error('Quota INSERT error:', JSON.stringify(insErr));
+        console.error('user_credits INSERT error:', JSON.stringify(insErr));
         return res.status(500).json({
-          error: 'Erro ao criar quota: ' + (insErr.message || insErr.code || 'desconhecido')
+          error: 'Erro ao criar créditos: ' + (insErr.message || insErr.code || 'desconhecido')
         });
       }
-      quota = created;
+      credits = created;
     }
 
-    if (quota.credits_remaining <= 0) {
-      return res.status(402).json({ error: 'Créditos esgotados', code: 'NO_CREDITS', plan: quota.plan });
+    const totalCredits = (credits.plan_credits || 0) + (credits.topup_credits || 0);
+
+    // Pega plano (pra retornar no erro)
+    let planLabel = 'trial';
+    try {
+      const { data: sub } = await supabaseAdmin
+        .from('subscriptions')
+        .select('plan_id')
+        .eq('user_id', user.id)
+        .in('status', ['active', 'trialing'])
+        .maybeSingle();
+      if (sub && sub.plan_id) planLabel = sub.plan_id;
+    } catch (_e) { /* ignore */ }
+
+    if (totalCredits <= 0) {
+      return res.status(402).json({ error: 'Créditos esgotados', code: 'NO_CREDITS', plan: planLabel });
     }
   } catch (err) {
     console.error('Quota check exception:', err.message, err.stack);
