@@ -163,9 +163,16 @@ a{color:var(--accent)}
 /* Mobile hamburger (hidden on desktop) */
 .mobile-hamb{display:none;background:transparent;border:none;font-size:20px;width:34px;height:34px;align-items:center;justify-content:center;color:var(--text);cursor:pointer;padding:0;flex-shrink:0}
 
-.countdown-pill{background:var(--red-light);color:var(--red-text);padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;transition:opacity .2s}
-.countdown-pill.countdown-today{background:var(--gralia-purple);color:#fff;animation:pulse-soft 2s ease-in-out infinite}
+.countdown-pill{background:var(--surface2);color:var(--text2);padding:4px 12px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;transition:opacity .2s;border:1px solid var(--border)}
+.countdown-pill.countdown-far{background:var(--surface2);color:var(--text2);border-color:var(--border)}
+.countdown-pill.countdown-mid{background:rgba(73,197,137,.10);color:rgb(33,140,80);border-color:rgba(73,197,137,.3)}
+.countdown-pill.countdown-near{background:rgba(232,164,60,.12);color:#a76e1a;border-color:rgba(232,164,60,.4)}
+.countdown-pill.countdown-urgent{background:var(--red-light);color:var(--red-text);border-color:rgba(232,76,76,.4)}
+.countdown-pill.countdown-today{background:var(--gralia-purple);color:#fff;border-color:var(--gralia-purple);animation:pulse-soft 2s ease-in-out infinite}
 .countdown-pill.countdown-past{background:var(--surface2);color:var(--text2);border:1px dashed var(--border2)}
+.countdown-pill.countdown-unset{background:var(--surface2);color:var(--text3);border:1px dashed var(--border2);cursor:pointer}
+html.dark .countdown-pill.countdown-mid{color:#7dd3a8}
+html.dark .countdown-pill.countdown-near{color:#e8c068}
 @keyframes pulse-soft{0%,100%{opacity:1}50%{opacity:.7}}
 /* Pills do mobile menu também */
 .mmi-pill.urgent{background:var(--gralia-purple);color:#fff}
@@ -678,7 +685,9 @@ html.focus-mode .pomo-float{display:none}
 .dash-goal-empty{background:linear-gradient(135deg,rgba(124,92,255,.05) 0%,var(--surface) 100%);border:1px dashed rgba(124,92,255,.3);border-radius:var(--rs);padding:1rem 1.125rem;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s;font-family:inherit;width:100%;text-align:left;margin-bottom:14px}
 
 /* Toast de celebração de meta */
-.goal-toast{position:fixed;top:70px;right:20px;z-index:9000;background:var(--surface);border:1px solid var(--gralia-purple);border-radius:14px;box-shadow:0 12px 36px rgba(124,92,255,.28),0 4px 12px rgba(0,0,0,.08);padding:14px 16px 14px 14px;display:flex;align-items:flex-start;gap:12px;max-width:360px;animation:gtoast-in .4s cubic-bezier(.23,1.12,.32,1)}
+.goal-toast{position:fixed;top:70px;right:20px;z-index:9000;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.18),0 2px 8px rgba(0,0,0,.10);padding:14px 16px 14px 14px;display:flex;align-items:flex-start;gap:12px;max-width:360px;animation:gtoast-in .4s cubic-bezier(.23,1.12,.32,1)}
+/* V12: faixa lateral roxa ao invés de glow colorido em volta — fica mais sóbrio */
+.goal-toast{border-left:3px solid var(--gralia-purple)}
 
 /* === SOCIAL PROFILE CARD === */
 .social-profile-card{border:1.5px solid rgba(128,66,250,.18);background:linear-gradient(160deg,rgba(128,66,250,.04) 0%,var(--surface) 60%)}
@@ -971,7 +980,7 @@ html.dark .up-tier-badge.tier-bronze{color:#d8a166}
 .up-mat-more{margin-top:.5rem;text-align:center;font-size:12px}
 
 /* V12: Pedidos pendentes de seguir */
-.pending-follow-card{margin-top:1rem;padding:1rem;background:linear-gradient(135deg,rgba(232,164,60,.08),rgba(232,164,60,.02));border:1px solid rgba(232,164,60,.30);border-radius:10px}
+.pending-follow-card{margin-top:1rem;padding:1rem;background:var(--surface2);border:1px solid var(--border);border-left:3px solid rgb(232,164,60);border-radius:10px}
 .pfc-head{font-size:13px;font-weight:700;color:var(--amber-text);margin-bottom:.75rem}
 .pfc-list{display:flex;flex-direction:column;gap:8px}
 .pfc-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:.625rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:8px}
@@ -1001,7 +1010,7 @@ html.comfort-mode.dark body{
 }
 
 /* Card de conforto na página eye-care */
-.ec-comfort-card{padding:1.5rem;background:linear-gradient(135deg,rgba(255,200,100,.10),rgba(255,180,80,.04));border:1px solid rgba(255,180,80,.30);border-radius:14px;margin-bottom:1.5rem}
+.ec-comfort-card{padding:1.5rem;background:var(--surface2);border:1px solid var(--border);border-left:3px solid rgb(232,164,60);border-radius:10px;margin-bottom:1.5rem}
 .ecc-row{display:flex;gap:14px;align-items:flex-start;margin-bottom:1rem}
 .ecc-icon{font-size:38px;line-height:1;flex-shrink:0}
 .ecc-text{flex:1}
@@ -1024,7 +1033,7 @@ html.dark .fc-highlight{background:rgba(73,197,137,.20);color:rgb(120,220,160)}
 .srs-front strong,.srs-back strong{font-weight:700;color:var(--text)}
 
 /* V12: Pinhal landing avançado simulado */
-.wel-forest-section{padding:3rem 1rem;background:linear-gradient(180deg,var(--surface),rgba(73,197,137,.04));border-radius:18px;margin:2rem 0;text-align:center}
+.wel-forest-section{padding:3rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:14px;margin:2rem 0;text-align:center}
 .wel-forest-preview{max-width:840px;margin:1.75rem auto 1.25rem;border-radius:16px;overflow:hidden;border:1px solid var(--border);box-shadow:0 8px 28px rgba(0,0,0,.08)}
 .wel-forest-svg{display:block;width:100%;height:auto}
 .wel-forest-stats{max-width:840px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
@@ -1049,22 +1058,22 @@ html.dark .fc-highlight{background:rgba(73,197,137,.20);color:rgb(120,220,160)}
 /* V12: Modal de comparação Haiku vs Sonnet */
 .mp-compare-link{display:block;width:100%;margin-top:8px;padding:8px 12px;background:transparent;border:1px dashed var(--border);border-radius:8px;font-size:12px;font-weight:600;color:var(--text2);font-family:inherit;cursor:pointer;transition:all .15s}
 .mp-compare-link:hover{border-style:solid;color:var(--gralia-purple);background:rgba(128,66,250,.04)}
-.mc-context{margin:0 0 1rem;padding:.625rem .875rem;background:var(--surface2);border-radius:8px;font-size:12.5px;line-height:1.55;color:var(--text2)}
+.mc-context{margin:0 0 .875rem;padding:.5rem .75rem;background:var(--surface2);border-radius:8px;font-size:12px;line-height:1.5;color:var(--text2)}
 .mc-context b{color:var(--text);font-weight:700}
-.mc-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.25rem}
-.mc-col{padding:1rem;border-radius:12px;border:1px solid var(--border);background:var(--surface)}
-.mc-col.mc-haiku{border-color:rgba(128,66,250,.30);background:linear-gradient(180deg,var(--surface),rgba(128,66,250,.02))}
-.mc-col.mc-sonnet{border-color:rgba(218,165,32,.45);background:linear-gradient(180deg,var(--surface),rgba(218,165,32,.04))}
-.mc-col-head{display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding-bottom:.625rem;border-bottom:1px solid var(--border)}
-.mc-col-icon{font-size:24px;line-height:1}
-.mc-col h3{margin:0;font-size:14.5px;font-weight:700}
-.mc-col-cost{font-size:10.5px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
-.mc-col-body{display:flex;flex-direction:column;gap:.75rem}
+.mc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:.875rem}
+.mc-col{padding:.875rem;border-radius:10px;border:1px solid var(--border);background:var(--surface)}
+.mc-col.mc-haiku{border-color:rgba(128,66,250,.30)}
+.mc-col.mc-sonnet{border-color:rgba(218,165,32,.45)}
+.mc-col-head{display:flex;align-items:center;gap:8px;margin-bottom:.625rem;padding-bottom:.5rem;border-bottom:1px solid var(--border)}
+.mc-col-icon{font-size:18px;line-height:1}
+.mc-col h3{margin:0;font-size:13px;font-weight:700}
+.mc-col-cost{font-size:9.5px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.4px;display:block}
+.mc-col-body{display:flex;flex-direction:column;gap:.5rem}
 .mce-block{}
-.mce-label{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-.mce-text{margin:0;font-size:12.5px;line-height:1.6;color:var(--text)}
-.mce-text p{margin:0 0 6px}
-.mc-summary{padding:1rem 1.25rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;font-size:12.5px;line-height:1.7;color:var(--text2)}
+.mce-label{font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.mce-text{margin:0;font-size:11.5px;line-height:1.5;color:var(--text)}
+.mce-text p{margin:0 0 4px}
+.mc-summary{padding:.75rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:11.5px;line-height:1.6;color:var(--text2)}
 .mc-summary b{color:var(--text);font-weight:700}
 @media(max-width:760px){
   .mc-grid{grid-template-columns:1fr}
@@ -1084,7 +1093,7 @@ html.dark .wfb-tag-free{color:#7dd3a8}
 html.dark .wfb-tag-ai{color:#b08aff}
 
 /* V12: CTA inline pra criar conta — aparece em momentos da landing que mencionam o trial */
-.wel-trial-info-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px;margin-top:1rem;padding:1rem 1.25rem;background:linear-gradient(135deg,rgba(73,197,137,.06),rgba(128,66,250,.04));border:1px solid rgba(73,197,137,.25);border-radius:12px;text-align:center}
+.wel-trial-info-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px;margin-top:1rem;padding:1rem 1.25rem;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center}
 .wel-trial-info-box .wel-trial-info{margin:0;font-size:13px;line-height:1.5;color:var(--text)}
 .wel-trial-info-box .wel-inline-cta{flex-shrink:0}
 .wel-inline-cta{padding:10px 18px !important;font-size:13px !important;font-weight:700 !important;background:linear-gradient(135deg,var(--gralia-blue) 0%,var(--gralia-purple) 100%) !important;color:#fff !important;border:none !important;box-shadow:0 3px 12px rgba(124,92,255,.25)}
@@ -1116,30 +1125,30 @@ html.dark .wfb-tag-ai{color:#b08aff}
   .wds-tag{font-size:9px;top:10px;right:10px;padding:3px 8px}
 }
 
-/* V12: Gráfico heatmap de produtividade no painel */
-.chart-card{padding:1.25rem;background:linear-gradient(180deg,var(--surface),var(--surface) 70%,rgba(128,66,250,.025))}
-.chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:1.125rem}
-.chart-title{margin:0 0 2px;font-size:14.5px;font-weight:700;color:var(--text);letter-spacing:-.1px;display:flex;align-items:center;gap:6px}
-.chart-sub{margin:0;font-size:11.5px;color:var(--text3);line-height:1.4}
-.chart-legend{display:flex;align-items:center;gap:5px;flex-shrink:0}
-.cl-min,.cl-max{font-size:9.5px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
-.cl-cell{display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--gralia-purple)}
+/* V12: Gráfico heatmap de produtividade no painel — sutil e compacto */
+.chart-card{padding:1rem 1.125rem;background:var(--surface)}
+.chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:.75rem}
+.chart-title{margin:0 0 1px;font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.1px;display:flex;align-items:center;gap:5px}
+.chart-sub{margin:0;font-size:11px;color:var(--text3);line-height:1.4}
+.chart-legend{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.cl-min,.cl-max{font-size:9px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.cl-cell{display:inline-block;width:11px;height:11px;border-radius:2px;background:var(--gralia-purple)}
 .chart-body{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.chart-heatmap{display:block;max-width:100%;height:auto;min-width:280px}
-.hm-axis-lbl{font-size:8.5px;font-weight:600;fill:var(--text3);font-family:inherit}
+.chart-heatmap{display:block;max-width:none;height:auto;width:auto}
+.hm-axis-lbl{font-size:7.5px;font-weight:600;fill:var(--text3);font-family:inherit}
 .chart-heatmap rect{cursor:pointer;transition:fill-opacity .15s}
-.chart-heatmap rect:hover{stroke:var(--text);stroke-width:1.5;fill-opacity:1!important}
-.chart-insight{margin:1rem 0 0;padding:.75rem 1rem;background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.20);border-radius:8px;font-size:12.5px;color:var(--text);line-height:1.55}
-.chart-insight b{color:var(--gralia-purple);font-weight:700}
-.chart-insight-neutral{background:var(--surface2);border-color:var(--border);color:var(--text2)}
-.chart-insight-neutral b{color:var(--text);font-weight:700}
+.chart-heatmap rect:hover{stroke:var(--text);stroke-width:1;fill-opacity:1!important}
+.chart-insight{margin:.875rem 0 0;padding:.625rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:11.5px;color:var(--text2);line-height:1.5}
+.chart-insight b{color:var(--text);font-weight:700}
+.chart-insight-neutral{color:var(--text3)}
+.chart-insight-neutral b{color:var(--text2)}
 @media(max-width:560px){
-  .chart-card{padding:1rem}
-  .chart-heatmap{min-width:300px}
+  .chart-card{padding:.875rem}
+  .chart-heatmap{max-width:100%}
 }
 
 /* V12: Gráfico de retenção na landing */
-.wel-chart-section{padding:3rem 1rem;background:linear-gradient(180deg,rgba(128,66,250,.02),var(--surface) 60%);border-radius:18px;margin:2rem 0;text-align:center}
+.wel-chart-section{padding:3rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:14px;margin:2rem 0;text-align:center}
 .wel-chart-box{max-width:780px;margin:1.75rem auto 1rem;padding:1rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .wel-retention-chart{display:block;width:100%;height:auto;min-width:480px;color:var(--text)}
 .wrc-axis{font-size:11px;font-weight:500;fill:var(--text2);font-family:inherit}
@@ -1159,7 +1168,7 @@ html.dark .wfb-tag-ai{color:#b08aff}
 }
 
 /* V12: Gráfico produtividade (Gralia vs concorrência) */
-.wel-prod-section{padding:3rem 1rem;background:linear-gradient(180deg,var(--surface),rgba(73,197,137,.02) 60%);border-radius:18px;margin:2rem 0;text-align:center}
+.wel-prod-section{padding:3rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:14px;margin:2rem 0;text-align:center}
 .wel-prod-chart{max-width:840px;margin:1.75rem auto 1rem;display:flex;flex-direction:column;gap:14px}
 .wpc-row{display:grid;grid-template-columns:200px 1fr 90px;gap:14px;align-items:center;padding:1rem 1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;transition:transform .2s}
 .wpc-row.wpc-gralia{border-color:rgba(73,197,137,.4);box-shadow:0 4px 14px rgba(73,197,137,.08);background:linear-gradient(135deg,var(--surface),rgba(73,197,137,.04))}
@@ -1194,7 +1203,7 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .wpl-item{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text2);font-weight:500}
 .wpl-dot{display:inline-block;width:11px;height:11px;border-radius:3px;flex-shrink:0}
 /* Insight final */
-.wel-prod-insight{max-width:760px;margin:1.5rem auto 0;display:flex;align-items:center;gap:18px;padding:1.25rem 1.5rem;background:linear-gradient(135deg,rgba(73,197,137,.10),rgba(128,66,250,.06));border:1px solid rgba(73,197,137,.30);border-radius:14px;text-align:left}
+.wel-prod-insight{max-width:760px;margin:1.5rem auto 0;display:flex;align-items:center;gap:18px;padding:1.25rem 1.5rem;background:var(--surface2);border:1px solid var(--border);border-left:3px solid rgb(73,197,137);border-radius:10px;text-align:left}
 .wpi-num{font-size:42px;font-weight:900;letter-spacing:-2px;color:rgb(73,197,137);line-height:1;flex-shrink:0}
 .wpi-text{display:flex;flex-direction:column;gap:6px;font-size:13.5px;line-height:1.55;color:var(--text)}
 .wpi-text b{font-weight:700;font-size:14px}
@@ -1584,7 +1593,7 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 .about-tab:hover{color:var(--text2)}
 .about-tab.on{color:var(--gralia-purple);border-bottom-color:var(--gralia-purple)}
 
-.about-hero{text-align:center;padding:2.5rem 1rem 2rem;background:linear-gradient(135deg,rgba(128,66,250,.05),var(--surface));border:1px solid rgba(128,66,250,.18);border-radius:16px;margin-bottom:1.5rem}
+.about-hero{text-align:center;padding:2.5rem 1rem 2rem;background:var(--surface2);border:1px solid var(--border);border-radius:14px;margin-bottom:1.5rem}
 .about-hero-logo{font-family:'Sora','Inter',-apple-system,sans-serif;font-size:48px;font-weight:800;letter-spacing:-1px;line-height:1;display:inline-block}
 .ahl-gral{color:var(--gralia-blue,#1a2a52)}
 [data-theme="dark"] .ahl-gral{color:#cfd9ff}
@@ -1602,7 +1611,7 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 .abs-feat-title{font-size:13.5px;font-weight:700;color:var(--text);letter-spacing:-.2px}
 .abs-feat-desc{font-size:12px;color:var(--text2);line-height:1.55}
 
-.about-status{padding:1.125rem 1.25rem;background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));border:1px solid rgba(128,66,250,.15);border-radius:12px}
+.about-status{padding:1.125rem 1.25rem;background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--gralia-purple);border-radius:10px}
 .about-status .abs-title{font-size:15px;color:var(--gralia-purple)}
 
 .about-cta{display:flex;align-items:center;gap:14px;padding:1rem 1.25rem;background:var(--surface2);border:1px solid var(--border);border-radius:12px;margin-top:1.5rem;flex-wrap:wrap}
@@ -2263,7 +2272,7 @@ input[type="month"]::-webkit-calendar-picker-indicator{
   .footer-modal-head h2{font-size:16px}
   .fmh-close{font-size:26px;width:34px;height:34px}
 }
-.modal{background:var(--surface);border-radius:var(--r);max-width:560px;width:auto;min-width:280px;max-height:90vh;overflow-y:auto;padding:1.25rem 1.25rem}
+.modal{background:var(--surface);border-radius:var(--r);width:auto;min-width:280px;max-width:min(95vw,1100px);max-height:90vh;overflow-y:auto;overflow-x:hidden;padding:1.25rem 1.25rem}
 .modal > *:first-child{margin-top:0}
 .modal > *:last-child{margin-bottom:0}
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
@@ -2967,7 +2976,8 @@ html.focus-mode .focus-toggle:hover{box-shadow:0 8px 24px rgba(128,66,250,.45),0
 }
 
 /* V12: Admin floating button — canto superior direito */
-.admin-floating-btn{position:fixed;top:14px;right:18px;z-index:500;height:36px;padding:0 12px;border-radius:10px;background:linear-gradient(135deg,rgba(232,164,60,.12),rgba(232,164,60,.04));border:1px solid rgba(232,164,60,.30);color:#a76e1a;display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;box-shadow:0 2px 6px rgba(232,164,60,.12)}
+/* V12: Botão flutuante de Admin — alinhado com a topbar (height:56px), centralizado verticalmente */
+.admin-floating-btn{position:fixed;top:10px;right:18px;z-index:500;height:36px;padding:0 12px;border-radius:10px;background:linear-gradient(135deg,rgba(232,164,60,.12),rgba(232,164,60,.04));border:1px solid rgba(232,164,60,.30);color:#a76e1a;display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;transition:all .15s;box-shadow:0 2px 6px rgba(232,164,60,.12)}
 .admin-floating-btn:hover{background:linear-gradient(135deg,rgba(232,164,60,.22),rgba(232,164,60,.10));transform:translateY(-1px);box-shadow:0 4px 12px rgba(232,164,60,.20)}
 .afb-icon{font-size:13px}
 html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,.18),rgba(232,164,60,.08));color:#f0c068;border-color:rgba(232,164,60,.30)}
@@ -3625,7 +3635,7 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 .wel-trial-info{margin:0;padding:.875rem 1rem;text-align:center;font-size:13px;color:var(--text2);background:rgba(73,197,137,.04);border:1px dashed rgba(73,197,137,.30);border-radius:10px;line-height:1.6}
 .wel-trial-info b{color:var(--accent-text)}
 
-.wel-beta-section{padding:1.75rem 1.5rem;background:linear-gradient(135deg,rgba(128,66,250,.06),rgba(26,42,82,.03));border:1px solid rgba(128,66,250,.22);border-radius:18px;text-align:center}
+.wel-beta-section{padding:1.75rem 1.5rem;background:var(--surface2);border:1px solid var(--border);border-radius:14px;text-align:center}
 .wel-beta-section .wel-section-title,.wel-beta-section .wel-section-sub{margin-left:auto;margin-right:auto}
 .wel-beta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:1.5rem 0 1.25rem;max-width:780px;margin-left:auto;margin-right:auto}
 .wel-beta-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1rem;text-align:center;position:relative;transition:all .2s}
@@ -8618,53 +8628,53 @@ function showModelComparisonModal(methodKey){
   // Exemplos curados de cada função IA — mostra diferença de qualidade real
   const COMPARISONS = {
     'practice': {
-      title: 'Geração de questões C/E (estilo Cebraspe)',
-      context: 'Tópico: "Princípios da Administração Pública"',
+      title: 'Geração de questões C/E (Cebraspe)',
+      context: 'Tópico: Princípios da Administração Pública',
       haiku: {
-        question: 'A administração pública direta é constituída pelos órgãos da União, Estados e Municípios, sendo aplicáveis a todos eles os princípios da legalidade, impessoalidade e eficiência.',
+        question: 'Os princípios da administração pública (legalidade, impessoalidade e eficiência) aplicam-se aos órgãos da União, Estados e Municípios.',
         answer: 'Errado',
-        explanation: 'Faltou citar moralidade e publicidade — princípios constitucionais expressos no art. 37 caput.',
-        traps: 'Erro por omissão: lista incompleta de princípios.'
+        explanation: 'Faltou citar moralidade e publicidade — princípios expressos no art. 37 caput.',
+        traps: 'Erro por omissão na lista.'
       },
       sonnet: {
-        question: 'Os princípios da administração pública previstos no caput do art. 37 da Constituição Federal aplicam-se exclusivamente à administração pública direta, sendo facultativa sua observância pelas entidades da administração indireta que possuam personalidade jurídica de direito privado.',
+        question: 'Os princípios do art. 37 da CF aplicam-se exclusivamente à administração direta, sendo facultativa sua observância pelas entidades da indireta com personalidade jurídica de direito privado.',
         answer: 'Errado',
-        explanation: 'Os princípios LIMPE (legalidade, impessoalidade, moralidade, publicidade, eficiência) aplicam-se a TODA a administração pública — direta E indireta, independentemente da personalidade jurídica. A jurisprudência do STF é pacífica nesse sentido.',
-        traps: 'Pegadinha tripla: 1) "exclusivamente" sugere restrição falsa; 2) "facultativa" contraria comando constitucional; 3) tenta induzir ao erro pela personalidade jurídica de direito privado das estatais.'
+        explanation: 'Os princípios LIMPE aplicam-se a TODA a administração — direta E indireta, independentemente da personalidade jurídica. STF é pacífico nisso.',
+        traps: 'Pegadinha tripla: "exclusivamente" + "facultativa" + indução pela natureza jurídica de direito privado das estatais.'
       }
     },
     'topic-profile': {
-      title: 'Perfil completo de tópico',
-      context: 'Tópico: "Controle de Constitucionalidade"',
+      title: 'Perfil aprofundado de tópico',
+      context: 'Tópico: Controle de Constitucionalidade',
       haiku: {
-        section: 'CONCEITO PRINCIPAL',
-        content: 'Mecanismo de aferição da compatibilidade vertical entre normas infraconstitucionais e a Constituição. Modelos: difuso (qualquer juiz, no caso concreto) e concentrado (STF, em abstrato).'
+        section: 'CONCEITO',
+        content: 'Aferição da compatibilidade entre normas infraconstitucionais e a Constituição. Modelos: difuso (qualquer juiz, caso concreto) e concentrado (STF, em abstrato).'
       },
       sonnet: {
-        section: 'CONCEITO PRINCIPAL',
-        content: 'Sistema técnico-jurídico de fiscalização da supremacia constitucional, operacionalizado por meio de controle preventivo (CCJ + sanção/veto) e repressivo (judicial via difuso/concentrado, ou político via STF/Senado em casos específicos do art. 52 X). O controle difuso (origem em Marbury vs Madison, 1803) permite a qualquer juiz declarar incidentalmente a inconstitucionalidade — efeitos inter partes; o concentrado (modelo austríaco/Kelsen) concentra a competência no STF — efeitos erga omnes e vinculantes. ATENÇÃO: questões cobram diferenças entre cláusula de reserva de plenário (art. 97 CF), modulação de efeitos (art. 27 Lei 9.868/99) e abstrativização do controle difuso (RE 197.917).'
+        section: 'CONCEITO',
+        content: 'Sistema de fiscalização da supremacia constitucional. **Difuso** (Marbury vs Madison, 1803) — qualquer juiz, efeitos inter partes. **Concentrado** (modelo Kelsen) — STF, efeitos erga omnes e vinculantes.\n\n⚠ Bancas cobram: cláusula de reserva de plenário (art. 97 CF), modulação de efeitos (Lei 9.868/99 art. 27), abstrativização do controle difuso (RE 197.917).'
       }
     },
     'flashcard_create': {
-      title: 'Criação de flashcard de erro',
-      context: 'Erro do usuário em questão sobre "Direitos Fundamentais"',
+      title: 'Flashcard a partir de erro',
+      context: 'Erro em questão sobre Direitos Fundamentais',
       haiku: {
         front: 'Quais são os direitos sociais?',
-        back: 'Educação, saúde, alimentação, trabalho, moradia, transporte, lazer, segurança, previdência social, proteção à maternidade e à infância, assistência aos desamparados.'
+        back: 'Educação, saúde, alimentação, trabalho, moradia, transporte, lazer, segurança, previdência, proteção à maternidade/infância, assistência aos desamparados.'
       },
       sonnet: {
-        front: 'Direitos sociais (art. 6º CF) — qual é a sequência mnemônica e quais foram adicionados por emenda?',
-        back: '::ESTAMOS TÃO LASCADOS PELA SAÚDE, MAS A ALIMENTAÇÃO E O TRANSPORTE NOS SALVAM::\n\nE-Educação · S-Saúde · A-Alimentação¹ · T-Trabalho · M-Moradia · T-Transporte² · L-Lazer · S-Segurança · P-Previdência · P-Proteção (maternidade/infância) · A-Assistência aos desamparados\n\n¹ **Alimentação**: incluída pela EC 64/2010\n² **Transporte**: incluído pela EC 90/2015\n\nPegadinha frequente: bancas perguntam o que NÃO está no rol. Cuidado com "água potável" e "habitação digna" — não estão no caput do art. 6º.'
+        front: 'Direitos sociais (art. 6º CF) — sequência mnemônica e quais vieram por emenda?',
+        back: '::ESTAMOS TÃO LASCADOS PELA SAÚDE, MAS A ALIMENTAÇÃO E O TRANSPORTE SALVAM::\n\nE-S-A-T-M-T-L-S-P-P-A\n\n¹ **Alimentação** — EC 64/2010\n² **Transporte** — EC 90/2015\n\n⚠ Pegadinha: "água potável" e "habitação digna" NÃO estão no rol.'
       }
     },
     'examiner-review': {
       title: 'Análise estilo examinador',
-      context: 'Conceito: "Princípio da Eficiência"',
+      context: 'Conceito: Princípio da Eficiência',
       haiku: {
-        content: 'O princípio da eficiência foi inserido na CF pela EC 19/98. Exige que a administração busque o melhor resultado com o menor custo, evitando desperdícios.'
+        content: 'Inserido pela EC 19/98 no art. 37 da CF. Exige que a administração busque o melhor resultado com o menor custo.'
       },
       sonnet: {
-        content: 'Inserido pela EC 19/98 no caput do art. 37, o princípio da eficiência tem natureza dúplice: aspecto SUBJETIVO (qualificação dos agentes públicos — concursos, capacitação, avaliação periódica via art. 41 §1º III) e OBJETIVO (organização e estruturação racional do serviço público).\n\nNas bancas Cebraspe, é frequente cobrarem a TENSÃO ENTRE EFICIÊNCIA E LEGALIDADE: o agente NÃO PODE descumprir lei expressa em nome da eficiência (princípio da juridicidade ainda prevalece). Outra pegadinha clássica: confundir eficiência (relação custo-benefício) com EFICÁCIA (atingir o objetivo) — os dois NÃO são sinônimos no direito administrativo.\n\nJulgado-chave: STF entende que a perda do cargo por insuficiência de desempenho (art. 41 §1º III) AINDA depende de lei complementar — até hoje não regulamentada totalmente.'
+        content: 'EC 19/98, art. 37. **Natureza dúplice**: subjetiva (qualificação dos agentes — concursos, avaliação) e objetiva (organização racional).\n\n⚠ Bancas cobram **tensão eficiência × legalidade** — não pode descumprir lei em nome da eficiência. Cuidado também com **eficiência ≠ eficácia**.\n\nJulgado: perda do cargo por insuficiência (art. 41 §1º III) AINDA depende de lei complementar.'
       }
     }
   };
@@ -8678,7 +8688,7 @@ function showModelComparisonModal(methodKey){
   })[methodKey] || 'practice';
 
   const comp = COMPARISONS[compKey];
-  const m = mk('div'); m.style.cssText='max-width:880px;width:100%;max-height:88vh;overflow-y:auto';
+  const m = mk('div'); m.style.cssText='max-width:1080px;width:100%';
 
   m.innerHTML = `
     <div class="footer-modal-head">
@@ -8713,9 +8723,7 @@ function showModelComparisonModal(methodKey){
       </div>
     </div>
     <div class="mc-summary">
-      <b>Quando usar Sonnet:</b> tópicos densos onde profundidade e precisão fazem diferença (provas finais, simulados de reta final, conceitos que você está errando muito).<br>
-      <b>Quando usar Haiku:</b> drills de volume, prática diária, geração rápida. Custa 6× menos, sem perder precisão na maioria dos casos.<br>
-      <b>Dica:</b> reserve Sonnet pra tópicos de alta dificuldade. Em volume, Haiku é mais que suficiente.
+      <b>Sonnet</b> compensa em tópicos densos (provas finais, conceitos errados muito) — profundidade > velocidade. <b>Haiku</b> é a escolha pra volume e prática diária — 6× mais barato, suficiente em 95% dos casos.
     </div>
   `;
   setTimeout(()=>{
@@ -11162,7 +11170,21 @@ function renderTopbar(){
   });
 
   const ec = examCountdown();
-  const pill = mk('div','countdown-pill countdown-'+ec.status);
+  // V12: Cor do pill varia com proximidade da prova
+  // > 90 dias: cinza neutro (countdown-far)
+  // 30-90 dias: verde tranquilo (countdown-mid)
+  // 8-29 dias: âmbar atenção (countdown-near)
+  // 1-7 dias: vermelho urgente (countdown-urgent)
+  // hoje: roxo destaque (countdown-today)
+  // passou: cinza tracejado (countdown-past)
+  let proximityClass = '';
+  if(ec.status === 'before' && ec.days){
+    if(ec.days > 90) proximityClass = ' countdown-far';
+    else if(ec.days >= 30) proximityClass = ' countdown-mid';
+    else if(ec.days >= 8) proximityClass = ' countdown-near';
+    else proximityClass = ' countdown-urgent';
+  }
+  const pill = mk('div','countdown-pill countdown-'+ec.status+proximityClass);
   if(ec.status === 'unset'){
     // V12: Sem data definida — pill vira convite pra configurar
     pill.textContent = '+ Data';
@@ -11763,41 +11785,37 @@ function buildPerformanceHeatmap(){
       <p class="chart-sub">Quando você rende mais — últimos 30 dias</p>
     </div>
     <div class="chart-legend">
-      <span class="cl-min">menos</span>
+      <span class="cl-min">−</span>
       <span class="cl-cell" style="opacity:.15"></span>
-      <span class="cl-cell" style="opacity:.40"></span>
-      <span class="cl-cell" style="opacity:.65"></span>
+      <span class="cl-cell" style="opacity:.55"></span>
       <span class="cl-cell" style="opacity:.92"></span>
-      <span class="cl-max">mais</span>
+      <span class="cl-max">+</span>
     </div>
   `;
   card.appendChild(head);
 
-  // SVG do heatmap
+  // SVG do heatmap — V12: VERDADEIRAMENTE compacto e sutil
   const dayLabels = ['DOM','SEG','TER','QUA','QUI','SEX','SAB'];
   const hourLabels = ['0','3','6','9','12','15','18','21'];
 
-  // V12: Células mais sutis e fontes menores (eixos eram grandes demais)
-  const cellW = 22;
-  const cellH = 18;
-  const cellGap = 2.5;
-  const labelW = 26;
-  const labelH = 12;
+  const cellW = 18;
+  const cellH = 14;
+  const cellGap = 2;
+  const labelW = 22;
+  const labelH = 11;
   const totalW = labelW + HOUR_BUCKETS * (cellW + cellGap);
-  const totalH = labelH + 7 * (cellH + cellGap) + 4;
+  const totalH = labelH + 7 * (cellH + cellGap) + 2;
 
   let svg = `<svg viewBox="0 0 ${totalW} ${totalH}" class="chart-heatmap" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMid meet">`;
 
-  // Hour labels (top)
   hourLabels.forEach((lbl, h) => {
     const x = labelW + h * (cellW + cellGap) + cellW/2;
-    svg += `<text x="${x}" y="${labelH-2}" text-anchor="middle" class="hm-axis-lbl">${lbl}h</text>`;
+    svg += `<text x="${x}" y="${labelH-2}" text-anchor="middle" class="hm-axis-lbl">${lbl}</text>`;
   });
 
-  // Day rows
   for(let d=0; d<7; d++){
     const y = labelH + d * (cellH + cellGap);
-    svg += `<text x="${labelW-5}" y="${y + cellH/2 + 3}" text-anchor="end" class="hm-axis-lbl">${dayLabels[d]}</text>`;
+    svg += `<text x="${labelW-4}" y="${y + cellH/2 + 2.5}" text-anchor="end" class="hm-axis-lbl">${dayLabels[d]}</text>`;
 
     for(let h=0; h<HOUR_BUCKETS; h++){
       const x = labelW + h * (cellW + cellGap);
@@ -11813,9 +11831,9 @@ function buildPerformanceHeatmap(){
         else { fillColor = 'rgb(128,66,250)'; }
       }
       const tooltip = count > 0
-        ? `${dayLabels[d]} ${hourLabels[h]}h-${(parseInt(hourLabels[h])+3)}h: ${count} ${count===1?'evento':'eventos'}${count >= 2 ? ` · ${Math.round(correctGrid[d][h]/count*100)}% acerto` : ''}`
-        : `${dayLabels[d]} ${hourLabels[h]}h: sem atividade`;
-      svg += `<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="3" fill="${fillColor}" fill-opacity="${opacity.toFixed(2)}"><title>${tooltip}</title></rect>`;
+        ? `${dayLabels[d]} ${hourLabels[h]}h: ${count} ${count===1?'evento':'eventos'}${count >= 2 ? ` · ${Math.round(correctGrid[d][h]/count*100)}%` : ''}`
+        : '';
+      svg += `<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="2" fill="${fillColor}" fill-opacity="${opacity.toFixed(2)}"${tooltip ? `><title>${tooltip}</title></rect>` : '/>'}`;
     }
   }
   svg += `</svg>`;
@@ -26386,10 +26404,11 @@ function renderAboutSobre(wrap){
   // Status / disclaimer
   const status = mk('div','about-section about-status');
   status.innerHTML = `
-    <h2 class="abs-title">🚀 Versão inicial em desenvolvimento ativo</h2>
-    <p class="abs-text">A plataforma está nas suas primeiras versões e em melhoria constante. Novas funções e ajustes saem toda semana, baseados no que você pede.</p>
-    <p class="abs-text"><b>Hoje é grátis com créditos limitados.</b> Em breve haverá planos pagos pra quem quer usar mais a IA. Quem está aqui agora tá ajudando a construir e vai ter prioridade em novidades.</p>
-    <p class="abs-text">Encontrou bug, tem ideia, quer reclamar de algo? Use a opção <b>Fale conosco</b> em Configurações — você recebe a resposta direto no app.</p>
+    <h2 class="abs-title">🚀 Versão BETA em desenvolvimento ativo</h2>
+    <p class="abs-text">A plataforma está nas suas primeiras versões e em melhoria constante. Novas funções e ajustes saem toda semana, baseados no que você pede pelo Fale conosco.</p>
+    <p class="abs-text"><b>Como funciona o acesso:</b> sua conta começa com 40 créditos grátis (válidos por 14 dias) pra testar todos os recursos com IA. Pra continuar usando IA depois, você assina um plano (a partir de R$ 19,90/mês) ou compra créditos avulsos. Recursos sem IA (flashcards, mapa, pomodoro, simulado com importadas) continuam grátis pra sempre.</p>
+    <p class="abs-text"><b>Desconto BETA:</b> os 200 primeiros assinantes pagantes têm desconto escalonado (Pioneiro 30% / Veterano 20% / Beta 10%) e selo permanente no perfil. Quem está aqui agora ajuda a construir e tem prioridade em novidades.</p>
+    <p class="abs-text">Encontrou bug, tem ideia, quer reclamar? Use o botão flutuante <b>"Fale conosco"</b> (canto inferior direito) — você recebe a resposta direto no app na aba "Minhas mensagens".</p>
   `;
   wrap.appendChild(status);
 
@@ -26424,63 +26443,79 @@ function renderAboutFAQ(wrap){
   const FAQ = [
     {
       q: 'O Gralia é grátis?',
-      a: 'Hoje sim, com créditos limitados pra usar a IA. Cada conta começa com 50 créditos de avaliação. Em breve haverá planos pagos pra quem quer usar mais — mas o uso básico (estudar com seus próprios materiais sem IA, fazer pomodoros, criar flashcards manualmente) continua disponível sem custo de créditos.'
+      a: 'Pra começar, sim. Cada conta começa com <b>40 créditos grátis</b> (válidos por 14 dias) pra testar todos os recursos com IA. Depois disso, recursos sem IA continuam grátis (flashcards, mapa, pomodoro, simulado com importadas). Pra continuar usando IA, você assina um plano (a partir de R$ 19,90/mês) ou compra créditos avulsos.'
+    },
+    {
+      q: 'Quais são os planos pagos?',
+      a: '<b>Estudante</b> (R$ 19,90/mês — 250 créditos) pra uso moderado, <b>Concurseiro</b> (R$ 39,90/mês — 700 créditos, recomendado) pra estudo intenso, <b>Pro</b> (R$ 89,90/mês — 2000 créditos + Sonnet 4.6 + edital ilimitado) pra quem usa IA todos os dias. Sem fidelidade, cancela quando quiser. Os 200 primeiros assinantes têm desconto BETA escalonado e selo permanente no perfil.'
     },
     {
       q: 'O que são "créditos" e quando são gastos?',
-      a: 'Créditos são consumidos só quando a IA faz algo pra você: gerar questões, criar flashcards, comentar uma resposta, fazer perfil de tópico, dar feedback do mentor, etc. Cada operação mostra o custo aproximado antes de rodar. Estudar suas próprias questões importadas, revisar flashcards prontos, fazer pomodoros e usar o mapa da matéria não custam nada.'
+      a: 'Unidades consumidas só quando a IA faz algo: gerar 1 questão (~1 crédito), criar flashcard (~1 crédito), perfil de matéria (~8 créditos), síntese de edital (~30 créditos), análise do mentor (~2 créditos). Cada operação mostra o custo aproximado ANTES de rodar — você nunca é surpreendido. Estudar suas próprias questões importadas, revisar flashcards prontos, fazer pomodoros e usar o mapa não custam nada.'
+    },
+    {
+      q: 'O que são top-ups (créditos avulsos)?',
+      a: 'Pacotes que você compra pra adicionar ao seu saldo: 100 créditos por R$ 9,90, 300 por R$ 22,90 ou 1000 por R$ 64,90. Os créditos de top-up <b>não expiram</b> — acumulam mesmo se você cancelar a assinatura. Útil pra picos de uso (véspera de prova) ou pra quem quer experimentar IA sem assinar plano.'
     },
     {
       q: 'Posso usar pra vestibular ou só concurso?',
-      a: 'Pra qualquer prova com formato de questões objetivas. Em Configurações → Perfil você escolhe o tipo de prova alvo: concurso, vestibular, ENEM, OAB, faculdade ou certificação. As listas de disciplinas, cargos e instituições se adaptam ao tipo escolhido.'
+      a: 'Pra qualquer prova com formato de questões objetivas. Em Configurações → Perfil você escolhe o tipo de prova alvo: concurso, vestibular, ENEM, OAB, faculdade ou certificação. As listas de disciplinas, cargos e instituições se adaptam ao tipo escolhido. A IA também adapta o estilo das questões geradas pra banca alvo (Cebraspe, FCC, FGV, etc).'
     },
     {
       q: 'Os meus dados estão seguros?',
-      a: 'Sim. Tudo é guardado no Supabase (infraestrutura usada por milhares de aplicações). Sua conta é privada por padrão — só você vê seus erros, flashcards, fontes e métricas. Se você decidir publicar um caderno ou fonte na descoberta, aí sim aparece pra outros usuários, mas com seus dados pessoais (email, métricas) sempre privados.'
+      a: 'Sim. Tudo é guardado no Supabase (infraestrutura usada por milhares de aplicações, AWS por baixo). Sua conta é privada por padrão — só você vê seus erros, flashcards, fontes e métricas. Em conformidade com a LGPD. Se decidir publicar um caderno ou fonte na descoberta, aí aparece pra outros usuários, mas seus dados pessoais (email, métricas pessoais) ficam sempre privados.'
     },
     {
-      q: 'Como faço pra importar questões do TEC Concursos?',
-      a: 'Vá em Estudar → Banco → Importar. Cole o link da questão ou da página de resultados do TEC. O sistema extrai automaticamente o enunciado, alternativas e gabarito. Você pode importar uma questão isolada ou uma lista inteira de uma só vez.'
+      q: 'Posso recusar seguidores no perfil?',
+      a: 'Sim. Em Configurações → Social, ative "Com aprovação". Quem tentar te seguir entra como pendente e você decide caso a caso aprovar ou rejeitar. Útil pra controlar quem importa seus materiais publicados.'
     },
     {
-      q: 'Posso importar de outras plataformas além do TEC?',
-      a: 'Por enquanto a importação automatizada é só do TEC. Você pode adicionar questões manualmente em Estudar → Banco → "Adicionar questão". Suporte a mais plataformas (incluindo leitura de PDFs com IA) está no roadmap.'
+      q: 'Como faço pra importar questões de outras plataformas?',
+      a: 'Vá em Estudar → Banco → Importar. Cole o link ou texto bruto do TEC Concursos, QConcursos, Estratégia, Gran Cursos, Direção. O sistema extrai automaticamente o enunciado, alternativas, gabarito, banca e ano. Você pode importar uma questão isolada ou uma lista inteira de uma só vez. Também pode adicionar manualmente.'
     },
     {
       q: 'Como funciona a "comunidade"?',
-      a: 'É opcional e opt-in. Se quiser, você cria um perfil público com username e visibilidade configurável. Aí pode publicar cadernos, fontes ou perfis de tópico pra outros usuários encontrarem na descoberta. Pode também seguir pessoas e ver o feed de marcos delas (questões resolvidas, materiais publicados). Sem perfil, você usa o app normalmente em modo privado.'
+      a: 'Totalmente opt-in. Se quiser, cria um perfil público com username e visibilidade configurável. Pode publicar cadernos, fontes ou perfis de tópico pra outros encontrarem na descoberta. Pode seguir pessoas e ver o feed de marcos delas (questões resolvidas, materiais publicados, conquistas). Pode também aprovar/rejeitar quem te segue. Sem perfil, você usa o app em modo privado.'
     },
     {
       q: 'O que é "perfil de tópico"?',
-      a: 'É um material gerado por IA que aprofunda um tópico específico (ex: "Direito Administrativo → Princípios"). Inclui resumo teórico, mnemônicos, tabelas comparativas, mapa de armadilhas comuns na banca, exemplos de questões prováveis. É o tipo de material que você usaria 2-3 dias antes da prova pra revisar com profundidade.'
+      a: 'Material gerado por IA que aprofunda um tópico específico (ex: "Direito Administrativo → Princípios"). Inclui resumo teórico, jurisprudência, mnemônicos, tabelas comparativas, mapa de armadilhas comuns na banca, exemplos de questões prováveis. É o tipo de material que você usa 2-3 dias antes da prova pra revisar com profundidade — substitui horas de pesquisa solta.'
     },
     {
       q: 'Como funcionam os flashcards?',
-      a: 'Usamos repetição espaçada (SRS) com algoritmo similar ao SM-2 do Anki. Você revela a resposta, classifica como Errei/Difícil/Bom/Fácil, e o sistema agenda a próxima revisão automaticamente. Cards podem ser gerados pela IA a partir das suas fontes, criados manualmente ou nascer dos seus erros em questões.'
+      a: 'Usamos repetição espaçada (SRS) com algoritmo similar ao SM-2 do Anki. Você revela a resposta, classifica como Errei/Difícil/Bom/Fácil, e o sistema agenda a próxima revisão automaticamente. Cards podem ser gerados pela IA a partir das suas fontes, criados manualmente, importados de outros usuários da comunidade, ou nascer dos seus erros em questões.'
+    },
+    {
+      q: 'Qual a diferença entre os modelos Haiku e Sonnet?',
+      a: '<b>Haiku 4.5</b> é o modelo padrão de todos os planos — rápido, suficiente em 95% dos casos. <b>Sonnet 4.6</b> é o modelo premium, exclusivo do plano Pro — pensa mais profundamente e gera respostas mais elaboradas, mas custa ~6× mais. Use Sonnet pra tópicos densos onde profundidade faz diferença. Você pode comparar exemplos de saída lado-a-lado na tela de configuração de cada método.'
     },
     {
       q: 'O Pomodoro funciona offline / em background?',
-      a: 'O timer continua rodando se você fechar a aba ou trocar de página dentro do app. Mas pra notificações de fim de ciclo funcionarem, é melhor manter a aba ativa. Sessões completadas são registradas mesmo se você fechar antes.'
+      a: 'O timer continua rodando se você fechar a aba ou trocar de página dentro do app. Funciona em segundo plano sincronizado entre dispositivos. Pra notificações de fim de ciclo funcionarem, é melhor manter a aba ativa. Sessões completadas são registradas mesmo se você fechar antes.'
     },
     {
-      q: 'Por que o botão de mentor IA está bloqueado?',
-      a: 'Pra evitar gasto inútil de créditos. O mentor precisa de pelo menos 5 questões respondidas, 3 pomodoros completos ou 2 dias de atividade pra dar uma análise útil. Sem dados ele só geraria conselhos genéricos. Estude um pouco e o botão libera.'
+      q: 'Por que o botão de mentor IA está bloqueado às vezes?',
+      a: 'Pra evitar gasto inútil de créditos. O mentor precisa de pelo menos 20 questões respondidas no dia ou padrões mínimos de uso pra dar uma análise útil. Sem dados ele só geraria conselhos genéricos. Estude um pouco e o botão libera.'
+    },
+    {
+      q: 'Posso cancelar a assinatura quando quiser?',
+      a: 'Sim, sem fidelidade. Em Configurações → Minha assinatura → "Cancelar". Você mantém acesso até o fim do período pago. Os créditos avulsos comprados continuam seus pra sempre. Pode reativar depois sem perder progresso.'
     },
     {
       q: 'Posso baixar meus dados?',
-      a: 'Tudo seu fica em Configurações → Privacidade → "Baixar todos os meus dados" (JSON completo). Sua conta também pode ser apagada permanentemente pelo mesmo lugar.'
+      a: 'Sim. Tudo seu fica em Configurações → Privacidade → "Baixar todos os meus dados" (JSON completo). Sua conta também pode ser apagada permanentemente pelo mesmo lugar — todos os flashcards, fontes, histórico e conexões somem.'
     },
     {
       q: 'Achei um bug. O que faço?',
-      a: 'Mande pelo Fale conosco em Configurações com o máximo de detalhe (o que você fez, o que esperava, o que aconteceu). Erros técnicos também aparecem com botão "Reportar erro" quando algo quebra. Você recebe a resposta direto no app na aba "Minhas mensagens".'
+      a: 'Use o botão flutuante "Fale conosco" (canto inferior direito). Mande com o máximo de detalhe possível — o que você fez, o que esperava, o que aconteceu. Erros técnicos também aparecem com botão "Reportar erro" quando algo quebra. Você recebe a resposta direto no app na aba "Minhas mensagens".'
     },
     {
       q: 'Tem app pra celular?',
-      a: 'O site funciona muito bem em celular (responsivo). Apps nativos pra iOS/Android estão no plano de longo prazo, mas hoje a versão web cobre praticamente tudo.'
+      a: 'O site funciona muito bem em celular (responsivo, com menu mobile dedicado). Apps nativos pra iOS/Android estão no plano de longo prazo, mas hoje a versão web cobre praticamente tudo.'
     },
     {
       q: 'Como vocês escolhem o que melhorar a seguir?',
-      a: 'Pelas mensagens do Fale conosco. Se 5 pessoas pedem a mesma coisa, vai pra cima da fila. Sem campanhas de marketing nem feedback inflado — quem fala mais, é mais ouvido.'
+      a: 'Pelas mensagens do Fale conosco. Se 5 pessoas pedem a mesma coisa, vai pra cima da fila. Sem campanhas de marketing inflado nem feedback artificial — quem fala mais, é mais ouvido.'
     }
   ];
 
@@ -26491,7 +26526,8 @@ function renderAboutFAQ(wrap){
     sum.innerHTML = `<span>${escapeHTML(item.q)}</span><span class="faq-chev">▾</span>`;
     det.appendChild(sum);
     const ans = mk('div','faq-a');
-    ans.innerHTML = `<p>${escapeHTML(item.a)}</p>`;
+    // V12: permite HTML inline (b, i, br) no FAQ — conteúdo é estático e seguro
+    ans.innerHTML = `<p>${item.a}</p>`;
     det.appendChild(ans);
     list.appendChild(det);
   });
@@ -26519,7 +26555,7 @@ function renderAboutFAQ(wrap){
 
 function renderAboutManual(wrap){
   const intro = mk('p','txt2');intro.style.cssText='margin:0 0 1.5rem;font-size:13px;line-height:1.55';
-  intro.innerHTML = 'Roteiro rápido pra tirar o máximo da plataforma. Comece pelos passos 1-3 — em 10 minutos você está estudando.';
+  intro.innerHTML = 'Roteiro rápido pra tirar o máximo da plataforma. Comece pelos passos 1-3 — em 10 minutos você está estudando. Os 40 créditos grátis dos primeiros 14 dias dão pra testar todas as funções de IA com folga.';
   wrap.appendChild(intro);
 
   const STEPS = [
@@ -26572,6 +26608,11 @@ function renderAboutManual(wrap){
       n:10, icon:'📲', title:'Compartilhe progresso',
       body:'Em <b>Planejar → Metas</b>, botão "Compartilhar progresso" gera uma imagem estilo stories pra postar no Instagram ou WhatsApp. Não inclui dados sensíveis — só métricas públicas.',
       where:'Planejar → Metas'
+    },
+    {
+      n:11, icon:'💳', title:'(Quando os créditos acabarem) Escolha um plano',
+      body:'Em <b>Configurações → Minha assinatura → Ver planos</b>, conheça as opções: <b>Estudante</b> (R$ 19,90/mês — 250 créditos), <b>Concurseiro</b> (R$ 39,90/mês — 700 créditos, recomendado) ou <b>Pro</b> (R$ 89,90/mês — 2000 créditos + Sonnet 4.6 + edital ilimitado). Sem fidelidade. Você também pode comprar créditos avulsos (top-ups) que não expiram. Os 200 primeiros assinantes têm desconto BETA escalonado.',
+      where:'Configurações → Minha assinatura'
     }
   ];
 
