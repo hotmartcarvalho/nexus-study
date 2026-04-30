@@ -938,6 +938,271 @@ html.focus-mode .pomo-float{display:none}
 .up-username{font-size:14px;color:var(--text3);font-weight:500;font-family:'Sora',system-ui,sans-serif;letter-spacing:-.2px}
 .up-since{font-size:12px;color:var(--text3);margin-top:4px}
 .up-you-badge{display:inline-block;margin-top:6px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;background:rgba(128,66,250,.12);color:var(--gralia-purple);letter-spacing:.3px;text-transform:uppercase;width:fit-content;align-self:flex-start}
+
+/* V12: Selo BETA (pioneiro/veterano/beta) — destaque visual no perfil */
+.up-tier-badge{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:11.5px;font-weight:700;padding:4px 11px;border-radius:999px;letter-spacing:.3px;width:fit-content;align-self:flex-start;border:1px solid;cursor:default}
+.up-tier-badge .upt-icon{font-size:13px;line-height:1}
+.up-tier-badge .upt-text{line-height:1.3}
+.up-tier-badge.tier-gold{background:linear-gradient(135deg,rgba(255,215,0,.20),rgba(255,165,0,.10));border-color:rgba(218,165,32,.55);color:#a76e1a}
+.up-tier-badge.tier-silver{background:linear-gradient(135deg,rgba(192,192,200,.20),rgba(150,150,165,.10));border-color:rgba(120,120,140,.50);color:#5e5e6e}
+.up-tier-badge.tier-bronze{background:linear-gradient(135deg,rgba(205,127,50,.18),rgba(165,100,40,.08));border-color:rgba(165,100,40,.45);color:#7d4f25}
+html.dark .up-tier-badge.tier-gold{color:#f0c068}
+html.dark .up-tier-badge.tier-silver{color:#c0c0d0}
+html.dark .up-tier-badge.tier-bronze{color:#d8a166}
+
+/* V12: Materiais publicados no perfil */
+.up-materials-card{padding:1.25rem;margin-top:1rem}
+.up-mat-head{margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
+.up-mat-head h3{margin:0 0 4px;font-size:14.5px;font-weight:700}
+.up-mat-help{font-size:11.5px;color:var(--text3);line-height:1.4}
+.up-mat-body{display:flex;flex-direction:column;gap:8px}
+.up-mat-loading{padding:1.5rem;text-align:center;color:var(--text3);font-size:13px}
+.up-mat-empty{padding:2rem 1rem;text-align:center}
+.up-mat-empty .ume-icon{display:block;font-size:32px;margin-bottom:8px}
+.up-mat-empty p{margin:0 0 4px;font-size:13px;color:var(--text2);line-height:1.5}
+.up-mat-empty .txt3{font-size:11.5px;color:var(--text3)}
+.up-mat-list{display:flex;flex-direction:column;gap:8px}
+.up-mat-item{padding:.875rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all .15s}
+.up-mat-item:hover{border-color:var(--gralia-purple);transform:translateY(-1px)}
+.umi-kind{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.umi-title{margin:0 0 4px;font-size:13.5px;font-weight:700;color:var(--text);line-height:1.35}
+.umi-summary{margin:0 0 6px;font-size:12px;color:var(--text2);line-height:1.5}
+.umi-stats{font-size:11px;color:var(--text3);font-weight:500}
+.up-mat-more{margin-top:.5rem;text-align:center;font-size:12px}
+
+/* V12: Pedidos pendentes de seguir */
+.pending-follow-card{margin-top:1rem;padding:1rem;background:linear-gradient(135deg,rgba(232,164,60,.08),rgba(232,164,60,.02));border:1px solid rgba(232,164,60,.30);border-radius:10px}
+.pfc-head{font-size:13px;font-weight:700;color:var(--amber-text);margin-bottom:.75rem}
+.pfc-list{display:flex;flex-direction:column;gap:8px}
+.pfc-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:.625rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.pfci-info{display:flex;flex-direction:column;min-width:0}
+.pfci-info b{font-size:13px;color:var(--text);font-weight:700}
+.pfci-info span{font-size:11.5px;color:var(--text3)}
+.pfci-actions{display:flex;gap:5px;flex-shrink:0}
+
+/* V12: Modo conforto de leitura — sépia + filtro anti-luz-azul */
+html.comfort-mode{
+  filter: sepia(0.18) hue-rotate(-8deg) saturate(0.85);
+}
+html.comfort-mode body{
+  background:#f5ecd9 !important;
+}
+html.comfort-mode .card,
+html.comfort-mode .modal,
+html.comfort-mode .topbar,
+html.comfort-mode .surface{
+  background:#fcf6e8 !important;
+}
+html.comfort-mode.dark{
+  filter: sepia(0.10) saturate(0.7) brightness(0.9);
+}
+html.comfort-mode.dark body{
+  background:#1a1612 !important;
+}
+
+/* Card de conforto na página eye-care */
+.ec-comfort-card{padding:1.5rem;background:linear-gradient(135deg,rgba(255,200,100,.10),rgba(255,180,80,.04));border:1px solid rgba(255,180,80,.30);border-radius:14px;margin-bottom:1.5rem}
+.ecc-row{display:flex;gap:14px;align-items:flex-start;margin-bottom:1rem}
+.ecc-icon{font-size:38px;line-height:1;flex-shrink:0}
+.ecc-text{flex:1}
+.ecc-text h3{margin:0 0 6px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ecc-on-tag{font-size:9.5px;font-weight:800;background:rgb(73,197,137);color:#fff;padding:2px 8px;border-radius:999px;letter-spacing:.5px}
+.ecc-text p{margin:0 0 8px;font-size:13px;color:var(--text2);line-height:1.6}
+.ecc-tip{font-size:11.5px !important;color:var(--text3) !important}
+.ecc-tip kbd{display:inline-block;padding:1px 6px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-size:10px;font-family:ui-monospace,monospace;font-weight:600;color:var(--text);margin:0 2px}
+.ecc-actions{display:flex;justify-content:center}
+
+/* V12: Auto-resize textarea — sem barra de rolagem, cresce com conteúdo */
+.autosize-textarea{resize:none;overflow:hidden;min-height:48px;line-height:1.5}
+
+/* V12: Estilo de flashcard polido — destaque verde pra palavras importantes */
+.fc-highlight{background:rgba(73,197,137,.15);color:rgb(33,140,80);padding:1px 5px;border-radius:4px;font-weight:600;border:none;text-decoration:none}
+html.dark .fc-highlight{background:rgba(73,197,137,.20);color:rgb(120,220,160)}
+.srs-front,.srs-back{font-size:14.5px;line-height:1.65;color:var(--text)}
+.srs-front p,.srs-back p{margin:0 0 .75rem}
+.srs-front p:last-child,.srs-back p:last-child{margin-bottom:0}
+.srs-front strong,.srs-back strong{font-weight:700;color:var(--text)}
+
+/* V12: Pinhal landing avançado simulado */
+.wel-forest-section{padding:3rem 1rem;background:linear-gradient(180deg,var(--surface),rgba(73,197,137,.04));border-radius:18px;margin:2rem 0;text-align:center}
+.wel-forest-preview{max-width:840px;margin:1.75rem auto 1.25rem;border-radius:16px;overflow:hidden;border:1px solid var(--border);box-shadow:0 8px 28px rgba(0,0,0,.08)}
+.wel-forest-svg{display:block;width:100%;height:auto}
+.wel-forest-stats{max-width:840px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.wfs-stat{padding:1.125rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;text-align:center}
+.wfs-num{font-size:32px;font-weight:900;letter-spacing:-1.5px;line-height:1;color:rgb(73,197,137);margin-bottom:6px}
+.wfs-lbl{font-size:12.5px;color:var(--text);font-weight:600;line-height:1.4}
+.wfs-lbl span{display:block;margin-top:4px;font-size:11px;color:var(--text3);font-weight:500}
+.wel-forest-note{max-width:600px;margin:1.25rem auto 0;font-size:11.5px;color:var(--text3);line-height:1.55;font-style:italic}
+@media(max-width:640px){
+  .wel-forest-stats{grid-template-columns:1fr;gap:8px}
+  .wfs-num{font-size:26px}
+  .wel-forest-section{padding:2rem .75rem}
+}
+
+/* V12: Filtro de scope no Descobrir (Todos vs Seguindo) */
+.discover-scope-row{display:flex;gap:6px;margin-bottom:1rem;padding:4px;background:var(--surface2);border-radius:10px;border:1px solid var(--border)}
+.dsr-btn{flex:1;background:transparent;border:none;padding:.625rem .875rem;border-radius:7px;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
+.dsr-btn:hover{color:var(--text)}
+.dsr-btn.on{background:var(--surface);color:var(--gralia-purple);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.dsri{font-size:14px}
+
+/* V12: Modal de comparação Haiku vs Sonnet */
+.mp-compare-link{display:block;width:100%;margin-top:8px;padding:8px 12px;background:transparent;border:1px dashed var(--border);border-radius:8px;font-size:12px;font-weight:600;color:var(--text2);font-family:inherit;cursor:pointer;transition:all .15s}
+.mp-compare-link:hover{border-style:solid;color:var(--gralia-purple);background:rgba(128,66,250,.04)}
+.mc-context{margin:0 0 1rem;padding:.625rem .875rem;background:var(--surface2);border-radius:8px;font-size:12.5px;line-height:1.55;color:var(--text2)}
+.mc-context b{color:var(--text);font-weight:700}
+.mc-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.25rem}
+.mc-col{padding:1rem;border-radius:12px;border:1px solid var(--border);background:var(--surface)}
+.mc-col.mc-haiku{border-color:rgba(128,66,250,.30);background:linear-gradient(180deg,var(--surface),rgba(128,66,250,.02))}
+.mc-col.mc-sonnet{border-color:rgba(218,165,32,.45);background:linear-gradient(180deg,var(--surface),rgba(218,165,32,.04))}
+.mc-col-head{display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding-bottom:.625rem;border-bottom:1px solid var(--border)}
+.mc-col-icon{font-size:24px;line-height:1}
+.mc-col h3{margin:0;font-size:14.5px;font-weight:700}
+.mc-col-cost{font-size:10.5px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.mc-col-body{display:flex;flex-direction:column;gap:.75rem}
+.mce-block{}
+.mce-label{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.mce-text{margin:0;font-size:12.5px;line-height:1.6;color:var(--text)}
+.mce-text p{margin:0 0 6px}
+.mc-summary{padding:1rem 1.25rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;font-size:12.5px;line-height:1.7;color:var(--text2)}
+.mc-summary b{color:var(--text);font-weight:700}
+@media(max-width:760px){
+  .mc-grid{grid-template-columns:1fr}
+}
+
+/* V12: Blocos de features grátis vs IA */
+.wel-feat-block{margin-bottom:2rem}
+.wfb-head{max-width:780px;margin:1.5rem auto 1.25rem;text-align:center;padding:0 .5rem}
+.wfb-tag{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;padding:4px 12px;border-radius:999px;margin-bottom:8px}
+.wfb-tag-free{background:rgba(73,197,137,.14);color:rgb(33,140,80);border:1px solid rgba(73,197,137,.3)}
+.wfb-tag-ai{background:rgba(128,66,250,.12);color:var(--gralia-purple);border:1px solid rgba(128,66,250,.3)}
+.wfb-head h3{margin:0 0 6px;font-size:18px;font-weight:700;color:var(--text)}
+.wfb-head p{margin:0;font-size:13px;color:var(--text2);line-height:1.55}
+.wel-feat-v3.wfv3-ai{background:linear-gradient(180deg,var(--surface),rgba(128,66,250,.025));border-color:rgba(128,66,250,.20)}
+.wel-feat-v3.wfv3-ai:hover{border-color:var(--gralia-purple)}
+html.dark .wfb-tag-free{color:#7dd3a8}
+html.dark .wfb-tag-ai{color:#b08aff}
+
+/* V12: Carrossel de demos navegáveis na landing */
+.wel-demo-section{padding:3rem 1rem;text-align:center}
+.wel-demo-box{max-width:780px;margin:1.75rem auto 0}
+.wel-demo-stage{min-height:480px;margin-bottom:1.25rem}
+.wds-frame{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:1.5rem;text-align:left;box-shadow:0 8px 28px rgba(0,0,0,.06);position:relative}
+.wds-tag{position:absolute;top:14px;right:14px;font-size:10px;font-weight:800;padding:4px 11px;border-radius:999px;letter-spacing:.5px;text-transform:uppercase}
+.wds-tag-free{background:rgba(73,197,137,.15);color:rgb(33,140,80);border:1px solid rgba(73,197,137,.3)}
+.wds-tag-ai{background:rgba(128,66,250,.12);color:var(--gralia-purple);border:1px solid rgba(128,66,250,.3)}
+.wds-slide-title{margin:0 0 1rem;font-size:18px;font-weight:700;letter-spacing:-.3px;color:var(--text)}
+.wds-screen{margin-bottom:1rem;border-radius:10px;overflow:hidden;background:var(--surface2)}
+.wds-svg{display:block;width:100%;height:auto}
+.wds-caption{margin:0;font-size:13px;color:var(--text2);line-height:1.55}
+.wel-demo-nav{display:flex;align-items:center;justify-content:center;gap:14px}
+.wds-arrow{width:42px;height:42px;border-radius:50%;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.wds-arrow:hover{background:var(--gralia-purple);color:#fff;border-color:var(--gralia-purple);transform:scale(1.05)}
+.wds-bullets{display:flex;gap:6px}
+.wds-bullet{width:10px;height:10px;border-radius:50%;background:var(--border);border:none;cursor:pointer;transition:all .15s;padding:0}
+.wds-bullet:hover{background:var(--text3)}
+.wds-bullet.on{background:var(--gralia-purple);width:24px;border-radius:5px}
+@media(max-width:560px){
+  .wds-frame{padding:1rem}
+  .wel-demo-stage{min-height:420px}
+  .wds-arrow{width:36px;height:36px;font-size:16px}
+  .wds-tag{font-size:9px;top:10px;right:10px;padding:3px 8px}
+}
+
+/* V12: Gráfico heatmap de produtividade no painel */
+.chart-card{padding:1.25rem;background:linear-gradient(180deg,var(--surface),var(--surface) 70%,rgba(128,66,250,.025))}
+.chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:1.125rem}
+.chart-title{margin:0 0 2px;font-size:14.5px;font-weight:700;color:var(--text);letter-spacing:-.1px;display:flex;align-items:center;gap:6px}
+.chart-sub{margin:0;font-size:11.5px;color:var(--text3);line-height:1.4}
+.chart-legend{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.cl-min,.cl-max{font-size:9.5px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.cl-cell{display:inline-block;width:14px;height:14px;border-radius:3px;background:var(--gralia-purple)}
+.chart-body{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.chart-heatmap{display:block;max-width:100%;height:auto;min-width:340px}
+.hm-axis-lbl{font-size:10px;font-weight:600;fill:var(--text3);font-family:inherit}
+.chart-heatmap rect{cursor:pointer;transition:fill-opacity .15s}
+.chart-heatmap rect:hover{stroke:var(--text);stroke-width:1.5;fill-opacity:1!important}
+.chart-insight{margin:1rem 0 0;padding:.75rem 1rem;background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.20);border-radius:8px;font-size:12.5px;color:var(--text);line-height:1.55}
+.chart-insight b{color:var(--gralia-purple);font-weight:700}
+.chart-insight-neutral{background:var(--surface2);border-color:var(--border);color:var(--text2)}
+.chart-insight-neutral b{color:var(--text);font-weight:700}
+@media(max-width:560px){
+  .chart-card{padding:1rem}
+  .chart-heatmap{min-width:300px}
+}
+
+/* V12: Gráfico de retenção na landing */
+.wel-chart-section{padding:3rem 1rem;background:linear-gradient(180deg,rgba(128,66,250,.02),var(--surface) 60%);border-radius:18px;margin:2rem 0;text-align:center}
+.wel-chart-box{max-width:780px;margin:1.75rem auto 1rem;padding:1rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.wel-retention-chart{display:block;width:100%;height:auto;min-width:480px;color:var(--text)}
+.wrc-axis{font-size:11px;font-weight:500;fill:var(--text2);font-family:inherit}
+.wrc-axis-title{font-size:12px;font-weight:600;fill:var(--text3);font-family:inherit}
+.wrc-legend{font-size:11.5px;font-weight:600;fill:var(--text);font-family:inherit}
+.wel-chart-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:780px;margin:1.5rem auto 0}
+.wcs-stat{padding:1rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;text-align:center}
+.wcs-num{font-size:26px;font-weight:800;letter-spacing:-1px;line-height:1.05;margin-bottom:4px}
+.wcs-num.red{color:rgb(232,76,76)}
+.wcs-num.green{color:rgb(73,197,137)}
+.wcs-num.purple{color:var(--gralia-purple)}
+.wcs-lbl{font-size:11.5px;color:var(--text2);line-height:1.4;font-weight:500}
+@media(max-width:640px){
+  .wel-chart-stats{grid-template-columns:1fr;gap:8px}
+  .wcs-num{font-size:22px}
+  .wel-chart-section{padding:2rem .75rem}
+}
+
+/* V12: Gráfico produtividade (Gralia vs concorrência) */
+.wel-prod-section{padding:3rem 1rem;background:linear-gradient(180deg,var(--surface),rgba(73,197,137,.02) 60%);border-radius:18px;margin:2rem 0;text-align:center}
+.wel-prod-chart{max-width:840px;margin:1.75rem auto 1rem;display:flex;flex-direction:column;gap:14px}
+.wpc-row{display:grid;grid-template-columns:200px 1fr 90px;gap:14px;align-items:center;padding:1rem 1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;transition:transform .2s}
+.wpc-row.wpc-gralia{border-color:rgba(73,197,137,.4);box-shadow:0 4px 14px rgba(73,197,137,.08);background:linear-gradient(135deg,var(--surface),rgba(73,197,137,.04))}
+.wpc-row.wpc-gralia:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(73,197,137,.15)}
+.wpc-platform{display:flex;align-items:center;gap:12px;text-align:left}
+.wpc-logo{font-size:28px;line-height:1;flex-shrink:0}
+.wpc-platform > div{display:flex;flex-direction:column;gap:2px}
+.wpc-platform b{font-size:13.5px;font-weight:700;color:var(--text);line-height:1.2}
+.wpc-tagline{font-size:11px;color:var(--text3);font-weight:500}
+.wpc-bar-track{display:flex;height:36px;border-radius:8px;overflow:hidden;background:var(--surface2);border:1px solid var(--border);position:relative}
+.wpc-segment{display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;letter-spacing:.2px;transition:all .2s;cursor:default;text-shadow:0 1px 2px rgba(0,0,0,.25);min-width:0;overflow:hidden;white-space:nowrap}
+.wpc-segment:hover{filter:brightness(1.1)}
+.wpc-seg-lbl{padding:0 4px}
+/* Cores das etapas */
+.seg-resolve{background:#4a90e2}
+.seg-explain{background:rgb(73,197,137)}
+.seg-flashcard{background:#9d6bf0}
+.seg-wait{background:#e89c4d}
+.seg-wait-long{background:#d4683a}
+.seg-research{background:#c0a050}
+.seg-manual{background:#7a8090}
+.seg-read{background:#a04d8a}
+.seg-write{background:#5a6080}
+.wpc-total{font-size:13.5px;font-weight:700;color:var(--text);text-align:right;letter-spacing:-.2px}
+.wpc-row.wpc-gralia .wpc-total{color:rgb(73,197,137);font-size:14.5px}
+.wpc-row.wpc-tec .wpc-total{color:#d4683a}
+.wpc-row.wpc-tradicional .wpc-total{color:rgb(232,76,76)}
+/* Legenda */
+.wel-prod-legend{max-width:840px;margin:1.25rem auto 0;display:flex;flex-wrap:wrap;justify-content:center;gap:14px;padding:.875rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px}
+.wpl-item{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);font-weight:500}
+.wpl-dot{display:inline-block;width:11px;height:11px;border-radius:3px;flex-shrink:0}
+/* Insight final */
+.wel-prod-insight{max-width:760px;margin:1.5rem auto 0;display:flex;align-items:center;gap:18px;padding:1.25rem 1.5rem;background:linear-gradient(135deg,rgba(73,197,137,.10),rgba(128,66,250,.06));border:1px solid rgba(73,197,137,.30);border-radius:14px;text-align:left}
+.wpi-num{font-size:42px;font-weight:900;letter-spacing:-2px;color:rgb(73,197,137);line-height:1;flex-shrink:0}
+.wpi-text{display:flex;flex-direction:column;gap:6px;font-size:13.5px;line-height:1.55;color:var(--text)}
+.wpi-text b{font-weight:700;font-size:14px}
+.wpi-text span{font-size:12.5px;color:var(--text2)}
+.wpi-text span b{font-weight:700;color:var(--text)}
+@media(max-width:760px){
+  .wpc-row{grid-template-columns:1fr;gap:10px;padding:.875rem 1rem;text-align:center}
+  .wpc-platform{justify-content:center;text-align:left}
+  .wpc-bar-track{height:32px}
+  .wpc-total{text-align:center}
+  .wel-prod-section{padding:2rem .75rem}
+  .wel-prod-insight{flex-direction:column;text-align:center;gap:10px}
+  .wpi-num{font-size:36px}
+}
+@media(max-width:560px){
+  .wpc-seg-lbl{font-size:9.5px;padding:0 2px}
+}
 .up-priv-badge{display:inline-block;margin-top:6px;margin-left:6px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--surface2);color:var(--text2);width:fit-content;align-self:flex-start}
 .up-header-actions{position:absolute;top:1.25rem;right:1.25rem;display:flex;gap:8px}
 .up-stat-card{margin-top:.875rem;padding:1rem 1.125rem;display:flex;align-items:center;gap:14px}
@@ -2702,6 +2967,20 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
   .admin-floating-btn .afb-label{display:none}
 }
 
+/* V12: Botão flutuante "Fale conosco" — fica do lado esquerdo do foco */
+.feedback-floating-btn{position:fixed;bottom:20px;right:140px;z-index:500;height:46px;padding:0 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;font-family:inherit;box-shadow:0 4px 14px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.06);transition:all .2s cubic-bezier(.34,1.4,.64,1);cursor:pointer}
+.feedback-floating-btn:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(73,197,137,.18),0 2px 6px rgba(0,0,0,.08);border-color:rgba(73,197,137,.35);color:var(--accent-text)}
+.feedback-floating-btn:active{transform:translateY(0) scale(.96)}
+.ffb-icon{font-size:16px;line-height:1}
+@media (max-width:600px){
+  .feedback-floating-btn{padding:0;width:46px;justify-content:center;bottom:14px;right:74px}
+  .feedback-floating-btn .ffb-label{display:none}
+  /* No mobile, admin afasta mais à esquerda pra dar espaço pro feedback */
+  @media (max-width:560px){
+    .admin-floating-btn{right:130px}
+  }
+}
+
 /* ====== TOAST ====== */
 .ux-toast{position:fixed;bottom:-60px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:var(--rs);font-size:13px;font-weight:500;box-shadow:0 4px 18px rgba(0,0,0,.2);z-index:1000;opacity:0;transition:bottom .3s,opacity .3s;max-width:80vw;text-align:center}
 .ux-toast.visible{bottom:24px;opacity:1}
@@ -3910,7 +4189,7 @@ async function fetchPublicProfile(username){
   try{
     const { data, error } = await supa
       .from('profiles')
-      .select('id, username, display_name, visibility, created_at, target_exam_name, target_exam_board, target_exam_date, target_type, target_role, target_institution')
+      .select('id, username, display_name, visibility, created_at, target_exam_name, target_exam_board, target_exam_date, target_type, target_role, target_institution, beta_tier, beta_subscriber_number')
       .eq('username', v)
       .maybeSingle();
     if(error) return {error: error.message};
@@ -4172,6 +4451,22 @@ async function searchPublicResources(filters){
   if(!AUTH.user) return {error: 'Faça login pra ver materiais públicos', items: []};
   filters = filters || {};
   try{
+    // V12: Se scope='following', primeiro busca lista de IDs que sigo
+    let allowedOwnerIds = null;
+    if(filters.scope === 'following'){
+      const {data: follows, error: fe} = await supa
+        .from('follows')
+        .select('followed_id')
+        .eq('follower_id', AUTH.user.id)
+        .eq('status', 'accepted');
+      if(fe) return {error: fe.message, items: []};
+      allowedOwnerIds = (follows||[]).map(f => f.followed_id);
+      // Se não sigo ninguém, retorna lista vazia direto
+      if(allowedOwnerIds.length === 0){
+        return {items: [], emptyFollowing: true};
+      }
+    }
+
     const { data, error } = await supa.rpc('search_public_resources', {
       p_type: filters.type || null,
       p_discipline: filters.discipline || null,
@@ -4182,7 +4477,13 @@ async function searchPublicResources(filters){
       p_tag: filters.tag || null
     });
     if(error) return {error: error.message, items: []};
-    return {items: data || []};
+    let items = data || [];
+    // Filtro client-side por seguidores (RPC não tem essa opção)
+    if(allowedOwnerIds){
+      const setIds = new Set(allowedOwnerIds);
+      items = items.filter(item => setIds.has(item.owner_id));
+    }
+    return {items};
   }catch(err){
     return {error: err.message || 'Erro', items: []};
   }
@@ -7663,18 +7964,31 @@ const QUOTA = {
   lastFetchedAt: null
 };
 
-// Fetch initial quota state (called after login)
+// V12: fetchQuota usa RPC unificada my_quota() que soma plan + topup credits.
+// Antes lia da TABELA user_quota que não tinha topup. Por isso, quando
+// admin_grant_credits adicionava topup, o saldo "sumia" no UI ao sincronizar.
 async function fetchQuota(){
   if(!isAuthed())return;
   try{
-    const {data,error} = await supa.from('user_quota')
-      .select('credits_remaining, plan, credits_used_total')
-      .eq('user_id',AUTH.user.id)
-      .maybeSingle();
-    if(error)throw error;
-    if(data){
-      QUOTA.remaining = data.credits_remaining;
-      QUOTA.plan = data.plan;
+    const {data, error} = await supa.rpc('my_quota');
+    if(error){
+      // Fallback: se RPC ainda não foi criada, lê do user_subscription_view
+      console.warn('[NEXUS] my_quota RPC não disponível, fallback view:', error.message);
+      const {data: vd} = await supa.from('user_subscription_view')
+        .select('total_credits, plan_id')
+        .eq('user_id', AUTH.user.id)
+        .maybeSingle();
+      if(vd){
+        QUOTA.remaining = vd.total_credits;
+        QUOTA.plan = vd.plan_id || 'trial';
+        QUOTA.lastFetchedAt = Date.now();
+      }
+      return;
+    }
+    if(data && data.length > 0){
+      const q = data[0];
+      QUOTA.remaining = q.total_credits;
+      QUOTA.plan = q.plan_id || 'trial';
       QUOTA.lastFetchedAt = Date.now();
     }
   }catch(e){
@@ -8254,11 +8568,173 @@ function buildModelPicker(methodKey,onChange){
     pickerGrid.appendChild(b);
   });
   wrap.appendChild(pickerGrid);
+  // V12: Link pra comparar modelos com exemplos lado-a-lado
+  const compareLink = mk('button','mp-compare-link');
+  compareLink.type='button';
+  compareLink.innerHTML = '👁 Comparar Haiku vs Sonnet — ver exemplos';
+  compareLink.addEventListener('click',()=>showModelComparisonModal(methodKey));
+  wrap.appendChild(compareLink);
   // Custom model fallback (if global is something else)
   if(!QUICK_MODELS.find(m=>m[0]===current)){
     const tag = mk('span','badge b-info');tag.style.marginTop='6px';tag.textContent=shortModelName(current)+' (custom)';wrap.appendChild(tag);
   }
   return wrap;
+}
+
+// V12: Modal de comparação Haiku vs Sonnet — mostra exemplos lado-a-lado
+function showModelComparisonModal(methodKey){
+  // Exemplos curados de cada função IA — mostra diferença de qualidade real
+  const COMPARISONS = {
+    'practice': {
+      title: 'Geração de questões C/E (estilo Cebraspe)',
+      context: 'Tópico: "Princípios da Administração Pública"',
+      haiku: {
+        question: 'A administração pública direta é constituída pelos órgãos da União, Estados e Municípios, sendo aplicáveis a todos eles os princípios da legalidade, impessoalidade e eficiência.',
+        answer: 'Errado',
+        explanation: 'Faltou citar moralidade e publicidade — princípios constitucionais expressos no art. 37 caput.',
+        traps: 'Erro por omissão: lista incompleta de princípios.'
+      },
+      sonnet: {
+        question: 'Os princípios da administração pública previstos no caput do art. 37 da Constituição Federal aplicam-se exclusivamente à administração pública direta, sendo facultativa sua observância pelas entidades da administração indireta que possuam personalidade jurídica de direito privado.',
+        answer: 'Errado',
+        explanation: 'Os princípios LIMPE (legalidade, impessoalidade, moralidade, publicidade, eficiência) aplicam-se a TODA a administração pública — direta E indireta, independentemente da personalidade jurídica. A jurisprudência do STF é pacífica nesse sentido.',
+        traps: 'Pegadinha tripla: 1) "exclusivamente" sugere restrição falsa; 2) "facultativa" contraria comando constitucional; 3) tenta induzir ao erro pela personalidade jurídica de direito privado das estatais.'
+      }
+    },
+    'topic-profile': {
+      title: 'Perfil completo de tópico',
+      context: 'Tópico: "Controle de Constitucionalidade"',
+      haiku: {
+        section: 'CONCEITO PRINCIPAL',
+        content: 'Mecanismo de aferição da compatibilidade vertical entre normas infraconstitucionais e a Constituição. Modelos: difuso (qualquer juiz, no caso concreto) e concentrado (STF, em abstrato).'
+      },
+      sonnet: {
+        section: 'CONCEITO PRINCIPAL',
+        content: 'Sistema técnico-jurídico de fiscalização da supremacia constitucional, operacionalizado por meio de controle preventivo (CCJ + sanção/veto) e repressivo (judicial via difuso/concentrado, ou político via STF/Senado em casos específicos do art. 52 X). O controle difuso (origem em Marbury vs Madison, 1803) permite a qualquer juiz declarar incidentalmente a inconstitucionalidade — efeitos inter partes; o concentrado (modelo austríaco/Kelsen) concentra a competência no STF — efeitos erga omnes e vinculantes. ATENÇÃO: questões cobram diferenças entre cláusula de reserva de plenário (art. 97 CF), modulação de efeitos (art. 27 Lei 9.868/99) e abstrativização do controle difuso (RE 197.917).'
+      }
+    },
+    'flashcard_create': {
+      title: 'Criação de flashcard de erro',
+      context: 'Erro do usuário em questão sobre "Direitos Fundamentais"',
+      haiku: {
+        front: 'Quais são os direitos sociais?',
+        back: 'Educação, saúde, alimentação, trabalho, moradia, transporte, lazer, segurança, previdência social, proteção à maternidade e à infância, assistência aos desamparados.'
+      },
+      sonnet: {
+        front: 'Direitos sociais (art. 6º CF) — qual é a sequência mnemônica e quais foram adicionados por emenda?',
+        back: '::ESTAMOS TÃO LASCADOS PELA SAÚDE, MAS A ALIMENTAÇÃO E O TRANSPORTE NOS SALVAM::\n\nE-Educação · S-Saúde · A-Alimentação¹ · T-Trabalho · M-Moradia · T-Transporte² · L-Lazer · S-Segurança · P-Previdência · P-Proteção (maternidade/infância) · A-Assistência aos desamparados\n\n¹ **Alimentação**: incluída pela EC 64/2010\n² **Transporte**: incluído pela EC 90/2015\n\nPegadinha frequente: bancas perguntam o que NÃO está no rol. Cuidado com "água potável" e "habitação digna" — não estão no caput do art. 6º.'
+      }
+    },
+    'examiner-review': {
+      title: 'Análise estilo examinador',
+      context: 'Conceito: "Princípio da Eficiência"',
+      haiku: {
+        content: 'O princípio da eficiência foi inserido na CF pela EC 19/98. Exige que a administração busque o melhor resultado com o menor custo, evitando desperdícios.'
+      },
+      sonnet: {
+        content: 'Inserido pela EC 19/98 no caput do art. 37, o princípio da eficiência tem natureza dúplice: aspecto SUBJETIVO (qualificação dos agentes públicos — concursos, capacitação, avaliação periódica via art. 41 §1º III) e OBJETIVO (organização e estruturação racional do serviço público).\n\nNas bancas Cebraspe, é frequente cobrarem a TENSÃO ENTRE EFICIÊNCIA E LEGALIDADE: o agente NÃO PODE descumprir lei expressa em nome da eficiência (princípio da juridicidade ainda prevalece). Outra pegadinha clássica: confundir eficiência (relação custo-benefício) com EFICÁCIA (atingir o objetivo) — os dois NÃO são sinônimos no direito administrativo.\n\nJulgado-chave: STF entende que a perda do cargo por insuficiência de desempenho (art. 41 §1º III) AINDA depende de lei complementar — até hoje não regulamentada totalmente.'
+      }
+    }
+  };
+
+  // Mapeia methodKey pra chave de comparação
+  const compKey = ({
+    'practice':'practice','calibration':'practice','drill':'practice','interleaving':'practice',
+    'topic-profile':'topic-profile',
+    'flashcard':'flashcard_create',
+    'examiner':'examiner-review'
+  })[methodKey] || 'practice';
+
+  const comp = COMPARISONS[compKey];
+  const m = mk('div'); m.style.cssText='max-width:880px;width:100%;max-height:88vh;overflow-y:auto';
+
+  m.innerHTML = `
+    <div class="footer-modal-head">
+      <h2>👁 Haiku vs Sonnet — exemplo real</h2>
+      <button type="button" class="fmh-close" id="mc-close">×</button>
+    </div>
+    <p class="mc-context"><b>Função:</b> ${escapeHTML(comp.title)} · <b>Contexto:</b> ${escapeHTML(comp.context)}</p>
+    <div class="mc-grid">
+      <div class="mc-col mc-haiku">
+        <div class="mc-col-head">
+          <span class="mc-col-icon">⚡</span>
+          <div>
+            <h3>Haiku 4.5</h3>
+            <span class="mc-col-cost">~1× custo · padrão de todos os planos</span>
+          </div>
+        </div>
+        <div class="mc-col-body">
+          ${renderModelExample(comp.haiku, compKey)}
+        </div>
+      </div>
+      <div class="mc-col mc-sonnet">
+        <div class="mc-col-head">
+          <span class="mc-col-icon">💎</span>
+          <div>
+            <h3>Sonnet 4.6</h3>
+            <span class="mc-col-cost">~6× custo · exclusivo plano Pro</span>
+          </div>
+        </div>
+        <div class="mc-col-body">
+          ${renderModelExample(comp.sonnet, compKey)}
+        </div>
+      </div>
+    </div>
+    <div class="mc-summary">
+      <b>Quando usar Sonnet:</b> tópicos densos onde profundidade e precisão fazem diferença (provas finais, simulados de reta final, conceitos que você está errando muito).<br>
+      <b>Quando usar Haiku:</b> drills de volume, prática diária, geração rápida. Custa 6× menos, sem perder precisão na maioria dos casos.<br>
+      <b>Dica:</b> reserve Sonnet pra tópicos de alta dificuldade. Em volume, Haiku é mais que suficiente.
+    </div>
+  `;
+  setTimeout(()=>{
+    const c = m.querySelector('#mc-close');
+    if(c) c.addEventListener('click', closeModal);
+  }, 0);
+  showModal(m);
+}
+
+function renderModelExample(ex, compKey){
+  if(compKey === 'practice'){
+    return `
+      <div class="mce-block">
+        <div class="mce-label">Questão</div>
+        <p class="mce-text">${escapeHTML(ex.question)}</p>
+      </div>
+      <div class="mce-block">
+        <div class="mce-label">Resposta</div>
+        <p class="mce-text"><b>${escapeHTML(ex.answer)}</b></p>
+      </div>
+      <div class="mce-block">
+        <div class="mce-label">Explicação</div>
+        <p class="mce-text">${escapeHTML(ex.explanation)}</p>
+      </div>
+      <div class="mce-block">
+        <div class="mce-label">Armadilhas detectadas</div>
+        <p class="mce-text">${escapeHTML(ex.traps)}</p>
+      </div>
+    `;
+  }
+  if(compKey === 'topic-profile' || compKey === 'examiner-review'){
+    return `
+      <div class="mce-block">
+        ${ex.section ? `<div class="mce-label">${escapeHTML(ex.section)}</div>` : ''}
+        <p class="mce-text">${formatFlashcardText(ex.content)}</p>
+      </div>
+    `;
+  }
+  if(compKey === 'flashcard_create'){
+    return `
+      <div class="mce-block">
+        <div class="mce-label">Frente (pergunta)</div>
+        <p class="mce-text">${formatFlashcardText(ex.front)}</p>
+      </div>
+      <div class="mce-block">
+        <div class="mce-label">Verso (resposta)</div>
+        <div class="mce-text">${formatFlashcardText(ex.back)}</div>
+      </div>
+    `;
+  }
+  return '<p class="mce-text">' + escapeHTML(JSON.stringify(ex)) + '</p>';
 }
 // Telemetry badge to show after a generation
 function buildLastGenBadge(methodKey,kind){
@@ -8557,6 +9033,18 @@ function render(){
     APP.appendChild(adminBtn);
   }
 
+  // V12: Botão flutuante "Fale conosco" — facilita reportar problemas
+  // Ao lado do botão de foco. Esconde em modo foco pra não atrapalhar.
+  if(isAuthed() && !isFocusMode()){
+    const feedbackBtn = mk('button','feedback-floating-btn');
+    feedbackBtn.title = 'Fale conosco — reportar problema, dar sugestão ou pedir ajuda';
+    feedbackBtn.innerHTML = '<span class="ffb-icon">💬</span><span class="ffb-label">Fale conosco</span>';
+    feedbackBtn.addEventListener('click',()=>{
+      try{ showFeedbackModal(); }catch(e){ alert('Não consegui abrir o feedback. Recarregue a página.'); }
+    });
+    APP.appendChild(feedbackBtn);
+  }
+
   // Reset hidden state quando navega — pomo float reaparece se rodando
   if(ST.view==='pomodoro')ST.pomoFloatHidden = false;
   renderPomoFloat();
@@ -8586,21 +9074,58 @@ function showFAQModal(){
   m.appendChild(sub);
 
   const FAQ = [
-    {q:'O Gralia é grátis?', a:'Sua conta começa com 40 créditos grátis (válidos por 14 dias) pra testar todos os recursos com IA. Estudar com seus próprios materiais, fazer pomodoros, revisar flashcards prontos e usar o mapa da matéria não consomem crédito. Pra continuar usando a IA depois do trial, você assina um plano (a partir de R$ 19,90/mês) ou compra créditos avulsos (top-ups).'},
-    {q:'O que são "créditos"?', a:'Unidades consumidas só quando a IA faz algo: gerar questões, flashcards, perfis de matéria, análises do mentor. Cada operação mostra o custo aproximado antes de rodar. Estudar suas próprias questões importadas, revisar flashcards prontos, fazer pomodoros e usar o mapa da matéria não custam nada.'},
-    {q:'Tem chat de conversa?', a:'Não. O foco é estudo, não rede social. Você pode compartilhar cadernos de questões, fontes e perfis de matéria, e seguir outros usuários — mas não há mensagens privadas entre estudantes.'},
-    {q:'Vai funcionar pra minha banca/prova?', a:'Sim. Você define no perfil qual concurso, vestibular ou prova vai fazer, qual banca, qual cargo. A IA adapta o estilo das questões pra banca escolhida. Funciona pra Cebraspe, FCC, FGV, Vunesp, IBFC e dezenas de outras.'},
-    {q:'Posso usar com a apostila que eu já tenho?', a:'Sim, e é o ideal. Você adiciona suas fontes (apostilas, PDFs, resumos próprios). A IA usa esse material como base pra gerar questões fiéis ao que você estudou.'},
-    {q:'A IA pode errar nas questões?', a:'Pode acontecer, principalmente em legislações muito recentes ou jurisprudência atualizada. Por isso, cada questão passa por 5 filtros automáticos antes de chegar a você (~15% são descartadas), a comunidade vota nas explicações geradas e você reporta erro com 1 clique. Sempre confirme conceitos críticos com sua fonte oficial de teoria.'},
-    {q:'Substitui o estudo de teoria?', a:'Não. Vídeo-aulas e PDFs continuam sendo essenciais pra você entender o conteúdo. O Gralia é a camada de prática ativa que vem depois — pra fixar e detectar suas dificuldades.'},
-    {q:'Meus dados ficam seguros?', a:'Sim. Tudo em servidor com criptografia (Supabase). Sua conta é privada por padrão. Se quiser compartilhar materiais, você opta — nada é público sem você decidir. Em conformidade com a LGPD.'},
-    {q:'Como funciona o sistema social?', a:'Opcional e opt-in. Se quiser, você cria um perfil público com username e pode publicar cadernos/fontes na descoberta. Pode seguir outros concurseiros e ver o feed de marcos. Sem perfil público, você usa o app em modo totalmente privado.'},
-    {q:'O que é "perfil de matéria"?', a:'Material gerado por IA que aprofunda um tópico específico (ex: "Princípios da Administração Pública"). Inclui resumo teórico, mnemônicos, tabelas comparativas, mapa de armadilhas comuns na banca, exemplos de questões prováveis. Material pra revisar com profundidade dias antes da prova.'},
-    {q:'Como funcionam os flashcards?', a:'Repetição espaçada (SRS) com algoritmo similar ao SM-2 do Anki. Você classifica como Errei/Difícil/Bom/Fácil e o sistema agenda a próxima revisão. Cards podem ser gerados pela IA a partir das suas fontes, criados manualmente ou nascer dos seus erros em questões.'},
-    {q:'Tem app pra celular?', a:'O site funciona muito bem em celular (responsivo). Apps nativos iOS/Android estão no plano de longo prazo. Hoje a versão web cobre tudo.'},
-    {q:'Posso baixar meus dados?', a:'Sim. Em Configurações → Privacidade → "Baixar todos os meus dados" (JSON completo). Conta também pode ser apagada permanentemente.'},
-    {q:'Como denuncio um erro?', a:'Em qualquer questão tem botão de reportar. Erros técnicos do app também: quando algo quebra, aparece um botão "Reportar erro" automaticamente. Você recebe resposta no próprio app na aba "Minhas mensagens".'},
-    {q:'Como vocês escolhem o que melhorar?', a:'Pelas mensagens do Fale conosco. Se 5 pessoas pedem a mesma coisa, vai pra cima da fila. Sem campanhas de marketing inflado — quem fala mais, é mais ouvido.'}
+    // === Como começar ===
+    {q:'O Gralia é grátis?', a:'Pra começar, sim. Sua conta começa com 40 créditos grátis (válidos por 14 dias) pra testar todos os recursos com IA. Depois disso, recursos sem IA continuam grátis (flashcards, mapa, pomodoro, simulado com importadas) — pra usar IA, você assina um plano (a partir de R$ 19,90/mês) ou compra créditos avulsos.'},
+
+    {q:'Preciso colocar cartão de crédito pra criar conta?', a:'Não. Cadastro é com email e senha (ou Google) e os 40 créditos grátis já vêm liberados. Cartão só entra em jogo se você decidir assinar.'},
+
+    {q:'Quais bancas/concursos funcionam?', a:'Concursos públicos (federal, estadual, municipal), vestibulares, ENEM, OAB, certificações técnicas, provas de faculdade. A IA adapta o estilo das questões pra banca alvo: Cebraspe, FCC, FGV, Vunesp, IBFC, Quadrix, Cesgranrio e outras. Você define no seu perfil qual prova prepara.'},
+
+    {q:'Posso usar com a apostila que eu já tenho?', a:'Sim, e é o jeito recomendado. Você anexa o PDF ou cola texto das suas fontes (apostilas, resumos próprios, transcrições de aula). A IA usa esse material como base pra gerar questões fiéis ao que você estudou.'},
+
+    // === Créditos e planos ===
+    {q:'O que são "créditos" exatamente?', a:'Unidades consumidas só quando a IA faz algo: gerar 1 questão (~1 crédito), criar flashcard (~1 crédito), perfil de matéria completo (~8 créditos), síntese de edital (~30 créditos), análise do mentor (~2 créditos). Cada ação mostra o custo aproximado ANTES de rodar — você nunca é surpreendido.'},
+
+    {q:'Qual a diferença entre os planos?', a:'Estudante (R$ 19,90 / 250 créditos/mês) — pra quem usa IA com moderação. Concurseiro (R$ 39,90 / 700 créditos/mês — recomendado) — pra estudo intenso. Pro (R$ 89,90 / 2000 créditos/mês + acesso ao modelo Sonnet 4.6 + edital ilimitado) — pra quem usa IA todos os dias e quer respostas mais profundas. Cancela quando quiser.'},
+
+    {q:'O que são top-ups (créditos avulsos)?', a:'Pacotes de créditos que NÃO expiram. Útil quando você esgota o saldo do plano antes de o mês renovar (ex: véspera de prova). Pacotes: 100/R$ 9,90 · 300/R$ 22,90 · 1000/R$ 64,90. Acumulam mesmo se você cancelar a assinatura.'},
+
+    {q:'Os créditos não usados acumulam mês a mês?', a:'Os créditos do PLANO resetam mensalmente (vira saldo 250/700/2000 todo mês). Os créditos de TOP-UP (avulsos) nunca expiram — somam ao saldo e ficam disponíveis indefinidamente.'},
+
+    {q:'Tem desconto BETA?', a:'Sim. Os 200 primeiros assinantes pagantes ganham desconto vitalício escalonado: 1º ao 50º (Pioneiro) — 30% por 6 meses · 51º ao 100º (Veterano) — 20% por 3 meses · 101º ao 200º (Beta) — 10% por 1 mês. Cada nível inclui selo permanente no perfil.'},
+
+    {q:'Posso cancelar a qualquer momento?', a:'Sim. Cancela em Configurações → Minha assinatura. Sem fidelidade, sem multa. Você mantém acesso até o fim do período pago. Os créditos avulsos comprados continuam seus pra sempre.'},
+
+    // === Como funciona ===
+    {q:'A IA pode errar nas questões?', a:'Pode acontecer, especialmente em legislações muito recentes. Por isso cada questão passa por 5 filtros automáticos antes de chegar a você (~15% são descartadas), a comunidade vota nas explicações geradas e você reporta erro com 1 clique. Sempre confirme conceitos críticos com sua fonte oficial de teoria.'},
+
+    {q:'Qual a diferença entre Haiku e Sonnet (modelos de IA)?', a:'Haiku 4.5 é o modelo padrão — rápido, suficiente pra 95% dos casos. Sonnet 4.6 é o modelo premium (exclusivo plano Pro) — pensa mais profundamente, gera respostas mais elaboradas, custa ~6× mais. Use Sonnet pra tópicos densos onde profundidade faz diferença. Você pode comparar exemplos na tela de configuração de cada método.'},
+
+    {q:'Substitui o estudo de teoria?', a:'NÃO. Vídeo-aulas, PDFs e leitura continuam sendo essenciais pra você entender o conteúdo. O Gralia é a camada de PRÁTICA ATIVA que vem depois — pra fixar, detectar dificuldades e revisar com método. A revisão espaçada do Gralia + sua teoria sólida = combo certeiro.'},
+
+    {q:'Como funcionam os flashcards?', a:'Repetição espaçada (SRS) com algoritmo similar ao SM-2 do Anki. Você revela a resposta, classifica como Errei/Difícil/Bom/Fácil e o sistema agenda a próxima revisão. Cards podem ser criados manualmente, gerados pela IA a partir das suas fontes ou nascer dos seus erros em questões — escolha sua.'},
+
+    {q:'O que é "perfil de matéria"?', a:'Material gerado por IA que aprofunda um tópico específico (ex: "Princípios da Administração Pública"). Inclui resumo teórico, mnemônicos, tabelas comparativas, mapa de armadilhas comuns na banca, exemplos de questões prováveis. Material pra revisar com profundidade nos dias finais antes da prova.'},
+
+    {q:'Como funciona a "análise do mentor"?', a:'Diariamente, a IA analisa seus erros, padrões temporais, taxa de calibração e sugere ajustes específicos pra amanhã (drills, revisões, foco). Disponível com 20+ questões resolvidas no dia. No trial você vê um exemplo da análise sem usar créditos.'},
+
+    // === Privacidade e social ===
+    {q:'Tem chat de conversa entre usuários?', a:'Não. O foco é estudo, não rede social. Você pode compartilhar cadernos, fontes e perfis de matéria, seguir concurseiros e ver feed de marcos. Mas não há mensagens privadas entre estudantes.'},
+
+    {q:'Como funciona o sistema social?', a:'Totalmente opt-in. Sua conta começa privada — você decide se quer perfil público (com username) e o que publicar. Pode seguir outros concurseiros e ver o feed da rede. Pode também ativar "aprovação de seguidores" pra controlar quem te segue (importante se você publica materiais).'},
+
+    {q:'Posso recusar seguidores?', a:'Sim. Em Configurações → Social, ative "Com aprovação". Quem tentar te seguir entra como pendente e você decide caso a caso. Útil pra controlar quem importa seus materiais.'},
+
+    {q:'Meus dados ficam seguros?', a:'Sim. Tudo em servidor com criptografia (Supabase, infra AWS). Sua conta é privada por padrão. Em conformidade com a LGPD. Você pode baixar todos seus dados em JSON ou apagar a conta permanentemente em Configurações → Privacidade.'},
+
+    {q:'Posso baixar meus dados ou apagar a conta?', a:'Sim. Configurações → Privacidade → "Baixar todos os meus dados" (JSON completo) ou "Apagar conta permanentemente". Apagar é irreversível — todos os flashcards, fontes, histórico, conexões sociais somem.'},
+
+    // === Suporte ===
+    {q:'Tem app pra celular?', a:'O site funciona muito bem em celular (responsivo, com menu mobile dedicado). Apps nativos iOS/Android estão no plano de longo prazo, mas hoje a versão web cobre 100% dos recursos.'},
+
+    {q:'Como reporto um bug ou peço uma feature?', a:'Use o botão "Fale conosco" (canto inferior direito da tela, ao lado do botão de Foco). Você manda mensagem direta e responde tudo pelo próprio app na aba "Minhas mensagens". Funciona como ticket de suporte.'},
+
+    {q:'Como vocês decidem o que melhorar?', a:'Pelas mensagens do Fale conosco. Se 5 pessoas pedem a mesma coisa, vai pra cima da fila. Sem campanhas de marketing inflado — quem fala, é ouvido. A trilha de melhorias é guiada pelos próprios usuários.'}
   ];
 
   const list = mk('div','faq-list');
@@ -8877,6 +9402,229 @@ function renderWelcome(){
   transparenciaSec.appendChild(transpBody);
   wrap.appendChild(transparenciaSec);
 
+  // ====== GRÁFICO: Curva de retenção (Ebbinghaus + revisão espaçada) ======
+  // Visual autêntico que mostra o problema cognitivo que o Gralia resolve.
+  // Inspirado nos gráficos de papers de psicologia cognitiva (Hermann Ebbinghaus, 1885).
+  const chartSec = mk('section','wel-section wel-chart-section');
+  const chartLbl = mk('div','wel-section-label');chartLbl.textContent='Por que estudar do jeito certo importa';
+  chartSec.appendChild(chartLbl);
+  const chartHead = mk('h2','wel-section-title');chartHead.textContent='Sem revisão, você esquece 70% do que estudou em 1 semana';
+  chartSec.appendChild(chartHead);
+  const chartSub = mk('p','wel-section-sub');
+  chartSub.textContent = 'Curva de esquecimento de Ebbinghaus (1885): a memória decai exponencialmente. Mas com revisão espaçada nos momentos certos, a retenção sobe para 90%+ permanente. O Gralia usa esse princípio em todos os flashcards, drills e mapas.';
+  chartSec.appendChild(chartSub);
+
+  // SVG do gráfico
+  const chartBox = mk('div','wel-chart-box');
+  chartBox.innerHTML = `
+    <svg viewBox="0 0 700 320" class="wel-retention-chart" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="redCurveGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(232,76,76,.30)"/>
+          <stop offset="100%" stop-color="rgba(232,76,76,0)"/>
+        </linearGradient>
+        <linearGradient id="greenCurveGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(73,197,137,.32)"/>
+          <stop offset="100%" stop-color="rgba(73,197,137,0)"/>
+        </linearGradient>
+      </defs>
+      <!-- Eixos -->
+      <line x1="60" y1="40" x2="60" y2="270" stroke="currentColor" stroke-opacity=".25" stroke-width="1.5"/>
+      <line x1="60" y1="270" x2="660" y2="270" stroke="currentColor" stroke-opacity=".25" stroke-width="1.5"/>
+      <!-- Grid horizontal -->
+      <line x1="60" y1="80" x2="660" y2="80" stroke="currentColor" stroke-opacity=".06" stroke-width="1" stroke-dasharray="3,4"/>
+      <line x1="60" y1="155" x2="660" y2="155" stroke="currentColor" stroke-opacity=".06" stroke-width="1" stroke-dasharray="3,4"/>
+      <line x1="60" y1="230" x2="660" y2="230" stroke="currentColor" stroke-opacity=".06" stroke-width="1" stroke-dasharray="3,4"/>
+      <!-- Y axis labels -->
+      <text x="50" y="44" text-anchor="end" class="wrc-axis">100%</text>
+      <text x="50" y="84" text-anchor="end" class="wrc-axis">75%</text>
+      <text x="50" y="159" text-anchor="end" class="wrc-axis">50%</text>
+      <text x="50" y="234" text-anchor="end" class="wrc-axis">25%</text>
+      <text x="50" y="274" text-anchor="end" class="wrc-axis">0%</text>
+      <!-- X axis labels (dias) -->
+      <text x="60"  y="290" text-anchor="middle" class="wrc-axis">0d</text>
+      <text x="160" y="290" text-anchor="middle" class="wrc-axis">1d</text>
+      <text x="260" y="290" text-anchor="middle" class="wrc-axis">3d</text>
+      <text x="360" y="290" text-anchor="middle" class="wrc-axis">7d</text>
+      <text x="460" y="290" text-anchor="middle" class="wrc-axis">15d</text>
+      <text x="560" y="290" text-anchor="middle" class="wrc-axis">30d</text>
+      <text x="660" y="290" text-anchor="middle" class="wrc-axis">60d</text>
+      <text x="360" y="310" text-anchor="middle" class="wrc-axis-title">Dias após estudar</text>
+      <!-- Curva vermelha (sem revisão) - decai exponencialmente -->
+      <path d="M 60 40 Q 110 130 160 195 Q 215 232 260 245 Q 320 255 360 258 Q 450 263 560 266 L 660 268"
+            fill="none" stroke="rgb(232,76,76)" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M 60 40 Q 110 130 160 195 Q 215 232 260 245 Q 320 255 360 258 Q 450 263 560 266 L 660 268 L 660 270 L 60 270 Z"
+            fill="url(#redCurveGrad)"/>
+      <!-- Curva verde (com revisão) - sobe a cada revisão -->
+      <path d="M 60 40
+               L 130 110
+               L 160 50
+               L 200 80
+               L 260 45
+               L 310 60
+               L 360 42
+               L 410 50
+               L 460 44
+               L 530 47
+               L 660 45"
+            fill="none" stroke="rgb(73,197,137)" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M 60 40 L 130 110 L 160 50 L 200 80 L 260 45 L 310 60 L 360 42 L 410 50 L 460 44 L 530 47 L 660 45 L 660 270 L 60 270 Z"
+            fill="url(#greenCurveGrad)"/>
+      <!-- Pontos de revisão (verde) -->
+      <circle cx="160" cy="50" r="4.5" fill="rgb(73,197,137)"/>
+      <circle cx="260" cy="45" r="4.5" fill="rgb(73,197,137)"/>
+      <circle cx="360" cy="42" r="4.5" fill="rgb(73,197,137)"/>
+      <circle cx="460" cy="44" r="4.5" fill="rgb(73,197,137)"/>
+      <circle cx="660" cy="45" r="4.5" fill="rgb(73,197,137)"/>
+      <!-- Legendas -->
+      <g transform="translate(420, 60)">
+        <rect x="0" y="0" width="180" height="56" rx="8" fill="var(--surface)" fill-opacity=".96" stroke="currentColor" stroke-opacity=".15"/>
+        <line x1="12" y1="20" x2="32" y2="20" stroke="rgb(73,197,137)" stroke-width="2.5"/>
+        <circle cx="22" cy="20" r="3.5" fill="rgb(73,197,137)"/>
+        <text x="40" y="24" class="wrc-legend">Com revisão espaçada</text>
+        <line x1="12" y1="42" x2="32" y2="42" stroke="rgb(232,76,76)" stroke-width="2.5"/>
+        <text x="40" y="46" class="wrc-legend">Sem revisão</text>
+      </g>
+    </svg>
+  `;
+  chartSec.appendChild(chartBox);
+
+  // Insight stats
+  const chartStats = mk('div','wel-chart-stats');
+  chartStats.innerHTML = `
+    <div class="wcs-stat">
+      <div class="wcs-num red">↓ 70%</div>
+      <div class="wcs-lbl">esquecido em 1 semana sem revisar</div>
+    </div>
+    <div class="wcs-stat">
+      <div class="wcs-num green">↑ 90%</div>
+      <div class="wcs-lbl">retenção com revisão espaçada</div>
+    </div>
+    <div class="wcs-stat">
+      <div class="wcs-num purple">≈ 5x</div>
+      <div class="wcs-lbl">mais eficaz que reler a apostila</div>
+    </div>
+  `;
+  chartSec.appendChild(chartStats);
+
+  wrap.appendChild(chartSec);
+
+  // ====== GRÁFICO: Produtividade Gralia vs concorrência ======
+  // Mostra tempo total pra completar o ciclo "questão → entendi → memorizei"
+  // em diferentes plataformas. Visual de barras horizontais pra impacto.
+  const prodSec = mk('section','wel-section wel-prod-section');
+  const prodLbl = mk('div','wel-section-label');prodLbl.textContent='Produtividade real';
+  prodSec.appendChild(prodLbl);
+  const prodHead = mk('h2','wel-section-title');prodHead.textContent='Mesmo erro, plataformas diferentes — quanto tempo até você fixar de verdade?';
+  prodSec.appendChild(prodHead);
+  const prodSub = mk('p','wel-section-sub');
+  prodSub.textContent = 'Tempo médio do ciclo "errar uma questão → entender por quê → criar flashcard pra revisar". Cada minuto a mais é menos questão resolvida no dia.';
+  prodSec.appendChild(prodSub);
+
+  const prodChart = mk('div','wel-prod-chart');
+  prodChart.innerHTML = `
+    <!-- Plataforma: Gralia -->
+    <div class="wpc-row wpc-gralia">
+      <div class="wpc-platform">
+        <span class="wpc-logo">🐦</span>
+        <div>
+          <b>Gralia</b>
+          <span class="wpc-tagline">tudo no mesmo lugar</span>
+        </div>
+      </div>
+      <div class="wpc-bar-track">
+        <div class="wpc-segment seg-resolve" style="width:18%" title="Resolver: ~30s">
+          <span class="wpc-seg-lbl">30s</span>
+        </div>
+        <div class="wpc-segment seg-explain" style="width:25%" title="Explicação IA: ~45s">
+          <span class="wpc-seg-lbl">45s</span>
+        </div>
+        <div class="wpc-segment seg-flashcard" style="width:12%" title="Flashcard 1 clique: ~10s">
+          <span class="wpc-seg-lbl">10s</span>
+        </div>
+      </div>
+      <div class="wpc-total"><b>~1min 25s</b></div>
+    </div>
+
+    <!-- Plataforma: Concorrência (TEC + Anki) -->
+    <div class="wpc-row wpc-tec">
+      <div class="wpc-platform">
+        <span class="wpc-logo">📋</span>
+        <div>
+          <b>Sites de questões + Anki</b>
+          <span class="wpc-tagline">duas ferramentas separadas</span>
+        </div>
+      </div>
+      <div class="wpc-bar-track">
+        <div class="wpc-segment seg-resolve" style="width:8%" title="Resolver: ~30s">
+          <span class="wpc-seg-lbl">30s</span>
+        </div>
+        <div class="wpc-segment seg-wait" style="width:30%" title="Esperar/ler comentários: ~2-4min">
+          <span class="wpc-seg-lbl">2-4min</span>
+        </div>
+        <div class="wpc-segment seg-research" style="width:25%" title="Buscar teoria: ~3min">
+          <span class="wpc-seg-lbl">3min</span>
+        </div>
+        <div class="wpc-segment seg-manual" style="width:18%" title="Criar card manual no Anki: ~2min">
+          <span class="wpc-seg-lbl">2min</span>
+        </div>
+      </div>
+      <div class="wpc-total"><b>~7-9min</b></div>
+    </div>
+
+    <!-- Plataforma: Tradicional -->
+    <div class="wpc-row wpc-tradicional">
+      <div class="wpc-platform">
+        <span class="wpc-logo">📚</span>
+        <div>
+          <b>Estudo tradicional</b>
+          <span class="wpc-tagline">apostila + caderno</span>
+        </div>
+      </div>
+      <div class="wpc-bar-track">
+        <div class="wpc-segment seg-resolve" style="width:6%" title="Resolver: ~30s">
+          <span class="wpc-seg-lbl">30s</span>
+        </div>
+        <div class="wpc-segment seg-wait-long" style="width:38%" title="Achar tópico na apostila: ~5min">
+          <span class="wpc-seg-lbl">5min</span>
+        </div>
+        <div class="wpc-segment seg-read" style="width:30%" title="Ler trecho relevante: ~5-8min">
+          <span class="wpc-seg-lbl">5-8min</span>
+        </div>
+        <div class="wpc-segment seg-write" style="width:12%" title="Resumir no caderno: ~2min">
+          <span class="wpc-seg-lbl">2min</span>
+        </div>
+      </div>
+      <div class="wpc-total"><b>~12-15min</b></div>
+    </div>
+  `;
+  prodSec.appendChild(prodChart);
+
+  // Legenda das etapas
+  const prodLegend = mk('div','wel-prod-legend');
+  prodLegend.innerHTML = `
+    <span class="wpl-item"><span class="wpl-dot seg-resolve"></span>Resolver questão</span>
+    <span class="wpl-item"><span class="wpl-dot seg-explain"></span>Entender (IA)</span>
+    <span class="wpl-item"><span class="wpl-dot seg-flashcard"></span>Flashcard automático</span>
+    <span class="wpl-item"><span class="wpl-dot seg-wait"></span>Espera / comentários</span>
+    <span class="wpl-item"><span class="wpl-dot seg-research"></span>Pesquisar teoria</span>
+    <span class="wpl-item"><span class="wpl-dot seg-manual"></span>Criar card manual</span>
+  `;
+  prodSec.appendChild(prodLegend);
+
+  // Insight final do gráfico
+  const prodInsight = mk('div','wel-prod-insight');
+  prodInsight.innerHTML = `
+    <div class="wpi-num">5-9×</div>
+    <div class="wpi-text">
+      <b>mais rápido pra fechar o ciclo de aprendizado.</b>
+      <span>Em 1h de estudo, você fixa <b>40+ questões</b> com Gralia vs <b>~7-10</b> no método tradicional. Isso é mais material absorvido até a prova chegar.</span>
+    </div>
+  `;
+  prodSec.appendChild(prodInsight);
+
+  wrap.appendChild(prodSec);
+
   // ====== FLUXO ANIMADO: questão → entendimento → flashcard ======
   // Skeleton SVG inline (peso baixo) que mostra o fluxo característico
   const flowSec = mk('section','wel-section wel-flow-section');
@@ -9020,30 +9768,235 @@ function renderWelcome(){
   featSec.appendChild(featLbl);
   const featHead = mk('h2','wel-section-title');featHead.textContent='Tudo em um lugar só';
   featSec.appendChild(featHead);
+  const featSub = mk('p','wel-section-sub');
+  featSub.textContent = 'A maioria dos recursos do Gralia funciona sem IA. Os créditos só entram quando você quer geração inteligente — questões novas, perfis aprofundados, análises do mentor.';
+  featSec.appendChild(featSub);
 
-  const featGrid = mk('div','wel-features-v3');
-  [
-    {icon:'🧠',title:'Mentor IA',desc:'Análise qualitativa do seu desempenho. Leitura de padrões + plano de ação semanal.'},
-    {icon:'🌐',title:'Cache compartilhado',desc:'Explicações IA já geradas por outros usuários ficam disponíveis. Você economiza créditos.'},
-    {icon:'🎴',title:'Flashcard do erro',desc:'Errou? Em 1 clique vira flashcard inteligente que ataca aquela armadilha.'},
-    {icon:'📄',title:'Importação TEC',desc:'Cole o link do TEC. A IA extrai e estrutura. Pratique sem retrabalho.'},
-    {icon:'📥',title:'Suas apostilas em PDF',desc:'Anexe ou arraste o PDF da apostila. Lê o texto, captura metadados e detecta automaticamente capítulos e seções pra você navegar fácil.'},
-    {icon:'📚',title:'Perfil de matéria',desc:'A IA gera estudo profundo do tópico: conceitos, pegadinhas, mnemônicos, tabelas — fica salvo.'},
-    {icon:'📋',title:'Síntese de editais',desc:'Cole o edital ou anexe o PDF. A IA Sonnet 4.6 extrai cronograma, vagas, disciplinas, pegadinhas — em 1 minuto você tem o que importa.'},
-    {icon:'📝',title:'Provas e simulados',desc:'Registre provas reais que fez, simulados externos. Análise por disciplina.'},
-    {icon:'⏱️',title:'Pomodoro flutuante',desc:'Timer em todas as páginas. Background que sincroniza entre dispositivos.'},
-    {icon:'🌲',title:'Pinhal de Araucárias',desc:'Cada marco que você atinge planta uma araucária no seu pinhal. Constância que vira floresta visual.'},
-    {icon:'🌍',title:'Comunidade',desc:'Compartilhe cadernos e fontes. Siga concurseiros. Encontre material relevante.'}
-  ].forEach(f=>{
+  // V12: Features divididas em GRÁTIS (sem IA) vs COM IA (consome créditos)
+  const FREE_FEATURES = [
+    {icon:'🎴',title:'Flashcards com SRS',desc:'Repetição espaçada (algoritmo SM-2). Crie cards manualmente, importe ou gere a partir de erros — todos revisáveis sem custo.'},
+    {icon:'🗺️',title:'Mapa da matéria',desc:'Visão geral por disciplina/tópico. Onde você acerta, onde erra, o que falta cobrir. Atualizado automaticamente.'},
+    {icon:'⏱️',title:'Pomodoro com background',desc:'Timer em todas as páginas. Sincroniza entre dispositivos. Notificação ao completar ciclo.'},
+    {icon:'🌲',title:'Pinhal de Araucárias',desc:'Cada marco vira árvore. Visualize sua constância como floresta crescendo.'},
+    {icon:'📊',title:'Histórico e estatísticas',desc:'Gráficos de progresso, padrões temporais, evolução por disciplina. Dados ricos pra você.'},
+    {icon:'📝',title:'Importar questões TEC',desc:'Cole texto do TEC Concursos ou outras plataformas — vira banco organizado pra praticar.'},
+    {icon:'⏰',title:'Simulado cronometrado',desc:'Treino estilo prova real com timer e correção. Funciona com suas questões importadas.'},
+    {icon:'🎯',title:'Metas e calendário',desc:'Define objetivos diários/semanais. Sistema rastreia progresso automaticamente.'},
+    {icon:'🌍',title:'Comunidade',desc:'Siga concurseiros, importe materiais públicos, compartilhe cadernos. Tudo opcional.'}
+  ];
+
+  const AI_FEATURES = [
+    {icon:'🤖',title:'Geração de questões',desc:'A IA cria questões C/E ou múltipla escolha do seu material — estilo da banca alvo. Estilo Cebraspe, FCC, FGV, etc.'},
+    {icon:'🎴',title:'Flashcard a partir do erro',desc:'Errou uma questão? 1 clique e a IA cria flashcard que ataca exatamente aquela armadilha.'},
+    {icon:'📚',title:'Perfil de matéria',desc:'A IA aprofunda 1 tópico: conceitos, pegadinhas, mnemônicos, tabelas comparativas. Fica salvo pra revisar antes da prova.'},
+    {icon:'📋',title:'Síntese de editais',desc:'Cole o edital. Em 1min a IA extrai cronograma, vagas, disciplinas, peso de cada matéria.'},
+    {icon:'🎯',title:'Análise do mentor',desc:'Diariamente, a IA analisa seus erros do dia e sugere ajustes específicos: drills, revisões, foco.'},
+    {icon:'🌐',title:'Cache compartilhado',desc:'Explicações que outros usuários já geraram ficam disponíveis. Você economiza créditos sem perder qualidade.'}
+  ];
+
+  // Grupo: features grátis
+  const freeBlock = mk('div','wel-feat-block wel-feat-free');
+  const freeBlockHead = mk('div','wfb-head');
+  freeBlockHead.innerHTML = '<span class="wfb-tag wfb-tag-free">Sem créditos</span><h3>Recursos gratuitos da plataforma</h3><p>Estes funcionam sempre — sem usar IA, sem gastar créditos.</p>';
+  freeBlock.appendChild(freeBlockHead);
+  const freeGrid = mk('div','wel-features-v3');
+  FREE_FEATURES.forEach(f=>{
     const item = mk('div','wel-feat-v3');
     const ic = mk('div','wel-feat-icon-v3');ic.textContent=f.icon;
     const t = mk('h3','wel-feat-title-v3');t.textContent=f.title;
     const d = mk('p','wel-feat-desc-v3');d.textContent=f.desc;
     item.appendChild(ic);item.appendChild(t);item.appendChild(d);
-    featGrid.appendChild(item);
+    freeGrid.appendChild(item);
   });
-  featSec.appendChild(featGrid);
+  freeBlock.appendChild(freeGrid);
+  featSec.appendChild(freeBlock);
+
+  // Grupo: features com IA
+  const aiBlock = mk('div','wel-feat-block wel-feat-ai');
+  const aiBlockHead = mk('div','wfb-head');
+  aiBlockHead.innerHTML = '<span class="wfb-tag wfb-tag-ai">Usa créditos de IA</span><h3>Recursos com inteligência artificial</h3><p>Quando você quer geração automática, perfis profundos ou análise personalizada. Cada operação mostra o custo antes de rodar.</p>';
+  aiBlock.appendChild(aiBlockHead);
+  const aiGrid = mk('div','wel-features-v3');
+  AI_FEATURES.forEach(f=>{
+    const item = mk('div','wel-feat-v3 wfv3-ai');
+    const ic = mk('div','wel-feat-icon-v3');ic.textContent=f.icon;
+    const t = mk('h3','wel-feat-title-v3');t.textContent=f.title;
+    const d = mk('p','wel-feat-desc-v3');d.textContent=f.desc;
+    item.appendChild(ic);item.appendChild(t);item.appendChild(d);
+    aiGrid.appendChild(item);
+  });
+  aiBlock.appendChild(aiGrid);
+  featSec.appendChild(aiBlock);
+
   wrap.appendChild(featSec);
+
+  // ====== PREVIEW DO PINHAL DE ARAUCÁRIAS (avançado) ======
+  // Mostra como fica a floresta de quem está há meses no Gralia.
+  // Visual evocativo que dá meta de longo prazo pro usuário.
+  const forestSec = mk('section','wel-section wel-forest-section');
+  const forestLbl = mk('div','wel-section-label');forestLbl.textContent='Constância vira floresta';
+  forestSec.appendChild(forestLbl);
+  const forestHead = mk('h2','wel-section-title');forestHead.textContent='Cada marco vira árvore. Cada semana, sua floresta cresce.';
+  forestSec.appendChild(forestHead);
+  const forestSub = mk('p','wel-section-sub');
+  forestSub.textContent='Em vez de só números frios, sua jornada de estudo vira um pinhal de araucárias inspirado no Paraná. Quanto mais você pratica, foca, acerta — mais a floresta amadurece. Aqui está o pinhal de quem está há ~6 meses no Gralia.';
+  forestSec.appendChild(forestSub);
+
+  // SVG pinhal cheio (simulado)
+  const forestBox = mk('div','wel-forest-preview');
+  forestBox.innerHTML = `
+    <svg viewBox="0 0 800 360" class="wel-forest-svg" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#fde9b9"/>
+          <stop offset="60%" stop-color="#f9d4a3"/>
+          <stop offset="100%" stop-color="#f0b878"/>
+        </linearGradient>
+        <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#5a6b3a"/>
+          <stop offset="100%" stop-color="#3d4d28"/>
+        </linearGradient>
+        <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="rgba(255,235,180,.85)"/>
+          <stop offset="60%" stop-color="rgba(255,215,140,.4)"/>
+          <stop offset="100%" stop-color="rgba(255,200,120,0)"/>
+        </radialGradient>
+      </defs>
+
+      <!-- Céu -->
+      <rect x="0" y="0" width="800" height="280" fill="url(#skyGrad)"/>
+      <!-- Sol -->
+      <circle cx="640" cy="80" r="70" fill="url(#sunGlow)"/>
+      <circle cx="640" cy="80" r="32" fill="#ffd980"/>
+      <!-- Montanhas distantes -->
+      <path d="M 0 230 L 60 180 L 110 210 L 180 165 L 240 195 L 320 155 L 380 190 L 460 160 L 540 195 L 620 175 L 720 200 L 800 175 L 800 280 L 0 280 Z" fill="#9aa680" fill-opacity=".7"/>
+      <path d="M 0 250 L 70 220 L 140 240 L 220 215 L 320 245 L 410 220 L 500 240 L 600 225 L 700 245 L 800 225 L 800 280 L 0 280 Z" fill="#7a8868" fill-opacity=".75"/>
+      <!-- Solo -->
+      <rect x="0" y="280" width="800" height="80" fill="url(#groundGrad)"/>
+
+      <!-- Pequenos arbustos -->
+      <ellipse cx="50" cy="290" rx="18" ry="6" fill="#3a4a25"/>
+      <ellipse cx="150" cy="295" rx="22" ry="7" fill="#3a4a25"/>
+      <ellipse cx="280" cy="290" rx="16" ry="5" fill="#3a4a25"/>
+      <ellipse cx="450" cy="295" rx="20" ry="6" fill="#3a4a25"/>
+      <ellipse cx="640" cy="292" rx="24" ry="7" fill="#3a4a25"/>
+      <ellipse cx="760" cy="288" rx="18" ry="6" fill="#3a4a25"/>
+
+      <!-- Araucária 1 (madura, centenária - lado esquerdo, grande) -->
+      <g transform="translate(120, 290)">
+        <rect x="-3" y="-90" width="6" height="90" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-95" rx="42" ry="14" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-103" rx="36" ry="11" fill="#356030"/>
+        <ellipse cx="0" cy="-110" rx="28" ry="9" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-118" rx="20" ry="7" fill="#356030"/>
+        <ellipse cx="0" cy="-128" rx="14" ry="6" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-138" rx="9" ry="5" fill="#356030"/>
+      </g>
+
+      <!-- Araucária 2 (pequena - jovem) -->
+      <g transform="translate(220, 290)">
+        <rect x="-2" y="-50" width="4" height="50" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-55" rx="22" ry="8" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-62" rx="16" ry="6" fill="#356030"/>
+        <ellipse cx="0" cy="-71" rx="10" ry="5" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-78" rx="6" ry="4" fill="#356030"/>
+      </g>
+
+      <!-- Araucária 3 (grande, centro) -->
+      <g transform="translate(330, 290)">
+        <rect x="-4" y="-110" width="8" height="110" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-118" rx="48" ry="15" fill="#2a4528"/>
+        <ellipse cx="0" cy="-128" rx="42" ry="13" fill="#356030"/>
+        <ellipse cx="0" cy="-138" rx="34" ry="11" fill="#2a4528"/>
+        <ellipse cx="0" cy="-148" rx="26" ry="9" fill="#356030"/>
+        <ellipse cx="0" cy="-158" rx="18" ry="7" fill="#2a4528"/>
+        <ellipse cx="0" cy="-168" rx="11" ry="6" fill="#356030"/>
+      </g>
+
+      <!-- Araucária 4 (média) -->
+      <g transform="translate(420, 290)">
+        <rect x="-3" y="-72" width="6" height="72" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-78" rx="32" ry="11" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-86" rx="26" ry="9" fill="#356030"/>
+        <ellipse cx="0" cy="-94" rx="18" ry="7" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-103" rx="11" ry="5" fill="#356030"/>
+      </g>
+
+      <!-- Araucária 5 (centenária - direita) -->
+      <g transform="translate(530, 290)">
+        <rect x="-4" y="-130" width="8" height="130" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-138" rx="52" ry="16" fill="#2a4528"/>
+        <ellipse cx="0" cy="-150" rx="46" ry="14" fill="#356030"/>
+        <ellipse cx="0" cy="-162" rx="38" ry="12" fill="#2a4528"/>
+        <ellipse cx="0" cy="-174" rx="29" ry="10" fill="#356030"/>
+        <ellipse cx="0" cy="-184" rx="21" ry="8" fill="#2a4528"/>
+        <ellipse cx="0" cy="-194" rx="13" ry="6" fill="#356030"/>
+      </g>
+
+      <!-- Araucária 6 (pequena - extrema direita) -->
+      <g transform="translate(660, 290)">
+        <rect x="-2" y="-58" width="4" height="58" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-64" rx="24" ry="9" fill="#2d4a2a"/>
+        <ellipse cx="0" cy="-72" rx="18" ry="7" fill="#356030"/>
+        <ellipse cx="0" cy="-81" rx="11" ry="5" fill="#2d4a2a"/>
+      </g>
+
+      <!-- Araucária 7 (média - extrema direita) -->
+      <g transform="translate(740, 290)">
+        <rect x="-3" y="-80" width="6" height="80" fill="#5a3d20"/>
+        <ellipse cx="0" cy="-88" rx="34" ry="12" fill="#2a4528"/>
+        <ellipse cx="0" cy="-98" rx="28" ry="10" fill="#356030"/>
+        <ellipse cx="0" cy="-108" rx="20" ry="8" fill="#2a4528"/>
+        <ellipse cx="0" cy="-118" rx="12" ry="6" fill="#356030"/>
+      </g>
+
+      <!-- Gralha-azul voando -->
+      <g transform="translate(380, 100) scale(2.2)">
+        <ellipse cx="-1" cy="1" rx="6" ry="3" fill="#9c97a8" opacity="0.7"/>
+        <path d="M -7 -1 Q -8 -4 -4 -6 Q 1 -7 5 -6 Q 8 -4 9 -1 Q 9 2 6 3 Q 1 4 -3 3 Q -6 2 -7 -1 Z" fill="#6e6878"/>
+        <circle cx="5" cy="-3" r="3.8" fill="#4a4359"/>
+        <path d="M 3 -6 Q 4 -10 5 -9 M 5 -7 Q 6 -11 7 -10 M 7 -6 Q 8 -9 9 -8" stroke="#8042fa" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+        <path d="M -4 -1 Q -10 -5 -16 -3 Q -12 1 -7 1 Q -5 0 -4 -1 Z" fill="#5a536b"/>
+        <path d="M 4 -1 Q 10 -5 16 -3 Q 12 1 7 1 Q 5 0 4 -1 Z" fill="#5a536b"/>
+        <path d="M -7 1 L -18 4 L -16 6 L -6 3 Z" fill="#3a3650"/>
+        <path d="M 8.5 -3 L 11 -3 L 9 -1.5 Z" fill="#bcb5c8"/>
+        <circle cx="6" cy="-3.5" r="1" fill="#15101e"/>
+        <circle cx="6.3" cy="-3.8" r="0.35" fill="#fff"/>
+      </g>
+
+      <!-- Pinhões espalhados -->
+      <ellipse cx="100" cy="298" rx="3" ry="2" fill="#8b6f3d"/>
+      <ellipse cx="180" cy="305" rx="3" ry="2" fill="#8b6f3d"/>
+      <ellipse cx="290" cy="302" rx="3" ry="2" fill="#8b6f3d"/>
+      <ellipse cx="500" cy="305" rx="3" ry="2" fill="#8b6f3d"/>
+      <ellipse cx="600" cy="300" rx="3" ry="2" fill="#8b6f3d"/>
+      <ellipse cx="700" cy="305" rx="3" ry="2" fill="#8b6f3d"/>
+    </svg>
+  `;
+  forestSec.appendChild(forestBox);
+
+  const forestStats = mk('div','wel-forest-stats');
+  forestStats.innerHTML = `
+    <div class="wfs-stat">
+      <div class="wfs-num">7</div>
+      <div class="wfs-lbl">Araucárias plantadas<br><span>2 centenárias · 3 maduras · 2 jovens</span></div>
+    </div>
+    <div class="wfs-stat">
+      <div class="wfs-num">182</div>
+      <div class="wfs-lbl">Dias de estudo consecutivos<br><span>6 meses sem perder o ritmo</span></div>
+    </div>
+    <div class="wfs-stat">
+      <div class="wfs-num">4.2k</div>
+      <div class="wfs-lbl">Questões resolvidas<br><span>~73% de aproveitamento</span></div>
+    </div>
+  `;
+  forestSec.appendChild(forestStats);
+
+  const forestNote = mk('p','wel-forest-note');
+  forestNote.innerHTML = '<i>* Exemplo simulado. Sua floresta vai crescer no seu ritmo — cada bloco de Pomodoro, cada dia de constância, cada marco vira árvore real no seu pinhal.</i>';
+  forestSec.appendChild(forestNote);
+
+  wrap.appendChild(forestSec);
 
   // ====== TRANSPARÊNCIA SOBRE IA NA CRIAÇÃO DE QUESTÕES ======
   const aiTranspSec = mk('section','wel-section wel-ai-transparency');
@@ -9446,6 +10399,236 @@ function renderWelcome(){
   faqSec.appendChild(fqList);
   wrap.appendChild(faqSec);
 
+  // ====== DEMOS NAVEGÁVEIS — mostra como funcionam principais features ======
+  // Carrossel de "tela mockup" passa-de-página com botões pra ver cada uma.
+  const demoSec = mk('section','wel-section wel-demo-section');
+  const demoLbl = mk('div','wel-section-label');demoLbl.textContent='Tour de funcionalidades';
+  demoSec.appendChild(demoLbl);
+  const demoHead = mk('h2','wel-section-title');demoHead.textContent='Veja como o app funciona por dentro';
+  demoSec.appendChild(demoHead);
+  const demoSub = mk('p','wel-section-sub');
+  demoSub.textContent = 'Capturas das principais telas — assim você vê o que recebe antes de criar conta. Navegue entre as telas pelas setas ou bolinhas abaixo.';
+  demoSec.appendChild(demoSub);
+
+  const demoBox = mk('div','wel-demo-box');
+  const demoStage = mk('div','wel-demo-stage');
+  // Conteúdo de cada slide é gerado dinamicamente pra economizar HTML estático
+  const DEMO_SLIDES = [
+    {
+      title:'Mapa da Matéria',
+      tag:'sem créditos',
+      tagClass:'free',
+      caption:'Veja onde você acerta, onde erra, e o que falta cobrir — atualizado automaticamente conforme você pratica.',
+      svg:`<svg viewBox="0 0 600 360" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="600" height="360" fill="var(--surface2)" rx="10"/>
+        <rect x="20" y="20" width="560" height="48" fill="var(--surface)" rx="8"/>
+        <text x="36" y="50" font-size="16" font-weight="700" fill="var(--text)">🗺 Mapa: Direito Constitucional</text>
+        <!-- Lista de tópicos -->
+        <g>
+          <rect x="20" y="84" width="560" height="44" fill="var(--surface)" rx="8"/>
+          <circle cx="38" cy="106" r="6" fill="rgb(73,197,137)"/>
+          <text x="56" y="111" font-size="13" fill="var(--text)" font-weight="600">Princípios fundamentais</text>
+          <text x="500" y="111" font-size="11" fill="var(--text3)" text-anchor="end">85% acerto · 12 questões</text>
+        </g>
+        <g>
+          <rect x="20" y="138" width="560" height="44" fill="var(--surface)" rx="8"/>
+          <circle cx="38" cy="160" r="6" fill="rgb(232,164,60)"/>
+          <text x="56" y="165" font-size="13" fill="var(--text)" font-weight="600">Direitos e garantias fundamentais</text>
+          <text x="500" y="165" font-size="11" fill="var(--text3)" text-anchor="end">62% acerto · 8 questões</text>
+        </g>
+        <g>
+          <rect x="20" y="192" width="560" height="44" fill="var(--surface)" rx="8"/>
+          <circle cx="38" cy="214" r="6" fill="rgb(232,76,76)"/>
+          <text x="56" y="219" font-size="13" fill="var(--text)" font-weight="600">Controle de constitucionalidade</text>
+          <text x="500" y="219" font-size="11" fill="var(--text3)" text-anchor="end">38% acerto · 5 questões</text>
+        </g>
+        <g>
+          <rect x="20" y="246" width="560" height="44" fill="var(--surface)" rx="8" stroke="var(--border)" stroke-dasharray="4,3"/>
+          <circle cx="38" cy="268" r="6" fill="var(--text3)"/>
+          <text x="56" y="273" font-size="13" fill="var(--text2)" font-weight="500">Poder Judiciário</text>
+          <text x="500" y="273" font-size="11" fill="var(--text3)" text-anchor="end">não estudado</text>
+        </g>
+        <text x="36" y="320" font-size="12" fill="var(--text3)">💡 Use os filtros pra focar onde você precisa melhorar</text>
+      </svg>`
+    },
+    {
+      title:'Prática com IA',
+      tag:'1 crédito por questão',
+      tagClass:'ai',
+      caption:'Você responde uma questão estilo Cebraspe (ou da sua banca). Errou? A IA explica em segundos e oferece um flashcard com 1 clique.',
+      svg:`<svg viewBox="0 0 600 360" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="600" height="360" fill="var(--surface2)" rx="10"/>
+        <rect x="20" y="20" width="560" height="240" fill="var(--surface)" rx="10"/>
+        <text x="40" y="50" font-size="11" font-weight="700" fill="var(--gralia-purple)" letter-spacing="0.6">QUESTÃO 12 · CEBRASPE</text>
+        <text x="40" y="78" font-size="13" fill="var(--text)" font-weight="500">
+          <tspan x="40" dy="0">O servidor público pode acumular cargos</tspan>
+          <tspan x="40" dy="18">públicos quando houver compatibilidade</tspan>
+          <tspan x="40" dy="18">de horários, sendo um técnico e outro</tspan>
+          <tspan x="40" dy="18">científico.</tspan>
+        </text>
+        <rect x="40" y="180" width="120" height="48" rx="8" fill="rgb(73,197,137)" fill-opacity=".15" stroke="rgb(73,197,137)" stroke-width="1"/>
+        <text x="100" y="210" font-size="13" fill="rgb(33,140,80)" font-weight="700" text-anchor="middle">C - Certo</text>
+        <rect x="172" y="180" width="120" height="48" rx="8" fill="rgb(232,76,76)" stroke="rgb(232,76,76)" stroke-width="2"/>
+        <text x="232" y="210" font-size="13" fill="#fff" font-weight="700" text-anchor="middle">E - Errado ✓</text>
+        <!-- Feedback -->
+        <rect x="20" y="280" width="560" height="60" fill="rgb(73,197,137)" fill-opacity=".10" rx="10" stroke="rgb(73,197,137)" stroke-opacity=".4"/>
+        <text x="40" y="305" font-size="13" fill="rgb(33,140,80)" font-weight="700">✓ Resposta correta</text>
+        <text x="40" y="325" font-size="11" fill="var(--text2)">Faltou "técnico e científico" — a previsão é pra técnico+científico OU saúde+saúde, não exclui outras.</text>
+      </svg>`
+    },
+    {
+      title:'Flashcard automático',
+      tag:'1 crédito',
+      tagClass:'ai',
+      caption:'A partir do erro, a IA cria um flashcard que ataca exatamente aquela armadilha. Vai pra revisão espaçada (SRS) automaticamente.',
+      svg:`<svg viewBox="0 0 600 360" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="600" height="360" fill="var(--surface2)" rx="10"/>
+        <rect x="60" y="40" width="480" height="130" fill="var(--surface)" rx="14" stroke="var(--gralia-purple)" stroke-opacity=".4"/>
+        <text x="80" y="68" font-size="10.5" font-weight="700" fill="var(--gralia-purple)" letter-spacing="0.7">FRENTE</text>
+        <text x="80" y="98" font-size="14" fill="var(--text)" font-weight="600">
+          <tspan x="80" dy="0">Quais combinações de cargos públicos são</tspan>
+          <tspan x="80" dy="20">permitidas pela CF?</tspan>
+        </text>
+        <text x="80" y="148" font-size="11" fill="var(--text3)">Tópico: Direitos e Garantias · Disciplina: Direito Constitucional</text>
+        <rect x="60" y="190" width="480" height="135" fill="var(--surface)" rx="14" stroke="var(--border)"/>
+        <text x="80" y="218" font-size="10.5" font-weight="700" fill="rgb(33,140,80)" letter-spacing="0.7">VERSO</text>
+        <text x="80" y="244" font-size="13" fill="var(--text)">
+          <tspan x="80" dy="0">2 cargos de prof. ou 1 prof. + 1 técnico/científico</tspan>
+          <tspan x="80" dy="20">ou 2 cargos de saúde com profissão regulamentada.</tspan>
+        </text>
+        <rect x="80" y="282" width="160" height="22" rx="11" fill="rgb(73,197,137)" fill-opacity=".15"/>
+        <text x="160" y="297" font-size="11" fill="rgb(33,140,80)" font-weight="700" text-anchor="middle">art. 37, XVI CF</text>
+      </svg>`
+    },
+    {
+      title:'Heatmap de produtividade',
+      tag:'sem créditos',
+      tagClass:'free',
+      caption:'Veja em quais dias da semana e horários você rende mais. A IA usa isso pra recomendar quando você deve fazer simulado ou drill.',
+      svg:`<svg viewBox="0 0 600 360" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="0" width="600" height="360" fill="var(--surface2)" rx="10"/>
+        <text x="30" y="40" font-size="14" font-weight="700" fill="var(--text)">📈 Mapa de produtividade — últimos 30 dias</text>
+        ${(()=>{
+          const days = ['DOM','SEG','TER','QUA','QUI','SEX','SAB'];
+          const hours = ['0','3','6','9','12','15','18','21'];
+          let s = '';
+          // Hour labels
+          hours.forEach((h,i)=>{
+            s += `<text x="${100 + i*60 + 30}" y="74" font-size="10" fill="var(--text3)" text-anchor="middle" font-weight="600">${h}h</text>`;
+          });
+          // Cells
+          days.forEach((d,r)=>{
+            s += `<text x="50" y="${94 + r*32}" font-size="10" fill="var(--text3)" font-weight="600">${d}</text>`;
+            for(let c=0; c<8; c++){
+              const intensity = Math.random()*0.7 + 0.05;
+              const colorIdx = Math.random();
+              let fill = 'rgb(128,66,250)';
+              if(colorIdx < 0.3) fill = 'rgb(73,197,137)';
+              else if(colorIdx > 0.85) fill = 'rgb(232,76,76)';
+              s += `<rect x="${75 + c*60}" y="${82 + r*32}" width="56" height="26" rx="4" fill="${fill}" fill-opacity="${intensity.toFixed(2)}"/>`;
+            }
+          });
+          return s;
+        })()}
+        <text x="30" y="338" font-size="12" fill="var(--text)" font-weight="600">💡 Você rende melhor SEX 18h-21h</text>
+      </svg>`
+    },
+    {
+      title:'Pinhal de Araucárias',
+      tag:'sem créditos',
+      tagClass:'free',
+      caption:'Cada marco que você atinge — primeira semana sem falhar, primeira sequência de 10 acertos, primeira meta cumprida — planta uma araucária no seu pinhal.',
+      svg:`<svg viewBox="0 0 600 360" class="wds-svg" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="dsky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#fde9b9"/>
+            <stop offset="100%" stop-color="#f0b878"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="600" height="280" fill="url(#dsky)" rx="10"/>
+        <rect x="0" y="280" width="600" height="80" fill="#5a6b3a" rx="0"/>
+        <circle cx="490" cy="80" r="35" fill="#ffd980"/>
+        <!-- Árvores -->
+        <g transform="translate(120, 290)">
+          <rect x="-3" y="-72" width="6" height="72" fill="#5a3d20"/>
+          <ellipse cx="0" cy="-78" rx="32" ry="11" fill="#2d4a2a"/>
+          <ellipse cx="0" cy="-90" rx="22" ry="8" fill="#356030"/>
+          <ellipse cx="0" cy="-100" rx="13" ry="6" fill="#2d4a2a"/>
+        </g>
+        <g transform="translate(260, 290)">
+          <rect x="-4" y="-110" width="8" height="110" fill="#5a3d20"/>
+          <ellipse cx="0" cy="-118" rx="42" ry="14" fill="#2a4528"/>
+          <ellipse cx="0" cy="-132" rx="32" ry="11" fill="#356030"/>
+          <ellipse cx="0" cy="-145" rx="22" ry="8" fill="#2a4528"/>
+          <ellipse cx="0" cy="-156" rx="12" ry="6" fill="#356030"/>
+        </g>
+        <g transform="translate(400, 290)">
+          <rect x="-3" y="-58" width="6" height="58" fill="#5a3d20"/>
+          <ellipse cx="0" cy="-64" rx="22" ry="9" fill="#2d4a2a"/>
+          <ellipse cx="0" cy="-76" rx="14" ry="6" fill="#356030"/>
+        </g>
+        <text x="30" y="40" font-size="14" font-weight="700" fill="rgba(0,0,0,.7)">🌲 Seu pinhal · 3 araucárias</text>
+        <text x="30" y="60" font-size="11" fill="rgba(0,0,0,.55)">Próximo marco: 30 dias consecutivos</text>
+      </svg>`
+    }
+  ];
+
+  let demoIdx = 0;
+  function renderDemoSlide(){
+    const slide = DEMO_SLIDES[demoIdx];
+    demoStage.innerHTML = `
+      <div class="wds-frame">
+        <div class="wds-tag wds-tag-${slide.tagClass}">${escapeHTML(slide.tag)}</div>
+        <h3 class="wds-slide-title">${escapeHTML(slide.title)}</h3>
+        <div class="wds-screen">${slide.svg}</div>
+        <p class="wds-caption">${escapeHTML(slide.caption)}</p>
+      </div>
+    `;
+    // Update bullets
+    bullets.forEach((b,i)=>{
+      b.classList.toggle('on', i === demoIdx);
+    });
+  }
+
+  // Botões prev/next
+  const navRow = mk('div','wel-demo-nav');
+  const prevBtn = mk('button','wds-arrow');prevBtn.type='button';prevBtn.innerHTML='←';
+  prevBtn.addEventListener('click',()=>{
+    demoIdx = (demoIdx - 1 + DEMO_SLIDES.length) % DEMO_SLIDES.length;
+    renderDemoSlide();
+  });
+  navRow.appendChild(prevBtn);
+
+  // Bullets
+  const bulletRow = mk('div','wds-bullets');
+  const bullets = [];
+  DEMO_SLIDES.forEach((_, i)=>{
+    const b = mk('button','wds-bullet'+(i===0?' on':''));
+    b.type='button';
+    b.title = `Slide ${i+1}`;
+    b.addEventListener('click',()=>{
+      demoIdx = i;
+      renderDemoSlide();
+    });
+    bulletRow.appendChild(b);
+    bullets.push(b);
+  });
+  navRow.appendChild(bulletRow);
+
+  const nextBtn = mk('button','wds-arrow');nextBtn.type='button';nextBtn.innerHTML='→';
+  nextBtn.addEventListener('click',()=>{
+    demoIdx = (demoIdx + 1) % DEMO_SLIDES.length;
+    renderDemoSlide();
+  });
+  navRow.appendChild(nextBtn);
+
+  demoBox.appendChild(demoStage);
+  demoBox.appendChild(navRow);
+  demoSec.appendChild(demoBox);
+  wrap.appendChild(demoSec);
+  // Render inicial
+  setTimeout(renderDemoSlide, 0);
+
   // ====== TAGLINE + FINAL CTA ======
   const tagline = mk('section','wel-tagline');
   tagline.innerHTML = 'Aproveite seu tempo. <span>Entenda suas dificuldades.</span> Foque no que importa.';
@@ -9824,8 +11007,17 @@ function renderTopbar(){
     const sync = mk('span','sync-dot');
     sync.id='sync-indicator';
     sync.textContent='Sincronizado';
-    if(AUTH.syncing){sync.classList.add('syncing');sync.textContent='Sincronizando...';}
-    else if(AUTH.syncError){sync.classList.add('error');sync.textContent='Erro';}
+    if(AUTH.syncing){
+      sync.classList.add('syncing');
+      sync.textContent='Sincronizando...';
+    } else if(AUTH.syncError){
+      sync.classList.add('error');
+      sync.textContent='Erro';
+    } else if(AUTH.lastSyncAt && (Date.now() - AUTH.lastSyncAt) > 5000){
+      // V12 fix: se já passou tempo suficiente do último sync, começa escondido
+      // Antes ficava visível eternamente após cada re-render
+      sync.classList.add('hidden');
+    }
     colRight.appendChild(sync);
   }
   colRight.appendChild(pill);
@@ -10024,6 +11216,12 @@ function renderDashboard(){
     });
     wrap.appendChild(sg);
   }
+
+  // V12: Gráfico de performance — heatmap por dia da semana × hora
+  // Mostra quando você tá rendendo melhor (acertos / erros / tempo focado)
+  // Insights interessantes: "você acerta mais à noite", "domingo é o dia mais produtivo", etc.
+  const perfChart = buildPerformanceHeatmap();
+  if(perfChart) wrap.appendChild(perfChart);
 
   // ===== Mini-card de meta (resumo) =====
   if(DATA.goals){
@@ -10290,6 +11488,151 @@ function buildNextActionCard(dueSrs,errorsNoCard,overconf,sess){
     body.appendChild(btn);
     card.appendChild(body);
   }
+  return card;
+}
+
+// V12: Heatmap de performance — quando você tá rendendo mais
+// Cruza dia da semana × hora com #acertos pra mostrar padrões temporais.
+// Inspirado em GitHub contribution graph + heatmap de produtividade.
+function buildPerformanceHeatmap(){
+  // Coleta dados dos últimos 30 dias
+  const now = Date.now();
+  const THIRTY_DAYS = 30*24*60*60*1000;
+  const errors = (DATA.errors||[]).filter(e => e.date && (now-e.date) <= THIRTY_DAYS);
+  const cardsReviewed = (DATA.srs?.cards||[])
+    .flatMap(c => (c.reviews||[]))
+    .filter(r => r.at && (now-r.at) <= THIRTY_DAYS);
+  const totalEvents = errors.length + cardsReviewed.length;
+
+  if(totalEvents < 5){
+    // Pouco dado — retorna null pra não poluir
+    return null;
+  }
+
+  // Acumula por (dia da semana, faixa de hora)
+  // Dias: 0=dom 1=seg ... 6=sáb
+  // Horas: agrupadas em 8 faixas de 3h cada
+  const HOUR_BUCKETS = 8; // 0-3, 3-6, 6-9, 9-12, 12-15, 15-18, 18-21, 21-24
+  const grid = Array.from({length:7}, ()=>Array(HOUR_BUCKETS).fill(0));
+  const correctGrid = Array.from({length:7}, ()=>Array(HOUR_BUCKETS).fill(0));
+
+  errors.forEach(e=>{
+    const d = new Date(e.date);
+    const dow = d.getDay();
+    const hour = Math.floor(d.getHours()/3);
+    grid[dow][hour]++;
+    // Erros são sempre incorretos
+  });
+  cardsReviewed.forEach(r=>{
+    const d = new Date(r.at);
+    const dow = d.getDay();
+    const hour = Math.floor(d.getHours()/3);
+    grid[dow][hour]++;
+    // Cards "Bom" e "Fácil" contam como acerto
+    if(r.q >= 3) correctGrid[dow][hour]++;
+  });
+
+  // Encontra max pra normalizar opacidade
+  let maxCount = 0;
+  for(let d=0;d<7;d++){
+    for(let h=0;h<HOUR_BUCKETS;h++){
+      if(grid[d][h] > maxCount) maxCount = grid[d][h];
+    }
+  }
+
+  // Card wrapper
+  const card = mk('div','card chart-card');
+  card.style.marginBottom = '1.25rem';
+
+  const head = mk('div','chart-head');
+  head.innerHTML = `
+    <div>
+      <h3 class="chart-title">📈 Mapa de produtividade</h3>
+      <p class="chart-sub">Quando você rende mais — últimos 30 dias</p>
+    </div>
+    <div class="chart-legend">
+      <span class="cl-min">menos</span>
+      <span class="cl-cell" style="opacity:.15"></span>
+      <span class="cl-cell" style="opacity:.40"></span>
+      <span class="cl-cell" style="opacity:.65"></span>
+      <span class="cl-cell" style="opacity:.92"></span>
+      <span class="cl-max">mais</span>
+    </div>
+  `;
+  card.appendChild(head);
+
+  // SVG do heatmap
+  const dayLabels = ['DOM','SEG','TER','QUA','QUI','SEX','SAB'];
+  const hourLabels = ['0','3','6','9','12','15','18','21'];
+
+  const cellW = 28;
+  const cellH = 26;
+  const cellGap = 3;
+  const labelW = 30;
+  const labelH = 14;
+  const totalW = labelW + HOUR_BUCKETS * (cellW + cellGap);
+  const totalH = labelH + 7 * (cellH + cellGap) + 4;
+
+  let svg = `<svg viewBox="0 0 ${totalW} ${totalH}" class="chart-heatmap" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMid meet">`;
+
+  // Hour labels (top)
+  hourLabels.forEach((lbl, h) => {
+    const x = labelW + h * (cellW + cellGap) + cellW/2;
+    svg += `<text x="${x}" y="${labelH-3}" text-anchor="middle" class="hm-axis-lbl">${lbl}h</text>`;
+  });
+
+  // Day rows
+  for(let d=0; d<7; d++){
+    const y = labelH + d * (cellH + cellGap);
+    svg += `<text x="${labelW-6}" y="${y + cellH/2 + 4}" text-anchor="end" class="hm-axis-lbl">${dayLabels[d]}</text>`;
+
+    for(let h=0; h<HOUR_BUCKETS; h++){
+      const x = labelW + h * (cellW + cellGap);
+      const count = grid[d][h];
+      let opacity = 0.04;
+      let fillColor = 'var(--text3)';
+      if(count > 0){
+        const intensity = count / maxCount;
+        opacity = 0.15 + intensity * 0.78;
+        // Cor baseada em taxa de acerto
+        const acc = correctGrid[d][h] / Math.max(count, 1);
+        if(count >= 2 && acc >= 0.7){ fillColor = 'rgb(73,197,137)'; }       // verde — alta acurácia
+        else if(count >= 2 && acc < 0.5){ fillColor = 'rgb(232,76,76)'; }    // vermelho — muitos erros
+        else { fillColor = 'rgb(128,66,250)'; }                              // roxo — neutro
+      }
+      const tooltip = count > 0
+        ? `${dayLabels[d]} ${hourLabels[h]}h-${(parseInt(hourLabels[h])+3)}h: ${count} ${count===1?'evento':'eventos'}${count >= 2 ? ` · ${Math.round(correctGrid[d][h]/count*100)}% acerto` : ''}`
+        : `${dayLabels[d]} ${hourLabels[h]}h: sem atividade`;
+      svg += `<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="4" fill="${fillColor}" fill-opacity="${opacity.toFixed(2)}"><title>${tooltip}</title></rect>`;
+    }
+  }
+  svg += `</svg>`;
+
+  const chartBody = mk('div','chart-body');
+  chartBody.innerHTML = svg;
+  card.appendChild(chartBody);
+
+  // Insight inteligente — extrai padrão útil
+  let bestSlot = null;
+  let bestCount = 0;
+  for(let d=0;d<7;d++){
+    for(let h=0;h<HOUR_BUCKETS;h++){
+      if(grid[d][h] > bestCount && correctGrid[d][h]/Math.max(grid[d][h],1) >= 0.6){
+        bestCount = grid[d][h];
+        bestSlot = {dow:d, h};
+      }
+    }
+  }
+  if(bestSlot && bestCount >= 3){
+    const insight = mk('p','chart-insight');
+    insight.innerHTML = `💡 Você rende melhor <b>${dayLabels[bestSlot.dow]}</b> entre <b>${hourLabels[bestSlot.h]}h-${parseInt(hourLabels[bestSlot.h])+3}h</b>. Considere agendar suas sessões mais difíceis nesse horário.`;
+    card.appendChild(insight);
+  } else {
+    const help = mk('p','chart-insight chart-insight-neutral');
+    help.innerHTML = `💡 Conforme você acumula mais sessões, o mapa vai mostrar seus melhores horários pra estudar. <b>Verde</b> = alta acurácia, <b>vermelho</b> = muitos erros, <b>roxo</b> = atividade.`;
+    card.appendChild(help);
+  }
+
   return card;
 }
 
@@ -13380,12 +14723,18 @@ function showEditCardModal(card,isNew,onSave){
   m.appendChild(lblD);m.appendChild(selD);
 
   const lblF = mk('label');lblF.textContent='Frente (pergunta ou prompt)';lblF.style.marginTop='.75rem';
-  const inpF = mk('textarea');inpF.rows=2;inpF.value=normText(card.front);
+  const inpF = mk('textarea','autosize-textarea');inpF.rows=2;inpF.value=normText(card.front);
   m.appendChild(lblF);m.appendChild(inpF);
 
   const lblB = mk('label');lblB.textContent='Verso (resposta, exemplos, mnemônico)';lblB.style.marginTop='.75rem';
-  const inpB = mk('textarea');inpB.rows=6;inpB.value=normText(card.back);
+  const inpB = mk('textarea','autosize-textarea');inpB.rows=4;inpB.value=normText(card.back);
   m.appendChild(lblB);m.appendChild(inpB);
+
+  // V12: Auto-resize textareas conforme texto
+  setTimeout(()=>{
+    autoSizeTextarea(inpF);
+    autoSizeTextarea(inpB);
+  }, 0);
 
   const lblG = mk('label');lblG.textContent='Tags (vírgula)';lblG.style.marginTop='.75rem';
   const inpG = mk('input');inpG.type='text';inpG.value=(card.tags||[]).join(', ');
@@ -14927,11 +16276,11 @@ function renderTurbo(){
     wrap.appendChild(meta);
 
     const flip = mk('div','srs-flip');
-    const f = mk('div','srs-front');f.textContent=normText(card.front);
+    const f = mk('div','srs-front');f.innerHTML=formatFlashcardText(normText(card.front));
     flip.appendChild(f);
     if(t.showBack){
       const div = mk('div','srs-divider');flip.appendChild(div);
-      const b = mk('div','srs-back');b.textContent=normText(card.back);flip.appendChild(b);
+      const b = mk('div','srs-back');b.innerHTML=formatFlashcardText(normText(card.back));flip.appendChild(b);
     }
     wrap.appendChild(flip);
 
@@ -17193,10 +18542,10 @@ function eveCardItem(card){
   }
   it.appendChild(meta);
   const front = mk('p','txt');front.style.cssText='font-weight:600;margin-bottom:.5rem';
-  front.textContent=card.front;
+  front.innerHTML=formatFlashcardText(card.front);
   it.appendChild(front);
   const back = mk('p','txt2');back.style.cssText='white-space:pre-wrap;margin:0';
-  back.textContent=card.back;
+  back.innerHTML=formatFlashcardText(card.back);
   it.appendChild(back);
   return it;
 }
@@ -18380,11 +19729,11 @@ function renderSRSStudy(wrap,due,total){
   wrap.appendChild(meta);
 
   const flip = mk('div','srs-flip');
-  const f = mk('div','srs-front');f.textContent=normText(card.front);
+  const f = mk('div','srs-front');f.innerHTML=formatFlashcardText(normText(card.front));
   flip.appendChild(f);
   if(ST.srsShowBack){
     const div = mk('div','srs-divider');flip.appendChild(div);
-    const b = mk('div','srs-back');b.textContent=normText(card.back);flip.appendChild(b);
+    const b = mk('div','srs-back');b.innerHTML=formatFlashcardText(normText(card.back));flip.appendChild(b);
   }
   wrap.appendChild(flip);
   if(!ST.srsShowBack){
@@ -22192,6 +23541,24 @@ function renderUserProfile(){
   const cd = new Date(p.created_at);
   since.textContent = `No Gralia desde ${cd.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}`;
   headInfo.appendChild(since);
+
+  // V12: Selo BETA (Pioneiro / Veterano / Beta)
+  if(p.beta_tier){
+    const tierMap = {
+      pioneer: {label:'Pioneiro', icon:'🌟', color:'gold', desc:'1º ao 50º assinante'},
+      veteran: {label:'Veterano', icon:'⚔️', color:'silver', desc:'51º ao 100º assinante'},
+      beta:    {label:'Beta',     icon:'🧪', color:'bronze', desc:'101º ao 200º assinante'}
+    };
+    const tier = tierMap[p.beta_tier];
+    if(tier){
+      const tierBadge = mk('span','up-tier-badge tier-'+tier.color);
+      const numStr = p.beta_subscriber_number ? ` #${p.beta_subscriber_number}` : '';
+      tierBadge.innerHTML = `<span class="upt-icon">${tier.icon}</span><span class="upt-text">${tier.label}${numStr}</span>`;
+      tierBadge.title = tier.desc;
+      headInfo.appendChild(tierBadge);
+    }
+  }
+
   // Badge "Você" se for próprio perfil
   if(isMyProfile){
     const youBadge = mk('span','up-you-badge');youBadge.textContent='Este é seu perfil';
@@ -22347,16 +23714,96 @@ function renderUserProfile(){
     cta.appendChild(editBtn);
     wrap.appendChild(cta);
   } else {
-    // Perfil de outra pessoa — em estágios futuros mostraremos materiais compartilhados, conquistas etc
-    const placeholder = mk('div','card');placeholder.style.cssText='padding:1.5rem;text-align:center';
-    placeholder.innerHTML = `
-      <p class="txt2" style="margin:0 0 .5rem;font-size:13.5px">📦 Em breve, você verá aqui os materiais públicos, conquistas e estatísticas de @${escapeHTML(p.username)}.</p>
-      <p class="txt3" style="margin:0;font-size:12px">Esta página é parte do Estágio 2 do sistema social do Gralia.</p>
+    // V12: Materiais públicos do perfil — fontes e cadernos publicados
+    const matSec = mk('div','card up-materials-card');
+    const matHead = mk('div','up-mat-head');
+    matHead.innerHTML = `
+      <h3>📚 Materiais publicados</h3>
+      <span class="up-mat-help">Fontes e cadernos que @${escapeHTML(p.username)} compartilhou com a comunidade</span>
     `;
-    wrap.appendChild(placeholder);
+    matSec.appendChild(matHead);
+    const matBody = mk('div','up-mat-body');
+    matBody.innerHTML = '<div class="up-mat-loading">Carregando materiais...</div>';
+    matSec.appendChild(matBody);
+    wrap.appendChild(matSec);
+
+    // Carrega async
+    setTimeout(()=>{
+      loadUserPublicMaterials(p.id, p.username, matBody);
+    }, 0);
   }
 
   return wrap;
+}
+
+// V12: Carrega materiais públicos do perfil de outra pessoa
+async function loadUserPublicMaterials(userId, username, container){
+  if(!supa){ container.innerHTML = '<div class="up-mat-empty">Supabase não configurado</div>'; return; }
+  try{
+    // Busca shared_resources publicadas pelo usuário
+    const {data: resources, error} = await supa
+      .from('shared_resources')
+      .select('id, title, kind, summary, created_at, total_questions, total_cards')
+      .eq('owner_id', userId)
+      .eq('visibility', 'public')
+      .order('created_at', {ascending:false})
+      .limit(20);
+
+    if(error) throw error;
+
+    if(!resources || resources.length === 0){
+      container.innerHTML = `
+        <div class="up-mat-empty">
+          <span class="ume-icon">🌱</span>
+          <p>@${escapeHTML(username)} ainda não publicou nada na comunidade.</p>
+          <p class="txt3">Quando publicar fontes ou cadernos, eles aparecerão aqui pra você importar.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = '';
+    const list = mk('div','up-mat-list');
+    resources.forEach(r=>{
+      const item = mk('article','up-mat-item');
+      const kindLbl = ({source:'📄 Fonte', notebook:'📓 Caderno', flashcards:'🃏 Flashcards', topic_profile:'🧠 Perfil'})[r.kind] || '📦 Material';
+      const dateStr = new Date(r.created_at).toLocaleDateString('pt-BR', {day:'2-digit', month:'short'});
+      let stats = '';
+      if(r.total_questions) stats += `${r.total_questions} questões · `;
+      if(r.total_cards) stats += `${r.total_cards} cards · `;
+      stats += dateStr;
+      item.innerHTML = `
+        <div class="umi-kind">${kindLbl}</div>
+        <h4 class="umi-title">${escapeHTML(r.title || 'Sem título')}</h4>
+        ${r.summary ? `<p class="umi-summary">${escapeHTML(r.summary.slice(0, 140))}${r.summary.length>140?'...':''}</p>` : ''}
+        <div class="umi-stats">${stats}</div>
+      `;
+      // Click leva pra Discover já filtrando por esse autor
+      item.addEventListener('click',()=>{
+        ST.discoverFilterAuthor = username;
+        ST.view = 'discover';
+        render();
+      });
+      list.appendChild(item);
+    });
+    container.appendChild(list);
+
+    if(resources.length === 20){
+      const more = mk('p','up-mat-more');
+      more.innerHTML = `<button class="link-btn" id="ump-see-all">Ver todos os materiais de @${escapeHTML(username)} na descoberta →</button>`;
+      container.appendChild(more);
+      setTimeout(()=>{
+        const b = container.querySelector('#ump-see-all');
+        if(b) b.addEventListener('click',()=>{
+          ST.discoverFilterAuthor = username;
+          ST.view = 'discover';
+          render();
+        });
+      }, 0);
+    }
+  } catch(err){
+    container.innerHTML = `<div class="up-mat-empty">Erro ao carregar: ${escapeHTML(err.message||String(err))}</div>`;
+  }
 }
 
 // === Página Descobrir — materiais públicos da comunidade ===
@@ -22415,6 +23862,33 @@ function renderDiscover(){
   });
   tabsBar.appendChild(peopleTab);
   wrap.appendChild(tabsBar);
+
+  // V12: Filtro de escopo — Todos vs Apenas seguindo
+  if(ST.discoverTab === 'materials' || !ST.discoverTab){
+    if(!ST.discoverScope) ST.discoverScope = 'all';
+    const scopeRow = mk('div','discover-scope-row');
+    const scopeAll = mk('button','dsr-btn'+(ST.discoverScope==='all'?' on':''));
+    scopeAll.type='button';
+    scopeAll.innerHTML = '<span class="dsri">🌐</span> Todos os materiais';
+    scopeAll.addEventListener('click',()=>{
+      if(ST.discoverScope === 'all') return;
+      ST.discoverScope = 'all';
+      ST.discoverItems = []; ST.discoverPage = 0; ST.discoverHasMore = true;
+      render();
+    });
+    const scopeFollowing = mk('button','dsr-btn'+(ST.discoverScope==='following'?' on':''));
+    scopeFollowing.type='button';
+    scopeFollowing.innerHTML = '<span class="dsri">👥</span> Apenas de quem sigo';
+    scopeFollowing.addEventListener('click',()=>{
+      if(ST.discoverScope === 'following') return;
+      ST.discoverScope = 'following';
+      ST.discoverItems = []; ST.discoverPage = 0; ST.discoverHasMore = true;
+      render();
+    });
+    scopeRow.appendChild(scopeAll);
+    scopeRow.appendChild(scopeFollowing);
+    wrap.appendChild(scopeRow);
+  }
 
   // Aviso se sem perfil (mostrado em ambas as abas)
   if(!AUTH.profile){
@@ -22563,6 +24037,7 @@ function renderDiscover(){
       search: ST.discoverFilter.search || null,
       sort: ST.discoverFilter.sort,
       tag: ST.discoverFilter.tag || null,
+      scope: ST.discoverScope || 'all',
       limit,
       offset: ST.discoverPage * limit
     });
@@ -22572,6 +24047,26 @@ function renderDiscover(){
       const err = mk('div','card');err.style.cssText='padding:1rem;color:var(--red-text)';
       err.textContent = '⚠️ ' + result.error;
       listWrap.appendChild(err);
+      return;
+    }
+    // V12: Mensagem dedicada se está em "following" mas não segue ninguém
+    if(result.emptyFollowing && !append){
+      listWrap.innerHTML = '';
+      const empty = mk('div','card');empty.style.cssText='padding:2rem 1.5rem;text-align:center';
+      empty.innerHTML = `
+        <div style="font-size:32px;margin-bottom:8px">👥</div>
+        <h3 style="margin:0 0 6px;font-size:14.5px">Você ainda não segue ninguém</h3>
+        <p class="txt2" style="margin:0 0 1rem;font-size:12.5px;line-height:1.5">Pra ver materiais filtrados por pessoas que você segue, primeiro siga alguém na aba "Pessoas".</p>
+        <button class="btn btn-sm btn-p" id="empty-go-people">Ir pra aba Pessoas →</button>
+      `;
+      listWrap.appendChild(empty);
+      setTimeout(()=>{
+        const b = empty.querySelector('#empty-go-people');
+        if(b) b.addEventListener('click',()=>{
+          ST.discoverTab='people';
+          render();
+        });
+      }, 0);
       return;
     }
     if(append){
@@ -24217,6 +25712,82 @@ function renderSocialProfileCard(){
     vSeg.appendChild(optPub);vSeg.appendChild(optPriv);
     vRow.appendChild(vSeg);
     body.appendChild(vRow);
+
+    // V12: Toggle de aprovação de seguidores
+    const apprRow = mk('div');apprRow.style.marginBottom='.875rem';
+    const apprLbl = mk('label');apprLbl.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:8px;letter-spacing:.4px;text-transform:uppercase';
+    apprLbl.textContent='Quem pode te seguir';
+    apprRow.appendChild(apprLbl);
+    const apprSeg = mk('div','sp-segmented');
+    const isLocked = !!p.requires_follow_approval;
+    const optOpen = mk('button','sp-seg-opt'+(!isLocked?' on':''));optOpen.type='button';
+    optOpen.innerHTML = '<span>🌍 Aberto</span><small>Qualquer um te segue automaticamente</small>';
+    const optApprove = mk('button','sp-seg-opt'+(isLocked?' on':''));optApprove.type='button';
+    optApprove.innerHTML = '<span>🔐 Com aprovação</span><small>Você decide quem pode seguir e importar materiais</small>';
+    apprSeg.appendChild(optOpen);apprSeg.appendChild(optApprove);
+    apprRow.appendChild(apprSeg);
+    body.appendChild(apprRow);
+
+    optOpen.addEventListener('click', async ()=>{
+      if(!isLocked) return;
+      try{
+        await supa.rpc('set_follow_approval', {p_required: false});
+        showToast('✓ Seguidores agora são aceitos automaticamente');
+        ST.profileData = {...p, requires_follow_approval: false};
+        render();
+      }catch(e){ alert('Erro: '+(e.message||e)); }
+    });
+    optApprove.addEventListener('click', async ()=>{
+      if(isLocked) return;
+      try{
+        await supa.rpc('set_follow_approval', {p_required: true});
+        showToast('✓ Agora você precisa aprovar novos seguidores');
+        ST.profileData = {...p, requires_follow_approval: true};
+        render();
+      }catch(e){ alert('Erro: '+(e.message||e)); }
+    });
+
+    // Lista de pedidos pendentes (se houver)
+    setTimeout(async ()=>{
+      try{
+        const {data: pending} = await supa.rpc('my_pending_follow_requests');
+        if(pending && pending.length > 0){
+          const pendingCard = mk('div','pending-follow-card');
+          pendingCard.innerHTML = `<div class="pfc-head">📬 ${pending.length} ${pending.length===1?'pedido pendente':'pedidos pendentes'} de seguir</div>`;
+          const pfList = mk('div','pfc-list');
+          pending.forEach(req=>{
+            const item = mk('div','pfc-item');
+            item.innerHTML = `
+              <div class="pfci-info">
+                <b>@${escapeHTML(req.follower_username||'?')}</b>
+                <span>${escapeHTML(req.follower_display_name||'')}</span>
+              </div>
+              <div class="pfci-actions">
+                <button class="btn btn-sm btn-p" data-act="approve">Aprovar</button>
+                <button class="btn btn-sm" data-act="reject">Rejeitar</button>
+              </div>
+            `;
+            item.querySelector('[data-act="approve"]').addEventListener('click', async ()=>{
+              try{
+                await supa.rpc('approve_follow_request', {p_follower_id: req.follower_id});
+                showToast(`✓ @${req.follower_username} aprovado`);
+                item.remove();
+              }catch(e){ alert('Erro: '+(e.message||e)); }
+            });
+            item.querySelector('[data-act="reject"]').addEventListener('click', async ()=>{
+              try{
+                await supa.rpc('reject_follow_request', {p_follower_id: req.follower_id});
+                showToast(`✓ Pedido de @${req.follower_username} rejeitado`);
+                item.remove();
+              }catch(e){ alert('Erro: '+(e.message||e)); }
+            });
+            pfList.appendChild(item);
+          });
+          pendingCard.appendChild(pfList);
+          apprRow.appendChild(pendingCard);
+        }
+      }catch(e){ console.warn('[follow approval] erro:', e); }
+    }, 100);
 
     // Campos opcionais do alvo (mostrados no perfil público) — suporta vários tipos
     const examWrap = mk('div');examWrap.style.cssText='margin-bottom:.875rem;padding:.875rem;background:var(--surface2);border-radius:10px;border:1px solid var(--border)';
@@ -27270,6 +28841,20 @@ async function loadAdminUsersData(container){
       .limit(5);
     if(e5) throw e5;
 
+    // V12 fix: vagas BETA contam ASSINANTES PAGOS (não signups). O desconto
+    // BETA só vale pra quem realmente assinou — então a vaga só é "consumida"
+    // quando há subscription com plano não-trial.
+    let betaUsed = 0;
+    try{
+      const {count: paidSubs, error: eb} = await supa
+        .from('subscriptions')
+        .select('*', {count:'exact', head:true})
+        .neq('plan_id', 'trial')
+        .in('status', ['active','trialing']);
+      if(!eb) betaUsed = paidSubs || 0;
+    }catch(_e){ betaUsed = 0; }
+    const betaSlotsRemaining = Math.max(0, 200 - betaUsed);
+
     container.innerHTML = '';
 
     // Stats grid
@@ -27293,7 +28878,7 @@ async function loadAdminUsersData(container){
       </div>
       <div class="ast-cell">
         <div class="ast-label">Vagas BETA restantes</div>
-        <div class="ast-value" style="color:${(200-(totalProfiles||0)) < 50 ? 'var(--amber-text)' : 'var(--accent-text)'}">${Math.max(0, 200-(totalProfiles||0))}</div>
+        <div class="ast-value" style="color:${betaSlotsRemaining < 50 ? 'var(--amber-text)' : 'var(--accent-text)'}">${betaSlotsRemaining}</div>
       </div>
     `;
     container.appendChild(stats);
@@ -27916,9 +29501,14 @@ function renderPlans(){
 
   // Top-ups (créditos avulsos)
   const topupSec = mk('section','topup-section');
-  const topupHead = mk('h2','topup-title');topupHead.textContent='Pacotes de créditos avulsos';
-  const topupSub = mk('p','txt2');topupSub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.55';
-  topupSub.textContent='Acabaram os créditos do seu plano antes do mês renovar? Compre um pacote avulso. Créditos avulsos não expiram, acumulam mesmo se você mudar de plano.';
+  const topupHead = mk('h2','topup-title');topupHead.textContent='Pacotes de créditos avulsos (top-ups)';
+  const topupSub = mk('p','txt2');topupSub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.6';
+  topupSub.innerHTML = `
+    <b>Para que serve:</b> esgotou os créditos do seu plano antes do mês renovar?
+    Comprar avulso te mantém usando IA sem precisar mudar de plano.<br>
+    <b>Vantagens:</b> não expiram (acumulam mesmo se você cancelar a assinatura) e ficam disponíveis pra qualquer feature da IA.<br>
+    <b>Quando vale:</b> picos de uso pontuais (véspera de prova, semana de mais drills). Se você usa demais a IA todo mês, considere o <b>plano Pro</b> (R$ 89,90 / 2000 créditos/mês — mais barato por crédito).
+  `;
   topupSec.appendChild(topupHead);
   topupSec.appendChild(topupSub);
   const topupGrid = mk('div','topup-grid');
@@ -28843,6 +30433,54 @@ function buildForestScene(trees){
   return container;
 }
 
+// V12: Modo conforto de leitura — sépia + redução de luz azul
+// V12: Auto-resize de textarea — cresce conforme conteúdo, sem barra de rolagem interna
+function autoSizeTextarea(ta){
+  if(!ta) return;
+  const resize = ()=>{
+    ta.style.height = 'auto';
+    ta.style.height = Math.max(ta.scrollHeight + 2, 48) + 'px';
+  };
+  ta.addEventListener('input', resize);
+  ta.addEventListener('change', resize);
+  // Resize inicial e novamente após o DOM estabilizar
+  resize();
+  requestAnimationFrame(resize);
+  setTimeout(resize, 50);
+}
+
+// V12: Aplica formatação visual a flashcards — destaca palavras importantes em verde
+// Pega palavras entre aspas, em ALL CAPS, ou frases-chave (entre ::)
+function formatFlashcardText(text){
+  if(!text) return '';
+  let html = escapeHTML(text);
+  // 1. ::Palavras importantes:: viram destaque verde
+  html = html.replace(/::(.+?)::/g, '<mark class="fc-highlight">$1</mark>');
+  // 2. **negrito** vira bold
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // 3. Quebras de linha
+  html = html.replace(/\n\n/g, '</p><p>');
+  html = html.replace(/\n/g, '<br>');
+  return '<p>' + html + '</p>';
+}
+
+function toggleComfortMode(){
+  const cur = localStorage.getItem('gralia_comfort_mode') === '1';
+  if(cur){
+    localStorage.setItem('gralia_comfort_mode', '0');
+    document.documentElement.classList.remove('comfort-mode');
+    if(typeof showToast==='function') showToast('☀️ Modo conforto desativado');
+  } else {
+    localStorage.setItem('gralia_comfort_mode', '1');
+    document.documentElement.classList.add('comfort-mode');
+    if(typeof showToast==='function') showToast('🌅 Modo conforto ativado — tela mais suave');
+  }
+}
+// Aplica modo conforto no boot se tava ativo
+if(localStorage.getItem('gralia_comfort_mode') === '1'){
+  document.documentElement.classList.add('comfort-mode');
+}
+
 function renderEyeCare(){
   const wrap = mk('div','fade eye-care-page');
 
@@ -28860,6 +30498,31 @@ function renderEyeCare(){
   head.appendChild(h);
   head.appendChild(sub);
   wrap.appendChild(head);
+
+  // V12: Toggle de modo conforto de leitura
+  const comfortCard = mk('section','ec-section ec-comfort-card');
+  const isComfortOn = localStorage.getItem('gralia_comfort_mode') === '1';
+  comfortCard.innerHTML = `
+    <div class="ecc-row">
+      <div class="ecc-icon">${isComfortOn ? '🌅' : '☀️'}</div>
+      <div class="ecc-text">
+        <h3>Modo conforto de leitura ${isComfortOn ? '<span class="ecc-on-tag">ATIVO</span>' : ''}</h3>
+        <p>Quando ligado, troca o branco do site por <b>tom sépia suave</b>, reduz contraste agressivo e aplica filtro anti-luz-azul leve. Reduz a fadiga em sessões longas de leitura sem precisar mexer no monitor.</p>
+        <p class="ecc-tip">Atalho de teclado: <kbd>Shift</kbd> + <kbd>C</kbd></p>
+      </div>
+    </div>
+    <div class="ecc-actions">
+      <button class="btn btn-p" id="ecc-toggle">${isComfortOn ? '✕ Desativar modo conforto' : '✓ Ativar modo conforto'}</button>
+    </div>
+  `;
+  wrap.appendChild(comfortCard);
+  setTimeout(()=>{
+    const tgl = comfortCard.querySelector('#ecc-toggle');
+    if(tgl) tgl.addEventListener('click', ()=>{
+      toggleComfortMode();
+      render();
+    });
+  }, 0);
 
   // === BLOCO 1: Regra essencial 20-20-20 ===
   const rule = mk('section','ec-section ec-section-highlight');
@@ -32639,7 +34302,8 @@ function showFeedbackModal(){
   histTab.addEventListener('click',()=>setActiveTab('hist'));
 
   setActiveTab('new');
-  showModal(m);
+  // V12: Lock pra evitar perder texto digitado ao clicar fora
+  showModal(m, {locked: true});
 }
 
 // === NPS ===
@@ -32887,6 +34551,10 @@ document.addEventListener('keydown',e=>{
   }
   else if(k==='T'){
     toggleTheme();showToast(localStorage.getItem('nexus_theme')==='light'?'☀ Tema claro':'🌙 Tema escuro');handled=true;
+  }
+  else if(k==='C' && e.shiftKey){
+    // V12: Shift+C — toggle modo conforto de leitura (sépia)
+    toggleComfortMode();handled=true;
   }
   else if(k==='?'){
     showShortcutsOverlay();handled=true;
