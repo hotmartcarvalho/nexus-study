@@ -3010,9 +3010,25 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 
 /* ====== SHORTCUTS OVERLAY ====== */
 .shortcuts-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem}
-.shortcuts-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;max-width:400px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
-.sk-row{display:flex;align-items:center;gap:12px;padding:6px 0;font-size:13px;color:var(--text2)}
-.sk-row kbd{background:var(--surface2);border:1px solid var(--border2);border-bottom-width:2px;border-radius:4px;padding:2px 8px;font-size:11px;font-family:ui-monospace,monospace;color:var(--text);min-width:22px;text-align:center;font-weight:600}
+.shortcuts-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.5rem 1.75rem;max-width:520px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.shortcuts-box .sk-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:1.25rem;padding-bottom:.875rem;border-bottom:1px solid var(--border)}
+.shortcuts-box .sk-section{margin-bottom:1.125rem}
+.shortcuts-box .sk-section:last-of-type{margin-bottom:.5rem}
+.shortcuts-box .sk-section-label{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:.625rem}
+.sk-row{display:flex;align-items:center;gap:12px;padding:5px 0;font-size:13px;color:var(--text2);min-height:28px}
+.sk-row span{flex:1}
+.sk-row kbd{background:var(--surface2);border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;padding:3px 9px;font-size:11.5px;font-family:ui-monospace,monospace;color:var(--text);min-width:24px;text-align:center;font-weight:700;display:inline-block}
+
+/* V12: Botão de atalhos no rodapé — sempre visível pra usuário descobrir.
+   Posicionado à esquerda dos outros botões (foco/feedback) pra não colidir. */
+.shortcuts-floating-btn{position:fixed;bottom:20px;right:260px;z-index:500;width:46px;height:46px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;font-family:inherit;box-shadow:0 4px 14px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.06);transition:all .2s cubic-bezier(.34,1.4,.64,1);cursor:pointer}
+.shortcuts-floating-btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.08);border-color:var(--text3);color:var(--text)}
+@media (max-width:600px){
+  .shortcuts-floating-btn{bottom:14px;right:130px;width:42px;height:42px;font-size:17px}
+}
+
+/* V12: Dica visual de atalho ao lado dos botões C/E nas questões */
+.btn-c .btn-kbd-hint, .btn-e .btn-kbd-hint{position:absolute;top:6px;right:8px;font-size:10px;padding:1px 6px;border-radius:4px;font-family:ui-monospace,monospace;font-weight:700;opacity:.7;border:1px solid currentColor;line-height:1.4}
 
 /* ====== MICRO INTERAÇÕES ====== */
 @keyframes flashGreen{0%{background:transparent}20%{background:var(--accent-light)}100%{background:transparent}}
@@ -6567,8 +6583,8 @@ const CANONICAL_DISCIPLINES = [
 
 // === LISTA CANÔNICA DE BANCAS EXAMINADORAS ===
 const CANONICAL_BANKS = [
-  // Federais grandes
-  'Cebraspe','CESPE/Cebraspe','FCC','FGV','Vunesp','IBFC','Quadrix','Cesgranrio','Consulplan',
+  // Federais grandes — V12: removida duplicata 'Cebraspe', mantida 'CESPE/Cebraspe'
+  'CESPE/Cebraspe','FCC','FGV','Vunesp','IBFC','Quadrix','Cesgranrio','Consulplan',
   'Aocp','IDIB','Instituto AOCP','Instituto Pró-Município','Instituto Brasileiro de Educação',
   'Conscam','Conpass','Crescer Consultorias','Centro de Seleção e de Promoção de Eventos',
   'Comperve','Coperve','Coseac','Copeve','Copese','Concepção Cespe',
@@ -6688,8 +6704,8 @@ const CANONICAL_INSTITUTIONS = [
   // Privadas grandes
   'Mackenzie','PUC-SP','PUC-Rio','PUC-RS','PUC-MG','PUC-PR','PUC-Campinas','FGV','INSPER','ESPM','IBMEC','FAAP',
   'Anhembi Morumbi','Estácio','Unip','UniNove','Cruzeiro do Sul','Belas Artes',
-  // Bancas (referenciadas como instituição quando a prova não tem cargo definido)
-  'Cebraspe','FCC','FGV','Vunesp','IBFC','Quadrix','Cesgranrio','Consulplan'
+  // Bancas (referenciadas como instituição quando a prova não tem cargo definido) — V12: removida duplicata 'Cebraspe', mantida 'CESPE/Cebraspe' em CANONICAL_BANKS
+  'CESPE/Cebraspe','FCC','FGV','Vunesp','IBFC','Quadrix','Cesgranrio','Consulplan'
 ];
 
 // Helper genérico — modal de seleção a partir de lista canônica
@@ -7231,9 +7247,9 @@ async function checkSubscriptionNotifications(){
        && SUBSCRIPTION.data.plan_id !== 'trial'){
       const subId = SUBSCRIPTION.data.subscription_id;
       if(subId && subId !== lastActivation){
-        // Notifica primeira ativação
+        // Notifica primeira ativação — V12: 10s pra dar tempo de ler
         try{
-          showToast(`🎉 Bem-vindo ao plano ${SUBSCRIPTION.data.plan_name}! Suas funções premium estão liberadas.`);
+          showToast(`🎉 Bem-vindo ao plano ${SUBSCRIPTION.data.plan_name}! Suas funções premium estão liberadas.`, 10000);
         }catch(_){}
         localStorage.setItem(NOTIFICATION_KEYS.lastActivationNotified, subId);
       }
@@ -9121,6 +9137,19 @@ function render(){
       try{ showFeedbackModal(); }catch(e){ alert('Não consegui abrir o feedback. Recarregue a página.'); }
     });
     APP.appendChild(feedbackBtn);
+  }
+
+  // V12: Botão flutuante de atalhos de teclado — sempre visível pra usuário descobrir
+  // Posicionado embaixo no canto direito, abaixo dos outros botões flutuantes.
+  if(!isFocusMode()){
+    const shortcutsBtn = mk('button','shortcuts-floating-btn');
+    shortcutsBtn.title = 'Atalhos de teclado — pressione ? a qualquer momento';
+    shortcutsBtn.setAttribute('aria-label','Atalhos de teclado');
+    shortcutsBtn.innerHTML = '⌨';
+    shortcutsBtn.addEventListener('click',()=>{
+      try{ showShortcutsOverlay(); }catch(e){ console.warn(e); }
+    });
+    APP.appendChild(shortcutsBtn);
   }
 
   // Reset hidden state quando navega — pomo float reaparece se rodando
@@ -18093,20 +18122,43 @@ function printRevisionNotebook(markdown){
   const w = window.open('','_blank','width=800,height=900');
   if(!w){alert('Permita popups deste site para exportar o PDF.');return;}
   const htmlContent = simpleMarkdownToHtml(markdown);
+  // V12: Estilos completos pra render fiel do perfil aprofundado (tabelas, callouts, mnemônicos, blocos)
   const styles = `
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;max-width:680px;margin:0 auto;padding:2rem 1.5rem;line-height:1.65;color:#222}
-    h2{color:#0E9F6E;margin-top:2rem;padding-bottom:.3rem;border-bottom:2px solid #0E9F6E33;font-size:19px}
-    h3{color:#111;margin-top:1.5rem;font-size:16px}
-    h4{color:#555;margin-top:1rem;font-size:14px}
-    ul{margin:.5rem 0 .75rem;padding-left:1.4rem}
-    li{margin-bottom:.3rem}
-    b{color:#0E9F6E}
-    code{background:#f1f3f5;padding:1px 6px;border-radius:3px;font-size:13px;color:#a23}
-    p{margin:.5rem 0 .75rem}
+    *{box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;max-width:780px;margin:0 auto;padding:2rem 1.75rem;line-height:1.65;color:#1f2933;font-size:14px}
+    h1{color:#0E9F6E;font-size:24px;margin:0 0 .5rem;letter-spacing:-.3px}
+    h2{color:#0E9F6E;margin:1.75rem 0 .75rem;padding-bottom:.4rem;border-bottom:2px solid #0E9F6E33;font-size:19px;letter-spacing:-.2px;page-break-after:avoid}
+    h3{color:#1f2933;margin:1.25rem 0 .625rem;font-size:16px;font-weight:700;page-break-after:avoid}
+    h4{color:#475569;margin:1rem 0 .5rem;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;page-break-after:avoid}
+    p{margin:.5rem 0 .875rem;page-break-inside:avoid}
+    ul,ol{margin:.5rem 0 1rem;padding-left:1.5rem}
+    li{margin-bottom:.4rem;line-height:1.6;page-break-inside:avoid}
+    li > ul, li > ol{margin:.3rem 0 .3rem}
+    b, strong{color:#0E5840;font-weight:700}
+    i, em{font-style:italic;color:#475569}
+    code{background:#f1f5f9;padding:2px 7px;border-radius:4px;font-size:13px;color:#a23;font-family:'SF Mono','Consolas',Monaco,monospace}
+    /* Tabelas — estilo caderno */
+    table.md-table{width:100%;margin:1rem 0 1.25rem;border-collapse:collapse;border:1px solid #d1d5db;font-size:13px;page-break-inside:avoid}
+    table.md-table th{background:#0E9F6E;color:#fff;padding:8px 11px;text-align:left;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+    table.md-table td{padding:8px 11px;border-top:1px solid #e5e7eb;vertical-align:top;line-height:1.55}
+    table.md-table tr:nth-child(even) td{background:#f9fafb}
+    /* Header */
     .header{text-align:center;border-bottom:2px solid #0E9F6E;padding-bottom:1rem;margin-bottom:2rem}
-    .header h1{color:#0E9F6E;margin:0 0 .25rem;font-size:24px}
+    .header h1{margin:0 0 .25rem;font-size:24px}
     .header p{margin:0;color:#666;font-size:13px}
-    @media print {body{padding:0.5in}}
+    /* Callouts visuais (parágrafos que começam com ⚠ 💡 📜 🎯 etc) — desenha como bloco destacado */
+    p:has(> b:first-child){padding:0}
+    /* Quebras */
+    @media print{
+      body{padding:0.75in 0.6in;font-size:12.5px;line-height:1.6}
+      h2{page-break-after:avoid}
+      h3{page-break-after:avoid}
+      table.md-table{page-break-inside:auto}
+      table.md-table tr{page-break-inside:avoid}
+      .header{margin-bottom:1.25rem}
+      a{color:#1f2933;text-decoration:none}
+    }
+    @page{margin:0.75in 0.6in;size:A4}
   `;
   w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Caderno de Revisão — Gralia</title><style>${styles}</style></head><body>
     <div class="header">
@@ -22087,7 +22139,7 @@ async function generateTopicProfile(disciplineId, topic, modelOverride){
   const disc = getDiscipline(disciplineId);
   const discName = disc?disc.name:'';
   const examName = DATA.config?.examName || 'concurso';
-  const examBank = DATA.config?.examBank || 'Cebraspe';
+  const examBank = DATA.config?.examBank || 'CESPE/Cebraspe';
 
   // Coleta contexto adicional do usuário pra alimentar a IA
   const userErrors = (DATA.errors||[])
@@ -34837,13 +34889,15 @@ document.addEventListener('fullscreenchange',()=>{
 });
 
 // --- Toast notifications ---
-function showToast(msg){
+function showToast(msg, duration){
   const old = document.querySelector('.ux-toast');
   if(old)old.remove();
   const t = mk('div','ux-toast');t.textContent=msg;
   document.body.appendChild(t);
   setTimeout(()=>{t.classList.add('visible');},10);
-  setTimeout(()=>{t.classList.remove('visible');setTimeout(()=>t.remove(),300);},2600);
+  // V12: duração padrão 2.6s, mas mensagens importantes (welcome) podem usar mais tempo
+  const ms = (typeof duration === 'number' && duration > 0) ? duration : 2600;
+  setTimeout(()=>{t.classList.remove('visible');setTimeout(()=>t.remove(),300);}, ms);
 }
 
 // --- Keyboard shortcuts ---
@@ -34904,24 +34958,48 @@ function dispatchNext(){
 
 document.addEventListener('keydown',e=>{
   if(isTyping())return;
-  // Ignore if modifier keys pressed (let browser shortcuts pass)
+  // V12: Não bloqueia shift (alguns atalhos usam Shift+letra)
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   const k = (e.key||'').toUpperCase();
   let handled = false;
-  if(k==='C'||k==='V'&&e.key==='v'){
-    // V also triggers Certo? No — only C. Skip V.
+
+  // Shift+letras PRIMEIRO (antes de captarem letras simples)
+  if(e.shiftKey){
+    if(k==='C'){
+      // Shift+C — toggle modo conforto de leitura (sépia)
+      toggleComfortMode();
+      showToast(document.documentElement.classList.contains('comfort-mode') ? '☕ Modo conforto ativado' : '☀ Modo conforto desativado');
+      handled=true;
+    }
+    else if(k==='F'){
+      toggleFocusMode();handled=true;
+    }
+    else if(k==='T'){
+      toggleTheme();showToast(localStorage.getItem('nexus_theme')==='light'?'☀ Tema claro':'🌙 Tema escuro');handled=true;
+    }
+    else if(k==='?' || e.key==='/'){
+      showShortcutsOverlay();handled=true;
+    }
+    if(handled){e.preventDefault();return;}
+    // Se Shift+algo que não tratamos, sai sem bloquear
+    return;
   }
+
+  // Atalhos sem Shift
   if(k==='C'){handled = dispatchAnswer('C');}
   else if(k==='E'){handled = dispatchAnswer('E');}
-  else if(k>='A'&&k<='E'&&k!=='C'&&k!=='E'){
-    // A, B, D for multiple choice
+  else if(k==='A'||k==='B'||k==='D'){
+    // A, B, D para múltipla escolha (C e E já tratados acima)
     handled = dispatchAnswer(k);
   }
-  else if(e.key===' '||k==='SPACEBAR'||k===' '){
+  else if(e.key===' '||k===' '){
     handled = dispatchNext();
   }
   else if(k==='F'){
     toggleFocusMode();handled=true;
+  }
+  else if(k==='T'){
+    toggleTheme();showToast(localStorage.getItem('nexus_theme')==='light'?'☀ Tema claro':'🌙 Tema escuro');handled=true;
   }
   else if(k==='R'){
     // Retry current question in quick-review mode (clears answer, re-presents)
@@ -34932,36 +35010,61 @@ document.addEventListener('keydown',e=>{
       handled=true;
     }
   }
-  else if(k==='T'){
-    toggleTheme();showToast(localStorage.getItem('nexus_theme')==='light'?'☀ Tema claro':'🌙 Tema escuro');handled=true;
+  else if(k==='P'){
+    // P — abre/fecha pomodoro
+    if(typeof togglePomodoroPanel === 'function'){
+      togglePomodoroPanel();handled=true;
+    }
   }
-  else if(k==='C' && e.shiftKey){
-    // V12: Shift+C — toggle modo conforto de leitura (sépia)
-    toggleComfortMode();handled=true;
-  }
-  else if(k==='?'){
+  else if(e.key==='?'||e.key==='/'){
     showShortcutsOverlay();handled=true;
+  }
+  else if(e.key==='Escape'||k==='ESCAPE'){
+    // ESC fecha modal aberto
+    if(ST.modal){closeModal();handled=true;}
+    else if(document.querySelector('.shortcuts-overlay')){
+      document.querySelector('.shortcuts-overlay').remove();handled=true;
+    }
   }
   if(handled)e.preventDefault();
 });
 
-// Shortcuts overlay (help)
+// Shortcuts overlay (help) — V12 expandido com TODOS atalhos da plataforma
 function showShortcutsOverlay(){
   const existing = document.querySelector('.shortcuts-overlay');
   if(existing){existing.remove();return;}
   const overlay = mk('div','shortcuts-overlay');
   overlay.innerHTML = `
     <div class="shortcuts-box">
-      <h3 style="margin:0 0 .75rem">⌨ Atalhos de teclado</h3>
-      <div class="sk-row"><kbd>C</kbd><span>Marcar como Certo</span></div>
-      <div class="sk-row"><kbd>E</kbd><span>Marcar como Errado</span></div>
-      <div class="sk-row"><kbd>A</kbd> <kbd>B</kbd> <kbd>D</kbd><span>Alternativas (múltipla escolha)</span></div>
-      <div class="sk-row"><kbd>Espaço</kbd><span>Próxima questão</span></div>
-      <div class="sk-row"><kbd>F</kbd><span>Modo foco (oculta menus)</span></div>
-      <div class="sk-row"><kbd>T</kbd><span>Alternar tema claro/escuro</span></div>
-      <div class="sk-row"><kbd>?</kbd><span>Mostrar/esconder este painel</span></div>
-      <p class="txt3" style="margin-top:.75rem;font-size:11.5px">Atalhos desativados enquanto você digita em campos de texto.</p>
-      <button class="btn btn-sm" id="sk-close" style="margin-top:.5rem">Fechar</button>
+      <div class="sk-head">
+        <h3 style="margin:0">⌨ Atalhos de teclado</h3>
+        <button class="fmh-close" id="sk-close" aria-label="Fechar">×</button>
+      </div>
+
+      <div class="sk-section">
+        <div class="sk-section-label">Responder questões</div>
+        <div class="sk-row"><kbd>C</kbd><span>Marcar como Certo</span></div>
+        <div class="sk-row"><kbd>E</kbd><span>Marcar como Errado</span></div>
+        <div class="sk-row"><kbd>A</kbd> <kbd>B</kbd> <kbd>D</kbd><span>Alternativas (múltipla escolha)</span></div>
+        <div class="sk-row"><kbd>Espaço</kbd><span>Próxima questão</span></div>
+        <div class="sk-row"><kbd>R</kbd><span>Refazer questão (modo revisão)</span></div>
+      </div>
+
+      <div class="sk-section">
+        <div class="sk-section-label">Interface e visualização</div>
+        <div class="sk-row"><kbd>F</kbd><span>Modo foco (oculta menus laterais)</span></div>
+        <div class="sk-row"><kbd>T</kbd><span>Alternar tema claro/escuro</span></div>
+        <div class="sk-row"><kbd>Shift</kbd>+<kbd>C</kbd><span>Modo conforto (sépia anti-fadiga)</span></div>
+        <div class="sk-row"><kbd>P</kbd><span>Abrir/fechar Pomodoro</span></div>
+      </div>
+
+      <div class="sk-section">
+        <div class="sk-section-label">Navegação</div>
+        <div class="sk-row"><kbd>?</kbd><span>Mostrar/esconder este painel</span></div>
+        <div class="sk-row"><kbd>ESC</kbd><span>Fechar modal aberto</span></div>
+      </div>
+
+      <p class="txt3" style="margin-top:.875rem;font-size:11.5px;line-height:1.5">Os atalhos são desativados enquanto você digita em campos de texto. Você pode acessar este painel a qualquer momento clicando em <kbd>?</kbd> ou no ícone de teclado no rodapé.</p>
     </div>`;
   overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
   document.body.appendChild(overlay);
@@ -35527,9 +35630,9 @@ async function initAuth(){
         render();
         setTimeout(()=>checkSubscriptionNotifications(), 1500);
       }).catch(()=>{});
-      // Mostra hint amigável avisando sobre a aba Config
+      // Mostra hint amigável avisando sobre a aba Config — V12: duração estendida (12s) pra dar tempo de ler
       setTimeout(()=>{
-        try{ showToast('👋 Bem-vindo ao Gralia! Não esqueça de personalizar seu perfil em Config quando puder.'); }catch(e){}
+        try{ showToast('👋 Bem-vindo ao Gralia! Personalize seu perfil em Configurações e explore os atalhos de teclado clicando no ícone ⌨ no canto da tela.', 12000); }catch(e){}
       }, 1200);
     }
     if(event==='SIGNED_OUT'){
