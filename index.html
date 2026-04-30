@@ -442,23 +442,41 @@ a{color:var(--accent)}
 .suggest-chip:hover{background:var(--accent-light);color:var(--accent-text);border-color:var(--accent)}
 
 /* Pomodoro flutuante — visível em todas as páginas durante sessão ativa */
-.pomo-float{position:fixed;bottom:20px;left:20px;z-index:850;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.18);overflow:hidden;animation:pomo-float-in .25s ease;min-width:230px}
-@keyframes pomo-float-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-.pomo-float .pf-progress{height:3px;background:var(--surface2);position:relative;overflow:hidden}
-.pomo-float .pf-progress-fill{height:100%;background:var(--accent);transition:width 1s linear,background-color .3s}
-.pomo-float.sbreak .pf-progress-fill{background:var(--blue)}
-.pomo-float.lbreak .pf-progress-fill{background:var(--purple)}
-.pomo-float .pf-row{display:flex;align-items:center;gap:10px;padding:10px 12px}
-.pomo-float .pf-emoji{font-size:20px;line-height:1;flex-shrink:0}
-.pomo-float .pf-info{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
-.pomo-float .pf-time{font-size:16px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:-.5px;line-height:1}
-.pomo-float .pf-phase{font-size:10.5px;color:var(--text3);font-weight:500;line-height:1.2;text-transform:uppercase;letter-spacing:.4px}
-.pomo-float .pf-btn{background:transparent;border:none;width:28px;height:28px;border-radius:8px;font-size:13px;color:var(--text2);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0;font-family:inherit}
-.pomo-float .pf-btn:hover{background:var(--surface2);color:var(--text)}
-.pomo-float .pf-toggle{font-size:14px}
-.pomo-float .pf-hide{font-size:18px;color:var(--text3)}
-.pomo-float.paused{opacity:.85}
-.pomo-float.paused::before{content:'PAUSADO';position:absolute;top:6px;right:8px;font-size:9px;font-weight:700;color:var(--amber-text);background:var(--amber-light);padding:1px 5px;border-radius:3px;letter-spacing:.6px}
+/* V12: Redesign mais polido — círculo de progresso radial + cores temáticas */
+.pomo-float{position:fixed;bottom:20px;left:20px;z-index:850;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 32px rgba(0,0,0,.14),0 2px 8px rgba(0,0,0,.06);overflow:hidden;animation:pomo-float-in .3s cubic-bezier(.34,1.4,.64,1);min-width:248px;backdrop-filter:saturate(120%)}
+.pomo-float::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--gralia-purple));opacity:0;transition:opacity .25s}
+.pomo-float.focus::before{background:linear-gradient(90deg,#7c3aed,#a78bfa);opacity:1}
+.pomo-float.sbreak::before{background:linear-gradient(90deg,#3b82f6,#60a5fa);opacity:1}
+.pomo-float.lbreak::before{background:linear-gradient(90deg,#3aa57e,#7dd3a8);opacity:1}
+@keyframes pomo-float-in{from{opacity:0;transform:translateY(16px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+.pomo-float .pf-row{display:flex;align-items:center;gap:12px;padding:14px 14px 14px 12px}
+/* Círculo de progresso radial — substitui a barra horizontal */
+.pomo-float .pf-circle{position:relative;width:44px;height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.pomo-float .pf-circle svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.pomo-float .pf-circle-bg{fill:none;stroke:var(--surface2);stroke-width:3.5}
+.pomo-float .pf-circle-fg{fill:none;stroke:var(--gralia-purple);stroke-width:3.5;stroke-linecap:round;transition:stroke-dashoffset 1s linear,stroke .3s}
+.pomo-float.sbreak .pf-circle-fg{stroke:#3b82f6}
+.pomo-float.lbreak .pf-circle-fg{stroke:#3aa57e}
+.pomo-float .pf-emoji{font-size:18px;line-height:1;position:relative;z-index:1}
+
+.pomo-float .pf-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.pomo-float .pf-time{font-size:18px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:-.6px;line-height:1.05}
+.pomo-float .pf-phase{font-size:10.5px;color:var(--text3);font-weight:600;line-height:1.2;text-transform:uppercase;letter-spacing:.6px}
+
+.pomo-float .pf-btns{display:flex;gap:2px;flex-shrink:0}
+.pomo-float .pf-btn{background:transparent;border:none;width:30px;height:30px;border-radius:8px;font-size:13px;color:var(--text2);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0;font-family:inherit;transition:all .15s}
+.pomo-float .pf-btn:hover{background:var(--surface2);color:var(--text);transform:scale(1.08)}
+.pomo-float .pf-toggle{font-size:14px;color:var(--gralia-purple)}
+.pomo-float.sbreak .pf-toggle{color:#3b82f6}
+.pomo-float.lbreak .pf-toggle{color:#3aa57e}
+.pomo-float .pf-hide{font-size:17px;color:var(--text3)}
+
+.pomo-float.paused{opacity:.92}
+.pomo-float.paused .pf-circle-fg{animation:pomo-paused-pulse 2s ease-in-out infinite}
+.pomo-float.paused::after{content:'PAUSADO';position:absolute;top:8px;right:10px;font-size:9px;font-weight:800;color:var(--amber-text);background:rgba(232,164,60,.16);padding:2px 7px;border-radius:999px;letter-spacing:.7px;border:1px solid rgba(232,164,60,.3)}
+@keyframes pomo-paused-pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
 @media (max-width:600px){
   .pomo-float{bottom:14px;left:14px;right:14px;min-width:0}
 }
@@ -1076,6 +1094,9 @@ html.focus-mode .pomo-float{display:none}
 .mp-option.on .mp-name{color:var(--accent-text)}
 .mp-option.tier-premium.on .mp-name{color:var(--purple-text)}
 .mp-desc{font-size:11px;color:var(--text3);line-height:1.35}
+.mp-option.locked{opacity:.65;background:var(--surface2);cursor:pointer}
+.mp-option.locked:hover{opacity:.8}
+.mp-lock{display:inline-block;margin-left:6px;padding:1px 7px;background:rgba(128,66,250,.12);color:var(--gralia-purple);border-radius:999px;font-size:9.5px;font-weight:800;letter-spacing:.4px;vertical-align:middle}
 @media (max-width:500px){
   .mp-grid{grid-template-columns:1fr}
 }
@@ -1168,7 +1189,19 @@ h3{font-size:15px;font-weight:600}
 .btn-danger{color:var(--red-text);border-color:var(--red-light)}
 .btn-danger:hover:not(:disabled){background:var(--red-light)}
 .btn-sm{padding:6px 12px;font-size:12px}
-.btn-ans{flex:1;padding:13px;font-size:15px;font-weight:500;border-radius:var(--r)}
+.btn-ans{flex:1;padding:13px;font-size:15px;font-weight:500;border-radius:var(--r);position:relative}
+.btn-kbd-hint{position:absolute;top:6px;right:8px;font-size:9.5px;font-weight:700;letter-spacing:.4px;background:rgba(0,0,0,.08);color:rgba(0,0,0,.55);padding:1px 6px;border-radius:4px;border:1px solid rgba(0,0,0,.08);font-family:ui-monospace,monospace;line-height:1.4;pointer-events:none;opacity:.7;transition:opacity .15s}
+.btn-c .btn-kbd-hint{background:rgba(73,197,137,.18);color:rgba(0,80,40,.7);border-color:rgba(73,197,137,.3)}
+.btn-e .btn-kbd-hint{background:rgba(232,76,76,.18);color:rgba(120,20,20,.7);border-color:rgba(232,76,76,.3)}
+html.dark .btn-kbd-hint{background:rgba(255,255,255,.10);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.12)}
+.btn-ans:hover .btn-kbd-hint{opacity:1}
+@media(hover:none){.btn-kbd-hint{display:none}}
+.answer-btn-row{gap:8px}
+
+/* V12: Dica sutil de conforto visual — botão discreto pra abrir página */
+.eye-hint-link{display:flex;align-items:center;gap:8px;width:100%;padding:.625rem 1rem;margin-top:1rem;background:transparent;border:1px dashed var(--border);border-radius:10px;color:var(--text3);font-family:inherit;font-size:12.5px;cursor:pointer;text-align:left;transition:all .15s}
+.eye-hint-link:hover{background:rgba(128,66,250,.04);border-color:rgba(128,66,250,.30);color:var(--gralia-purple);border-style:solid}
+.eye-hint-link span{flex:1}
 .btn-c:hover:not(:disabled){background:var(--accent-light);border-color:var(--accent);color:var(--accent-text)}
 .btn-e:hover:not(:disabled){background:var(--red-light);border-color:var(--red);color:var(--red-text)}
 
@@ -1924,6 +1957,8 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 
 /* Modal */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:center;justify-content:center;padding:1rem;animation:fd .15s ease}
+.modal-bg.locked{cursor:default}
+.modal-bg.locked .modal{box-shadow:0 12px 40px rgba(128,66,250,.18),0 4px 12px rgba(0,0,0,.18)}
 .modal{background:var(--surface);border-radius:var(--r);max-width:560px;width:auto;min-width:280px;max-height:90vh;overflow-y:auto;padding:1.25rem 1.25rem}
 .modal > *:first-child{margin-top:0}
 .modal > *:last-child{margin-bottom:0}
@@ -2417,6 +2452,11 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 .ai-cost-badge .acb-icon{font-size:9px;line-height:1}
 .ai-cost-badge.lg .acb-icon{font-size:10.5px}
 .ai-cost-badge .acb-text{font-weight:700}
+.ai-cost-badge.premium{background:rgba(216,160,64,.14);color:#a76e1a;border-color:rgba(216,160,64,.32)}
+.ai-cost-badge.premium .acb-icon::before{content:'💎'}
+.ai-cost-badge.premium .acb-icon{font-size:9px}
+button .ai-cost-badge.premium{background:rgba(255,210,100,.22);color:#7a4d10;border-color:rgba(255,210,100,.40)}
+.btn-p .ai-cost-badge.premium{background:rgba(255,220,140,.30);color:#fff;border-color:rgba(255,220,140,.50)}
 button .ai-cost-badge{margin-left:6px;background:rgba(255,255,255,.18);color:inherit;border-color:rgba(255,255,255,.30)}
 .btn-p .ai-cost-badge{background:rgba(255,255,255,.22);color:#fff;border-color:rgba(255,255,255,.35)}
 
@@ -2464,14 +2504,14 @@ button .ai-cost-badge{margin-left:6px;background:rgba(255,255,255,.18);color:inh
 
 /* === V12: Seção combinada do painel (Acompanhar) === */
 .dash-accompany{margin-bottom:1.25rem;padding:0;overflow:hidden}
-.dasha-head{padding:1rem 1.125rem .625rem;border-bottom:1px solid var(--border)}
-.dasha-title{font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.1px;display:flex;align-items:center;gap:6px}
-.dasha-title::before{content:'';width:4px;height:14px;background:var(--gralia-purple);border-radius:2px;display:inline-block}
-.dasha-tabs{display:flex;background:var(--surface2);padding:4px;margin:.5rem .875rem 0;border-radius:10px;gap:2px}
+.dasha-head{padding:1.125rem 1.25rem .875rem}
+.dasha-title{font-size:13.5px;font-weight:700;color:var(--text);letter-spacing:-.1px;display:flex;align-items:center;gap:8px}
+.dasha-title::before{content:'';width:3px;height:13px;background:var(--gralia-purple);border-radius:2px;display:inline-block;flex-shrink:0}
+.dasha-tabs{display:flex;background:var(--surface2);padding:4px;margin:0 1.25rem 1rem;border-radius:10px;gap:2px;border:1px solid var(--border)}
 .dasha-tab{flex:1;background:transparent;border:none;padding:.5rem .75rem;border-radius:7px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .15s}
 .dasha-tab:hover{color:var(--text)}
-.dasha-tab.active{background:var(--surface);color:var(--gralia-purple);box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.dasha-body{padding:.875rem 1.125rem 1.125rem}
+.dasha-tab.active{background:var(--surface);color:var(--gralia-purple);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.dasha-body{padding:0 1.25rem 1.125rem}
 .dasha-content-timeline{padding:0!important;margin:0!important;background:transparent!important;border:none!important}
 .dasha-content-timeline > .activity-v2-head{display:none}
 .dasha-disciplines-list{display:flex;flex-direction:column;gap:.5rem}
@@ -2593,9 +2633,15 @@ html.focus-mode .method-info{display:none}
 html.focus-mode .scard,html.focus-mode .dna-row,html.focus-mode .insight-card{display:none}
 
 /* Focus mode toggle button (always visible in bottom-right) */
-.focus-toggle{position:fixed;bottom:18px;right:18px;z-index:500;width:44px;height:44px;border-radius:50%;background:var(--surface);border:1px solid var(--border2);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 3px 10px rgba(0,0,0,.12);transition:all .15s}
-.focus-toggle:hover{background:var(--accent-light);color:var(--accent-text);transform:scale(1.05)}
-html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* V12: Redesign mais polido — alinhar à qualidade do toggle de tema */
+.focus-toggle{position:fixed;bottom:20px;right:20px;z-index:500;width:46px;height:46px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 4px 14px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.06);transition:all .2s cubic-bezier(.34,1.4,.64,1);cursor:pointer}
+.focus-toggle::before{content:'';position:absolute;inset:0;border-radius:14px;background:linear-gradient(135deg,rgba(128,66,250,.10),rgba(73,197,137,.06));opacity:0;transition:opacity .2s;pointer-events:none}
+.focus-toggle:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(128,66,250,.18),0 2px 6px rgba(0,0,0,.08);border-color:rgba(128,66,250,.35);color:var(--gralia-purple)}
+.focus-toggle:hover::before{opacity:1}
+.focus-toggle:active{transform:translateY(0) scale(.96)}
+html.focus-mode .focus-toggle{background:linear-gradient(135deg,var(--gralia-purple),#5a2bbf);color:#fff;border-color:transparent;box-shadow:0 6px 20px rgba(128,66,250,.35),0 2px 4px rgba(128,66,250,.20)}
+html.focus-mode .focus-toggle:hover{box-shadow:0 8px 24px rgba(128,66,250,.45),0 2px 6px rgba(128,66,250,.30);transform:translateY(-2px)}
+@media (max-width:600px){.focus-toggle{width:42px;height:42px;bottom:14px;right:14px;font-size:15px;border-radius:12px}}
 
 /* ====== TOAST ====== */
 .ux-toast{position:fixed;bottom:-60px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:var(--rs);font-size:13px;font-weight:500;box-shadow:0 4px 18px rgba(0,0,0,.2);z-index:1000;opacity:0;transition:bottom .3s,opacity .3s;max-width:80vw;text-align:center}
@@ -2778,6 +2824,15 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 /* Setup */
 .sim-setup-card{padding:1.5rem}
 .sim-presets-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px}
+/* V12: Source toggle do simulado */
+.sim-source-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:.5rem}
+@media(max-width:540px){.sim-source-row{grid-template-columns:1fr;gap:4px}}
+.sim-source-btn{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:.625rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s;color:var(--text2)}
+.sim-source-btn:hover:not(:disabled){border-color:var(--gralia-purple);color:var(--text)}
+.sim-source-btn.on{background:rgba(128,66,250,.06);border-color:var(--gralia-purple);color:var(--text);box-shadow:0 0 0 1px var(--gralia-purple)}
+.sim-source-btn:disabled{opacity:.4;cursor:not-allowed}
+.sim-source-btn b{font-size:12.5px;font-weight:700;line-height:1.2}
+.ssb-count{font-size:10.5px;color:var(--text3);font-weight:500}
 .sim-preset-btn{padding:.625rem .75rem;font-size:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600;transition:all .15s;text-align:center}
 .sim-preset-btn:hover:not(:disabled){border-color:var(--gralia-purple);color:var(--gralia-purple)}
 .sim-preset-btn.on{background:rgba(128,66,250,.10);border-color:var(--gralia-purple);color:var(--gralia-purple)}
@@ -3158,8 +3213,17 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
 .wpbt-save{font-size:10.5px;background:rgba(73,197,137,.18);color:var(--accent-text);padding:2px 8px;border-radius:999px;font-weight:800;letter-spacing:.2px}
 .wel-plans-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:1.25rem}
 @media(max-width:880px){.wel-plans-grid{grid-template-columns:1fr;max-width:420px;margin-left:auto;margin-right:auto}}
-.wel-plan-card{padding:1.75rem 1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:16px;display:flex;flex-direction:column;position:relative;text-align:left;transition:all .2s}
+.wel-plan-card{padding:1.75rem 1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:16px;display:flex;flex-direction:column;position:relative;text-align:left;transition:all .25s}
 .wel-plan-card:hover{border-color:rgba(128,66,250,.30);transform:translateY(-3px);box-shadow:0 12px 28px rgba(0,0,0,.08)}
+/* V12: Estética escalonada por tier */
+.wel-plan-card.tier-basic{}
+.wel-plan-card.tier-recommended{border-color:var(--gralia-purple);background:linear-gradient(135deg,rgba(128,66,250,.06),var(--surface) 60%);box-shadow:0 6px 22px rgba(128,66,250,.14)}
+.wel-plan-card.tier-recommended:hover{box-shadow:0 18px 42px rgba(128,66,250,.22)}
+.wel-plan-card.tier-premium{border:1.5px solid transparent;background:linear-gradient(var(--surface),var(--surface)) padding-box,linear-gradient(135deg,#a78bfa,#7c3aed,#5b21b6,#3aa57e,#7c3aed) border-box;box-shadow:0 8px 30px rgba(124,58,237,.18)}
+.wel-plan-card.tier-premium:hover{box-shadow:0 22px 52px rgba(124,58,237,.32);transform:translateY(-5px)}
+.wel-plan-card.tier-premium::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#a78bfa,#7c3aed,#3aa57e,#7c3aed);border-radius:14px 14px 0 0}
+.wel-plan-card.tier-premium .wpc-name{background:linear-gradient(135deg,#7c3aed,#3aa57e);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.wel-plan-card.tier-premium .wpc-credits b{color:#7c3aed}
 .wel-plan-card.featured{border-color:var(--gralia-purple);background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));box-shadow:0 6px 20px rgba(128,66,250,.12)}
 .wel-plan-card.featured:hover{box-shadow:0 18px 42px rgba(128,66,250,.20)}
 .wpc-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--gralia-purple);color:#fff;padding:4px 16px;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase}
@@ -3327,6 +3391,26 @@ html.focus-mode .focus-toggle{background:var(--accent);color:#fff;border-color:v
   .wel-credit-sep{padding:2px 0}
 }
 .wel-credits-note{font-size:11.5px;color:var(--text3);margin-top:1rem;text-align:center;line-height:1.5;font-style:italic;max-width:540px;margin-left:auto;margin-right:auto}
+
+/* V12: Tabela de custos por ação (substitui o card de R$25 que mostrava margem) */
+.wel-credits-table{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;max-width:560px;margin:1rem auto 0}
+.wct-header{display:grid;grid-template-columns:1fr auto;gap:14px;padding:.75rem 1.125rem;background:var(--surface2);font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase}
+.wct-row{display:grid;grid-template-columns:1fr auto;gap:14px;padding:.75rem 1.125rem;border-top:1px solid var(--border);align-items:center}
+.wct-row .wct-action{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);line-height:1.4}
+.wct-icon{font-size:16px;line-height:1;flex-shrink:0}
+.wct-row .wct-cost{font-size:13px;color:var(--text);text-align:right;white-space:nowrap}
+.wct-row .wct-cost b{color:var(--gralia-purple);font-weight:800;font-size:15px}
+.wtb-cta-text{margin:1rem 0 .5rem;font-size:13px;color:var(--text2);line-height:1.6;text-align:center}
+.wtb-cta-text b{color:var(--text)}
+.wtb-cta-btn{display:block;margin:.875rem auto 0;font-size:14px;padding:.75rem 1.5rem}
+
+/* V12: top-up bloqueado pra trial */
+.topup-blocked{text-align:center;padding:1.5rem 1rem .5rem}
+.tub-icon{font-size:42px;margin-bottom:.875rem;line-height:1}
+.tub-title{margin:0 0 .75rem;font-size:20px;font-weight:700;letter-spacing:-.4px}
+.tub-text{margin:0 0 1rem;font-size:13.5px;line-height:1.65;color:var(--text2)}
+.tub-hint{margin:0;font-size:12.5px;line-height:1.6;color:var(--text3);font-style:italic}
+
 
 .wel-features{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
 @media(max-width:900px){.wel-features{grid-template-columns:1fr 1fr}}
@@ -5443,7 +5527,7 @@ Responda em texto plano (sem JSON, sem markdown), focando exatamente nessa dúvi
   actions.appendChild(askBtn);
   m.appendChild(actions);
 
-  showModal(m);
+  showModal(m, {locked: true});
   setTimeout(()=>ta.focus(), 50);
 }
 
@@ -5631,23 +5715,38 @@ const DEFAULT_EXAM_NAME = 'Prova';
 function examDate(){
   // Perfil tem prioridade quando logado
   const profDate = (AUTH && AUTH.profile && AUTH.profile.target_exam_date) ? AUTH.profile.target_exam_date : null;
-  const d = profDate || (DATA&&DATA.config&&DATA.config.examDate)||DEFAULT_EXAM_DATE;
+  const d = profDate || (DATA&&DATA.config&&DATA.config.examDate);
+  // V12: Se não tem data definida, retorna null (não fallback pra DEFAULT_EXAM_DATE)
+  // Isso evita que conta nova mostre data e contagem regressiva fake.
+  if(!d) return null;
   return new Date(d);
 }
 function examName(){
   // Perfil tem prioridade quando logado
   const profName = (AUTH && AUTH.profile && AUTH.profile.target_exam_name) ? AUTH.profile.target_exam_name : '';
-  return profName || (DATA&&DATA.config&&DATA.config.examName) || DEFAULT_EXAM_NAME;
+  // V12: Sem fallback pra DEFAULT_EXAM_NAME — retorna string vazia
+  return profName || (DATA&&DATA.config&&DATA.config.examName) || '';
 }
 function formatExamDate(){
   const d = examDate();
+  if(!d) return '';
   const pad = n=>String(n).padStart(2,'0');
   return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
 }
 // Retorna info estruturada do countdown da prova (compara dias inteiros, não horas)
-// {days, status:'before'|'today'|'past', label, needsUpdate}
+// {days, status:'before'|'today'|'past'|'unset', label, needsUpdate}
 function examCountdown(){
   const exam = examDate();
+  // V12: Se não tem data, retorna estado especial 'unset'
+  if(!exam){
+    return {
+      days: null,
+      status: 'unset',
+      label: 'sem data',
+      shortLabel: '—',
+      needsUpdate: false
+    };
+  }
   // Normaliza ambas as datas pra meia-noite local pra comparar dias inteiros
   const examMidnight = new Date(exam.getFullYear(), exam.getMonth(), exam.getDate());
   const today = new Date();
@@ -6728,6 +6827,87 @@ function getCurrentPlanId(){
   return SUBSCRIPTION.data?.plan_id || 'trial';
 }
 
+// V12: Gating por plano — limita features avançadas conforme assinatura
+// Definição clara do que cada plano tem acesso
+const PLAN_LIMITS = {
+  trial: {
+    name: 'Trial (grátis)',
+    edital_per_month: 0,           // não tem síntese de edital
+    can_use_sonnet: false,         // só Haiku
+    can_buy_topup: false,          // não pode comprar avulso
+    label: 'gratuito'
+  },
+  estudante: {
+    name: 'Estudante',
+    edital_per_month: 1,           // 1 síntese por mês
+    can_use_sonnet: false,         // só Haiku
+    can_buy_topup: true,
+    label: 'básico'
+  },
+  concurseiro: {
+    name: 'Concurseiro',
+    edital_per_month: 3,           // 3 sínteses por mês
+    can_use_sonnet: false,         // só Haiku
+    can_buy_topup: true,
+    label: 'recomendado'
+  },
+  pro: {
+    name: 'Pro',
+    edital_per_month: 999,         // ilimitado (na prática)
+    can_use_sonnet: true,          // libera Sonnet 4.6
+    can_buy_topup: true,
+    label: 'completo'
+  }
+};
+
+function getPlanLimits(){
+  const planId = getCurrentPlanId();
+  return PLAN_LIMITS[planId] || PLAN_LIMITS.trial;
+}
+
+// Conta sínteses de edital usadas no mês corrente (a partir do localStorage)
+function getEditalCountThisMonth(){
+  const month = new Date().toISOString().slice(0,7); // "2026-04"
+  if(!DATA.editalUsage) return 0;
+  return DATA.editalUsage[month] || 0;
+}
+
+function recordEditalUsage(){
+  const month = new Date().toISOString().slice(0,7);
+  DATA.editalUsage = DATA.editalUsage || {};
+  DATA.editalUsage[month] = (DATA.editalUsage[month] || 0) + 1;
+  save();
+}
+
+// Verifica se pode usar feature, retorna {allowed, reason, suggestPlan}
+function checkPlanFeature(feature){
+  const limits = getPlanLimits();
+  const planId = getCurrentPlanId();
+  if(feature === 'edital_synthesis'){
+    if(limits.edital_per_month === 0){
+      return {allowed: false, reason: 'Síntese de edital com IA não está disponível no plano Trial. Assine um plano pra usar essa feature.', suggestPlan: 'estudante'};
+    }
+    const used = getEditalCountThisMonth();
+    if(used >= limits.edital_per_month){
+      return {allowed: false, reason: `Você já usou suas ${limits.edital_per_month} síntese(s) de edital deste mês no plano ${limits.name}. Faça upgrade pra liberar mais.`, suggestPlan: planId === 'estudante' ? 'concurseiro' : 'pro'};
+    }
+    return {allowed: true};
+  }
+  if(feature === 'sonnet_model'){
+    if(!limits.can_use_sonnet){
+      return {allowed: false, reason: `O modelo Sonnet (mais profundo) é exclusivo do plano Pro. No seu plano ${limits.name}, todas as gerações usam o Haiku.`, suggestPlan: 'pro'};
+    }
+    return {allowed: true};
+  }
+  if(feature === 'buy_topup'){
+    if(!limits.can_buy_topup){
+      return {allowed: false, reason: 'Pacotes avulsos só estão disponíveis pra usuários com assinatura ativa. Assine um plano primeiro.', suggestPlan: 'estudante'};
+    }
+    return {allowed: true};
+  }
+  return {allowed: true};
+}
+
 function getSubscriptionStatus(){
   return SUBSCRIPTION.data?.subscription_status || 'trialing';
 }
@@ -7014,6 +7194,89 @@ function inferDiscipline(topic){
   }
   return active[0].id;
 }
+// V12: Contexto de banca — adapta estilo de questão ao perfil da banca alvo
+// Sem isso, todas as questões saem no estilo Cebraspe (item 2 do feedback do Jean).
+// A banca é detectada via AUTO.profile.target_exam_board ou DATA.config.examBank
+function getBancaContext(){
+  const profBank = (AUTH && AUTH.profile && AUTH.profile.target_exam_board) ? AUTH.profile.target_exam_board : '';
+  const configBank = (DATA && DATA.config && DATA.config.examBank) || '';
+  const raw = (profBank || configBank || '').toLowerCase().trim();
+  if(!raw) return null;
+
+  // Identifica banca por substring
+  if(/cebraspe|cespe/i.test(raw)){
+    return {
+      id: 'cebraspe',
+      name: 'Cebraspe',
+      style: '' // Padrão — já é Cebraspe nos prompts
+    };
+  }
+  if(/fcc/i.test(raw)){
+    return {
+      id: 'fcc',
+      name: 'FCC',
+      style: `--- AJUSTE PARA FCC ---
+A banca FCC tem estilo MUITO DIFERENTE da Cebraspe. Em vez de C/E, use formato múltipla escolha (5 alternativas A-E). Características FCC:
+- Enunciados mais longos (até 80 palavras), com mais contexto narrativo
+- Alternativas paralelas (mesma estrutura sintática) — torna comparação difícil
+- Erros sutis nas alternativas: troca de números, troca de "exclusivo" por "preferencial", etc.
+- Predomínio de letra de lei e doutrina clássica — evita jurisprudência recente
+- Cobra MUITA decoreba de prazos, percentuais e quóruns
+- Pegadinhas favoritas: 1) inverter beneficiário e devedor, 2) trocar "majoritário" por "absoluto", 3) adicionar "salvo disposição em contrário" onde não existe`
+    };
+  }
+  if(/fgv/i.test(raw)){
+    return {
+      id: 'fgv',
+      name: 'FGV',
+      style: `--- AJUSTE PARA FGV ---
+A banca FGV tem estilo INTERPRETATIVO e CONCEITUAL. Características:
+- Múltipla escolha com 5 alternativas, MAS com casos práticos longos no enunciado
+- Foco em raciocínio jurídico/lógico, não decoreba pura
+- Alternativas plausíveis — duas costumam parecer corretas
+- Cobra distinções doutrinárias finas (ex: discricionariedade vs vinculação, ato administrativo vs simples ato)
+- Pegadinhas favoritas: 1) confundir conceitos correlatos, 2) misturar duas teses doutrinárias, 3) cenários híbridos onde parece caber mais de uma resposta`
+    };
+  }
+  if(/vunesp/i.test(raw)){
+    return {
+      id: 'vunesp',
+      name: 'Vunesp',
+      style: `--- AJUSTE PARA VUNESP ---
+A banca Vunesp foca em literalidade da lei e súmulas. Características:
+- Múltipla escolha (5 alternativas)
+- Enunciados curtos e diretos
+- Alternativas testam conhecimento de prazos, valores e requisitos exatos
+- Predomínio de questões de letra de lei
+- Pegadinhas favoritas: 1) trocar "até" por "no mínimo", 2) alterar prazo (15 dias → 5 dias), 3) trocar "anuência" por "ciência"`
+    };
+  }
+  if(/quadrix/i.test(raw)){
+    return {
+      id: 'quadrix',
+      name: 'Quadrix',
+      style: `--- AJUSTE PARA QUADRIX ---
+A banca Quadrix mistura C/E (estilo Cebraspe) com múltipla escolha em proporção variável.
+Mantenha o estilo C/E quando solicitado, mas com armadilhas mais brandas que Cebraspe — Quadrix tende a ser menos "pegadinha pesada".`
+    };
+  }
+  if(/instituto americano|iades|iadhed|ibfc|cespe/i.test(raw)){
+    return {
+      id: 'outras',
+      name: raw,
+      style: `--- AJUSTE PARA ${raw.toUpperCase()} ---
+A banca alvo não é Cebraspe. Mantenha rigor técnico mas com armadilhas menos hostis: prefira erros por troca de números, trocas de termos similares e omissão de detalhes ao invés de "termo absoluto extremo" estilo Cebraspe.`
+    };
+  }
+  // Banca não reconhecida — usa nome como dica
+  return {
+    id: 'unknown',
+    name: raw,
+    style: `--- BANCA ALVO: ${raw.toUpperCase()} ---
+Aplique estilo geral de prova de concurso brasileiro. Mantenha rigor técnico, evite armadilhas excessivamente hostis (estilo Cebraspe puro). Se a banca for conhecida por múltipla escolha, prefira esse formato.`
+  };
+}
+
 function buildContent(){
   // V12: Se houver foco em seção específica de uma fonte (via TOC), usar só ela
   if(ST.activeFocus && ST.activeFocus.sourceId && ST.activeFocus.sectionId){
@@ -7053,7 +7316,12 @@ function buildContent(){
     const dLbl = disc?` (disciplina: ${disc.name})`:'';
     const tLbl = s.contentType&&s.contentType!=='misto' ? ` [${(CONTENT_TYPES[s.contentType]||{}).label||s.contentType}]` : '';
     return `[${SRC_TYPES[s.type].label.toUpperCase()}${dLbl}${tLbl}: ${s.name}]\n${s.content}`;
-  }).join('\n\n---\n\n') + directive;
+  }).join('\n\n---\n\n') + directive + (function(){
+    // V12: Anexa contexto de banca, se houver
+    const bc = getBancaContext();
+    if(bc && bc.style) return '\n\n' + bc.style;
+    return '';
+  })();
 }
 function hasContent(){return activeSources().length>0&&buildContent().length>50}
 
@@ -7069,7 +7337,7 @@ const METHOD_INFO = {
   practice:{
     icon:'📝',title:'Resolução de Questões',tag:'CLÁSSICO',
     short:'Responder questões no estilo da banca — a técnica de estudo mais eficaz comprovada.',
-    long:'Você responde questões Certo/Errado (ou múltipla escolha, quando a questão importada exige) baseadas no material que carregou. Recebe feedback imediato com a explicação e a palavra-gatilho que denunciava a armadilha. Pode praticar com questões criadas no momento pela IA ou com questões reais do TEC Concursos que você importou.',
+    long:'Você responde questões Certo/Errado (ou múltipla escolha, quando a questão importada exige) baseadas no material que carregou. Recebe feedback imediato com a explicação e a palavra-gatilho que denunciava a armadilha. Pode praticar com questões criadas no momento pela IA ou com questões reais que você importou de outras plataformas (TEC Concursos é o formato suportado nativamente, mas dá pra colar de qualquer fonte que tenha gabarito).',
     trust:'As questões seguem a estrutura da banca Cebraspe — mesma linguagem formal, mesmas armadilhas clássicas (termo absoluto, inversão de competência, generalização indevida). O sistema vai memorizando o que já te mostrou para não repetir, e cada questão errada pode virar um flashcard com um clique.'
   },
   simulado:{
@@ -7711,6 +7979,32 @@ function getMethodModel(methodKey){
   return ST.methodModel[methodKey]||DATA.config.model;
 }
 function setMethodModel(methodKey,model){
+  // V12: gating — só Pro pode escolher Sonnet
+  if(model && model.includes('sonnet')){
+    const check = checkPlanFeature('sonnet_model');
+    if(!check.allowed){
+      // Mostra modal explicando + caminho pra upgrade
+      const m = mk('div'); m.style.cssText='max-width:440px';
+      m.innerHTML = `
+        <div class="topup-blocked">
+          <div class="tub-icon">💎</div>
+          <h2 class="tub-title">Sonnet é exclusivo do Pro</h2>
+          <p class="tub-text">${check.reason}</p>
+          <p class="tub-hint">Pro ganha questões mais profundas, com nuances que o Haiku às vezes deixa passar. Útil pra disciplinas técnicas como Direito Tributário ou Constitucional avançado.</p>
+        </div>
+      `;
+      const ctaRow = mk('div');ctaRow.style.cssText='display:flex;gap:8px;justify-content:center;margin-top:1.25rem';
+      const seePlans = mkBtn('Ver Pro →','btn btn-p');
+      seePlans.addEventListener('click',()=>{closeModal(); ST.view='plans'; render();});
+      const cancel = mkBtn('Continuar com Haiku','btn btn-sm');
+      cancel.addEventListener('click', closeModal);
+      ctaRow.appendChild(cancel);
+      ctaRow.appendChild(seePlans);
+      m.appendChild(ctaRow);
+      showModal(m);
+      return; // não troca modelo
+    }
+  }
   ST.methodModel[methodKey] = model;
 }
 // Returns a model picker element; onChange called with new model id
@@ -7830,11 +8124,16 @@ function buildModelPicker(methodKey,onChange){
   const lbl = mk('span','mp-lbl');lbl.textContent='Modelo de IA';wrap.appendChild(lbl);
   const current = getMethodModel(methodKey);
   const pickerGrid = mk('div','mp-grid');
+  // V12: Sonnet bloqueado pra não-Pro
+  const sonnetCheck = checkPlanFeature('sonnet_model');
+  const sonnetLocked = !sonnetCheck.allowed;
   QUICK_MODELS.forEach(([id,name,desc,icon,tier])=>{
     const isOn = current===id;
-    const b = mk('button','mp-option tier-'+tier+(isOn?' on':''));
-    b.innerHTML = `<span class="mp-icon">${icon}</span><span class="mp-body"><b class="mp-name">${name}</b><span class="mp-desc">${desc}</span></span>`;
-    b.title = desc;
+    const isLocked = sonnetLocked && id.includes('sonnet');
+    const b = mk('button','mp-option tier-'+tier+(isOn?' on':'')+(isLocked?' locked':''));
+    const lockBadge = isLocked ? '<span class="mp-lock">🔒 Pro</span>' : '';
+    b.innerHTML = `<span class="mp-icon">${icon}</span><span class="mp-body"><b class="mp-name">${name}${lockBadge}</b><span class="mp-desc">${desc}</span></span>`;
+    b.title = isLocked ? 'Disponível no plano Pro' : desc;
     b.addEventListener('click',()=>{
       setMethodModel(methodKey,id);
       if(onChange)onChange(id);
@@ -7977,14 +8276,18 @@ function needsSetup(){return !DATA.setup}
 function needsAPIKey(){return false;}
 
 /* MODAL */
-function showModal(content){
+function showModal(content, options){
   ST.modal=content;
+  const opts = options || {};
+  const locked = !!opts.locked;
   const root=$('modal-root');root.innerHTML='';
-  const bg=mk('div','modal-bg');
-  // Track where mousedown started - only close if BOTH down and up were on backdrop
-  let downOnBg = false;
-  bg.addEventListener('mousedown',e=>{downOnBg = (e.target===bg);});
-  bg.addEventListener('mouseup',e=>{if(downOnBg&&e.target===bg)closeModal();downOnBg=false;});
+  const bg=mk('div','modal-bg' + (locked ? ' locked' : ''));
+  if(!locked){
+    // Track where mousedown started - only close if BOTH down and up were on backdrop
+    let downOnBg = false;
+    bg.addEventListener('mousedown',e=>{downOnBg = (e.target===bg);});
+    bg.addEventListener('mouseup',e=>{if(downOnBg&&e.target===bg)closeModal();downOnBg=false;});
+  }
   const mod=mk('div','modal');
   mod.appendChild(content);
   bg.appendChild(mod);root.appendChild(bg);
@@ -8502,7 +8805,7 @@ function renderWelcome(){
   const pilarGrid = mk('div','wel-pilares');
   [
     {n:'1',title:'Fontes',icon:'📄',desc:'Suas apostilas, PDFs e materiais. A IA usa pra gerar questões fiéis ao que você estudou.'},
-    {n:'2',title:'Questões',icon:'❓',desc:'Geradas pela IA com base no edital ou importadas do TEC. Validação interna + avaliação da comunidade.'},
+    {n:'2',title:'Questões',icon:'❓',desc:'Geradas pela IA com base no edital, ou importadas do TEC e outras plataformas. Validação interna + avaliação da comunidade.'},
     {n:'3',title:'Flashcards SRS',icon:'🎴',desc:'Criados a partir dos seus erros. Voltam pra revisão pelo algoritmo de repetição espaçada.'},
     {n:'4',title:'Mapa da matéria',icon:'🗺️',desc:'Tópicos da disciplina conectados entre si. Você vê onde tem buracos e foca onde precisa.'},
     {n:'5',title:'Provas e Simulados',icon:'📝',desc:'Registre provas reais que fez, simulados externos ou faça simulados aqui mesmo.'}
@@ -8703,78 +9006,92 @@ function renderWelcome(){
 
   // ====== TRANSPARÊNCIA DE CUSTO ======
   const credSec = mk('section','wel-section wel-credits');
-  const credLbl = mk('div','wel-section-label');credLbl.textContent='Transparência de custo';
+  const credLbl = mk('div','wel-section-label');credLbl.textContent='Transparência de uso';
   credSec.appendChild(credLbl);
-  const credHead = mk('h2','wel-section-title');credHead.textContent='Você sabe o que cada real rende';
+  const credHead = mk('h2','wel-section-title');credHead.textContent='Você sabe o que cada crédito rende';
   credSec.appendChild(credHead);
   const credSub = mk('p','wel-section-sub');
-  credSub.textContent='Você vê em tempo real quantos créditos cada ação consome — com painel de projeções e seu uso real.';
+  credSub.textContent='Cada ação tem um custo claro em créditos — sem surpresas no fim do mês. Veja o que cada plano rende:';
   credSec.appendChild(credSub);
 
-  const targetUSD = 5.00;
-  function estimateCount(kind, fallbackCostPerCall){
-    const avg = (typeof avgCostByKind==='function') ? avgCostByKind(kind) : null;
-    const cost = avg || fallbackCostPerCall;
-    return Math.round(targetUSD / cost);
-  }
-  const qCount = estimateCount('question', 0.0047);
-  const fCount = estimateCount('flashcard', 0.0070);
-  const iCount = estimateCount('insight', 0.0165);
-
-  const credTotal = mk('div','wel-credits-total');
-  credTotal.innerHTML = `<span class="wct-price">R$ 25</span><span class="wct-equals">rendem até</span>`;
-  credSec.appendChild(credTotal);
-
-  const credRow = mk('div','wel-credits-row');
-  [
-    {value:qCount.toLocaleString('pt-BR'),label:'questões<br>geradas',icon:'📝'},
-    {value:fCount.toLocaleString('pt-BR'),label:'flashcards<br>criados',icon:'🎴'},
-    {value:iCount.toLocaleString('pt-BR'),label:'análises<br>do mentor',icon:'🧠'}
-  ].forEach((c,i)=>{
-    const cell = mk('div','wel-credit-cell');
-    cell.innerHTML = `<div class="wc-icon">${c.icon}</div><div class="wc-value">${c.value}</div><div class="wc-label">${c.label}</div>`;
-    credRow.appendChild(cell);
-    if(i<2){
-      const sep = mk('div','wel-credit-sep');
-      sep.textContent='OU';
-      credRow.appendChild(sep);
-    }
-  });
-  credSec.appendChild(credRow);
+  // Tabela fixa: quantos créditos custa cada ação (alinha com AI_COSTS no código)
+  // Mostra rendimento por plano em vez de "rende R$25" (que dava margem visível)
+  const credTable = mk('div','wel-credits-table');
+  credTable.innerHTML = `
+    <div class="wct-header">
+      <div class="wct-action">Ação</div>
+      <div class="wct-cost">Custo em créditos</div>
+    </div>
+    <div class="wct-row">
+      <div class="wct-action"><span class="wct-icon">📝</span> Questão certo/errado</div>
+      <div class="wct-cost"><b>1</b> crédito</div>
+    </div>
+    <div class="wct-row">
+      <div class="wct-action"><span class="wct-icon">🎴</span> Flashcard a partir do erro</div>
+      <div class="wct-cost"><b>1</b> crédito</div>
+    </div>
+    <div class="wct-row">
+      <div class="wct-action"><span class="wct-icon">📊</span> Simulado completo (10 questões)</div>
+      <div class="wct-cost"><b>30</b> créditos</div>
+    </div>
+    <div class="wct-row">
+      <div class="wct-action"><span class="wct-icon">📋</span> Síntese de edital com IA premium</div>
+      <div class="wct-cost"><b>30</b> créditos</div>
+    </div>
+    <div class="wct-row">
+      <div class="wct-action"><span class="wct-icon">🧠</span> Análise mentor / mapa</div>
+      <div class="wct-cost"><b>~2</b> créditos</div>
+    </div>
+  `;
+  credSec.appendChild(credTable);
 
   const credNote = mk('p','wel-credits-note');
-  credNote.innerHTML = 'Valores máximos aproximados em cada categoria separadamente. Combinando usos, o total se ajusta proporcionalmente. Modelo Claude Haiku 4.5 com cache ativo.';
+  credNote.innerHTML = 'Valores aproximados. A quantidade exata varia conforme o tamanho do material e do modelo de IA escolhido (Haiku rápido ou Sonnet profundo).';
   credSec.appendChild(credNote);
 
   // === CRÉDITOS INICIAIS GRÁTIS (trial) ===
-  // Usuário ganha 50 créditos ao criar conta pra testar a plataforma
+  // Usuário ganha 25 créditos ao criar conta pra testar a plataforma
   const trialBox = mk('div','wel-trial-box');
   trialBox.innerHTML = `
     <div class="wtb-head">
       <span class="wtb-icon">🎁</span>
       <div class="wtb-title-block">
-        <div class="wtb-title">Você começa com <b>50 créditos grátis</b></div>
-        <div class="wtb-sub">Sem cartão · suficientes pra testar a plataforma com calma</div>
+        <div class="wtb-title">Você começa com <b>25 créditos grátis</b></div>
+        <div class="wtb-sub">Sem cartão de crédito · sem compromisso</div>
       </div>
     </div>
     <div class="wtb-grid">
       <div class="wtb-cell">
-        <div class="wtb-num">~50</div>
+        <div class="wtb-num">25</div>
         <div class="wtb-lbl">questões<br>geradas</div>
       </div>
       <div class="wtb-or">ou</div>
       <div class="wtb-cell">
-        <div class="wtb-num">~30</div>
+        <div class="wtb-num">25</div>
         <div class="wtb-lbl">flashcards<br>criados</div>
       </div>
       <div class="wtb-or">ou</div>
       <div class="wtb-cell">
-        <div class="wtb-num">~10</div>
+        <div class="wtb-num">~12</div>
         <div class="wtb-lbl">análises<br>do mentor</div>
       </div>
     </div>
-    <p class="wtb-foot">Tempo médio nos créditos iniciais: <b>3 a 7 dias</b> de uso ativo, dependendo do mix de funções que você explorar. Tempo suficiente pra entender se o Gralia funciona pro seu jeito de estudar.</p>
+    <p class="wtb-cta-text">Crie sua conta agora e ganhe os créditos pra testar todos os 8 métodos de estudo. Sem cartão. Sem compromisso. <b>Decida assinar só depois de experimentar.</b></p>
   `;
+  // Adiciona botão CTA dinâmico (não dá pra colocar onclick em innerHTML diretamente)
+  const trialCta = mk('button','btn btn-p wtb-cta-btn');
+  trialCta.textContent = 'Criar minha conta grátis →';
+  trialCta.addEventListener('click', ()=>{
+    DATA.welcomeShown = true;
+    DATA.setup = true;
+    save();
+    if(supabaseConfigured() && !isAuthed()){
+      ST.showAuth = true;
+      ST.authMode = 'signup';
+    }
+    render();
+  });
+  trialBox.appendChild(trialCta);
   credSec.appendChild(trialBox);
   wrap.appendChild(credSec);
 
@@ -8864,7 +9181,9 @@ function renderWelcome(){
 
   const plansGrid = mk('div','wel-plans-grid');
   plansData.forEach(plan=>{
-    const card = mk('div','wel-plan-card'+(plan.featured?' featured':''));
+    const tierClass = plan.id === 'pro' ? ' tier-premium' :
+                      plan.id === 'concurseiro' ? ' tier-recommended' : ' tier-basic';
+    const card = mk('div','wel-plan-card'+(plan.featured?' featured':'')+tierClass);
     const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice;
     const period = isYearly ? '/ano' : '/mês';
     const monthlyEquiv = isYearly ? (plan.yearlyPrice / 12).toFixed(2).replace('.',',') : null;
@@ -8908,7 +9227,7 @@ function renderWelcome(){
   topupInfo.innerHTML = `
     <div class="wti-icon">⚡</div>
     <div class="wti-text">
-      <b>Acabaram os créditos antes do mês?</b> Compre pacotes avulsos: 100 créditos por R$ 9,90, 300 por R$ 24,90 ou 1000 por R$ 69,90. Top-ups <b>não expiram</b> — acumulam mesmo se você cancelar a assinatura.
+      <b>Acabaram os créditos antes do mês?</b> Assinantes podem comprar pacotes avulsos: 100 créditos por R$ 14,90, 300 por R$ 34,90 ou 1000 por R$ 89,90. Top-ups <b>não expiram</b> — acumulam mesmo se você cancelar a assinatura.
     </div>
   `;
   plansSec.appendChild(topupInfo);
@@ -9238,8 +9557,12 @@ function renderTopbar(){
   const mobileInfo = mk('div','mobile-menu-info');
   const ec2 = examCountdown();
   const daysText = ec2.label;
-  const daysPillClass = ec2.status==='before' ? (ec2.days>30?'ok':(ec2.days>7?'warn':'urgent')) : (ec2.status==='today'?'urgent':'past');
-  const mmiLabel = ec2.status==='before' ? 'Faltam para a prova' : (ec2.status==='today' ? 'Sua prova é hoje' : 'Próxima prova');
+  const daysPillClass = ec2.status==='unset' ? 'past' :
+                         ec2.status==='before' ? (ec2.days>30?'ok':(ec2.days>7?'warn':'urgent')) :
+                         (ec2.status==='today'?'urgent':'past');
+  const mmiLabel = ec2.status==='unset' ? 'Defina sua data de prova' :
+                   ec2.status==='before' ? 'Faltam para a prova' :
+                   (ec2.status==='today' ? 'Sua prova é hoje' : 'Próxima prova');
   mobileInfo.innerHTML = `
     <div class="mobile-menu-info-row">
       <span class="mmi-label">${mmiLabel}</span>
@@ -9293,7 +9616,20 @@ function renderTopbar(){
 
   const ec = examCountdown();
   const pill = mk('div','countdown-pill countdown-'+ec.status);
-  if(ec.needsUpdate){
+  if(ec.status === 'unset'){
+    // V12: Sem data definida — pill vira convite pra configurar
+    pill.textContent = '+ Data';
+    pill.style.cursor = 'pointer';
+    pill.title = 'Defina sua data de prova';
+    pill.addEventListener('click',()=>{
+      ST.view='settings';
+      render();
+      setTimeout(()=>{
+        const dateInput = document.querySelector('input[type="date"]');
+        if(dateInput){ dateInput.focus(); dateInput.scrollIntoView({behavior:'smooth',block:'center'}); }
+      }, 200);
+    });
+  } else if(ec.needsUpdate){
     // Pós-prova há mais de 7 dias — pill vira botão de atualização
     pill.textContent = ec.shortLabel;
     pill.style.cursor = 'pointer';
@@ -9301,7 +9637,6 @@ function renderTopbar(){
     pill.addEventListener('click',()=>{
       ST.view='settings';
       render();
-      // Foca o campo de data
       setTimeout(()=>{
         const dateInput = document.querySelector('input[type="date"]');
         if(dateInput){ dateInput.focus(); dateInput.scrollIntoView({behavior:'smooth',block:'center'}); }
@@ -9438,7 +9773,23 @@ function renderDashboard(){
   // ===== HERO — countdown + exam info =====
   const hero = mk('div','dash-hero');
   const heroLeft = mk('div','dash-hero-left');
-  if(ec.status === 'before'){
+  if(ec.status === 'unset'){
+    // V12: Conta nova — convite pra definir data, sem countdown fake
+    const big = mk('div','dash-hero-big');big.textContent='📅';big.style.fontSize='44px';
+    heroLeft.appendChild(big);
+    const heroLabel = mk('div','dash-hero-label');
+    heroLabel.innerHTML = `<div class="dhl-main">DEFINA SUA PROVA</div><div class="dhl-sub">Adicione data e nome da prova pra receber contagem regressiva personalizada</div>`;
+    heroLeft.appendChild(heroLabel);
+    heroLeft.style.cursor = 'pointer';
+    heroLeft.addEventListener('click',()=>{
+      ST.view='settings';
+      render();
+      setTimeout(()=>{
+        const dateInput = document.querySelector('input[type="date"]');
+        if(dateInput){ dateInput.focus(); dateInput.scrollIntoView({behavior:'smooth',block:'center'}); }
+      }, 200);
+    });
+  } else if(ec.status === 'before'){
     const big = mk('div','dash-hero-big');big.textContent=ec.days;
     heroLeft.appendChild(big);
     const heroLabel = mk('div','dash-hero-label');
@@ -9522,7 +9873,7 @@ function renderDashboard(){
         </div>
         <div class="dash-goal-progress">
           <span>📝 <b>${view.doneQ}</b>/${g.questionsTarget} (${view.pctQ}%)</span>
-          <span>🍅 <b>${view.donePomos}</b>/${g.pomosTarget} (${view.pctP}%)</span>
+          <span>🌰 <b>${view.donePomos}</b>/${g.pomosTarget} (${view.pctP}%)</span>
         </div>
       </div>
       <div class="dash-goal-cta">→</div>
@@ -9685,16 +10036,26 @@ const AI_COSTS = {
   drill_session: 5             // Sessão completa de Drill (várias questões)
 };
 
+// V12: Multiplicador de custo conforme modelo escolhido
+// Sonnet 4.6 custa ~6x mais que Haiku 4.5 em tokens. Refletir no badge.
+function getModelCostMultiplier(methodKey){
+  const model = methodKey ? getMethodModel(methodKey) : (DATA?.config?.model || 'claude-haiku-4-5-20251001');
+  if(model && model.includes('sonnet')) return 6;
+  return 1;
+}
+
 // Cria o badge visual "~X créditos"
 function aiCostBadge(costKey, options){
   const cost = typeof costKey === 'number' ? costKey : (AI_COSTS[costKey] || 1);
   const opts = options || {};
+  const mult = opts.methodKey ? getModelCostMultiplier(opts.methodKey) : 1;
+  const finalCost = Math.round(cost * mult);
   const span = document.createElement('span');
-  span.className = 'ai-cost-badge' + (opts.size === 'lg' ? ' lg' : '') + (opts.tone || '');
+  span.className = 'ai-cost-badge' + (opts.size === 'lg' ? ' lg' : '') + (opts.tone || '') + (mult > 1 ? ' premium' : '');
   const prefix = opts.prefix === false ? '' : '~';
-  const label = opts.label || (cost === 1 ? 'crédito' : 'créditos');
-  span.innerHTML = `<span class="acb-icon">⚡</span><span class="acb-text">${prefix}${cost} ${label}</span>`;
-  span.title = `Esta ação consome aproximadamente ${cost} ${label} de IA`;
+  const label = opts.label || (finalCost === 1 ? 'crédito' : 'créditos');
+  span.innerHTML = `<span class="acb-icon">⚡</span><span class="acb-text">${prefix}${finalCost} ${label}</span>`;
+  span.title = `Esta ação consome aproximadamente ${finalCost} ${label} de IA${mult>1?' (modelo Sonnet — mais caro que Haiku)':''}`;
   return span;
 }
 
@@ -9702,10 +10063,13 @@ function aiCostBadge(costKey, options){
 function aiCostBadgeHTML(costKey, options){
   const cost = typeof costKey === 'number' ? costKey : (AI_COSTS[costKey] || 1);
   const opts = options || {};
-  const cls = 'ai-cost-badge' + (opts.size === 'lg' ? ' lg' : '');
+  const mult = opts.methodKey ? getModelCostMultiplier(opts.methodKey) : 1;
+  const finalCost = Math.round(cost * mult);
+  const cls = 'ai-cost-badge' + (opts.size === 'lg' ? ' lg' : '') + (mult > 1 ? ' premium' : '');
   const prefix = opts.prefix === false ? '' : '~';
-  const label = opts.label || (cost === 1 ? 'crédito' : 'créditos');
-  return `<span class="${cls}" title="Esta ação consome aproximadamente ${cost} ${label} de IA"><span class="acb-icon">⚡</span><span class="acb-text">${prefix}${cost} ${label}</span></span>`;
+  const label = opts.label || (finalCost === 1 ? 'crédito' : 'créditos');
+  const title = `Esta ação consome aproximadamente ${finalCost} ${label} de IA${mult>1?' (modelo Sonnet — mais caro que Haiku)':''}`;
+  return `<span class="${cls}" title="${title}"><span class="acb-icon">⚡</span><span class="acb-text">${prefix}${finalCost} ${label}</span></span>`;
 }
 
 function buildNextActionCard(dueSrs,errorsNoCard,overconf,sess){
@@ -10853,9 +11217,9 @@ function renderSourceAdd(wrap){
       }
       // Sucesso — preenche o formulário
       ST.srcInput.content = result.text;
-      // Auto-preenche nome se vazio: prefere título do PDF, senão nome do arquivo
+      // V12: Auto-preenche nome com título limpo e padronizado (não nome de arquivo cru)
       if(!ST.srcInput.name || !ST.srcInput.name.trim()){
-        ST.srcInput.name = (result.title || file.name.replace(/\.pdf$/i,'')).slice(0, 100);
+        ST.srcInput.name = cleanSourceTitle(result.title || file.name);
       }
       // Tipo padrão: relatório
       if(!ST.srcInput.type || ST.srcInput.type === 'relatorio'){
@@ -11179,7 +11543,7 @@ function renderSourceAdd(wrap){
   wrap.appendChild(addCard);
 
   const tip = mk('div','card');tip.style.marginTop='.75rem';
-  tip.innerHTML='<div class="section-label">💡 Como extrair do NotebookLM</div><ul class="txt2" style="padding-left:1.25rem;line-height:1.8;"><li><b>Relatório/Briefing:</b> abra → selecione texto → copie → cole como "Relatório"</li><li><b>Áudio:</b> clique em "Mostrar transcrição" → cole como "Áudio"</li><li><b>Vídeo:</b> transcrição → cole como "Vídeo"</li><li><b>Flashcards:</b> copie a lista → cole como "Flashcards"</li><li><b>PDF:</b> use o botão acima — o texto é extraído automaticamente</li></ul>';
+  tip.innerHTML='<div class="section-label">💡 Como adicionar fontes</div><ul class="txt2" style="padding-left:1.25rem;line-height:1.8;"><li><b>PDF:</b> use o botão "Anexar PDF" — o texto é extraído automaticamente, sem nomes de professores ou links</li><li><b>Texto:</b> copie de qualquer lugar (apostila digital, NotebookLM, sites) e cole no campo de conteúdo</li><li><b>Áudio/Vídeo:</b> abra a transcrição (legenda) → copie → cole como "Áudio" ou "Vídeo"</li><li><b>Flashcards de outras plataformas:</b> exporte como texto → cole como "Flashcards"</li><li><b>Mais a fonte que se parece com a sua realidade de estudo</b>, melhor — a IA usa esse contexto pra fazer questões parecidas com o que cai na sua prova</li></ul>';
   wrap.appendChild(tip);
   return wrap;
 }
@@ -11863,10 +12227,14 @@ function questionCard(q){
   return wrap;
 }
 function answerButtons(onClick,disabled){
-  const r = mk('div','flex');r.style.marginTop='.875rem';
+  const r = mk('div','flex answer-btn-row');r.style.marginTop='.875rem';
   ['C','E'].forEach(a=>{
     const b = mkBtn(a==='C'?'Certo':'Errado','btn btn-ans '+(a==='C'?'btn-c':'btn-e'));
     b.disabled = disabled;
+    // V12: Dica de atalho discreta no botão
+    const kbd = mk('span','btn-kbd-hint');
+    kbd.textContent = a;
+    b.appendChild(kbd);
     b.addEventListener('click',()=>onClick(a));
     r.appendChild(b);
   });
@@ -13243,7 +13611,14 @@ function renderMapa(){
         if(scope==='all' && !entry.hasFonte){
           const noSrcTag = mk('span','map-nosource-tag');
           noSrcTag.textContent = '📝';
-          noSrcTag.title = 'Este tópico vem apenas de questões TEC — não há fonte cadastrada que o cubra';
+          // V12: Texto mais preciso — pode ser questão importada OU IA gerada
+          const aiOnly = entry.aiCount > 0 && entry.importedCount === 0;
+          const impOnly = entry.importedCount > 0 && entry.aiCount === 0;
+          let tooltipText;
+          if(aiOnly) tooltipText = 'Tópico vem apenas de questões geradas pela IA — sem fonte cadastrada que o cubra';
+          else if(impOnly) tooltipText = 'Tópico vem apenas de questões importadas — sem fonte cadastrada que o cubra';
+          else tooltipText = 'Tópico vem apenas de questões praticadas — sem fonte cadastrada que o cubra';
+          noSrcTag.title = tooltipText;
           left.appendChild(noSrcTag);
         }
         // Merged indicator — tópicos que foram deduplicados têm 2+ variantes
@@ -13383,7 +13758,8 @@ function renderMapTopicDetail(map){
     statsBar.appendChild(s);
   }
   if(entry.questions.length>0){
-    const s = mk('span','map-stat-chip');s.innerHTML=`📝 <b>${entry.questions.length}</b> questão(ões)`;
+    const n = entry.questions.length;
+    const s = mk('span','map-stat-chip');s.innerHTML=`📝 <b>${n}</b> ${n===1?'questão':'questões'}`;
     statsBar.appendChild(s);
   }
   const dom = topicDominantTrap(entry);
@@ -13501,6 +13877,28 @@ function renderMapTopicDetail(map){
     const credText = `usa ~${cost.min}-${cost.max} créditos`;
     genBtn.innerHTML = `🧠 Gerar perfil completo <span class="btn-cost-hint ${cost.tier}">${credText}</span>`;
     genBtn.addEventListener('click',()=>{
+      // V12: Perfil completo é Sonnet (caro). Bloqueia trial.
+      const planId = getCurrentPlanId();
+      if(planId === 'trial'){
+        const m = mk('div'); m.style.cssText='max-width:440px';
+        m.innerHTML = `
+          <div class="topup-blocked">
+            <div class="tub-icon">🧠</div>
+            <h2 class="tub-title">Perfil completo é pra assinantes</h2>
+            <p class="tub-text">A geração de perfil completo de tópico usa o modelo IA premium e consome 8+ créditos. Disponível pros planos Estudante, Concurseiro e Pro.</p>
+            <p class="tub-hint">No trial, você pode usar resumos rápidos de tópico (2 créditos) que cobrem o essencial.</p>
+          </div>
+        `;
+        const ctaRow = mk('div');ctaRow.style.cssText='display:flex;gap:8px;justify-content:center;margin-top:1.25rem';
+        const seePlans = mkBtn('Ver planos →','btn btn-p');
+        seePlans.addEventListener('click',()=>{closeModal(); ST.view='plans'; render();});
+        const cancel = mkBtn('Cancelar','btn btn-sm');
+        cancel.addEventListener('click', closeModal);
+        ctaRow.appendChild(cancel); ctaRow.appendChild(seePlans);
+        m.appendChild(ctaRow);
+        showModal(m);
+        return;
+      }
       showConfirmModal({
         title:'Gerar perfil completo?',
         message:`A IA vai gerar um estudo profundo deste tópico (8 seções no formato Cebraspe). Custo estimado: ${cost.min}-${cost.max} créditos. Modelo: ${shortModelName(model)}.\n\nDepois fica salvo permanentemente — você consulta sem gastar mais nada.`,
@@ -13752,7 +14150,7 @@ function renderHistory(){
   if(reviewSource.length>=3){
     const qrWrap = mk('div');qrWrap.style.cssText='margin-bottom:1rem';
     const qrBtn = mk('button','quick-review-btn');
-    qrBtn.innerHTML = `<span>⚡ <b>Revisar erros recentes</b></span><span>${reviewSource.length} questão(ões) em sequência</span>`;
+    qrBtn.innerHTML = `<span>⚡ <b>Revisar erros recentes</b></span><span>${reviewSource.length} ${reviewSource.length===1?'questão':'questões'} em sequência</span>`;
     qrBtn.addEventListener('click',()=>startHistoryQuickReview(reviewSource));
     qrWrap.appendChild(qrBtn);
     wrap.appendChild(qrWrap);
@@ -14456,7 +14854,7 @@ function renderImported(){
   const wrap = mk('div','fade');
   const h = mk('h1');h.textContent='📚 Banco de Questões';
   const sub = mk('p','txt2');sub.style.marginBottom='1rem';
-  sub.textContent='Suas questões — importadas do TEC ou geradas pela IA durante prática. Organize em cadernos temáticos.';
+  sub.textContent='Suas questões — importadas (TEC Concursos ou texto avulso) ou geradas pela IA durante prática. Organize em cadernos temáticos.';
   wrap.appendChild(h);wrap.appendChild(sub);
 
   const sub2 = ST.importedSubview||'list';
@@ -14751,7 +15149,7 @@ function renderImportedImport(wrap){
           if(parsed===0){
             showToast('⚠ Nenhuma questão identificada. Revise o texto extraído e ajuste se necessário.');
           } else {
-            showToast(`✓ ${parsed} questão(ões) extraída(s) do PDF.`);
+            showToast(`✓ ${parsed} ${parsed===1?'questão extraída':'questões extraídas'} do PDF.`);
           }
           render();
         }catch(err){
@@ -14830,7 +15228,7 @@ function renderImportedImport(wrap){
     const mc = preview.filter(q=>q.kind==='MC').length;
     const ce = preview.filter(q=>q.kind==='CE'&&q.answer).length;
     const summary = mk('p','txt2');summary.style.marginBottom='.5rem';
-    summary.innerHTML = `<b>${parsed}</b> questão(ões) com gabarito${ce>0?` · <span style="color:var(--accent-text)">${ce} C/E</span>`:''}${mc>0?` · <span style="color:var(--blue-text)">${mc} múltipla escolha</span>`:''}${pending>0?` · <span style="color:var(--amber-text)">${pending} sem gabarito</span>`:''}`;
+    summary.innerHTML = `<b>${parsed}</b> ${parsed===1?'questão':'questões'} com gabarito${ce>0?` · <span style="color:var(--accent-text)">${ce} C/E</span>`:''}${mc>0?` · <span style="color:var(--blue-text)">${mc} múltipla escolha</span>`:''}${pending>0?` · <span style="color:var(--amber-text)">${pending} sem gabarito</span>`:''}`;
     container.appendChild(summary);
     preview.forEach((q,i)=>{
       const it = mk('div','card card-pad');it.style.marginBottom='.5rem';
@@ -16689,7 +17087,7 @@ function renderCalibration(){
     const lastB = buildLastGenBadge('calibration','question');
     if(lastB){lastB.style.marginBottom='.875rem';wrap.appendChild(lastB);}
     const b = mk('button','btn btn-p');
-    b.innerHTML = 'Iniciar calibração → ' + aiCostBadgeHTML('practice_question');
+    b.innerHTML = 'Iniciar calibração → ' + aiCostBadgeHTML('practice_question',{methodKey:'calibration'});
     b.addEventListener('click',()=>calibStart(wrap));
     wrap.appendChild(b);return wrap;
   }
@@ -16810,7 +17208,7 @@ function renderExaminer(){
     const lastB = buildLastGenBadge('examiner','question');
     if(lastB){lastB.style.marginBottom='.875rem';wrap.appendChild(lastB);}
     const b = mk('button','btn btn-p');
-    b.innerHTML = 'Receber conceito → ' + aiCostBadgeHTML('examiner_review');
+    b.innerHTML = 'Receber conceito → ' + aiCostBadgeHTML('examiner_review',{methodKey:'examiner'});
     b.addEventListener('click',()=>examFetch(wrap));
     wrap.appendChild(b);return wrap;
   }
@@ -16940,7 +17338,7 @@ function renderDrill(){
       const d = mk('p','txt2');d.style.cssText='margin:0 0 1.25rem;font-size:13px;line-height:1.55';
       d.textContent = 'A IA vai gerar questões focadas exclusivamente nessa armadilha até você dominar o padrão.';
       const startBtn = mk('button','btn btn-p btn-lg');
-      startBtn.innerHTML = '▶ Começar drill ' + aiCostBadgeHTML('practice_question');
+      startBtn.innerHTML = '▶ Começar drill ' + aiCostBadgeHTML('practice_question',{methodKey:'drill'});
       startBtn.addEventListener('click',()=>drillStart(ST.drillTarget,cta));
       cta.appendChild(em);cta.appendChild(t);cta.appendChild(d);cta.appendChild(startBtn);
       wrap.appendChild(cta);
@@ -17037,7 +17435,7 @@ function renderElaborative(){
     const lastB = buildLastGenBadge('elaborative','question');
     if(lastB){lastB.style.marginBottom='.875rem';wrap.appendChild(lastB);}
     const b = mk('button','btn btn-p');
-    b.innerHTML = 'Receber pergunta → ' + aiCostBadgeHTML('practice_question');
+    b.innerHTML = 'Receber pergunta → ' + aiCostBadgeHTML('practice_question',{methodKey:'elaborative'});
     b.addEventListener('click',()=>elabFetch(wrap));
     wrap.appendChild(b);return wrap;
   }
@@ -17143,7 +17541,7 @@ function renderPractice(){
     toggle.appendChild(lbl);
     const aiBtn = mk('button','conf-btn'+(ST.practiceSource==='ai'?' sel-c':''));
     aiBtn.style.cssText='padding:6px 12px;font-size:12.5px';
-    aiBtn.innerHTML='🤖 IA (baseado no NotebookLM)';
+    aiBtn.innerHTML='🤖 IA (baseada nas suas fontes)';
     aiBtn.addEventListener('click',()=>{ST.practiceSource='ai';render();});
     toggle.appendChild(aiBtn);
     if(importedCount>0){
@@ -17175,9 +17573,16 @@ function renderPractice(){
     if(lastBadge){lastBadge.style.marginBottom='.875rem';wrap.appendChild(lastBadge);}
 
     const b = mk('button','btn btn-p');
-    b.innerHTML = 'Iniciar → ' + aiCostBadgeHTML('practice_question');
+    b.innerHTML = 'Iniciar → ' + aiCostBadgeHTML('practice_question',{methodKey:'practice'});
     b.addEventListener('click',()=>practStart(wrap));
     wrap.appendChild(b);
+    // V12: Dica de conforto visual — também aparece no Practice (item 15)
+    // Usuário tá prestes a passar muito tempo respondendo questões.
+    const eyeHint = mk('button','eye-hint-link');
+    eyeHint.type = 'button';
+    eyeHint.innerHTML = '👁 <span>Dica: ajuste tela e iluminação antes de começar — reduz fadiga ocular</span>';
+    eyeHint.addEventListener('click',()=>{ST.view='eyeCare';render();});
+    wrap.appendChild(eyeHint);
     return wrap;
   }
 
@@ -17510,7 +17915,7 @@ function renderInterleaving(){
     const lastB = buildLastGenBadge('interleaving','question');
     if(lastB){lastB.style.marginBottom='.875rem';wrap.appendChild(lastB);}
     const b = mk('button','btn btn-p');
-    b.innerHTML = 'Iniciar intercalação → ' + aiCostBadgeHTML('practice_question');
+    b.innerHTML = 'Iniciar intercalação → ' + aiCostBadgeHTML('practice_question',{methodKey:'interleaving'});
     b.addEventListener('click',()=>interStart(wrap));
     wrap.appendChild(b);return wrap;
   }
@@ -18873,6 +19278,53 @@ async function extractPdfTextRich(file, onProgress){
 // - Nomes de professores e cumprimentos do tipo "Prof. Fulano", "Professor Fulano"
 // - Linhas de copyright e crédito de autoria
 // Mantém o conteúdo didático intacto. Aplicado AUTOMATICAMENTE no parse do PDF.
+// V12: Padroniza título de fonte importada
+// Remove ruído de nomes de arquivo (.pdf, números de versão, hashes, datas)
+// E capitaliza de forma consistente pra ficar bonito na descoberta da comunidade.
+function cleanSourceTitle(raw){
+  if(!raw) return 'Nova fonte';
+  let title = String(raw).trim();
+
+  // Remove extensão de arquivo
+  title = title.replace(/\.(pdf|docx?|txt|md|html?|epub|rtf)$/i, '');
+
+  // Remove ruídos comuns de exportação
+  title = title.replace(/[_\-]+v?\d+(\.\d+)*$/i, ''); // ex: "_v2", "-v1.3"
+  title = title.replace(/\(\d{4}\)$/, '');             // ex: "(2024)"
+  title = title.replace(/\[\d{8,}\]/g, '');            // hashes numéricos longos
+  title = title.replace(/\b[a-f0-9]{8,}\b/gi, '');     // hashes hexadecimais
+  title = title.replace(/\bcopy\s*\(\d+\)/gi, '');     // "copy (1)"
+  title = title.replace(/\bcópia(\s*\(\d+\))?/gi, ''); // "cópia (1)"
+
+  // Substitui underscore e múltiplos espaços por um espaço só
+  title = title.replace(/[_]+/g, ' ');
+  title = title.replace(/\s{2,}/g, ' ');
+
+  // Remove caracteres especiais soltos no início ou fim
+  title = title.replace(/^[\s\-_.|·]+/, '').replace(/[\s\-_.|·]+$/, '');
+
+  // Capitalização inteligente: primeira de cada palavra significante,
+  // mantém preposições e artigos em minúsculo (estilo de título PT-BR)
+  const minorWords = new Set(['a','o','e','de','da','do','das','dos','para','por','com','sem','em','na','no','nas','nos','um','uma','é','até','sob','sobre','ou']);
+  title = title.toLowerCase().split(' ').map((word, i) => {
+    if(!word) return word;
+    // Mantém siglas em CAPS
+    if(/^[A-Z]{2,}$/.test(raw.split(/\s+/)[i] || '') && raw.toLowerCase().split(' ')[i] === word){
+      return raw.split(/\s+/)[i];
+    }
+    // Primeira palavra sempre maiúscula
+    if(i === 0) return word.charAt(0).toUpperCase() + word.slice(1);
+    // Palavras pequenas em minúsculo
+    if(minorWords.has(word)) return word;
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }).join(' ').trim();
+
+  // Limite final
+  if(title.length > 80) title = title.slice(0, 77).trim() + '...';
+  if(!title) return 'Nova fonte';
+  return title;
+}
+
 function sanitizePdfText(rawText){
   if(!rawText) return rawText;
   let text = rawText;
@@ -20301,7 +20753,7 @@ function showTopicProfileModal(disciplineId, topic, mode){
     m.appendChild(footer);
   }
 
-  showModal(m);
+  showModal(m, {locked: true});
 }
 
 // Helper: tempo relativo amigável
@@ -20781,6 +21233,15 @@ function renderPomodoro(){
   col4.appendChild(l4);col4.appendChild(i4);
   set.appendChild(col4);
   wrap.appendChild(set);
+
+  // V12: Dica sutil de conforto visual — uma boa hora pra mostrar é no Pomodoro
+  // (onde o usuário tá olhando pra tela há tempos). Click leva pra página detalhada.
+  const eyeHint = mk('button','eye-hint-link');
+  eyeHint.type = 'button';
+  eyeHint.innerHTML = '👁 <span>Cuide dos seus olhos enquanto estuda — dicas rápidas</span>';
+  eyeHint.addEventListener('click',()=>{ST.view='eyeCare';render();});
+  wrap.appendChild(eyeHint);
+
   return wrap;
 }
 
@@ -20904,17 +21365,26 @@ function renderPomoFloat(){
   if(!widget){
     widget = document.createElement('div');
     widget.className = 'pomo-float';
+    // V12: Layout redesenhado — círculo radial em vez de barra horizontal
+    // Circumferência = 2π × 18 ≈ 113.1 (raio 18 em SVG 44×44)
     widget.innerHTML = `
-      <div class="pf-progress"><div class="pf-progress-fill"></div></div>
       <div class="pf-row">
-        <span class="pf-emoji"></span>
+        <div class="pf-circle">
+          <svg width="44" height="44" viewBox="0 0 44 44">
+            <circle class="pf-circle-bg" cx="22" cy="22" r="18"/>
+            <circle class="pf-circle-fg" cx="22" cy="22" r="18" stroke-dasharray="113.1" stroke-dashoffset="113.1"/>
+          </svg>
+          <span class="pf-emoji"></span>
+        </div>
         <div class="pf-info">
           <span class="pf-time"></span>
           <span class="pf-phase"></span>
         </div>
-        <button class="pf-btn pf-toggle" title="Pausar/Continuar">⏸</button>
-        <button class="pf-btn pf-goto" title="Ir pro Pomodoro">↗</button>
-        <button class="pf-btn pf-hide" title="Ocultar (volta ao reabrir)">×</button>
+        <div class="pf-btns">
+          <button class="pf-btn pf-toggle" title="Pausar/Continuar">⏸</button>
+          <button class="pf-btn pf-goto" title="Ir pro Pomodoro">↗</button>
+          <button class="pf-btn pf-hide" title="Ocultar (volta ao reabrir)">×</button>
+        </div>
       </div>
     `;
     root.appendChild(widget);
@@ -20934,7 +21404,12 @@ function renderPomoFloat(){
   widget.querySelector('.pf-emoji').textContent = phaseEmoji[p.phase]||'⏱';
   widget.querySelector('.pf-phase').textContent = phaseLabels[p.phase]||'';
   widget.querySelector('.pf-toggle').textContent = p.running?'⏸':'▶';
-  widget.querySelector('.pf-progress-fill').style.width = pct+'%';
+  // Círculo radial — circumferência 113.1, dashoffset diminui conforme avança
+  const circleFg = widget.querySelector('.pf-circle-fg');
+  if(circleFg){
+    const offset = 113.1 * (1 - pct/100);
+    circleFg.style.strokeDashoffset = offset;
+  }
   widget.classList.toggle('paused',!p.running);
   widget.classList.remove('focus','sbreak','lbreak');
   widget.classList.add(p.phase);
@@ -21221,7 +21696,7 @@ function renderMilestoneItem(m){
       break;
     }
     case 'pomos_milestone':{
-      icon = '🍅';
+      icon = '🌰';
       const v = m.payload?.value || m.sub_key;
       text = `${author} completou ${v} pomodoros`;
       break;
@@ -21324,7 +21799,12 @@ function renderFeed(){
   const ttl = mk('h1','page-h1');ttl.style.margin='0';ttl.innerHTML = '📡 Da rede <span class="page-h1-tag">marcos das pessoas que você segue</span>';
   head.appendChild(ttl);
   const discoverBtn = mkBtn('🌐 Descobrir pessoas','btn btn-sm');
-  discoverBtn.addEventListener('click',()=>{ST.view='discover';render();});
+  discoverBtn.addEventListener('click',()=>{
+    // V12: também seleciona aba "pessoas"
+    ST.discoverTab = 'people';
+    ST.view='discover';
+    render();
+  });
   head.appendChild(discoverBtn);
   wrap.appendChild(head);
 
@@ -25816,6 +26296,16 @@ function showCreateEditalModal(){
   generate.addEventListener('click',async()=>{
     if(!state.name.trim()){alert('Dê um nome curto pra esta análise.');nIn.focus();return;}
     if(!state.text || state.text.trim().length < 200){alert('Cole o texto do edital ou anexe um PDF (mínimo 200 caracteres).');return;}
+    // V12: gating de plano pra síntese de edital
+    const planCheck = checkPlanFeature('edital_synthesis');
+    if(!planCheck.allowed){
+      if(confirm(`${planCheck.reason}\n\nVer planos disponíveis?`)){
+        closeModal();
+        ST.view = 'plans';
+        render();
+      }
+      return;
+    }
     if(!confirm(`Sintetizar este edital? Vai consumir ~30 créditos (~$0,30). A análise leva 1-2 minutos.\n\nDeseja continuar?`)) return;
 
     // Cria o edital com status analyzing e fecha modal
@@ -25844,8 +26334,9 @@ function showCreateEditalModal(){
       edital.modelUsed = result.modelUsed;
       edital.costUSD = result.costUSD;
       edital.status = 'ready';
+      // V12: registra uso pra contagem de plano
+      recordEditalUsage();
       save();
-      // Notificação
       showToast('✓ Edital analisado com sucesso');
       // Navega direto pro detalhe
       ST.editalViewId = edital.id;
@@ -27328,6 +27819,34 @@ function showSubscribeModal(plan, billingPeriod){
 }
 
 function showTopupModal(pkg){
+  // V12: Bloqueia trial de comprar top-up (impede burlar sistema de planos)
+  const check = checkPlanFeature('buy_topup');
+  if(!check.allowed){
+    const m = mk('div');m.style.cssText='max-width:480px';
+    m.innerHTML = `
+      <div class="topup-blocked">
+        <div class="tub-icon">🔒</div>
+        <h2 class="tub-title">Top-ups são pra assinantes</h2>
+        <p class="tub-text">${check.reason}</p>
+        <p class="tub-hint">Os planos pagos te dão muito mais créditos por mês do que comprar avulso. Aproveite o desconto BETA pros 200 primeiros assinantes.</p>
+      </div>
+    `;
+    const ctaRow = mk('div');ctaRow.style.cssText='display:flex;gap:8px;justify-content:center;margin-top:1.25rem';
+    const seePlans = mkBtn('Ver planos →','btn btn-p');
+    seePlans.addEventListener('click',()=>{
+      closeModal();
+      ST.view = 'plans';
+      render();
+    });
+    const cancel = mkBtn('Cancelar','btn btn-sm');
+    cancel.addEventListener('click', closeModal);
+    ctaRow.appendChild(cancel);
+    ctaRow.appendChild(seePlans);
+    m.appendChild(ctaRow);
+    showModal(m);
+    return;
+  }
+
   const m = mk('div');m.style.cssText='max-width:440px';
 
   const head = mk('div','source-toc-head');
@@ -27990,35 +28509,37 @@ function buildForestScene(trees){
     svg += drawAraucaria(x, y, 0.5, 'seed');
   });
 
-  // === GRALHA-AZUL DETALHADA ===
-  // Cyanocorax caeruleus tem corpo azul-escuro intenso, peito creme,
-  // crista preta característica, asas azul-cobalto, cauda longa
-  // Animação CSS faz a posição variar em loop
+  // === GRALHA — alinhada à identidade da marca ===
+  // Paleta cinza + roxo Gralia (em vez do azul-cobalto naturalista da Cyanocorax caeruleus)
+  // Silhueta mais esguia, mais elegante — tipo das ilustrações de logo
   svg += `
     <g class="forest-bird" filter="url(#birdShadow)">
-      <!-- Corpo / barriga (creme claro pra contrastar com a silhueta escura) -->
-      <ellipse cx="0" cy="2" rx="9" ry="6" fill="#f5e8d8" opacity="0.95"/>
-      <!-- Peito + corpo principal (azul-cobalto profundo) -->
-      <path d="M -8 -1 Q -10 -5 -7 -7 Q -2 -9 4 -8 Q 9 -6 11 -2 Q 11 3 8 5 Q 3 6 -2 5 Q -7 3 -8 -1 Z"
-            fill="#2c5b9e"/>
-      <!-- Cabeça (mais escura, azul-marinho) -->
-      <circle cx="6" cy="-3" r="5" fill="#1a3a6e"/>
-      <!-- Crista característica (penas pretas pra cima) -->
-      <path d="M 4 -7 Q 5 -11 7 -10 M 6 -8 Q 7 -12 9 -10 M 8 -7 Q 9 -10 10 -8"
-            stroke="#0a1f3d" stroke-width="1.2" stroke-linecap="round" fill="none"/>
-      <!-- Asa esquerda (estendida, animada) -->
-      <path d="M -5 -2 Q -14 -7 -22 -4 Q -18 1 -10 2 Q -7 1 -5 -2 Z"
-            fill="#1f4480" class="forest-bird-wing-l"/>
-      <!-- Asa direita (estendida, animada) -->
-      <path d="M 5 -2 Q 14 -7 22 -4 Q 18 1 10 2 Q 7 1 5 -2 Z"
-            fill="#1f4480" class="forest-bird-wing-r"/>
-      <!-- Cauda comprida (azul-cobalto) -->
-      <path d="M -8 1 L -16 5 L -14 7 L -7 4 Z" fill="#2c5b9e"/>
-      <!-- Bico curto e amarelado -->
-      <path d="M 11 -3 L 14 -3 L 12 -1 Z" fill="#d8a040"/>
-      <!-- Olho com brilho -->
-      <circle cx="7" cy="-4" r="1.4" fill="#0a1020"/>
-      <circle cx="7.4" cy="-4.4" r="0.5" fill="#fff" opacity="0.9"/>
+      <!-- Cauda longa atrás (cinza-roxo escuro) - desenhada PRIMEIRO pra ficar atrás -->
+      <path d="M -7 1 L -18 4 L -16 6 L -6 3 Z" fill="#3a3650"/>
+      <!-- Corpo (forma esguia) - cinza médio -->
+      <path d="M -7 -1 Q -8 -4 -4 -6 Q 1 -7 5 -6 Q 8 -4 9 -1 Q 9 2 6 3 Q 1 4 -3 3 Q -6 2 -7 -1 Z"
+            fill="#6e6878"/>
+      <!-- Barriga discreta (cinza claro) -->
+      <ellipse cx="-1" cy="1" rx="6" ry="3" fill="#9c97a8" opacity="0.7"/>
+      <!-- Cabeça (cinza-roxo escuro, menor e mais arredondada) -->
+      <circle cx="5" cy="-3" r="3.8" fill="#4a4359"/>
+      <!-- Crista — penas pra cima na cor roxo Gralia (acento de marca) -->
+      <path d="M 3 -6 Q 4 -10 5 -9 M 5 -7 Q 6 -11 7 -10 M 7 -6 Q 8 -9 9 -8"
+            stroke="#8042fa" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+      <!-- Asa esquerda (cinza-roxo, mais estilizada e fininha) -->
+      <path d="M -4 -1 Q -10 -5 -16 -3 Q -12 1 -7 1 Q -5 0 -4 -1 Z"
+            fill="#5a536b" class="forest-bird-wing-l"/>
+      <!-- Asa direita -->
+      <path d="M 4 -1 Q 10 -5 16 -3 Q 12 1 7 1 Q 5 0 4 -1 Z"
+            fill="#5a536b" class="forest-bird-wing-r"/>
+      <!-- Bico curto cinza-claro -->
+      <path d="M 8.5 -3 L 11 -3 L 9 -1.5 Z" fill="#bcb5c8"/>
+      <!-- Olho com brilho pequeno -->
+      <circle cx="6" cy="-3.5" r="1" fill="#15101e"/>
+      <circle cx="6.3" cy="-3.8" r="0.35" fill="#fff" opacity="0.95"/>
+      <!-- Detalhe roxo na ponta da asa (acento sutil) -->
+      <circle cx="-15" cy="-2.5" r="0.8" fill="#8042fa" opacity="0.6"/>
+      <circle cx="15" cy="-2.5" r="0.8" fill="#8042fa" opacity="0.6"/>
     </g>
   `;
 
@@ -29087,7 +29608,7 @@ function showGoalNotification(kind, g, view){
     title = 'Meta de questões atingida!';
     body = `Você bateu sua meta ${periodLabel} de ${g.questionsTarget} questões.`;
   } else if(kind==='pomos'){
-    emoji = '🍅';
+    emoji = '🌰';
     title = 'Meta de pomodoros atingida!';
     body = `Você bateu sua meta ${periodLabel} de ${g.pomosTarget} pomos.`;
   } else {
@@ -29730,7 +30251,7 @@ async function renderStoryCanvas(canvas, data){
   const cardW = (W - 100 - 40) / 2;
   const cardH = 320;
   drawProgressCard(ctx, 50, cardsY, cardW, cardH, '📝', 'Questões', view.doneQ, goal.questionsTarget, view.pctQ);
-  drawProgressCard(ctx, 50+cardW+40, cardsY, cardW, cardH, '🍅', 'Pomos', view.donePomos, goal.pomosTarget, view.pctP);
+  drawProgressCard(ctx, 50+cardW+40, cardsY, cardW, cardH, '🌰', 'Pomos', view.donePomos, goal.pomosTarget, view.pctP);
 
   // === HEATMAP MINI ===
   const hmY = cardsY + cardH + 90;
@@ -30147,7 +30668,12 @@ function createCustomGoal(period, questionsTarget, pomosTarget, distribution){
 // Pega pool de questões disponíveis pra simulado
 // Prioridade: questões TEC importadas (mais realistas)
 function getSimuladoPool(filter){
-  const all = (DATA.importedQuestions || []).filter(q => q && q.enunciado && q.answer);
+  let all = (DATA.importedQuestions || []).filter(q => q && q.enunciado && q.answer);
+  // V12: filtro por origem (all | imported | ai)
+  if(filter && filter.source && filter.source !== 'all'){
+    if(filter.source === 'ai') all = all.filter(q => q.source === 'ai');
+    else if(filter.source === 'imported') all = all.filter(q => q.source !== 'ai');
+  }
   if(!filter || !filter.disciplines || !filter.disciplines.length) return all;
   // Filtra por disciplinas se especificado
   return all.filter(q => filter.disciplines.includes(q.disciplineId));
@@ -30164,10 +30690,47 @@ function shuffleArray(arr){
 }
 
 // Cria simulado em memória a partir de params
+// V12: Persiste simulado em andamento entre sessões. Chamado a cada interação.
+// Throttle: salva no máximo 1x por segundo pra não sobrecarregar localStorage.
+let _saveSimTimer = null;
+function saveSimRunning(){
+  if(!ST.simRunning) return;
+  if(_saveSimTimer) return;
+  _saveSimTimer = setTimeout(()=>{
+    DATA.simRunning = ST.simRunning;
+    DATA.simCurrentIdx = ST.simCurrentIdx || 0;
+    save();
+    _saveSimTimer = null;
+  }, 800);
+}
+
+// V12: Restaura simulado em andamento ao recarregar app
+function restoreSimRunningIfAny(){
+  if(DATA.simRunning && DATA.simRunning.status === 'running'){
+    // Verifica se ainda está dentro do tempo
+    const totalMs = (DATA.simRunning.params?.timeMin || 0) * 60 * 1000;
+    const elapsed = Date.now() - (DATA.simRunning.startedAt || 0);
+    if(elapsed >= totalMs){
+      // Tempo expirou — finaliza automaticamente
+      DATA.simRunning.status = 'finished';
+      DATA.simRunning.finishedAt = (DATA.simRunning.startedAt || 0) + totalMs;
+      if(!DATA.simulados) DATA.simulados = [];
+      DATA.simulados.push(DATA.simRunning);
+      DATA.simRunning = null;
+      DATA.simCurrentIdx = 0;
+      save();
+      return;
+    }
+    // Restaura no estado em memória
+    ST.simRunning = DATA.simRunning;
+    ST.simCurrentIdx = DATA.simCurrentIdx || 0;
+  }
+}
+
 function createSimulado(params){
-  const pool = getSimuladoPool({disciplines: params.disciplines});
+  const pool = getSimuladoPool({disciplines: params.disciplines, source: params.source});
   if(pool.length < params.count){
-    throw new Error(`Pool insuficiente: você tem ${pool.length} questões importadas com os filtros escolhidos, mas pediu ${params.count}.`);
+    throw new Error(`Pool insuficiente: você tem ${pool.length} questões com os filtros escolhidos, mas pediu ${params.count}.`);
   }
   // Seleciona aleatoriamente N questões do pool
   const picked = shuffleArray(pool).slice(0, params.count);
@@ -30177,7 +30740,8 @@ function createSimulado(params){
     params: {
       count: params.count,
       timeMin: params.timeMin,
-      disciplines: params.disciplines || []
+      disciplines: params.disciplines || [],
+      source: params.source || 'all'
     },
     questions: picked.map(q => ({
       id: q.id,
@@ -30376,6 +30940,10 @@ function renderSimuladoResume(){
     if(abandonBtn) abandonBtn.addEventListener('click',()=>{
       if(!confirm('Abandonar este simulado? As respostas dadas serão descartadas.')) return;
       ST.simRunning = null;
+      // V12: limpa também do storage
+      DATA.simRunning = null;
+      DATA.simCurrentIdx = 0;
+      save();
       render();
     });
   },50);
@@ -30421,15 +30989,46 @@ function renderSimuladoSetup(){
     name: '',
     count: Math.min(60, totalPool),
     timeMin: 90,
-    disciplines: []
+    disciplines: [],
+    source: 'all'   // V12: 'all' | 'imported' | 'ai'
   };
+  if(!ST.simParams.source) ST.simParams.source = 'all';
   const p = ST.simParams;
 
   // Card de configuração
   const formCard = mk('div','card sim-setup-card');
 
+  // V12: Toggle de fonte das questões — Importadas / IA / Todas
+  const sourceLbl = mk('label');sourceLbl.textContent='Fonte das questões';sourceLbl.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px';
+  formCard.appendChild(sourceLbl);
+  const importedCount = (DATA.importedQuestions||[]).filter(q => q.source !== 'ai').length;
+  const aiCount = (DATA.importedQuestions||[]).filter(q => q.source === 'ai').length;
+  const sourceRow = mk('div','sim-source-row');
+  [
+    {key:'all', label:'Todas', count: importedCount + aiCount},
+    {key:'imported', label:'📋 Importadas', count: importedCount},
+    {key:'ai', label:'🤖 Geradas pela IA', count: aiCount}
+  ].forEach(opt => {
+    const btn = mk('button','sim-source-btn'+(p.source === opt.key?' on':''));
+    btn.type='button';
+    if(opt.count === 0){
+      btn.disabled = true;
+      btn.title = 'Sem questões dessa origem';
+    }
+    btn.innerHTML = `<b>${opt.label}</b><span class="ssb-count">${opt.count} disponíveis</span>`;
+    btn.addEventListener('click',()=>{
+      p.source = opt.key;
+      // Ajusta count se necessário
+      const newPool = getSimuladoPool({disciplines: p.disciplines, source: p.source}).length;
+      if(p.count > newPool) p.count = Math.max(5, newPool);
+      render();
+    });
+    sourceRow.appendChild(btn);
+  });
+  formCard.appendChild(sourceRow);
+
   // Presets rápidos
-  const presetsLbl = mk('label');presetsLbl.textContent='Presets rápidos';presetsLbl.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px';
+  const presetsLbl = mk('label');presetsLbl.textContent='Presets rápidos';presetsLbl.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;margin-top:1rem;text-transform:uppercase;letter-spacing:.4px';
   formCard.appendChild(presetsLbl);
   const presetsRow = mk('div','sim-presets-row');
   const PRESETS = [
@@ -30529,7 +31128,7 @@ function renderSimuladoSetup(){
   }
 
   // Pool atual com filtros
-  const currentPool = getSimuladoPool({disciplines: p.disciplines}).length;
+  const currentPool = getSimuladoPool({disciplines: p.disciplines, source: p.source}).length;
   const poolInfo = mk('div','sim-pool-info');
   if(currentPool < p.count){
     poolInfo.classList.add('insufficient');
@@ -30561,6 +31160,12 @@ function renderSimuladoSetup(){
       ST.simRunning = sim;
       ST.simCurrentIdx = 0;
       ST.simSubview = 'running';
+      // V12: Persiste o simulado em DATA pra sobreviver entre sessões/reloads
+      // Importante: simulados consomem créditos de IA pra gerar questões
+      // (quando source='ai') — perder isso seria torrar créditos do usuário
+      DATA.simRunning = sim;
+      DATA.simCurrentIdx = 0;
+      save();
       render();
     }catch(e){
       alert('Erro: '+(e.message||e));
@@ -30659,7 +31264,7 @@ function renderSimuladoRunning(){
       opt.innerHTML = `<span class="sa-letter">${alt.letter}</span><span class="sa-text">${escapeHTML(alt.text||'')}</span>`;
       opt.addEventListener('click',()=>{
         sim.answers[idx].userAnswer = alt.letter;
-        // Não precisa save() — sim em memória
+        saveSimRunning(); // V12: persiste resposta
         render();
       });
       altsContainer.appendChild(opt);
@@ -30673,6 +31278,7 @@ function renderSimuladoRunning(){
       opt.innerHTML = `<span class="sa-letter">${letter}</span><span class="sa-text">${label}</span>`;
       opt.addEventListener('click',()=>{
         sim.answers[idx].userAnswer = letter;
+        saveSimRunning();
         render();
       });
       altsContainer.appendChild(opt);
@@ -30687,6 +31293,7 @@ function renderSimuladoRunning(){
   reviewBtn.innerHTML = sim.answers[idx].markedReview ? '🚩 Marcada pra revisar' : '🚩 Marcar pra revisar depois';
   reviewBtn.addEventListener('click',()=>{
     sim.answers[idx].markedReview = !sim.answers[idx].markedReview;
+    saveSimRunning();
     render();
   });
   reviewRow.appendChild(reviewBtn);
@@ -30696,6 +31303,7 @@ function renderSimuladoRunning(){
     clearBtn.textContent = 'Limpar resposta';
     clearBtn.addEventListener('click',()=>{
       sim.answers[idx].userAnswer = null;
+      saveSimRunning();
       render();
     });
     reviewRow.appendChild(clearBtn);
@@ -30707,13 +31315,13 @@ function renderSimuladoRunning(){
   const prevBtn = mkBtn('← Anterior','btn');
   if(idx === 0) prevBtn.disabled = true;
   prevBtn.addEventListener('click',()=>{
-    if(idx > 0){ ST.simCurrentIdx = idx - 1; render(); }
+    if(idx > 0){ ST.simCurrentIdx = idx - 1; saveSimRunning(); render(); }
   });
   navRow.appendChild(prevBtn);
   const nextBtn = mkBtn(idx === sim.questions.length-1 ? 'Última' : 'Próxima →','btn btn-p');
   if(idx === sim.questions.length-1) nextBtn.disabled = true;
   nextBtn.addEventListener('click',()=>{
-    if(idx < sim.questions.length-1){ ST.simCurrentIdx = idx + 1; render(); }
+    if(idx < sim.questions.length-1){ ST.simCurrentIdx = idx + 1; saveSimRunning(); render(); }
   });
   navRow.appendChild(nextBtn);
   qCard.appendChild(navRow);
@@ -30731,7 +31339,7 @@ function renderSimuladoRunning(){
     if(sim.answers[i].userAnswer !== null) dot.classList.add('answered');
     if(sim.answers[i].markedReview) dot.classList.add('review');
     dot.textContent = String(i+1);
-    dot.addEventListener('click',()=>{ST.simCurrentIdx = i; render();});
+    dot.addEventListener('click',()=>{ST.simCurrentIdx = i; saveSimRunning(); render();});
     qmapGrid.appendChild(dot);
   });
   qmap.appendChild(qmapGrid);
@@ -30758,8 +31366,11 @@ function finishSimulado(timeOut){
   // Salva no histórico
   if(!DATA.simulados) DATA.simulados = [];
   DATA.simulados.push(sim);
+  // V12: Limpa simulado em andamento (já foi pro histórico)
+  DATA.simRunning = null;
+  DATA.simCurrentIdx = 0;
   save();
-  // Limpa em-andamento
+  // Limpa em-andamento (memória)
   ST.simRunning = null;
   ST.simResultId = sim.id;
   ST.simSubview = 'result';
@@ -31117,7 +31728,7 @@ function renderGoals(){
   const pPctClamped = Math.min(100, view.pctP);
   pCard.innerHTML = `
     <div class="gmc-head">
-      <span class="gmc-icon">🍅</span>
+      <span class="gmc-icon">🌰</span>
       <span class="gmc-label">Pomodoros</span>
       <span class="gmc-pct">${view.pctP}%</span>
     </div>
@@ -31245,7 +31856,7 @@ function renderGoals(){
         <div class="ghi-date">${h.startDate} · ${h.period==='weekly'?'sem':'mês'}</div>
         <div class="ghi-stats">
           <span class="ghi-stat">📝 ${h.questionsDone}/${h.questionsTarget} <small>(${pctQ}%)</small></span>
-          <span class="ghi-stat">🍅 ${h.pomosDone}/${h.pomosTarget} <small>(${pctP}%)</small></span>
+          <span class="ghi-stat">🌰 ${h.pomosDone}/${h.pomosTarget} <small>(${pctP}%)</small></span>
         </div>
       `;
       histCard.appendChild(item);
@@ -32669,6 +33280,8 @@ document.addEventListener('error', function(ev){
   if(fb)fb.classList.add('show');
 }, true);
 // Initial render (may show loading state if auth still resolving)
+// V12: Restaura simulado em andamento se houver
+try{ restoreSimRunningIfAny(); }catch(e){ console.warn('[sim restore]', e); }
 render();
 
 // Detecta hash #u/username pra abrir página de perfil
