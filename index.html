@@ -1134,8 +1134,9 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .cl-min,.cl-max{font-size:9px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.4px}
 .cl-cell{display:inline-block;width:11px;height:11px;border-radius:2px;background:var(--gralia-purple)}
 .chart-body{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.chart-heatmap{display:block;max-width:none;height:auto;width:auto}
-.hm-axis-lbl{font-size:7.5px;font-weight:600;fill:var(--text3);font-family:inherit}
+/* SVG não pode esticar — precisa renderizar em tamanho exato do viewBox */
+.chart-heatmap{display:block;height:auto;width:auto !important;max-width:100%}
+.hm-axis-lbl{font-size:7px;font-weight:600;fill:var(--text3);font-family:inherit}
 .chart-heatmap rect{cursor:pointer;transition:fill-opacity .15s}
 .chart-heatmap rect:hover{stroke:var(--text);stroke-width:1;fill-opacity:1!important}
 .chart-insight{margin:.875rem 0 0;padding:.625rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:11.5px;color:var(--text2);line-height:1.5}
@@ -1144,7 +1145,7 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .chart-insight-neutral b{color:var(--text2)}
 @media(max-width:560px){
   .chart-card{padding:.875rem}
-  .chart-heatmap{max-width:100%}
+  .chart-heatmap{max-width:180px}
 }
 
 /* V12: Gráfico de retenção na landing */
@@ -2261,7 +2262,8 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 /* Modal */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:center;justify-content:center;padding:1rem;animation:fd .15s ease}
 .modal-bg.locked{cursor:default}
-.modal-bg.locked .modal{box-shadow:0 12px 40px rgba(128,66,250,.18),0 4px 12px rgba(0,0,0,.18)}
+/* V12: Sombra do modal locked agora é neutra (preta sutil) — antes era roxa, ficava com aparência de gamificação */
+.modal-bg.locked .modal{box-shadow:0 12px 40px rgba(0,0,0,.22),0 4px 12px rgba(0,0,0,.14)}
 
 /* V12: Sticky header em modais grandes do footer (FAQ + Legal) — botão X visível em mobile */
 .footer-modal-head{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:.625rem;margin:-.5rem -.5rem .875rem;padding-left:.5rem;padding-right:.5rem;padding-top:.5rem;background:var(--surface);border-bottom:1px solid var(--border)}
@@ -2986,9 +2988,9 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
   .admin-floating-btn .afb-label{display:none}
 }
 
-/* V12: Botão flutuante "Fale conosco" — fica do lado esquerdo do foco */
+/* V12: Botão flutuante "Fale conosco" — visual neutro/sóbrio */
 .feedback-floating-btn{position:fixed;bottom:20px;right:140px;z-index:500;height:46px;padding:0 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;font-family:inherit;box-shadow:0 4px 14px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.06);transition:all .2s cubic-bezier(.34,1.4,.64,1);cursor:pointer}
-.feedback-floating-btn:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(73,197,137,.18),0 2px 6px rgba(0,0,0,.08);border-color:rgba(73,197,137,.35);color:var(--accent-text)}
+.feedback-floating-btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.08);border-color:var(--text3);color:var(--text)}
 .feedback-floating-btn:active{transform:translateY(0) scale(.96)}
 .ffb-icon{font-size:16px;line-height:1}
 @media (max-width:600px){
@@ -8904,23 +8906,57 @@ function needsSetup(){return !DATA.setup}
 function needsAPIKey(){return false;}
 
 /* MODAL */
+// V12: Stack de modais — permite abrir modal "filho" sem perder o pai
+// Quando showModal é chamado com modal já aberto, empilha o NODE DOM (preserva eventos)
+// e closeModal volta pro anterior intacto
+const MODAL_STACK = [];
+
 function showModal(content, options){
-  ST.modal=content;
   const opts = options || {};
   const locked = !!opts.locked;
-  const root=$('modal-root');root.innerHTML='';
-  const bg=mk('div','modal-bg' + (locked ? ' locked' : ''));
+  const root = $('modal-root');
+  // Se já tem modal aberto, empilha o NODE DOM (preserva todos os eventos do modal pai)
+  if(ST.modal && root && root.firstChild){
+    const currentBg = root.firstChild; // .modal-bg
+    // Remove do DOM mas guarda referência
+    root.removeChild(currentBg);
+    MODAL_STACK.push({content: ST.modal, node: currentBg});
+  } else {
+    root.innerHTML = '';
+  }
+  ST.modal = content;
+  const bg = mk('div','modal-bg' + (locked ? ' locked' : ''));
   if(!locked){
-    // Track where mousedown started - only close if BOTH down and up were on backdrop
     let downOnBg = false;
     bg.addEventListener('mousedown',e=>{downOnBg = (e.target===bg);});
     bg.addEventListener('mouseup',e=>{if(downOnBg&&e.target===bg)closeModal();downOnBg=false;});
   }
-  const mod=mk('div','modal');
+  const mod = mk('div','modal');
   mod.appendChild(content);
-  bg.appendChild(mod);root.appendChild(bg);
+  bg.appendChild(mod);
+  root.appendChild(bg);
 }
-function closeModal(){ST.modal=null;$('modal-root').innerHTML='';}
+
+function closeModal(){
+  const root = $('modal-root');
+  // V12: Se tem modal empilhado, volta pra ele em vez de fechar tudo
+  if(MODAL_STACK.length > 0){
+    const prev = MODAL_STACK.pop();
+    root.innerHTML = '';
+    ST.modal = prev.content;
+    root.appendChild(prev.node);
+    return;
+  }
+  ST.modal = null;
+  root.innerHTML = '';
+}
+
+// Fecha TODOS os modais empilhados (usado em casos especiais como logout)
+function closeAllModals(){
+  MODAL_STACK.length = 0;
+  ST.modal = null;
+  $('modal-root').innerHTML = '';
+}
 
 // Modal de confirmação reutilizável — substitui confirm() do browser
 function showConfirmModal(config){
@@ -9095,7 +9131,7 @@ function render(){
 // Modal de FAQ completo — acessível para qualquer visitante, mesmo sem login.
 // Usado pelo footer da landing. A versão "logada" do FAQ está em renderAboutFAQ.
 function showFAQModal(){
-  const m = mk('div');m.style.cssText='max-width:680px;max-height:85vh;overflow-y:auto;position:relative';
+  const m = mk('div');m.style.cssText='max-width:880px;width:100%';
 
   // V12: Sticky header com botão X visível em mobile
   const head = mk('div','footer-modal-head');
@@ -9191,7 +9227,7 @@ function showFAQModal(){
 
 // Modal com textos legais (termos, privacidade, copyright, IA)
 function showLegalModal(kind){
-  const m = mk('div');m.style.cssText='max-width:680px;max-height:85vh;overflow-y:auto;position:relative';
+  const m = mk('div');m.style.cssText='max-width:880px;width:100%';
   const t = mk('h2');t.style.cssText='margin:0;font-size:18px;font-weight:700';
   const body = mk('div');body.style.cssText='font-size:13px;line-height:1.65;color:var(--text2)';
   const _today = new Date().toLocaleDateString('pt-BR');
@@ -10509,7 +10545,7 @@ function renderWelcome(){
     {q:'Vai funcionar pra minha banca / minha prova?', a:'Sim. Você define no seu perfil qual concurso, vestibular ou prova vai fazer, qual banca, qual cargo. A IA adapta as questões pro estilo de cobrança da banca escolhida.'},
     {q:'Posso usar com a apostila que eu já tenho?', a:'Sim, e é o ideal. Você adiciona suas fontes (apostilas, PDFs, resumos próprios). A IA usa esse material como base pra gerar questões fiéis ao que você estudou.'},
     {q:'A síntese de edital realmente lê o edital inteiro?', a:'Sim. A IA Sonnet 4.6 lê até 200 mil caracteres (suficiente pra editais grandes) e extrai: resumo, pontos críticos por importância (alta/média/baixa), tabela de disciplinas com pesos, cronograma com datas-chave, vagas e cargos, estratégia de estudo e pegadinhas que costumam passar despercebidas. Você pode anexar o PDF ou colar o texto. Limite de 1 edital por mês na versão atual.'},
-    {q:'Posso anexar minha apostila em PDF?', a:'Sim. Em "Fontes de estudo" você pode anexar PDFs de até 20MB ou arrastar o arquivo direto pra área de upload. A plataforma lê o texto automaticamente, captura metadados (título, autor, número de páginas) e detecta capítulos e seções (criando um índice navegável). Funciona bem com PDFs que têm texto selecionável — PDFs escaneados (imagens) precisam de OCR antes, e isso é detectado automaticamente com aviso na hora do upload. Se você quiser indexar um conteúdo de texto que não veio de PDF, também é possível em "Editar fonte → Indexar agora".'},
+    {q:'Posso anexar minha apostila em PDF?', a:'Sim. Em "Fontes de estudo" você pode anexar até 3 PDFs por vez de até 80MB cada, ou arrastar os arquivos direto pra área de upload. A plataforma lê o texto automaticamente, captura metadados (título, autor, número de páginas) e detecta capítulos e seções (criando um índice navegável). Funciona bem com PDFs que têm texto selecionável — PDFs escaneados (imagens) precisam de OCR antes, e isso é detectado automaticamente com aviso na hora do upload. Se você quiser indexar um conteúdo de texto que não veio de PDF, também é possível em "Editar fonte → Indexar agora".'},
     {q:'Tem limite de quantos PDFs eu posso adicionar?', a:'Por enquanto, todos os seus dados ficam salvos só no navegador (localStorage), que tem limite de cerca de 5MB por site. Apostilas grandes podem encher rápido. A plataforma comprime automaticamente fontes pesadas e mostra em Configurações > Dados quanto você está usando. Se chegar perto do limite, vai aparecer aviso e ferramentas pra remover ou comprimir. No futuro, fontes grandes serão movidas pra nuvem (Supabase Storage) e o limite local deixa de importar.'},
     {q:'A IA pode errar nas questões?', a:'Pode acontecer. Por isso, cada questão passa por 5 filtros de qualidade, descartamos as ruins automaticamente, e a comunidade avalia as explicações. Em qualquer questão você reporta erro com 1 clique. Sempre confirme conceitos críticos com sua fonte oficial de teoria.'},
     {q:'Substitui o estudo de teoria?', a:'Não. Vídeo-aulas e PDFs continuam sendo essenciais pra você entender o conteúdo. O Gralia é a camada de prática ativa que vem depois — pra fixar e detectar suas dificuldades.'},
@@ -11806,7 +11842,7 @@ function buildPerformanceHeatmap(){
   const totalW = labelW + HOUR_BUCKETS * (cellW + cellGap);
   const totalH = labelH + 7 * (cellH + cellGap) + 2;
 
-  let svg = `<svg viewBox="0 0 ${totalW} ${totalH}" class="chart-heatmap" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMid meet">`;
+  let svg = `<svg width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}" class="chart-heatmap" xmlns="http://www.w3.org/2000/svg">`;
 
   hourLabels.forEach((lbl, h) => {
     const x = labelW + h * (cellW + cellGap) + cellW/2;
@@ -12263,7 +12299,7 @@ function buildActivityTimeline(){
 
 // V12: Modal pra ver linha do tempo completa com paginação
 function showFullTimelineModal(allEvents){
-  const m = mk('div');m.style.cssText='max-width:680px;max-height:85vh;overflow-y:auto';
+  const m = mk('div');m.style.cssText='max-width:880px;width:100%';
   let currentPage = 0;
   const PER_PAGE = 20;
 
@@ -12934,18 +12970,17 @@ function renderSourceAdd(wrap){
   // - Drag and drop visual
   // - Captura metadados (título, autor, páginas)
   // - Detecta PDF escaneado (sem texto)
-  // - Limite 20MB com validação clara
-  // - Progresso em tempo real
+  // - V12: Limite 80MB por arquivo, até 3 arquivos por vez
   const pdfLbl = mk('div','smart-import-btn pdf-upload-zone');
-  pdfLbl.innerHTML = '<span class="sib-icon">📄</span><span class="sib-body"><b>PDF</b><span>Anexe ou arraste · até 20MB · texto extraído automaticamente</span></span>';
-  const pdfInp = mk('input');pdfInp.type='file';pdfInp.accept='.pdf,application/pdf';pdfInp.style.display='none';
+  pdfLbl.innerHTML = '<span class="sib-icon">📄</span><span class="sib-body"><b>PDF</b><span>Anexe ou arraste até 3 PDFs · até 80MB cada · texto extraído automaticamente</span></span>';
+  const pdfInp = mk('input');pdfInp.type='file';pdfInp.accept='.pdf,application/pdf';pdfInp.multiple=true;pdfInp.style.display='none';
   pdfLbl.appendChild(pdfInp);
 
   // Função processar arquivo (compartilhada por click e drag-drop)
   async function processSourcePdf(file){
     if(!file) return;
-    if(file.size > 20 * 1024 * 1024){
-      alert('PDF muito grande (' + formatFileSize(file.size) + '). Limite atual: 20MB. Tente reduzir o arquivo ou dividir em partes.');
+    if(file.size > 80 * 1024 * 1024){
+      alert('PDF muito grande (' + formatFileSize(file.size) + '). Limite atual: 80MB. Tente reduzir o arquivo ou dividir em partes.');
       return;
     }
     ST.srcImportState.pdfLoading = true;
@@ -13035,16 +13070,72 @@ function renderSourceAdd(wrap){
   pdfLbl.addEventListener('drop', e=>{
     e.preventDefault();
     pdfLbl.classList.remove('drag-over');
-    const f = e.dataTransfer.files[0];
-    if(f) processSourcePdf(f);
+    // V12: Aceita múltiplos arquivos no drop também (até 3)
+    const files = Array.from(e.dataTransfer.files || []).filter(f =>
+      f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+    );
+    if(files.length === 0) return;
+    if(files.length > 3){
+      alert('Você pode anexar no máximo 3 PDFs por vez. Foram selecionados ' + files.length + '.');
+      return;
+    }
+    processMultiplePdfs(files);
   });
 
   pdfInp.addEventListener('change', e=>{
-    const file = e.target.files[0];
-    if(!file) return;
-    processSourcePdf(file);
+    const files = Array.from(e.target.files || []);
+    if(files.length === 0) return;
+    if(files.length > 3){
+      alert('Você pode anexar no máximo 3 PDFs por vez. Foram selecionados ' + files.length + '.');
+      pdfInp.value = '';
+      return;
+    }
+    processMultiplePdfs(files);
     pdfInp.value = ''; // permite re-upload do mesmo arquivo se quiser
   });
+
+  // V12: Processa múltiplos PDFs em sequência, concatenando o texto
+  async function processMultiplePdfs(files){
+    if(files.length === 1){
+      processSourcePdf(files[0]);
+      return;
+    }
+    // Múltiplos: processa um por vez e concatena
+    let combinedText = '';
+    let combinedTitle = '';
+    for(let i = 0; i < files.length; i++){
+      const file = files[i];
+      if(file.size > 80 * 1024 * 1024){
+        alert(`PDF "${file.name}" muito grande (${formatFileSize(file.size)}). Limite: 80MB. Pulando este arquivo.`);
+        continue;
+      }
+      ST.srcImportState.pdfLoading = true;
+      ST.srcImportState.pdfProgress = {current:0, total:0, fileIdx: i+1, fileTotal: files.length};
+      render();
+      try{
+        const result = await extractPdfTextRich(file, (curr, total)=>{
+          ST.srcImportState.pdfProgress = {current:curr, total, fileIdx:i+1, fileTotal:files.length};
+          const prog = document.getElementById('pdf-progress-txt');
+          if(prog) prog.textContent = `Arquivo ${i+1}/${files.length} — página ${curr}/${total}...`;
+        });
+        if(combinedText.length > 0) combinedText += '\n\n--- ' + (file.name || ('PDF ' + (i+1))) + ' ---\n\n';
+        combinedText += result.text;
+        if(!combinedTitle && result.metadata?.title) combinedTitle = result.metadata.title;
+      }catch(err){
+        alert(`Erro ao processar "${file.name}": ${err.message || err}`);
+      }
+    }
+    ST.srcImportState.pdfLoading = false;
+    ST.srcImportState.pdfProgress = null;
+    if(combinedText.trim().length === 0){
+      alert('Nenhum texto extraído dos PDFs.');
+      render();
+      return;
+    }
+    ST.srcInput.content = combinedText;
+    if(combinedTitle && !ST.srcInput.title) ST.srcInput.title = combinedTitle;
+    render();
+  }
 
   if(is.pdfLoading) pdfLbl.classList.add('loading');
   quickRow.appendChild(pdfLbl);
@@ -20967,8 +21058,8 @@ async function extractPdfText(file,onProgress){
 // Usado pelo novo fluxo de upload de fontes com validação inteligente.
 async function extractPdfTextRich(file, onProgress){
   if(!file) throw new Error('Arquivo inválido');
-  if(file.size > 20 * 1024 * 1024){
-    throw new Error('PDF muito grande (>20MB). Reduza o tamanho ou divida o arquivo.');
+  if(file.size > 80 * 1024 * 1024){
+    throw new Error('PDF muito grande (>80MB). Reduza o tamanho ou divida o arquivo.');
   }
   if(!file.type.includes('pdf') && !file.name.toLowerCase().endsWith('.pdf')){
     throw new Error('Arquivo precisa ser PDF');
@@ -23992,12 +24083,13 @@ function renderUserProfile(){
 async function loadUserPublicMaterials(userId, username, container){
   if(!supa){ container.innerHTML = '<div class="up-mat-empty">Supabase não configurado</div>'; return; }
   try{
-    // Busca shared_resources publicadas pelo usuário
+    // V12: Colunas reais do schema — resource_type (não kind), is_public (não visibility),
+    // description (não summary), question_count (não total_questions)
     const {data: resources, error} = await supa
       .from('shared_resources')
-      .select('id, title, kind, summary, created_at, total_questions, total_cards')
+      .select('id, title, resource_type, description, created_at, question_count, discipline, topic')
       .eq('owner_id', userId)
-      .eq('visibility', 'public')
+      .eq('is_public', true)
       .order('created_at', {ascending:false})
       .limit(20);
 
@@ -24018,16 +24110,22 @@ async function loadUserPublicMaterials(userId, username, container){
     const list = mk('div','up-mat-list');
     resources.forEach(r=>{
       const item = mk('article','up-mat-item');
-      const kindLbl = ({source:'📄 Fonte', notebook:'📓 Caderno', flashcards:'🃏 Flashcards', topic_profile:'🧠 Perfil'})[r.kind] || '📦 Material';
+      // V12: Mapeia resource_type real (caderno/fonte/perfil_topico/edital) pra label visual
+      const kindLbl = ({
+        caderno:'📓 Caderno',
+        fonte:'📄 Fonte',
+        perfil_topico:'🧠 Perfil de tópico',
+        edital:'📋 Edital'
+      })[r.resource_type] || '📦 Material';
       const dateStr = new Date(r.created_at).toLocaleDateString('pt-BR', {day:'2-digit', month:'short'});
       let stats = '';
-      if(r.total_questions) stats += `${r.total_questions} questões · `;
-      if(r.total_cards) stats += `${r.total_cards} cards · `;
+      if(r.question_count) stats += `${r.question_count} questões · `;
+      if(r.discipline) stats += `${escapeHTML(r.discipline)} · `;
       stats += dateStr;
       item.innerHTML = `
         <div class="umi-kind">${kindLbl}</div>
         <h4 class="umi-title">${escapeHTML(r.title || 'Sem título')}</h4>
-        ${r.summary ? `<p class="umi-summary">${escapeHTML(r.summary.slice(0, 140))}${r.summary.length>140?'...':''}</p>` : ''}
+        ${r.description ? `<p class="umi-summary">${escapeHTML(r.description.slice(0, 140))}${r.description.length>140?'...':''}</p>` : ''}
         <div class="umi-stats">${stats}</div>
       `;
       // Click leva pra Discover já filtrando por esse autor
@@ -28360,8 +28458,8 @@ function showCreateEditalModal(){
     });
 
     async function handleFile(file){
-      if(file.size > 20*1024*1024){
-        alert('PDF muito grande (>20MB). Use um arquivo menor ou cole o texto direto.');
+      if(file.size > 80*1024*1024){
+        alert('PDF muito grande (>80MB). Use um arquivo menor ou cole o texto direto.');
         return;
       }
       if(!file.type.includes('pdf')){
@@ -34390,7 +34488,7 @@ function showFeedbackModal(){
 
   // Tabs: nova mensagem + histórico
   const tabsBar = mk('div');tabsBar.style.cssText='display:flex;gap:4px;margin-bottom:.75rem;border-bottom:1px solid var(--border)';
-  const newTab = mk('button');newTab.style.cssText='background:transparent;border:none;padding:.5rem .875rem;font-size:13px;font-weight:600;color:var(--text2);cursor:pointer;font-family:inherit;border-bottom:2px solid var(--gralia-purple);margin-bottom:-1px';
+  const newTab = mk('button');newTab.style.cssText='background:transparent;border:none;padding:.5rem .875rem;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;border-bottom:2px solid var(--text);margin-bottom:-1px';
   newTab.textContent = '✏️ Nova mensagem';
   const histTab = mk('button');histTab.style.cssText='background:transparent;border:none;padding:.5rem .875rem;font-size:13px;font-weight:600;color:var(--text3);cursor:pointer;font-family:inherit;border-bottom:2px solid transparent;margin-bottom:-1px';
   histTab.textContent = '📜 Minhas mensagens';
@@ -34416,11 +34514,13 @@ function showFeedbackModal(){
     ];
     let selectedCat = 'sugestao';
     function updateCatVisual(){
+      // V12: tons neutros — sem fundo roxo, só borda mais grossa e fundo levemente mais escuro quando selecionado
       catRow.querySelectorAll('button').forEach(b=>{
         const isActive = b.dataset.cat === selectedCat;
-        b.style.borderColor = isActive ? 'var(--gralia-purple)' : 'var(--border)';
-        b.style.background = isActive ? 'rgba(128,66,250,.10)' : 'var(--surface)';
-        b.style.color = isActive ? 'var(--gralia-purple)' : 'var(--text2)';
+        b.style.borderColor = isActive ? 'var(--text2)' : 'var(--border)';
+        b.style.background = isActive ? 'var(--surface2)' : 'var(--surface)';
+        b.style.color = isActive ? 'var(--text)' : 'var(--text2)';
+        b.style.fontWeight = isActive ? '700' : '600';
       });
     }
     categories.forEach(c=>{
@@ -34564,11 +34664,11 @@ function showFeedbackModal(){
 
   function setActiveTab(which){
     if(which === 'new'){
-      newTab.style.color = 'var(--gralia-purple)';newTab.style.borderBottomColor = 'var(--gralia-purple)';
+      newTab.style.color = 'var(--text)';newTab.style.borderBottomColor = 'var(--text)';
       histTab.style.color = 'var(--text3)';histTab.style.borderBottomColor = 'transparent';
       renderNewMessage();
     } else {
-      histTab.style.color = 'var(--gralia-purple)';histTab.style.borderBottomColor = 'var(--gralia-purple)';
+      histTab.style.color = 'var(--text)';histTab.style.borderBottomColor = 'var(--text)';
       newTab.style.color = 'var(--text3)';newTab.style.borderBottomColor = 'transparent';
       renderHistory();
     }
