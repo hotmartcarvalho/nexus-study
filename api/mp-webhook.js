@@ -1,9 +1,8 @@
 // =============================================================================
 // /api/mp-webhook.js — Recebe notificações do Mercado Pago
 // =============================================================================
-// O Mercado Pago chama este endpoint quando algo muda numa assinatura ou pagamento:
-// - Assinatura criada / autorizada / cancelada
-// - Pagamento aprovado / rejeitado
+// V13: Adicionado processamento de comissão de afiliado quando subscription
+// é autorizada ou quando uma mensalidade é cobrada.
 //
 // Configurar em: https://www.mercadopago.com.br/developers/panel/webhooks
 //   URL: https://gralia.com.br/api/mp-webhook
@@ -36,7 +35,7 @@ export default async function handler(req, res) {
 
   try {
     if (type === 'payment' || type === 'payment.updated' || type === 'payment.created') {
-      // Pagamento avulso (top-up) — busca status no MP
+      // Pagamento avulso (top-up)
       const paymentRes = await fetch(`https://api.mercadopago.com/v1/payments/${dataId}`, {
         headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
       });
@@ -46,13 +45,11 @@ export default async function handler(req, res) {
         const userId = payment.metadata.user_id;
         const credits = parseInt(payment.metadata.credits, 10);
 
-        // Atualiza topup_purchases
         await supabase.from('topup_purchases').update({
           mp_status: 'approved',
           approved_at: new Date().toISOString()
         }).eq('mp_payment_id', String(dataId));
 
-        // Adiciona créditos ao saldo do user
         const { data: cur } = await supabase
           .from('user_credits').select('topup_credits').eq('user_id', userId).maybeSingle();
 
@@ -71,13 +68,12 @@ export default async function handler(req, res) {
         console.log('[mp-webhook] topup approved:', userId, credits, 'credits');
       }
     } else if (type === 'subscription_preapproval' || type === 'preapproval' || type === 'subscription_authorized_payment') {
-      // Assinatura criada / autorizada
+      // Assinatura criada / autorizada / pagamento mensal cobrado
       const preRes = await fetch(`https://api.mercadopago.com/preapproval/${dataId}`, {
         headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
       });
       const pre = await preRes.json();
 
-      // Mapeia status do MP → status interno
       const statusMap = {
         'authorized': 'active',
         'paused': 'suspended',
@@ -92,7 +88,7 @@ export default async function handler(req, res) {
         updated_at: new Date().toISOString()
       }).eq('mp_subscription_id', String(dataId));
 
-      // Se autorizou pela primeira vez, reseta créditos pro valor do plano
+      // Se autorizou pela primeira vez OU é uma cobrança recorrente: reseta créditos + processa comissão
       if (pre.status === 'authorized') {
         const { data: sub } = await supabase
           .from('subscriptions').select('user_id, plan_id, billing_period')
@@ -103,9 +99,23 @@ export default async function handler(req, res) {
             .from('plans').select('credits_per_month').eq('id', sub.plan_id).single();
 
           if (plan) {
-            // Reseta plan_credits pro novo valor (chama RPC)
             await supabase.rpc('reset_plan_credits', { p_user_id: sub.user_id });
             console.log('[mp-webhook] subscription authorized:', sub.user_id, 'plan:', sub.plan_id);
+          }
+
+          // V13: Processa comissão de afiliado (se houver)
+          const paymentAmount = parseFloat(pre.auto_recurring?.transaction_amount || 0);
+          if (paymentAmount > 0) {
+            try {
+              await supabase.rpc('process_affiliate_commission', {
+                p_user_id: sub.user_id,
+                p_payment_amount: paymentAmount
+              });
+              console.log('[mp-webhook] affiliate commission processed for', sub.user_id, paymentAmount);
+            } catch (e) {
+              // Função pode não existir ainda — não é fatal
+              console.warn('[mp-webhook] affiliate commission failed:', e.message);
+            }
           }
         }
       }

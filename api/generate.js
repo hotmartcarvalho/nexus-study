@@ -64,12 +64,12 @@ export default async function handler(req, res) {
   }
 
   // 2. Whitelist (opcional, recomendado durante beta)
- // const allowedEmails = (process.env.ALLOWED_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
- // if (allowedEmails.length > 0 && !allowedEmails.includes(user.email)) {
- //   return res.status(403).json({
-  //    error: 'Este site está em teste privado. Seu email não está na lista de convidados.'
-  //  });
- // }
+  const allowedEmails = (process.env.ALLOWED_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (allowedEmails.length > 0 && !allowedEmails.includes(user.email)) {
+    return res.status(403).json({
+      error: 'Este site está em teste privado. Seu email não está na lista de convidados.'
+    });
+  }
 
   // V12: Importação de fontes/questões é GRATUITA pro usuário (custo é da plataforma).
   // Quando free_action está presente no body, pula a verificação de créditos e o decrement.

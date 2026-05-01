@@ -1,19 +1,12 @@
 // =============================================================================
 // /api/mp-subscribe.js — Cria assinatura recorrente no Mercado Pago
 // =============================================================================
+// V13: Adicionado suporte a cupom de desconto.
 // POST /api/mp-subscribe
-// Body: {plan_id: 'estudante'|'concurseiro'|'pro', billing_period: 'monthly'|'yearly'}
+// Body: {plan_id, billing_period, coupon_code?}
 // Headers: Authorization: Bearer <user-token>
 //
-// Retorna: {checkout_url: string}
-//
-// Variáveis de ambiente necessárias na Vercel:
-//   MP_ACCESS_TOKEN — Access Token do Mercado Pago (production)
-//                     Obtenha em: https://www.mercadopago.com.br/developers/panel/credentials
-//   MP_PUBLIC_KEY   — opcional pra checkout transparente
-//   SUPABASE_URL    — já existe
-//   SUPABASE_SERVICE_ROLE_KEY — já existe
-//   PUBLIC_URL      — URL pública do site (ex: https://gralia.com.br)
+// Retorna: {checkout_url, mp_subscription_id}
 // =============================================================================
 
 import { createClient } from '@supabase/supabase-js';
@@ -23,14 +16,13 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Pega o token de auth
+  // Auth
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Token de autenticação ausente' });
   }
   const token = authHeader.replace('Bearer ', '');
 
-  // Valida token via Supabase
   const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -41,7 +33,7 @@ export default async function handler(req, res) {
   }
 
   // Body
-  const { plan_id, billing_period = 'monthly' } = req.body;
+  const { plan_id, billing_period = 'monthly', coupon_code = null } = req.body;
   if (!plan_id || !['estudante', 'concurseiro', 'pro'].includes(plan_id)) {
     return res.status(400).json({ error: 'plan_id inválido' });
   }
@@ -49,33 +41,79 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'billing_period inválido' });
   }
 
-  // Busca o plano
+  // Plano
   const { data: plan, error: planError } = await supabase
     .from('plans').select('*').eq('id', plan_id).single();
   if (planError || !plan) {
     return res.status(404).json({ error: 'Plano não encontrado' });
   }
 
-  // Calcula preço (com desconto BETA se aplicável)
+  // Preço base
   let basePrice = billing_period === 'yearly' ? parseFloat(plan.price_brl_yearly) : parseFloat(plan.price_brl);
   if (!basePrice) basePrice = parseFloat(plan.price_brl);
+  let finalPrice = basePrice;
 
-  // Aplica desconto BETA
+  // Desconto BETA
   const { data: discount } = await supabase
     .from('beta_discounts').select('*').eq('user_id', user.id).maybeSingle();
-  let finalPrice = basePrice;
+  let betaDiscountPct = 0;
+  let betaDiscountUntil = null;
   if (discount && new Date(discount.expires_at) > new Date()) {
-    finalPrice = parseFloat((basePrice * (1 - discount.discount_pct / 100)).toFixed(2));
+    betaDiscountPct = discount.discount_pct;
+    betaDiscountUntil = discount.expires_at;
+    finalPrice = parseFloat((finalPrice * (1 - betaDiscountPct / 100)).toFixed(2));
   }
 
-  // Frequência da assinatura
+  // V13: Cupom de desconto (cumulativo com BETA)
+  let couponDiscountPct = 0;
+  let validatedCoupon = null;
+  if (coupon_code) {
+    const upperCode = String(coupon_code).trim().toUpperCase();
+    const { data: couponRow } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('code', upperCode)
+      .eq('active', true)
+      .maybeSingle();
+
+    if (couponRow) {
+      const now = new Date();
+      const validUntil = couponRow.valid_until ? new Date(couponRow.valid_until) : null;
+      const validFrom = couponRow.valid_from ? new Date(couponRow.valid_from) : new Date(0);
+      const isExpired = validUntil && validUntil < now;
+      const isFuture = validFrom > now;
+      const isExhausted = couponRow.max_uses && couponRow.uses_count >= couponRow.max_uses;
+      const planAllowed = !couponRow.applicable_plans || couponRow.applicable_plans.includes(plan_id);
+
+      let alreadyUsed = false;
+      if (couponRow.one_per_user) {
+        const { count } = await supabase
+          .from('coupon_redemptions')
+          .select('*', { count: 'exact', head: true })
+          .eq('code', upperCode)
+          .eq('user_id', user.id);
+        alreadyUsed = (count || 0) > 0;
+      }
+
+      if (!isExpired && !isFuture && !isExhausted && planAllowed && !alreadyUsed) {
+        couponDiscountPct = couponRow.discount_pct;
+        validatedCoupon = couponRow;
+        finalPrice = parseFloat((finalPrice * (1 - couponDiscountPct / 100)).toFixed(2));
+      }
+    }
+  }
+
+  // Garantia: preço mínimo de R$ 5 (regra do MP)
+  if (finalPrice < 5) finalPrice = 5;
+
+  // Frequência
   const frequency = billing_period === 'yearly' ? 12 : 1;
   const frequencyType = 'months';
 
-  // Cria preapproval no Mercado Pago
+  // Preapproval
   const externalRef = `gralia-${user.id}-${plan_id}-${Date.now()}`;
   const mpBody = {
-    reason: `Gralia · Plano ${plan.name} (${billing_period === 'yearly' ? 'anual' : 'mensal'})`,
+    reason: `Gralia · Plano ${plan.name} (${billing_period === 'yearly' ? 'anual' : 'mensal'})${validatedCoupon ? ` · Cupom ${validatedCoupon.code}` : ''}`,
     auto_recurring: {
       frequency,
       frequency_type: frequencyType,
@@ -107,8 +145,8 @@ export default async function handler(req, res) {
       });
     }
 
-    // Salva subscription pending no DB (atualiza via webhook quando ficar autorizada)
-    await supabase.from('subscriptions').insert([{
+    // Salva subscription pending
+    const subInsert = {
       user_id: user.id,
       plan_id,
       status: 'pending',
@@ -116,13 +154,32 @@ export default async function handler(req, res) {
       mp_subscription_id: mpData.id,
       mp_payer_email: user.email,
       current_period_end: new Date(Date.now() + (billing_period === 'yearly' ? 365 : 30) * 86400000).toISOString(),
-      beta_discount_pct: discount?.discount_pct || 0,
-      beta_discount_until: discount?.expires_at || null
-    }]);
+      beta_discount_pct: betaDiscountPct,
+      beta_discount_until: betaDiscountUntil
+    };
+    if (validatedCoupon) {
+      subInsert.coupon_code = validatedCoupon.code;
+      subInsert.coupon_discount_pct = couponDiscountPct;
+    }
+    await supabase.from('subscriptions').insert([subInsert]);
+
+    // V13: Registra redemption do cupom (incrementa uses_count via RPC).
+    if (validatedCoupon) {
+      await supabase.from('coupon_redemptions').insert([{
+        code: validatedCoupon.code,
+        user_id: user.id,
+        plan_id,
+        payment_amount: finalPrice
+      }]).then(() => {
+        supabase.rpc('increment_coupon_uses', { p_code: validatedCoupon.code }).catch(() => {});
+      }).catch(e => console.warn('[coupon] redemption insert failed:', e.message));
+    }
 
     return res.status(200).json({
       checkout_url: mpData.init_point,
-      mp_subscription_id: mpData.id
+      mp_subscription_id: mpData.id,
+      final_price: finalPrice,
+      applied_coupon: validatedCoupon ? validatedCoupon.code : null
     });
 
   } catch (e) {
