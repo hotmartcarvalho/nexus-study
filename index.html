@@ -2156,23 +2156,133 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 .conf-btn.sel-g{border-color:var(--red);background:var(--red-light);color:var(--red-text)}
 .conf-icon{font-size:18px;display:block;margin-bottom:4px}
 
-.fb-card{margin-top:.875rem;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);padding:1.25rem 1.5rem}
-.fb-card.ok{border-color:var(--accent)}
-.fb-card.err{border-color:var(--red)}
-.meta-box{background:var(--surface2);border-radius:var(--rs);padding:10px 13px;font-size:13px;color:var(--text2);display:flex;flex-direction:column;gap:5px;margin-bottom:.875rem}
-.meta-box strong{color:var(--text);font-weight:600}
-.warn-box{background:var(--red-light);border:1px solid rgba(217,75,74,.2);border-radius:var(--rs);padding:10px 13px;font-size:13px;color:var(--red-text);margin-bottom:.875rem;line-height:1.6}
+/* V12: Cards de feedback de questão e flashcards com visual mais premium.
+   Antes: padding apertado, borda fina, sem hierarquia visual clara.
+   Agora: padding generoso, borda lateral colorida (3px), sombra sutil,
+   tipografia hierárquica, espaçamento entre seções respira.
+   Razão: esses são os outputs MAIS importantes da plataforma — tinham que parecer importantes. */
+.fb-card{
+  margin-top:1rem;
+  border-radius:14px;
+  border:1px solid var(--border);
+  background:var(--surface);
+  padding:1.5rem 1.625rem;
+  box-shadow:0 1px 3px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.03);
+  position:relative;
+  overflow:hidden;
+}
+/* Faixa lateral colorida 4px — sinaliza ok/erro com firmeza */
+.fb-card::before{
+  content:'';
+  position:absolute;
+  top:0;bottom:0;left:0;
+  width:4px;
+  background:var(--border);
+}
+.fb-card.ok{border-color:rgba(73,197,137,.30)}
+.fb-card.ok::before{background:var(--accent)}
+.fb-card.err{border-color:rgba(232,76,76,.30)}
+.fb-card.err::before{background:var(--red)}
+
+/* Header do feedback (ok/erro + ícone) — posicionamento mais firme */
+.fb-card > h3{margin:0 0 1rem;font-size:16px;font-weight:700;letter-spacing:-.2px;display:flex;align-items:center;gap:8px}
+.fb-card.ok > h3{color:var(--accent-text)}
+.fb-card.err > h3{color:var(--red-text)}
+
+/* Meta-box (referências, palavra-chave, etc) — agora com label discreto */
+.meta-box{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:.875rem 1.125rem;
+  font-size:13px;
+  color:var(--text2);
+  display:flex;flex-direction:column;
+  gap:7px;
+  margin-bottom:1rem;
+  line-height:1.6;
+}
+.meta-box strong{color:var(--text);font-weight:700}
+
+/* Warn-box (armadilha) — destaque visual mais forte */
+.warn-box{
+  background:var(--red-light);
+  border:1px solid rgba(217,75,74,.25);
+  border-left:3px solid var(--red);
+  border-radius:10px;
+  padding:.875rem 1.125rem;
+  font-size:13px;
+  color:var(--red-text);
+  margin-bottom:1rem;
+  line-height:1.65;
+}
 .warn-box b{font-weight:700}
 
-.srs-flip{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2rem 1.5rem;min-height:160px;display:flex;flex-direction:column;justify-content:center;margin-bottom:1rem}
-.srs-front,.srs-back{font-size:15px;line-height:1.7;white-space:pre-wrap;word-break:break-word}
-.srs-front{font-weight:500}
-.srs-divider{border-top:1px dashed var(--border2);margin:1rem 0}
-.srs-rating{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.rating-btn{padding:10px 6px;border-radius:var(--rs);border:1px solid var(--border2);background:var(--surface);text-align:center;font-size:12px;font-weight:500}
-.rating-btn:hover{background:var(--surface2)}
-.rating-btn b{display:block;font-size:14px;margin-bottom:2px}
-.rating-hint{font-size:10.5px;color:var(--text3);margin-top:2px}
+.fb-card .meta-box p, .fb-card > p{line-height:1.7}
+
+/* Flashcard (SRS flip) — visual premium com sombra de elevação */
+.srs-flip{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:2.5rem 2rem;
+  min-height:200px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  margin-bottom:1.25rem;
+  box-shadow:0 2px 6px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.04);
+  position:relative;
+  transition:box-shadow .2s, transform .2s;
+}
+.srs-flip:hover{
+  box-shadow:0 4px 10px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.06);
+}
+.srs-front, .srs-back{
+  font-size:16px;
+  line-height:1.75;
+  white-space:pre-wrap;
+  word-break:break-word;
+  color:var(--text);
+}
+.srs-front{font-weight:600}
+.srs-back{font-weight:400;color:var(--text2)}
+.srs-divider{
+  border-top:1px solid var(--border);
+  margin:1.25rem 0;
+  position:relative;
+}
+.srs-divider::after{
+  content:'';
+  position:absolute;
+  top:-4px;
+  left:50%;
+  transform:translateX(-50%);
+  width:8px;height:8px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:50%;
+}
+.srs-rating{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.rating-btn{
+  padding:.875rem .5rem;
+  border-radius:10px;
+  border:1px solid var(--border2);
+  background:var(--surface);
+  text-align:center;
+  font-size:12px;
+  font-weight:500;
+  transition:all .15s;
+  cursor:pointer;
+}
+.rating-btn:hover{
+  background:var(--surface2);
+  transform:translateY(-1px);
+  box-shadow:0 2px 6px rgba(0,0,0,.06);
+}
+.rating-btn:active{transform:translateY(0)}
+.rating-btn b{display:block;font-size:14px;margin-bottom:3px}
+.rating-hint{font-size:10.5px;color:var(--text3);margin-top:2px;font-weight:500}
 
 .pomo-main{text-align:center;padding:2rem 1rem}
 .pomo-phase{font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:.75rem}
@@ -4820,6 +4930,29 @@ async function importNotebookToLocal(resourceId){
   return {notebook, importedCount: importedQuestions.length};
 }
 
+// V12: Verifica se um recurso da descoberta já foi importado pelo usuário.
+// Funciona pra cadernos, fontes e perfis de tópico.
+function wasResourceImported(resourceId, resourceType){
+  if(!resourceId) return false;
+  if(resourceType === 'caderno' || !resourceType){
+    // Caderno: checa em notebooks
+    if((DATA.notebooks||[]).some(nb => nb.importedFromResource === resourceId)) return true;
+  }
+  if(resourceType === 'fonte' || !resourceType){
+    // Fonte: checa em sources (assumindo que importação salva importedFromResource)
+    if((DATA.sources||[]).some(s => s.importedFromResource === resourceId)) return true;
+  }
+  if(resourceType === 'topic_profile' || !resourceType){
+    // Perfis de tópico: checa em topicProfiles
+    if(DATA.topicProfiles){
+      for(const k of Object.keys(DATA.topicProfiles)){
+        if(DATA.topicProfiles[k] && DATA.topicProfiles[k].importedFromResource === resourceId) return true;
+      }
+    }
+  }
+  return false;
+}
+
 // Importa fonte: clona pra DATA.sources com disciplina escolhida pelo usuário
 // targetDisciplineId é obrigatório (mapeamento manual)
 async function importSourceToLocal(resourceId, targetDisciplineId){
@@ -7352,21 +7485,23 @@ function getCurrentPlanId(){
 const PLAN_LIMITS = {
   trial: {
     name: 'Trial (grátis)',
-    edital_per_month: 0,           // não tem síntese de edital
+    // V12: Trial agora tem 1 síntese de edital — pra usuário experimentar a feature mais
+    // poderosa antes de decidir assinar. Antes era 0 (zero), faltava demonstração de valor.
+    edital_per_month: 1,
     can_use_sonnet: false,         // só Haiku
     can_buy_topup: false,          // não pode comprar avulso
     label: 'gratuito'
   },
   estudante: {
     name: 'Estudante',
-    edital_per_month: 1,           // 1 síntese por mês
+    edital_per_month: 2,           // 2 sínteses por mês (era 1)
     can_use_sonnet: false,         // só Haiku
     can_buy_topup: true,
     label: 'básico'
   },
   concurseiro: {
     name: 'Concurseiro',
-    edital_per_month: 3,           // 3 sínteses por mês
+    edital_per_month: 5,           // 5 sínteses por mês (era 3)
     can_use_sonnet: false,         // só Haiku
     can_buy_topup: true,
     label: 'recomendado'
@@ -11400,6 +11535,135 @@ function renderTopbar(){
 }
 
 /* DASHBOARD */
+// V12: Checklist de primeiros passos.
+// Aparece pra usuários novos pra guiá-los no fluxo essencial.
+// Some quando o usuário avança suficiente OU quando ele clica em "dispensar".
+function buildOnboardingChecklist(){
+  // Se já dispensou, não mostra
+  if(DATA.onboardingDismissed) return null;
+
+  // Calcula quais passos já estão completos
+  const hasDiscipline = (DATA.disciplines||[]).length > 0;
+  const hasSource = (DATA.sources||[]).length > 0 || (DATA.notebooks||[]).length > 0 || (DATA.importedQuestions||[]).length > 0;
+  const hasPracticed = (DATA.session && (DATA.session.total||0) > 0) || (DATA.errors||[]).length > 0;
+  const hasFlashcard = ((DATA.srs||{}).cards||[]).length > 0;
+  const hasExamSet = !!(AUTH.profile && AUTH.profile.target_exam_name) || !!(DATA.config && DATA.config.examName);
+
+  const steps = [
+    {
+      key:'discipline', done: hasDiscipline,
+      icon:'📚', title:'Crie sua primeira disciplina',
+      desc:'Ex: Direito Constitucional, Português, Informática.',
+      cta:'Ir pra disciplinas', action:()=>{ST.view='settings';render();setTimeout(()=>{const sec=document.querySelector('[data-section="disciplines"]');if(sec)sec.scrollIntoView({behavior:'smooth',block:'center'});},200);}
+    },
+    {
+      key:'source', done: hasSource,
+      icon:'📖', title:'Adicione uma fonte de estudo',
+      desc:'Cole texto, suba PDF ou importe um caderno da comunidade.',
+      cta:'Adicionar fonte', action:()=>{ST.view='sources';render();}
+    },
+    {
+      key:'practice', done: hasPracticed,
+      icon:'📝', title:'Resolva sua primeira questão',
+      desc:'Comece pela calibração de confiança — 1 minuto, descobre seu padrão.',
+      cta:'Calibrar agora', action:()=>{ST.view='calibration';render();}
+    },
+    {
+      key:'flashcard', done: hasFlashcard,
+      icon:'🎴', title:'Crie um flashcard',
+      desc:'Pode ser do seu primeiro erro (1 clique) ou da teoria.',
+      cta:'Ir pra SRS', action:()=>{ST.view='srs';ST.srsSubview='generate';render();}
+    },
+    {
+      key:'exam', done: hasExamSet,
+      icon:'📅', title:'Defina sua prova alvo',
+      desc:'Nome, data e banca — destrava o contador regressivo no painel.',
+      cta:'Definir prova', action:()=>{ST.view='settings';render();}
+    }
+  ];
+
+  const doneCount = steps.filter(s=>s.done).length;
+  const allDone = doneCount === steps.length;
+
+  // Se já fez tudo, some
+  if(allDone){
+    // Marca como dispensado pra não voltar a calcular toda render
+    if(!DATA.onboardingDismissed){
+      DATA.onboardingDismissed = true;
+      save();
+    }
+    return null;
+  }
+
+  const card = mk('div','onboarding-checklist');
+  card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.375rem;margin:0 0 1.25rem;box-shadow:0 1px 3px rgba(0,0,0,.04)';
+
+  // Header
+  const head = mk('div');head.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:.875rem';
+  const headLeft = mk('div');
+  const title = mk('h2');title.style.cssText='margin:0 0 2px;font-size:16px;font-weight:700';
+  title.innerHTML = '🚀 Comece por aqui';
+  const sub = mk('p');sub.style.cssText='margin:0;font-size:12px;color:var(--text3);font-weight:500';
+  sub.textContent = `${doneCount}/${steps.length} passos concluídos · 5 minutos pra explorar o essencial`;
+  headLeft.appendChild(title);headLeft.appendChild(sub);
+  head.appendChild(headLeft);
+
+  // Dispensar
+  const dismissBtn = mk('button');
+  dismissBtn.style.cssText='background:transparent;border:none;color:var(--text3);font-size:11.5px;cursor:pointer;padding:4px 8px;border-radius:6px;font-family:inherit';
+  dismissBtn.textContent = 'Dispensar';
+  dismissBtn.title = 'Esconder esse painel. Sempre dá pra ver de novo em Conta.';
+  dismissBtn.addEventListener('click',()=>{
+    if(confirm('Esconder o checklist de primeiros passos? Você pode reativar em Conta.')){
+      DATA.onboardingDismissed = true;
+      save();render();
+    }
+  });
+  head.appendChild(dismissBtn);
+  card.appendChild(head);
+
+  // Progress bar
+  const pbWrap = mk('div');pbWrap.style.cssText='height:6px;background:var(--surface2);border-radius:999px;overflow:hidden;margin-bottom:1rem';
+  const pbFill = mk('div');pbFill.style.cssText=`height:100%;width:${(doneCount/steps.length)*100}%;background:linear-gradient(90deg,var(--accent),var(--gralia-purple));transition:width .3s`;
+  pbWrap.appendChild(pbFill);
+  card.appendChild(pbWrap);
+
+  // Steps
+  const list = mk('div');list.style.cssText='display:flex;flex-direction:column;gap:8px';
+  steps.forEach(step=>{
+    const item = mk('div');
+    item.style.cssText = `display:flex;align-items:center;gap:12px;padding:.75rem .875rem;border-radius:10px;border:1px solid ${step.done?'rgba(73,197,137,.30)':'var(--border)'};background:${step.done?'rgba(73,197,137,.06)':'var(--surface2)'};transition:all .15s`;
+
+    const ic = mk('span');ic.style.cssText='font-size:20px;flex-shrink:0;width:32px;text-align:center;line-height:1';
+    ic.textContent = step.done ? '✅' : step.icon;
+    item.appendChild(ic);
+
+    const body = mk('div');body.style.cssText='flex:1;min-width:0';
+    const t = mk('div');t.style.cssText=`font-size:13px;font-weight:700;color:${step.done?'var(--accent-text)':'var(--text)'};line-height:1.3;${step.done?'text-decoration:line-through':''}`;
+    t.textContent = step.title;
+    body.appendChild(t);
+    if(!step.done){
+      const d = mk('div');d.style.cssText='font-size:11.5px;color:var(--text3);line-height:1.4;margin-top:2px';
+      d.textContent = step.desc;
+      body.appendChild(d);
+    }
+    item.appendChild(body);
+
+    if(!step.done){
+      const ctaBtn = mkBtn(step.cta+' →','btn btn-sm btn-p');
+      ctaBtn.style.cssText='flex-shrink:0;font-size:11.5px;padding:6px 12px';
+      ctaBtn.addEventListener('click',(e)=>{e.stopPropagation();step.action();});
+      item.appendChild(ctaBtn);
+    }
+
+    list.appendChild(item);
+  });
+  card.appendChild(list);
+
+  return card;
+}
+
+
 function renderDashboard(){
   const wrap = mk('div','fade');
   const s = DATA.session;
@@ -11463,6 +11727,13 @@ function renderDashboard(){
     });
   },10);
   wrap.appendChild(greeting);
+
+  // V12: Checklist de primeiros passos — aparece pra usuários novos.
+  // Some automaticamente quando todos os passos estão completos.
+  // Razão: usuário novo precisa saber o que fazer primeiro pra extrair valor.
+  // Antes: só tinha um toast de boas-vindas — efêmero, fácil de perder.
+  const onboardingCard = buildOnboardingChecklist();
+  if(onboardingCard) wrap.appendChild(onboardingCard);
 
   // ===== HERO — countdown + exam info =====
   const hero = mk('div','dash-hero');
@@ -15166,24 +15437,37 @@ function showEditCardModal(card,isNew,onSave){
     m.appendChild(info);
   }
 
-  const lblT = mk('label');lblT.textContent='Tipo';
-  m.appendChild(lblT);
-  const tg = mk('div','type-grid');
+  // V12: Tipo do card NÃO pode ser mudado depois de gerado.
+  // Razão: a IA gera frente/verso pensando num formato específico (cloze, conceitual,
+  // mnemônico, etc). Trocar o tipo depois faz o card ficar inconsistente com seu conteúdo.
+  // Antes: dava pra trocar e o card ficava esquisito (cloze sem ::palavra::, etc).
+  // Agora: só novos cards permitem escolher tipo.
   let selType = card.type||'concept';
-  Object.entries(CARD_TYPES).forEach(([k,v])=>{
-    const b = mk('button','type-btn'+(selType===k?' on':''));
-    b.setAttribute('data-type',k);
-    const em = mk('span','emoji');em.textContent=v.emoji;
-    const lb = mk('span');lb.textContent=v.label;
-    b.appendChild(em);b.appendChild(lb);
-    b.addEventListener('click',()=>{
-      selType=k;
-      tg.querySelectorAll('.type-btn').forEach(x=>x.classList.remove('on'));
-      b.classList.add('on');
+  if(isNew){
+    const lblT = mk('label');lblT.textContent='Tipo';
+    m.appendChild(lblT);
+    const tg = mk('div','type-grid');
+    Object.entries(CARD_TYPES).forEach(([k,v])=>{
+      const b = mk('button','type-btn'+(selType===k?' on':''));
+      b.setAttribute('data-type',k);
+      const em = mk('span','emoji');em.textContent=v.emoji;
+      const lb = mk('span');lb.textContent=v.label;
+      b.appendChild(em);b.appendChild(lb);
+      b.addEventListener('click',()=>{
+        selType=k;
+        tg.querySelectorAll('.type-btn').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+      });
+      tg.appendChild(b);
     });
-    tg.appendChild(b);
-  });
-  m.appendChild(tg);
+    m.appendChild(tg);
+  } else {
+    // Card existente: mostra o tipo só pra informação, sem permitir edição
+    const typeInfo = mk('div');typeInfo.style.cssText='margin:.25rem 0 .75rem;font-size:11.5px;color:var(--text3)';
+    const typeData = CARD_TYPES[selType] || {emoji:'🎴',label:selType};
+    typeInfo.innerHTML = `Tipo deste card: <b style="color:var(--text2)">${typeData.emoji} ${escapeHTML(typeData.label)}</b>`;
+    m.appendChild(typeInfo);
+  }
 
   const lblD = mk('label');lblD.textContent='Disciplina';
   const selD = mk('select');
@@ -24428,11 +24712,39 @@ async function loadUserPublicMaterials(userId, username, container){
         ${r.description ? `<p class="umi-summary">${escapeHTML(r.description.slice(0, 140))}${r.description.length>140?'...':''}</p>` : ''}
         <div class="umi-stats">${stats}</div>
       `;
-      // Click leva pra Discover já filtrando por esse autor
+      // V12: Click no material no perfil — abre o preview do recurso direto
+      // (em vez de levar pra descoberta filtrada por autor, que era confuso).
+      // Usa o item.id pra buscar e abrir o modal de preview/import direto.
       item.addEventListener('click',()=>{
-        ST.discoverFilterAuthor = username;
-        ST.view = 'discover';
-        render();
+        // Mapeia o resource pro formato esperado pelo showImportConfirmModal/preview
+        const mappedItem = {
+          id: r.id,
+          owner_id: r.owner_id,
+          owner_username: username,
+          owner_display_name: p.display_name,
+          title: r.title,
+          description: r.description,
+          resource_type: r.resource_type,
+          discipline: r.discipline,
+          topic: r.topic,
+          question_count: r.question_count,
+          created_at: r.created_at,
+          payload: r.payload,
+          tags: r.tags,
+          total_uses: r.total_uses,
+          useful_pct: r.useful_pct,
+          rated_count: r.rated_count
+        };
+        // Abre preview direto (mostra detalhes + opção de importar)
+        if(typeof showResourcePreviewModal === 'function'){
+          showResourcePreviewModal(mappedItem);
+        } else {
+          // Fallback: vai pra descoberta filtrada pelo título do material
+          ST.discoverFilterAuthor = username;
+          ST.discoverFilterTitle = r.title;
+          ST.view = 'discover';
+          render();
+        }
       });
       list.appendChild(item);
     });
@@ -24538,6 +24850,37 @@ function renderDiscover(){
     scopeRow.appendChild(scopeAll);
     scopeRow.appendChild(scopeFollowing);
     wrap.appendChild(scopeRow);
+
+    // V12: Filtro por tipo de material — caderno, fonte, perfil de tópico, edital
+    // Antes não tinha filtro visível — usuário só conseguia ver tudo misturado.
+    // Sincroniza com ST.discoverFilter.type (filtro real usado na query).
+    if(!ST.discoverFilter) ST.discoverFilter = {};
+    const curType = ST.discoverFilter.type || 'all';
+    const typeRow = mk('div','discover-type-row');
+    typeRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-top:.5rem';
+    const typeOpts = [
+      {key:'all', icon:'🌐', label:'Todos'},
+      {key:'caderno', icon:'📝', label:'Cadernos'},
+      {key:'fonte', icon:'📚', label:'Fontes'},
+      {key:'perfil_topico', icon:'🧠', label:'Perfis de tópico'},
+      {key:'edital', icon:'📋', label:'Editais'}
+    ];
+    typeOpts.forEach(opt=>{
+      const isOn = curType === opt.key;
+      const b = mk('button','dtype-chip'+(isOn?' on':''));
+      b.type='button';
+      b.style.cssText = `padding:5px 11px;border-radius:14px;border:1px solid ${isOn?'var(--accent)':'var(--border)'};background:${isOn?'var(--accent-light)':'var(--surface)'};color:${isOn?'var(--accent-text)':'var(--text2)'};font-size:11.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:inherit`;
+      b.innerHTML = `<span>${opt.icon}</span><span>${opt.label}</span>`;
+      b.addEventListener('click',()=>{
+        const newType = opt.key === 'all' ? null : opt.key;
+        if((ST.discoverFilter.type||'all') === (newType||'all')) return;
+        ST.discoverFilter.type = newType;
+        ST.discoverItems = []; ST.discoverPage = 0; ST.discoverHasMore = true;
+        render();
+      });
+      typeRow.appendChild(b);
+    });
+    wrap.appendChild(typeRow);
   }
 
   // Aviso se sem perfil (mostrado em ambas as abas)
@@ -25097,6 +25440,16 @@ function renderResourceCard(item){
   }
   card.appendChild(stats);
 
+  // V12: Badge "✓ Já importado" — usuário vê de cara que esse recurso já tá na conta dele.
+  // Antes: ele clicava em importar e gerava duplicata sem perceber.
+  const alreadyImported = wasResourceImported(item.id, item.resource_type);
+  if(alreadyImported){
+    const importedBadge = mk('div','rc-imported-badge');
+    importedBadge.style.cssText = 'display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:var(--accent-light);color:var(--accent-text);border:1px solid var(--accent);border-radius:999px;font-size:11px;font-weight:700;margin-top:8px;width:fit-content';
+    importedBadge.innerHTML = '✓ Já importado';
+    card.appendChild(importedBadge);
+  }
+
   // Tags clicáveis (Estágio 12)
   if(item.tags && item.tags.length > 0){
     const tagsBox = mk('div','rc-tags');
@@ -25123,6 +25476,16 @@ function renderResourceCard(item){
   if(isMine){
     const myBadge = mk('span','rc-mine-badge');myBadge.textContent='Seu material';
     actions.appendChild(myBadge);
+  } else if(alreadyImported){
+    // V12: Já importado → botão fica secundário, com aviso de duplicata se clicar
+    const reimportBtn = mkBtn('↻ Re-importar','btn btn-sm');
+    reimportBtn.title = 'Você já importou este material. Re-importar cria uma cópia separada.';
+    reimportBtn.addEventListener('click',()=>{
+      if(confirm('Você já tem este material na sua conta. Re-importar vai criar uma cópia separada (duplicata). Continuar?')){
+        showImportConfirmModal(item);
+      }
+    });
+    actions.appendChild(reimportBtn);
   } else {
     const importBtn = mkBtn('📥 Importar pra minha conta','btn btn-sm btn-p');
     importBtn.addEventListener('click',()=>showImportConfirmModal(item));
@@ -29280,6 +29643,185 @@ function renderAdminDashboard(){
   }, 50);
   wrap.appendChild(credCard);
 
+  // === V12: Card admin — trocar plano próprio pra testes ===
+  // Permite ao admin alternar entre planos pra validar UI/comportamento de cada um
+  // sem precisar criar contas de teste separadas.
+  const planCard = mk('section','admin-card');
+  planCard.appendChild(adminSectionLabel('🎟 Plano próprio (testes)'));
+  const planHead = mk('h2','admin-section-title');
+  planHead.textContent = 'Trocar seu plano sem pagar';
+  planCard.appendChild(planHead);
+  const planBody = mk('div');planBody.style.cssText='padding:0';
+  const planHelp = mk('p','txt2');planHelp.style.cssText='margin:0 0 .875rem;font-size:13px;line-height:1.55';
+  planHelp.textContent = 'Troca seu plano direto no banco pra testar UX de cada faixa. Não cobra nada, e você consegue testar limites/badges/CTAs do plano selecionado.';
+  planBody.appendChild(planHelp);
+
+  const curPlanLine = mk('p','txt3');curPlanLine.style.cssText='margin:0 0 .875rem;font-size:12.5px';
+  const curPlan = (SUBSCRIPTION && SUBSCRIPTION.data && SUBSCRIPTION.data.plan_id) || (QUOTA && QUOTA.plan) || 'trial';
+  curPlanLine.innerHTML = `Plano atual: <b style="color:var(--text)">${escapeHTML(curPlan)}</b>`;
+  planBody.appendChild(curPlanLine);
+
+  const planRow = mk('div');planRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+  ['trial','estudante','concurseiro','pro'].forEach(planId=>{
+    const b = mkBtn(planId,'btn btn-sm'+(curPlan===planId?' btn-p':''));
+    b.disabled = (curPlan === planId);
+    b.addEventListener('click',async ()=>{
+      if(!confirm(`Trocar SEU plano pra "${planId}"? Isso afeta seus limites e a UI no painel.`)) return;
+      b.disabled = true; b.textContent = '...';
+      try{
+        const {error} = await supa.rpc('admin_set_own_plan', {p_plan_id: planId});
+        if(error) throw error;
+        showToast(`✓ Plano alterado pra ${planId}`);
+        if(typeof fetchSubscription === 'function') await fetchSubscription(true);
+        if(typeof fetchQuota === 'function') await fetchQuota();
+        render();
+      }catch(e){
+        const msg = (e.message || String(e)).toLowerCase();
+        if(msg.includes('admin_set_own_plan') || msg.includes('does not exist') || msg.includes('function')){
+          alert('A função admin_set_own_plan ainda não existe no Supabase. Rode o SQL gralia-v13-admin-tools.sql primeiro.');
+        } else {
+          alert('Erro: ' + (e.message || e));
+        }
+        b.disabled = false; b.textContent = planId;
+      }
+    });
+    planRow.appendChild(b);
+  });
+  planBody.appendChild(planRow);
+  planCard.appendChild(planBody);
+  wrap.appendChild(planCard);
+
+  // === V12: Card admin — consultar consumo de um usuário ===
+  // Útil pra investigar reclamações ("usei pouco mas acabaram os créditos") ou
+  // identificar power-users.
+  const consumeCard = mk('section','admin-card');
+  consumeCard.appendChild(adminSectionLabel('🔍 Consumo de usuário'));
+  const consumeHead = mk('h2','admin-section-title');
+  consumeHead.textContent = 'Consultar uso de créditos por usuário';
+  consumeCard.appendChild(consumeHead);
+  const consumeBody = mk('div');consumeBody.style.cssText='padding:0';
+  const consumeHelp = mk('p','txt2');consumeHelp.style.cssText='margin:0 0 .875rem;font-size:13px;line-height:1.55';
+  consumeHelp.textContent = 'Veja quantos créditos um usuário consumiu este mês e em que ações.';
+  consumeBody.appendChild(consumeHelp);
+
+  const consumeForm = mk('div');consumeForm.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.875rem';
+  const consumeInp = mk('input');consumeInp.type='text';consumeInp.placeholder='Email ou @username';
+  consumeInp.style.cssText='flex:1;min-width:200px;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit';
+  consumeForm.appendChild(consumeInp);
+  const consumeBtn = mkBtn('🔍 Consultar','btn btn-sm btn-p');
+  consumeForm.appendChild(consumeBtn);
+  consumeBody.appendChild(consumeForm);
+
+  const consumeResult = mk('div');consumeResult.style.cssText='font-size:12.5px;line-height:1.6';
+  consumeBody.appendChild(consumeResult);
+
+  consumeBtn.addEventListener('click',async ()=>{
+    const ident = consumeInp.value.trim();
+    if(!ident){ alert('Informe email ou username'); return; }
+    consumeBtn.disabled = true; consumeBtn.textContent = '...';
+    consumeResult.innerHTML = '';
+    try{
+      const {data, error} = await supa.rpc('admin_user_consumption', {target_identifier: ident});
+      if(error) throw error;
+      if(!data){
+        consumeResult.innerHTML = '<span style="color:var(--text3)">Usuário não encontrado.</span>';
+        return;
+      }
+      // data esperado: {user_id, email, username, plan_id, total_credits, used_this_month, last_action_at, top_actions: [{action, count}]}
+      const planAtual = data.plan_id || 'trial';
+      const usadoMes = data.used_this_month || 0;
+      const totalCred = data.total_credits || 0;
+      const restante = Math.max(0, totalCred - usadoMes);
+      let topActionsHTML = '<span style="color:var(--text3)">sem dados de ações</span>';
+      if(data.top_actions && data.top_actions.length > 0){
+        topActionsHTML = data.top_actions.map(a => `<div>· ${escapeHTML(a.action)} — <b>${a.count}</b>×</div>`).join('');
+      }
+      consumeResult.innerHTML = `
+        <div style="padding:.875rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:6px;color:var(--text)">${escapeHTML(data.email||data.username||ident)}</div>
+          <div>Plano: <b>${escapeHTML(planAtual)}</b></div>
+          <div>Usados este mês: <b>${usadoMes}</b> · Restantes: <b>${restante}</b> (de ${totalCred})</div>
+          <div style="margin-top:6px;color:var(--text3);font-size:11.5px">Top ações no mês:</div>
+          ${topActionsHTML}
+        </div>
+      `;
+    }catch(e){
+      const msg = (e.message || String(e)).toLowerCase();
+      if(msg.includes('admin_user_consumption') || msg.includes('does not exist') || msg.includes('function')){
+        consumeResult.innerHTML = '<span style="color:var(--red-text)">A função admin_user_consumption ainda não existe. Rode o SQL gralia-v13-admin-tools.sql.</span>';
+      } else {
+        consumeResult.innerHTML = '<span style="color:var(--red-text)">Erro: '+escapeHTML(e.message||String(e))+'</span>';
+      }
+    }
+    consumeBtn.disabled = false; consumeBtn.textContent = '🔍 Consultar';
+  });
+
+  consumeCard.appendChild(consumeBody);
+  wrap.appendChild(consumeCard);
+
+  // === V12: Card admin — presentear plano a um usuário ===
+  const giftCard = mk('section','admin-card');
+  giftCard.appendChild(adminSectionLabel('🎁 Presentear plano'));
+  const giftHead = mk('h2','admin-section-title');
+  giftHead.textContent = 'Dar acesso temporário a um plano pago';
+  giftCard.appendChild(giftHead);
+  const giftBody = mk('div');giftBody.style.cssText='padding:0';
+  const giftHelp = mk('p','txt2');giftHelp.style.cssText='margin:0 0 .875rem;font-size:13px;line-height:1.55';
+  giftHelp.textContent = 'Concede plano + créditos por X dias a um usuário (cortesia BETA, suporte, parceria, etc).';
+  giftBody.appendChild(giftHelp);
+
+  const giftForm = mk('div');giftForm.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.875rem';
+  const giftInp = mk('input');giftInp.type='text';giftInp.placeholder='Email ou @username';
+  giftInp.style.cssText='grid-column:span 2;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit';
+  giftForm.appendChild(giftInp);
+
+  const giftPlanSel = mk('select');giftPlanSel.style.cssText='padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit';
+  ['estudante','concurseiro','pro'].forEach(p=>{const o=mk('option');o.value=p;o.textContent=p;giftPlanSel.appendChild(o);});
+  giftPlanSel.value='concurseiro';
+  giftForm.appendChild(giftPlanSel);
+
+  const giftDaysInp = mk('input');giftDaysInp.type='number';giftDaysInp.placeholder='Dias';giftDaysInp.value='30';giftDaysInp.min=1;giftDaysInp.max=365;
+  giftDaysInp.style.cssText='padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit';
+  giftForm.appendChild(giftDaysInp);
+
+  giftBody.appendChild(giftForm);
+
+  const giftBtn = mkBtn('🎁 Presentear','btn btn-sm btn-p');
+  giftBody.appendChild(giftBtn);
+  const giftResult = mk('div');giftResult.style.cssText='font-size:12px;line-height:1.5;margin-top:8px';
+  giftBody.appendChild(giftResult);
+
+  giftBtn.addEventListener('click',async ()=>{
+    const ident = giftInp.value.trim();
+    const plan = giftPlanSel.value;
+    const days = parseInt(giftDaysInp.value, 10);
+    if(!ident){alert('Informe email ou username');return;}
+    if(!days || days < 1){alert('Informe dias válidos');return;}
+    if(!confirm(`Presentear ${ident} com plano "${plan}" por ${days} dias?`)) return;
+    giftBtn.disabled=true; giftBtn.textContent='...';
+    try{
+      const {error} = await supa.rpc('admin_gift_plan', {
+        target_identifier: ident,
+        p_plan_id: plan,
+        p_days: days
+      });
+      if(error) throw error;
+      giftResult.innerHTML = `<span style="color:var(--accent-text)">✓ ${ident} agora tem o plano <b>${plan}</b> por ${days} dias.</span>`;
+      giftInp.value = '';
+    }catch(e){
+      const msg = (e.message || String(e)).toLowerCase();
+      if(msg.includes('admin_gift_plan') || msg.includes('does not exist') || msg.includes('function')){
+        giftResult.innerHTML = '<span style="color:var(--red-text)">A função admin_gift_plan ainda não existe. Rode o SQL gralia-v13-admin-tools.sql.</span>';
+      } else {
+        giftResult.innerHTML = '<span style="color:var(--red-text)">Erro: '+escapeHTML(e.message||String(e))+'</span>';
+      }
+    }
+    giftBtn.disabled=false; giftBtn.textContent='🎁 Presentear';
+  });
+
+  giftCard.appendChild(giftBody);
+  wrap.appendChild(giftCard);
+
   // === Card: Health checks ===
   const healthCard = mk('section','admin-card');
   healthCard.appendChild(adminSectionLabel('🩺 Saúde do sistema'));
@@ -29356,6 +29898,23 @@ function renderAdminDashboard(){
         fbList.appendChild(empty);
         return;
       }
+
+      // V12: Busca perfis dos remetentes pra mostrar nome/username (não só user_id)
+      // profiles é tabela pública (sem permission denied issue)
+      const userIds = [...new Set(data.map(m => m.user_id).filter(Boolean))];
+      let profilesMap = {};
+      if(userIds.length > 0){
+        try{
+          const {data: profs} = await supa
+            .from('profiles')
+            .select('id, username, display_name')
+            .in('id', userIds);
+          if(profs){
+            profs.forEach(p => { profilesMap[p.id] = p; });
+          }
+        }catch(_){ /* sem profiles, mostra só user_id */ }
+      }
+
       const countBadge = mk('div');countBadge.style.cssText='font-size:12px;color:var(--text3);margin-bottom:10px';
       countBadge.textContent = `${data.length} ${data.length===1?'mensagem':'mensagens'} com status "${fbStatus}"`;
       fbList.appendChild(countBadge);
@@ -29371,8 +29930,26 @@ function renderAdminDashboard(){
         whenEl.textContent = when;
         headRow.appendChild(subjEl);headRow.appendChild(whenEl);
         item.appendChild(headRow);
-        const userInfo = mk('div','txt3');userInfo.style.cssText='font-size:11px;margin-bottom:8px;font-family:ui-monospace,monospace';
-        userInfo.textContent = 'user_id: '+msg.user_id;
+        const userInfo = mk('div','txt3');userInfo.style.cssText='font-size:11.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px';
+        const profile = profilesMap[msg.user_id];
+        if(profile && (profile.display_name || profile.username)){
+          // Mostra nome/username se disponível
+          const nameSpan = mk('span');nameSpan.style.cssText='color:var(--text2);font-weight:600';
+          nameSpan.textContent = profile.display_name || ('@' + profile.username);
+          userInfo.appendChild(nameSpan);
+          if(profile.username && profile.display_name){
+            const handleSpan = mk('span');handleSpan.style.cssText='color:var(--text3);font-weight:500';
+            handleSpan.textContent = '@' + profile.username;
+            userInfo.appendChild(handleSpan);
+          }
+          const idSpan = mk('span');idSpan.style.cssText='color:var(--text3);font-family:ui-monospace,monospace;font-size:10px;margin-left:auto';
+          idSpan.textContent = msg.user_id.slice(0,8);
+          userInfo.appendChild(idSpan);
+        } else {
+          // Fallback se profile não disponível
+          userInfo.style.fontFamily='ui-monospace,monospace';
+          userInfo.textContent = 'user_id: ' + msg.user_id;
+        }
         item.appendChild(userInfo);
         const msgEl = mk('div');msgEl.style.cssText='font-size:13px;line-height:1.6;color:var(--text2);background:var(--surface2);padding:.625rem .875rem;border-radius:8px;margin-bottom:10px;white-space:pre-wrap';
         msgEl.textContent = msg.message;
@@ -31535,7 +32112,7 @@ function renderEyeCare(){
 
 function renderSettings(){
   const wrap = mk('div','fade settings-page-v2');
-  const h = mk('h1');h.textContent='Configurações';
+  const h = mk('h1');h.textContent='Conta';
   wrap.appendChild(h);
   const sub = mk('p','txt2');sub.style.cssText='margin:0 0 1.25rem;font-size:13px;line-height:1.55;max-width:600px';
   sub.textContent = 'Personalize seu perfil, preferências de estudo, aparência e dados. Use os links abaixo pra pular pra cada seção.';
@@ -32072,6 +32649,16 @@ function renderSettings(){
     };
     f.click();
   });
+  // V12: Reativa o checklist de primeiros passos no painel (caso usuário tenha dispensado)
+  if(DATA.onboardingDismissed){
+    const reactBtn = mkBtn('Mostrar checklist no painel','btn');
+    reactBtn.addEventListener('click',()=>{
+      DATA.onboardingDismissed = false;
+      save();
+      showToast('✓ Checklist de primeiros passos reativado no painel.');
+    });
+    actions.appendChild(reactBtn);
+  }
   const del = mkBtn('Apagar tudo','btn btn-danger');
   del.addEventListener('click',()=>{
     if(confirm('APAGAR TODOS os dados? (fontes, estatísticas, cards, dados da prova — tudo)\n\nIsso não pode ser desfeito.')){
@@ -34288,7 +34875,18 @@ function renderSimuladoResult(){
   const tableCard = mk('div','card');tableCard.style.marginTop='1.25rem';
   const tHead = mk('div');tHead.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:.875rem;flex-wrap:wrap;gap:8px';
   const tTitle = mk('h2');tTitle.style.cssText='margin:0;font-size:16px;font-weight:700';
-  tTitle.textContent = '📋 Planilha de correção';
+  // V12: Mostra também breakdown por tipo de questão (C/E vs ME) no header da planilha
+  const ceCount = sim.questions.filter(q => q.kind !== 'MC').length;
+  const mcCount = sim.questions.filter(q => q.kind === 'MC').length;
+  let breakdown = `${sim.questions.length} questões`;
+  if(ceCount > 0 && mcCount > 0){
+    breakdown += ` (${ceCount} C/E · ${mcCount} ME)`;
+  } else if(ceCount > 0){
+    breakdown += ` (todas C/E)`;
+  } else if(mcCount > 0){
+    breakdown += ` (todas múltipla escolha)`;
+  }
+  tTitle.innerHTML = `📋 Planilha de correção <span style="font-size:12px;font-weight:500;color:var(--text3);margin-left:6px">${breakdown}</span>`;
   tHead.appendChild(tTitle);
 
   // Filtros rápidos da planilha
@@ -34331,9 +34929,14 @@ function renderSimuladoResult(){
       const row = mk('details','sim-result-row');row.classList.add('srr-'+status);
       const summary = mk('summary','srr-summary');
       const disc = getDiscipline(q.disciplineId);
+      // V12: Mostra tipo da questão (C/E vs ME) no resumo
+      const kindBadge = q.kind === 'MC'
+        ? '<span class="srr-kind" style="font-size:9.5px;padding:1px 5px;background:rgba(24,95,165,.15);color:var(--blue-text);border-radius:3px;font-weight:700;letter-spacing:.3px">ME</span>'
+        : '<span class="srr-kind" style="font-size:9.5px;padding:1px 5px;background:rgba(128,66,250,.15);color:var(--gralia-purple);border-radius:3px;font-weight:700;letter-spacing:.3px">C/E</span>';
       summary.innerHTML = `
         <span class="srr-num">${idx+1}</span>
         <span class="srr-status">${status==='correct'?'✓':status==='wrong'?'✗':'⬜'}</span>
+        ${kindBadge}
         <span class="srr-enun">${escapeHTML(q.enunciado.substring(0,150))}${q.enunciado.length>150?'...':''}</span>
         <span class="srr-meta">
           ${disc ? `<span class="srr-disc" style="color:${disc.color}">${escapeHTML(disc.name)}</span>` : ''}
