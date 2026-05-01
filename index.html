@@ -3020,11 +3020,12 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 .sk-row kbd{background:var(--surface2);border:1px solid var(--border2);border-bottom-width:2px;border-radius:5px;padding:3px 9px;font-size:11.5px;font-family:ui-monospace,monospace;color:var(--text);min-width:24px;text-align:center;font-weight:700;display:inline-block}
 
 /* V12: Botão de atalhos no rodapé — sempre visível pra usuário descobrir.
-   Posicionado à esquerda dos outros botões (foco/feedback) pra não colidir. */
-.shortcuts-floating-btn{position:fixed;bottom:20px;right:260px;z-index:500;width:46px;height:46px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;font-family:inherit;box-shadow:0 4px 14px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.06);transition:all .2s cubic-bezier(.34,1.4,.64,1);cursor:pointer}
+   Posicionado à esquerda dos outros botões (foco/feedback) com ESPAÇO suficiente pra não colidir. */
+.shortcuts-floating-btn{position:fixed;bottom:20px;right:310px;z-index:500;width:46px;height:46px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;font-family:inherit;box-shadow:0 4px 14px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.06);transition:all .2s cubic-bezier(.34,1.4,.64,1);cursor:pointer}
 .shortcuts-floating-btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.08);border-color:var(--text3);color:var(--text)}
 @media (max-width:600px){
-  .shortcuts-floating-btn{bottom:14px;right:130px;width:42px;height:42px;font-size:17px}
+  /* Em mobile, feedback vira só ícone (right:74), foco em right:14, então atalho em ~140 */
+  .shortcuts-floating-btn{bottom:14px;right:140px;width:42px;height:42px;font-size:17px}
 }
 
 /* V12: Dica visual de atalho ao lado dos botões C/E nas questões */
@@ -3414,6 +3415,36 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 
 /* Hero */
 .wel-hero-v3{display:grid;grid-template-columns:1.2fr 1fr;gap:3rem;align-items:center;padding:3.5rem 0 2.5rem;position:relative}
+
+/* V12: Hero centralizado (sem coluna direita — logo foi pro brand center acima). */
+.wel-hero-centered{grid-template-columns:1fr !important;gap:0;padding:1rem 0 2rem;text-align:center;max-width:760px;margin:0 auto}
+.wel-hero-centered .wel-hero-left{display:flex;flex-direction:column;align-items:center;gap:.875rem}
+.wel-hero-centered .wel-hero-cta-row{justify-content:center}
+.wel-hero-centered .wel-hero-headline-v3{max-width:680px}
+.wel-hero-centered .wel-hero-sub-v3{max-width:600px}
+
+/* V12: Brand center — Gralia em destaque máximo no topo da landing. */
+.wel-brand-center{display:flex;flex-direction:column;align-items:center;gap:.5rem;padding:3rem 1rem 1.5rem;text-align:center}
+.wbc-mark{display:flex;align-items:center;gap:14px;justify-content:center}
+.wbc-bird{width:64px;height:64px;flex-shrink:0;display:block}
+html.dark .wbc-bird-light{display:none}
+html:not(.dark) .wbc-bird-dark{display:none}
+.wbc-name{margin:0;font-size:54px;font-weight:800;letter-spacing:-1.5px;line-height:1;font-family:'Sora',-apple-system,BlinkMacSystemFont,sans-serif}
+.wbc-name .bn-base{color:var(--text)}
+.wbc-name .bn-accent{color:var(--gralia-purple)}
+.wbc-etymology{margin:.625rem 0 0;font-size:13px;color:var(--text3);line-height:1.5;max-width:520px}
+.wbc-etymology b{color:var(--text2);font-weight:700}
+@media(max-width:600px){
+  .wel-brand-center{padding:2rem .75rem 1rem}
+  .wbc-bird{width:48px;height:48px}
+  .wbc-name{font-size:40px;letter-spacing:-1px}
+  .wbc-etymology{font-size:12px}
+}
+
+/* V12: Dica do tema — sutil, abaixo da nota do CTA */
+.wel-theme-hint{margin:.5rem 0 0;font-size:12px;color:var(--text3);line-height:1.5;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:999px;max-width:fit-content}
+.wel-theme-hint b{color:var(--text2);font-weight:700}
+.wel-hero-centered .wel-theme-hint{align-self:center}
 .wel-hero-left{position:relative;z-index:2}
 .wel-hero-eyebrow-v3{display:inline-block;padding:5px 12px;background:linear-gradient(135deg,rgba(124,92,255,.15) 0%,rgba(26,42,82,.1) 100%);color:var(--gralia-purple);font-size:11px;font-weight:700;letter-spacing:1.2px;border-radius:999px;margin-bottom:1.25rem;border:1px solid rgba(124,92,255,.25)}
 .wel-hero-headline-v3{font-size:42px;line-height:1.1;font-weight:800;letter-spacing:-1.5px;margin:0 0 1.125rem;color:var(--text)}
@@ -3481,7 +3512,10 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 .wel-feat-v3{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.125rem 1.125rem 1rem;transition:all .25s}
 .wel-feat-v3:hover{border-color:var(--gralia-purple);transform:translateY(-2px);box-shadow:0 4px 16px rgba(124,92,255,.12)}
 .wel-feat-icon-v3{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;background:linear-gradient(135deg,rgba(124,92,255,.12) 0%,rgba(26,42,82,.06) 100%);border-radius:12px;font-size:22px;margin-bottom:.75rem}
-.wel-feat-title-v3{font-size:14px;font-weight:700;color:var(--text);margin:0 0 .375rem;letter-spacing:-.2px}
+.wel-feat-title-v3{font-size:14px;font-weight:700;color:var(--text);margin:0 0 .25rem;letter-spacing:-.2px}
+/* V12: Frase de impacto curta e destacada — pega o olho rápido antes da descrição longa */
+.wel-feat-impact{font-size:13px;font-weight:700;color:var(--accent);margin:0 0 .5rem;line-height:1.35;letter-spacing:-.1px}
+.wfv3-ai .wel-feat-impact{color:var(--gralia-purple)}
 .wel-feat-desc-v3{font-size:12.5px;line-height:1.6;color:var(--text2);margin:0}
 
 @media (max-width:900px){.wel-features-v3{grid-template-columns:repeat(2,1fr)}}
@@ -6803,9 +6837,7 @@ function defaultData(){
     // Config inicial vem VAZIO — usuário preenche em "Sobre o concurso" no Painel
     // V12: corrige bug onde toda nova conta vinha com dados específicos do dev
     config:{apiKey:'',model:'claude-haiku-4-5-20251001',notifications:true,examName:'',examDate:null,userName:'',examBank:'',examRole:''},
-    disciplines:[
-      {id:'d4',name:'Outros',color:'#B07316',active:true}
-    ],
+    disciplines:[],
     sources:[],
     session:{total:0,correct:0,dna:{0:0,1:0,2:0,3:0,4:0,5:0},
       calibration:{certain:{c:0,t:0},think:{c:0,t:0},guess:{c:0,t:0}},
@@ -9427,64 +9459,92 @@ function renderWelcome(){
   wrap.appendChild(themeWrap);
 
   // ====== HERO ======
-  const hero = mk('section','wel-hero-v3');
+  // V12: Hero refeito — logo+nome centralizados em destaque (Gralia é o nome, ele tem que ser O elemento),
+  // título mais específico (não "estude com IA" genérico), tagline com benefício concreto,
+  // dica do tema sutil pra usuário entender que o ícone é interativo.
+
+  // BRAND CENTRAL — primeiro elemento que o olho bate
+  const brandCenter = mk('div','wel-brand-center');
+  brandCenter.innerHTML = `
+    <div class="wbc-mark">
+      <img src="${BRAND.birdLogo}" alt="" class="wbc-bird wbc-bird-light">
+      <img src="${BRAND.birdLogoDark}" alt="" class="wbc-bird wbc-bird-dark">
+      <h1 class="wbc-name"><span class="bn-base">Gral</span><span class="bn-accent">ia</span></h1>
+    </div>
+    <p class="wbc-etymology">Inspirado na <b>gralha-azul</b>, ave do Paraná que planta as araucárias do estado.</p>
+  `;
+  wrap.appendChild(brandCenter);
+
+  // HERO sem coluna direita (logo já foi)
+  const hero = mk('section','wel-hero-v3 wel-hero-centered');
   const heroLeft = mk('div','wel-hero-left');
 
-  // Nota: a info "versão BETA + 500 primeiros com desconto" foi movida pra seção
-  // dedicada mais abaixo (wel-beta-section) — evita poluir o hero.
-
   const eyebrow = mk('div','wel-hero-eyebrow-v3');
-  eyebrow.textContent='ESTUDOS COM IA';
+  eyebrow.textContent='Plataforma de estudo pra concursos e provas';
   heroLeft.appendChild(eyebrow);
 
-  const headline = mk('h1','wel-hero-headline-v3');
-  headline.innerHTML = 'Estude com <em>profundidade</em>. Avance no seu ritmo.';
+  const headline = mk('h2','wel-hero-headline-v3');
+  // Headline com promessa específica (não "estude melhor" genérico)
+  headline.innerHTML = 'Cada questão errada vira <em>flashcard</em>. Cada hora rende <em>5×</em> mais.';
   heroLeft.appendChild(headline);
 
-  // Subheadline curta — sem comparações diretas, sem "caixa preta"
   const subheadline = mk('p','wel-hero-sub-v3');
-  subheadline.textContent='Plataforma com IA para concursos, vestibulares e provas. Resolva questões, entenda erros, fixe com flashcards.';
+  subheadline.textContent='Resolva questões no estilo da sua banca, entenda o erro com a IA e fixe a pegadinha em revisão espaçada — tudo em 1m25s sem trocar de aba.';
   heroLeft.appendChild(subheadline);
 
   const ctaRow = mk('div','wel-hero-cta-row');
-  const heroCta = mkBtn('Começar agora →','btn btn-p btn-lg wel-hero-cta-v3');
-  heroCta.addEventListener('click',()=>{
-    DATA.welcomeShown=true;
-    DATA.setup=true;
-    ST.view='dashboard';
-    save();
-    if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;ST.authMode='signup';}
-    render();
-  });
-  ctaRow.appendChild(heroCta);
 
-  const heroSecondaryBtn = mk('button','btn btn-lg wel-hero-secondary');
-  heroSecondaryBtn.type='button';
-  heroSecondaryBtn.textContent='Já tenho conta';
-  heroSecondaryBtn.addEventListener('click',()=>{
-    DATA.welcomeShown=true;
-    save();
-    if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;ST.authMode='login';}
-    render();
-  });
-  ctaRow.appendChild(heroSecondaryBtn);
+  // Se já logado, troca os botões por "Ir pro Painel"
+  if(isAuthed()){
+    const goPanelBtn = mkBtn('→ Ir pro meu Painel','btn btn-p btn-lg wel-hero-cta-v3');
+    goPanelBtn.addEventListener('click',()=>{
+      DATA.welcomeShown=true;DATA.setup=true;
+      ST.view='dashboard';save();render();
+    });
+    ctaRow.appendChild(goPanelBtn);
+    const exploreBtn = mk('button','btn btn-lg wel-hero-secondary');
+    exploreBtn.type='button';
+    exploreBtn.textContent='Explorar a página';
+    exploreBtn.addEventListener('click',()=>{
+      const next = wrap.querySelector('.wel-section, .wel-prod-section, .wel-chart-section, section');
+      if(next && next.scrollIntoView) next.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+    ctaRow.appendChild(exploreBtn);
+  } else {
+    const heroCta = mkBtn('Começar grátis →','btn btn-p btn-lg wel-hero-cta-v3');
+    heroCta.addEventListener('click',()=>{
+      DATA.welcomeShown=true;
+      DATA.setup=true;
+      ST.view='dashboard';
+      save();
+      if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;ST.authMode='signup';}
+      render();
+    });
+    ctaRow.appendChild(heroCta);
+
+    const heroSecondaryBtn = mk('button','btn btn-lg wel-hero-secondary');
+    heroSecondaryBtn.type='button';
+    heroSecondaryBtn.textContent='Já tenho conta';
+    heroSecondaryBtn.addEventListener('click',()=>{
+      DATA.welcomeShown=true;
+      save();
+      if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;ST.authMode='login';}
+      render();
+    });
+    ctaRow.appendChild(heroSecondaryBtn);
+  }
   heroLeft.appendChild(ctaRow);
 
   const heroNote = mk('p','wel-hero-note-v3');
-  heroNote.innerHTML = '<b>Créditos iniciais grátis</b> · sem cartão de crédito · cancela quando quiser';
+  heroNote.innerHTML = '<b>40 créditos grátis em 14 dias</b> · sem cartão · cancela quando quiser';
   heroLeft.appendChild(heroNote);
-  hero.appendChild(heroLeft);
 
-  // Visual à direita: bird + nome estilizado
-  const heroVisual = mk('div','wel-hero-visual');
-  heroVisual.innerHTML = `
-    <div class="wel-hero-brand">
-      <img src="${BRAND.birdLogo}" alt="Gralia" class="wel-hero-bird wel-hero-bird-light">
-      <img src="${BRAND.birdLogoDark}" alt="Gralia" class="wel-hero-bird wel-hero-bird-dark">
-      <span class="wel-hero-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>
-    </div>
-  `;
-  hero.appendChild(heroVisual);
+  // V12: Dica de funcionalidade do tema — sutil, abaixo da nota
+  const themeHint = mk('p','wel-theme-hint');
+  themeHint.innerHTML = '💡 <span>Cansa o olho? Clique no <b>☀ / 🌙</b> no canto superior direito pra alternar entre claro e escuro.</span>';
+  heroLeft.appendChild(themeHint);
+
+  hero.appendChild(heroLeft);
   wrap.appendChild(hero);
 
   // ====== TRANSPARÊNCIA: ESTUDO ATIVO + PASSIVO ======
@@ -9518,7 +9578,7 @@ function renderWelcome(){
   const chartHead = mk('h2','wel-section-title');chartHead.textContent='Sem revisão, você esquece 70% do que estudou em 1 semana';
   chartSec.appendChild(chartHead);
   const chartSub = mk('p','wel-section-sub');
-  chartSub.textContent = 'Curva de esquecimento de Ebbinghaus (1885): a memória decai exponencialmente. Mas com revisão espaçada nos momentos certos, a retenção sobe para 90%+ permanente. O Gralia usa esse princípio em todos os flashcards, drills e mapas.';
+  chartSub.textContent = 'A memória decai rápido nos primeiros dias após o estudo (curva de esquecimento). Mas com revisão espaçada nos momentos certos — quando você está prestes a esquecer — a retenção sobe pra 90%+ e fica praticamente permanente. O Gralia usa esse princípio em todos os flashcards, drills e mapas.';
   chartSec.appendChild(chartSub);
 
   // SVG do gráfico
@@ -9678,66 +9738,37 @@ function renderWelcome(){
       </div>
       <div class="wpc-total"><b>~7-9min</b></div>
     </div>
-
-    <!-- Plataforma: Tradicional -->
-    <div class="wpc-row wpc-tradicional">
-      <div class="wpc-platform">
-        <span class="wpc-logo">📚</span>
-        <div>
-          <b>Estudo tradicional</b>
-          <span class="wpc-tagline">apostila + caderno</span>
-        </div>
-      </div>
-      <div class="wpc-bar-track">
-        <div class="wpc-segment seg-resolve" style="width:6%" title="Resolver: ~30s">
-          <span class="wpc-seg-lbl">30s</span>
-        </div>
-        <div class="wpc-segment seg-wait-long" style="width:38%" title="Achar tópico na apostila: ~5min">
-          <span class="wpc-seg-lbl">5min</span>
-        </div>
-        <div class="wpc-segment seg-read" style="width:30%" title="Ler trecho relevante: ~5-8min">
-          <span class="wpc-seg-lbl">5-8min</span>
-        </div>
-        <div class="wpc-segment seg-write" style="width:12%" title="Resumir no caderno: ~2min">
-          <span class="wpc-seg-lbl">2min</span>
-        </div>
-      </div>
-      <div class="wpc-total"><b>~12-15min</b></div>
-    </div>
   `;
   prodSec.appendChild(prodChart);
 
-  // Legenda das etapas — V12: organizada por plataforma pra ficar clara
+  // V12: Legenda simplificada — só 2 plataformas (removida "tradicional"), agrupada
   const prodLegend = mk('div','wel-prod-legend');
   prodLegend.innerHTML = `
     <div class="wpl-group">
       <span class="wpl-group-label">Gralia:</span>
       <span class="wpl-item"><span class="wpl-dot seg-resolve"></span>Resolver</span>
-      <span class="wpl-item"><span class="wpl-dot seg-explain"></span>IA explica imediatamente</span>
+      <span class="wpl-item"><span class="wpl-dot seg-explain"></span>IA explica</span>
       <span class="wpl-item"><span class="wpl-dot seg-flashcard"></span>Flashcard 1 clique</span>
     </div>
     <div class="wpl-group">
       <span class="wpl-group-label">Sites + Anki:</span>
-      <span class="wpl-item"><span class="wpl-dot seg-wait"></span>Espera explicação</span>
+      <span class="wpl-item"><span class="wpl-dot seg-wait"></span>Espera comentário</span>
       <span class="wpl-item"><span class="wpl-dot seg-research"></span>Busca teoria fora</span>
       <span class="wpl-item"><span class="wpl-dot seg-manual"></span>Cria card manual</span>
-    </div>
-    <div class="wpl-group">
-      <span class="wpl-group-label">Tradicional:</span>
-      <span class="wpl-item"><span class="wpl-dot seg-wait-long"></span>Acha na apostila</span>
-      <span class="wpl-item"><span class="wpl-dot seg-read"></span>Lê o trecho</span>
-      <span class="wpl-item"><span class="wpl-dot seg-write"></span>Resume no caderno</span>
     </div>
   `;
   prodSec.appendChild(prodLegend);
 
   // Insight final do gráfico
+  // V12: Texto refeito — comparação é sobre "questões ERRADAS entendidas/h",
+  // não questões totais. Quem erra 50 e entende 50 fixou mais conteúdo do que
+  // quem só responde rápido sem absorver.
   const prodInsight = mk('div','wel-prod-insight');
   prodInsight.innerHTML = `
-    <div class="wpi-num">3-5×</div>
+    <div class="wpi-num">5×</div>
     <div class="wpi-text">
-      <b>mais rápido pra fechar o ciclo de aprendizado.</b>
-      <span>Em 1h de estudo focado, você fixa cerca de <b>20-25 questões com Gralia</b>, contra <b>~7 com TEC+Anki</b> ou <b>~4 no método tradicional</b>. É mais conteúdo absorvido por dia até a prova chegar — sem queimar etapas.</span>
+      <b>mais erros entendidos por hora — onde a evolução real acontece.</b>
+      <span>Em 1h de estudo focado, você consegue <b>entender e fixar ~40 questões erradas</b> com o Gralia (ciclo errar → IA explica → flashcard automático em ~1m25s). Em sites + Anki, o mesmo ciclo leva 7-9min — caem pra ~8 erros entendidos no mesmo tempo. <b>Cada erro vira aprendizado, não tempo perdido.</b></span>
     </div>
   `;
   prodSec.appendChild(prodInsight);
@@ -9893,46 +9924,63 @@ function renderWelcome(){
 
   // V12: Features divididas em GRÁTIS (sem IA) vs COM IA (consome créditos / planos pagos)
   const FREE_FEATURES = [
-    {icon:'🎴',title:'Flashcards com revisão espaçada (SRS)',desc:'Algoritmo SM-2 (mesmo do Anki) agenda automaticamente o melhor momento pra revisar cada card. Importe decks da comunidade, crie manualmente ou gere a partir de erros — todos revisáveis sem custo. Funciona offline-first com sync entre dispositivos.'},
-    {icon:'🗺️',title:'Mapa da matéria com filtros inteligentes',desc:'Visão por disciplina, tópico e até subtópico. Veja % de acerto por área, número de questões resolvidas, status (não estudado / estudando / dominado). Filtros por banca, tipo de questão e dificuldade. Você sabe exatamente onde investir tempo, sem chutar.'},
-    {icon:'⏱️',title:'Pomodoro com background sincronizado',desc:'Timer disponível em todas as páginas, persiste se você fechar a aba e sincroniza entre celular e PC. Notificação push quando o ciclo termina. Background de aquário, floresta ou foco escuro. Histórico de blocos completados rastreado automaticamente.'},
-    {icon:'📊',title:'Estatísticas profundas e padrões temporais',desc:'Heatmap mostrando seus melhores horários, evolução por disciplina ao longo das semanas, taxa de calibração ("falsa segurança"), curva de retenção dos cards. Dados que você não vê em planilha — decisões baseadas em evidência, não em achismo.'},
-    {icon:'📝',title:'Importação inteligente de questões',desc:'Cole texto do TEC Concursos, QConcursos, Estratégia, Gran Cursos, Direção ou outras plataformas. O parser detecta enunciado, alternativas, gabarito, banca, ano, comentários e organiza automaticamente. Pratique com cronômetro e correção sem retrabalho.'},
-    {icon:'⏰',title:'Simulado cronometrado completo',desc:'Treino estilo prova real: timer regressivo, navegação livre entre questões, marcação pra revisar depois, calibração de confiança em cada resposta, correção detalhada com análise por disciplina e tópico. Funciona com suas questões importadas (sem custo de IA).'},
-    {icon:'🎯',title:'Metas, calendário e rotina sustentável',desc:'Define meta diária ou semanal (questões, flashcards, pomodoros) com sistema rastreando "adiantado/no ritmo/atrasado". Calendário visual mostra constância. Funciona com Google Calendar pra agendar sessões de estudo direto.'},
-    {icon:'📚',title:'Importar fontes ricas (PDFs, leis, jurisprudência)',desc:'Anexe apostilas em PDF, transcrições de aula, resumos próprios, lei seca completa, jurisprudência selecionada, doutrinas. A plataforma extrai texto, detecta capítulos automaticamente e organiza. Sua biblioteca pessoal de estudo, com busca rápida.'},
-    {icon:'🌍',title:'Comunidade aberta com material curado',desc:'Importe materiais já criados e validados pela comunidade: cadernos de questões organizados por edital, perfis aprofundados de tópicos densos (controle de constitucionalidade, princípios da AP, etc.), fontes de lei seca e jurisprudência, decks de flashcards. Tudo com avaliação de outros usuários — sem precisar criar tudo do zero.'}
+    {icon:'🎴',title:'Flashcards com revisão espaçada (SRS)',
+      impact:'Esquecer não é mais opção.',
+      desc:'Algoritmo SM-2 (mesmo do Anki) agenda automaticamente o melhor momento pra revisar cada card. Importe decks da comunidade, crie manualmente ou gere a partir de erros — todos revisáveis sem custo. Funciona offline-first com sync entre dispositivos.'},
+    {icon:'🗺️',title:'Mapa da matéria com filtros inteligentes',
+      impact:'Pare de chutar onde estudar.',
+      desc:'Visão por disciplina, tópico e até subtópico. Veja % de acerto por área, número de questões resolvidas, status (não estudado / estudando / dominado). Filtros por banca, tipo de questão e dificuldade. Você sabe exatamente onde investir tempo.'},
+    {icon:'⏱️',title:'Pomodoro com background sincronizado',
+      impact:'Não perca o foco entre dispositivos.',
+      desc:'Timer disponível em todas as páginas, persiste se você fechar a aba e sincroniza entre celular e PC. Notificação push quando o ciclo termina. Histórico de blocos completados rastreado automaticamente.'},
+    {icon:'📊',title:'Estatísticas profundas e padrões temporais',
+      impact:'Descubra quando você rende mais.',
+      desc:'Heatmap mostrando seus melhores horários, evolução por disciplina ao longo das semanas, taxa de calibração ("falsa segurança"), curva de retenção dos cards. Dados que você não vê em planilha — decisões baseadas em evidência, não em achismo.'},
+    {icon:'📝',title:'Importação inteligente de questões',
+      impact:'Suas questões do TEC, em segundos.',
+      desc:'Cole texto do TEC Concursos, QConcursos, Estratégia, Gran Cursos, Direção ou outras plataformas. O parser detecta enunciado, alternativas, gabarito, banca, ano, comentários e organiza automaticamente. Sem retrabalho.'},
+    {icon:'⏰',title:'Simulado cronometrado completo',
+      impact:'Treine como se fosse o dia da prova.',
+      desc:'Timer regressivo, navegação livre entre questões, marcação pra revisar depois, calibração de confiança em cada resposta, correção detalhada com análise por disciplina e tópico. Funciona com suas questões importadas (sem custo de IA).'},
+    {icon:'🎯',title:'Metas, calendário e rotina sustentável',
+      impact:'Constância sem culpa.',
+      desc:'Define meta diária ou semanal (questões, flashcards, pomodoros) com sistema rastreando "adiantado/no ritmo/atrasado". Calendário visual mostra constância. Funciona com Google Calendar pra agendar sessões de estudo direto.'},
+    {icon:'📚',title:'Importar fontes ricas (PDFs, leis, jurisprudência)',
+      impact:'Sua biblioteca, organizada sozinha.',
+      desc:'Anexe apostilas em PDF, transcrições de aula, resumos próprios, lei seca completa, jurisprudência selecionada, doutrinas. A plataforma extrai texto, detecta capítulos automaticamente e organiza. Sua biblioteca pessoal de estudo, com busca rápida.'},
+    {icon:'🌍',title:'Comunidade aberta com material curado',
+      impact:'Não precisa criar tudo do zero.',
+      desc:'Importe materiais já criados e validados pela comunidade: cadernos de questões organizados por edital, perfis aprofundados de tópicos densos (controle de constitucionalidade, princípios da AP, etc.), fontes de lei seca e jurisprudência, decks de flashcards. Tudo com avaliação de outros usuários.'}
   ];
 
   const AI_FEATURES = [
-    {icon:'🤖',title:'Geração de questões personalizadas',desc:'A IA cria questões C/E ou múltipla escolha baseadas no SEU material — adaptadas ao estilo da banca alvo (Cebraspe, FCC, FGV, Vunesp, IBFC, Quadrix, Cesgranrio). Cada questão é única, foca seus pontos fracos detectados pelo mapa e inclui explicação detalhada com referência legal.'},
-    {icon:'🎯',title:'Questões por tópico específico (NOVO)',desc:'Escolha um tópico exato do seu edital ou fonte (ex: "Princípios da Administração Pública", "Controle Difuso de Constitucionalidade"). A IA gera questões focadas só naquilo. Ideal pra reta final ou pra atacar tópicos onde você tem dificuldade específica.'},
-    {icon:'🎴',title:'Flashcard automático a partir do erro',desc:'Errou uma questão? 1 clique e a IA cria flashcard que ataca exatamente aquela armadilha — com palavras-chave destacadas, mnemônico e referência legal. Vai pra revisão espaçada (SRS) automaticamente. Cada erro vira aprendizado fixado.'},
-    {icon:'📚',title:'Perfil aprofundado de matéria',desc:'A IA gera estudo completo de 1 tópico: conceitos, jurisprudência relevante (STF/STJ), mnemônicos, tabelas comparativas, mapa de armadilhas que a banca usa, exemplos de questões prováveis com gabarito comentado. Material salvo pra revisar nos dias finais antes da prova — substitui horas de pesquisa solta.'},
-    {icon:'📋',title:'Síntese de editais com Sonnet 4.6',desc:'Cole o edital ou anexe o PDF. Em 1 minuto a IA Sonnet 4.6 (modelo premium) extrai: cronograma com datas-chave, vagas por cargo, distribuição e peso de cada disciplina, tópicos cobrados, mudanças em relação ao último edital. Você vê o que importa em vez de ler 80 páginas.'},
-    {icon:'🧠',title:'Análise diária do mentor IA',desc:'Diariamente a IA analisa seus erros, padrões temporais, taxa de calibração e sugere ajustes específicos pro próximo dia: drills focados em tópicos fracos, revisões prioritárias, recomendação de horário ideal pra estudo intenso. Disponível com 20+ questões resolvidas no dia.'},
-    {icon:'🌲',title:'Pinhal de Araucárias (gamificação)',desc:'Gamificação visual da constância: cada marco que você atinge planta uma araucária no seu pinhal. Floresta cresce visualmente conforme você mantém o ritmo. Inspirado nas araucárias do Paraná, símbolo de longevidade e raízes profundas. Disponível com qualquer plano ativo.'},
-    {icon:'🌐',title:'Cache compartilhado de explicações',desc:'Quando outros usuários da comunidade já geraram explicação pra mesma questão, você acessa de graça (não consome seus créditos). Quanto mais a comunidade cresce, mais você economiza. Boa fé do projeto: a IA fica mais barata pra todo mundo conforme o tempo passa.'}
+    {icon:'🤖',title:'Geração de questões personalizadas',
+      impact:'Questões inéditas, no estilo da sua banca.',
+      desc:'A IA cria questões C/E ou múltipla escolha baseadas no SEU material — adaptadas ao estilo da banca alvo (Cebraspe, FCC, FGV, Vunesp, IBFC, Quadrix, Cesgranrio). Cada questão é única, foca seus pontos fracos detectados pelo mapa e inclui explicação detalhada com referência legal.'},
+    {icon:'🎯',title:'Questões por tópico específico',
+      impact:'Foque na reta final do edital.',
+      desc:'Escolha um tópico exato do seu edital ou fonte (ex: "Princípios da Administração Pública", "Controle Difuso de Constitucionalidade"). A IA gera questões focadas só naquilo. Ideal pra reta final ou pra atacar tópicos onde você tem dificuldade específica.'},
+    {icon:'🎴',title:'Flashcard automático a partir do erro',
+      impact:'Errou uma vez. Não erra mais.',
+      desc:'Errou uma questão? 1 clique e a IA cria flashcard que ataca exatamente aquela armadilha — com palavras-chave destacadas, mnemônico e referência legal. Vai pra revisão espaçada (SRS) automaticamente. Cada erro vira aprendizado fixado.'},
+    {icon:'📚',title:'Perfil aprofundado de matéria',
+      impact:'Estudo de véspera, em 30 segundos.',
+      desc:'A IA gera estudo completo de 1 tópico: conceitos, jurisprudência relevante (STF/STJ), mnemônicos, tabelas comparativas, mapa de armadilhas que a banca usa, exemplos de questões prováveis com gabarito comentado. Material salvo pra revisar nos dias finais antes da prova — substitui horas de pesquisa solta.'},
+    {icon:'📋',title:'Síntese de editais com Sonnet 4.6',
+      impact:'80 páginas de edital em 1 minuto.',
+      desc:'Cole o edital ou anexe o PDF. Em 1 minuto a IA Sonnet 4.6 (modelo premium) extrai: cronograma com datas-chave, vagas por cargo, distribuição e peso de cada disciplina, tópicos cobrados, mudanças em relação ao último edital. Você vê o que importa.'},
+    {icon:'🧠',title:'Análise diária do mentor IA',
+      impact:'Mentor que olha seus dados todo dia.',
+      desc:'Diariamente a IA analisa seus erros, padrões temporais, taxa de calibração e sugere ajustes específicos pro próximo dia: drills focados em tópicos fracos, revisões prioritárias, recomendação de horário ideal pra estudo intenso. Disponível com 20+ questões resolvidas no dia.'},
+    {icon:'🌐',title:'Cache compartilhado de explicações',
+      impact:'Comunidade cresce → IA fica mais barata.',
+      desc:'Quando outros usuários da comunidade já geraram explicação pra mesma questão, você acessa de graça (não consome seus créditos). Quanto mais a comunidade cresce, mais você economiza. Boa fé do projeto: a IA fica mais barata pra todo mundo conforme o tempo passa.'}
   ];
 
-  // Grupo: features grátis
-  const freeBlock = mk('div','wel-feat-block wel-feat-free');
-  const freeBlockHead = mk('div','wfb-head');
-  freeBlockHead.innerHTML = '<span class="wfb-tag wfb-tag-free">Sem créditos</span><h3>Recursos gratuitos da plataforma</h3><p>Estes funcionam sempre — sem usar IA, sem gastar créditos.</p>';
-  freeBlock.appendChild(freeBlockHead);
-  const freeGrid = mk('div','wel-features-v3');
-  FREE_FEATURES.forEach(f=>{
-    const item = mk('div','wel-feat-v3');
-    const ic = mk('div','wel-feat-icon-v3');ic.textContent=f.icon;
-    const t = mk('h3','wel-feat-title-v3');t.textContent=f.title;
-    const d = mk('p','wel-feat-desc-v3');d.textContent=f.desc;
-    item.appendChild(ic);item.appendChild(t);item.appendChild(d);
-    freeGrid.appendChild(item);
-  });
-  freeBlock.appendChild(freeGrid);
-  featSec.appendChild(freeBlock);
+  // V12: AI antes de Free — recursos com IA são o diferencial-chave (vendem a plataforma).
+  // Recursos grátis aparecem depois pra mostrar amplitude do produto.
 
-  // Grupo: features com IA
+  // Grupo: features com IA (PRIMEIRO)
   const aiBlock = mk('div','wel-feat-block wel-feat-ai');
   const aiBlockHead = mk('div','wfb-head');
   aiBlockHead.innerHTML = '<span class="wfb-tag wfb-tag-ai">Usa créditos de IA</span><h3>Recursos com inteligência artificial</h3><p>Quando você quer geração automática, perfis profundos ou análise personalizada. Cada operação mostra o custo antes de rodar.</p>';
@@ -9942,12 +9990,39 @@ function renderWelcome(){
     const item = mk('div','wel-feat-v3 wfv3-ai');
     const ic = mk('div','wel-feat-icon-v3');ic.textContent=f.icon;
     const t = mk('h3','wel-feat-title-v3');t.textContent=f.title;
+    item.appendChild(ic);item.appendChild(t);
+    if(f.impact){
+      const imp = mk('div','wel-feat-impact');imp.textContent=f.impact;
+      item.appendChild(imp);
+    }
     const d = mk('p','wel-feat-desc-v3');d.textContent=f.desc;
-    item.appendChild(ic);item.appendChild(t);item.appendChild(d);
+    item.appendChild(d);
     aiGrid.appendChild(item);
   });
   aiBlock.appendChild(aiGrid);
   featSec.appendChild(aiBlock);
+
+  // Grupo: features grátis (DEPOIS)
+  const freeBlock = mk('div','wel-feat-block wel-feat-free');
+  const freeBlockHead = mk('div','wfb-head');
+  freeBlockHead.innerHTML = '<span class="wfb-tag wfb-tag-free">Sem créditos</span><h3>Recursos gratuitos da plataforma</h3><p>Estes funcionam sempre — sem usar IA, sem gastar créditos.</p>';
+  freeBlock.appendChild(freeBlockHead);
+  const freeGrid = mk('div','wel-features-v3');
+  FREE_FEATURES.forEach(f=>{
+    const item = mk('div','wel-feat-v3');
+    const ic = mk('div','wel-feat-icon-v3');ic.textContent=f.icon;
+    const t = mk('h3','wel-feat-title-v3');t.textContent=f.title;
+    item.appendChild(ic);item.appendChild(t);
+    if(f.impact){
+      const imp = mk('div','wel-feat-impact');imp.textContent=f.impact;
+      item.appendChild(imp);
+    }
+    const d = mk('p','wel-feat-desc-v3');d.textContent=f.desc;
+    item.appendChild(d);
+    freeGrid.appendChild(item);
+  });
+  freeBlock.appendChild(freeGrid);
+  featSec.appendChild(freeBlock);
 
   wrap.appendChild(featSec);
 
@@ -10181,7 +10256,9 @@ function renderWelcome(){
   });
   forestSec.appendChild(forestCta);
 
-  wrap.appendChild(forestSec);
+  // V12: Removido da landing — pinhal é gamificação interna, não venda do produto.
+  // Antes deixava o usuário curioso por algo que não é função-chave. Mantemos pra dentro.
+  // wrap.appendChild(forestSec);
 
   // ====== TRANSPARÊNCIA SOBRE IA NA CRIAÇÃO DE QUESTÕES ======
   const aiTranspSec = mk('section','wel-section wel-ai-transparency');
@@ -10536,7 +10613,9 @@ function renderWelcome(){
   trialInfoBox.appendChild(trialInfoCta);
   plansSec.appendChild(trialInfoBox);
 
-  wrap.appendChild(plansSec);
+  // V12: Removido da landing — preços/planos só aparecem quando os créditos do trial acabam.
+  // Mantemos a construção da seção pra reuso futuro, mas não anexamos no DOM aqui.
+  // wrap.appendChild(plansSec);
 
   // ====== BETA + DESCONTOS PROGRESSIVOS (V12: 200 cupons, contar por assinante) ======
   const betaSec = mk('section','wel-section wel-beta-section');
@@ -10561,7 +10640,10 @@ function renderWelcome(){
   const betaFooter = mk('p','wel-beta-footer');
   betaFooter.innerHTML = '⚡ A contagem é por <b>quem assina</b> — só cria conta não vale. Garanta seu desconto sendo um dos primeiros a apoiar o projeto.';
   betaSec.appendChild(betaFooter);
-  wrap.appendChild(betaSec);
+  // V12: Removido da landing — desconto BETA aparece apenas na página de planos quando o usuário
+  // já criou conta e foi ver os preços. Antes ficava na landing junto com os planos, mas
+  // como tiramos os preços da landing, a seção BETA também sai.
+  // wrap.appendChild(betaSec);
 
   // ====== FAQ NA HOME ======
   const faqSec = mk('section','wel-section wel-faq-section');
@@ -11124,7 +11206,7 @@ function renderTopbar(){
       {view:'feed',label:'Da rede',icon:'📡',desc:'Atividade de quem você segue'},
       {view:'forest',label:'Pinhal de Araucárias',icon:'🌲',desc:'Acompanhe seu progresso visualmente'}
     ]},
-    {type:'tab',view:'settings',label:'Config',icon:'⚙'}
+    {type:'tab',view:'settings',label:'Conta',icon:'👤'}
   ];
 
   // V12: Admin não fica mais grudado no menu principal entre Config e créditos.
@@ -12185,10 +12267,12 @@ function buildActivityTimeline(){
       }
     });
     groups.forEach(g=>{
+      const n = g.items.length;
       events.push({
         type:'import', at:g.endTime,
         tone:'info',
-        title:`${g.items.length} questão${g.items.length===1?'':'es'} importada${g.items.length===1?'':'s'}`,
+        // V12 fix: era 'questão' + 'es' = 'questãoes' (typo). Correto: 'questão' (1) ou 'questões' (>1).
+        title: n + ' ' + (n===1 ? 'questão importada' : 'questões importadas'),
         subject:'Banco de Questões',
         detail:'Importadas do TEC, prontas pra praticar',
         disc:getDiscipline(g.discId)
@@ -12816,6 +12900,28 @@ function renderSourceAdd(wrap){
   if(!ST.srcImportState)ST.srcImportState = {mode:'form',organizing:false,pdfLoading:false,organizedResult:null,justSavedId:null,pdfProgress:null};
   const is = ST.srcImportState;
 
+  // V12: Bloqueia adicionar fonte se não houver nenhuma disciplina cadastrada.
+  // Antes existia "Outros" pré-cadastrada, mas isso fazia o usuário pular o passo
+  // de organizar por disciplina e depois ficava com tudo em "Outros". Agora forçamos
+  // criação intencional — é o passo zero da estruturação do estudo.
+  if((DATA.disciplines||[]).length === 0){
+    const blockCard = mk('div','card');
+    blockCard.style.cssText = 'padding:1.5rem;border-left:3px solid var(--amber);background:var(--surface)';
+    const icon = mk('div');icon.style.cssText='font-size:32px;margin-bottom:.5rem';icon.textContent='📚';
+    const t = mk('h3');t.style.cssText='margin:0 0 .5rem;font-size:16px';
+    t.textContent='Crie sua primeira disciplina';
+    const desc = mk('p','txt2');desc.style.cssText='margin:0 0 1rem;font-size:13.5px;line-height:1.6';
+    desc.innerHTML = 'Organize seu material por matéria — assim você pode focar em uma de cada vez, ver progresso por disciplina e a IA gera questões adaptadas ao tópico certo.<br><br>Exemplos: <b>Direito Constitucional</b>, <b>Direito Administrativo</b>, <b>Português</b>, <b>Raciocínio Lógico</b>.';
+    const goBtn = mkBtn('+ Criar disciplina','btn btn-p');
+    goBtn.addEventListener('click',()=>{ST.srcSubview='disc';render();});
+    blockCard.appendChild(icon);
+    blockCard.appendChild(t);
+    blockCard.appendChild(desc);
+    blockCard.appendChild(goBtn);
+    wrap.appendChild(blockCard);
+    return wrap;
+  }
+
   // ---------- Stage 1: Post-import success panel (if just saved) ----------
   if(is.mode==='saved'&&is.justSavedId){
     const src = DATA.sources.find(s=>s.id===is.justSavedId);
@@ -12834,15 +12940,22 @@ function renderSourceAdd(wrap){
         b.addEventListener('click',onClick);
         return b;
       };
-      actionsGrid.appendChild(mkAction('🎴','Gerar flashcards','Cards prontos para revisão em SRS',()=>{
-        ST.srcImportState = {mode:'form',organizing:false,pdfLoading:false,organizedResult:null};
-        ST.view='srs';ST.srsSubview='generate';render();
-      }));
-      actionsGrid.appendChild(mkAction('📝','Praticar questões','Questões C/E no estilo da banca',()=>{
+      // V12: ordem reformulada — questões primeiro (é o método principal),
+      // depois calibração, depois flashcards, depois ver na matéria.
+      // Antes flashcards estava em 1º — mas o usuário não tinha contexto pra entender por que cards.
+      actionsGrid.appendChild(mkAction('📝','Praticar questões','Questões C/E no estilo da banca, geradas com base na sua fonte',()=>{
         ST.srcImportState = {mode:'form',organizing:false,pdfLoading:false,organizedResult:null};
         ST.view='practice';render();
       }));
-      actionsGrid.appendChild(mkAction('🗺️','Ver na matéria','Entender onde este conteúdo se encaixa',()=>{
+      actionsGrid.appendChild(mkAction('🎯','Calibração de confiança','Treina você a identificar quando "tá certeza" e quando "tá chutando"',()=>{
+        ST.srcImportState = {mode:'form',organizing:false,pdfLoading:false,organizedResult:null};
+        ST.view='calibration';render();
+      }));
+      actionsGrid.appendChild(mkAction('🎴','Gerar flashcards','Cards prontos pra revisão espaçada (SRS) — útil pra fixar conteúdo',()=>{
+        ST.srcImportState = {mode:'form',organizing:false,pdfLoading:false,organizedResult:null};
+        ST.view='srs';ST.srsSubview='generate';render();
+      }));
+      actionsGrid.appendChild(mkAction('🗺️','Ver na matéria','Entender onde esta fonte se encaixa no seu mapa de estudo',()=>{
         ST.srcImportState = {mode:'form',organizing:false,pdfLoading:false,organizedResult:null};
         ST.view='mapa';ST.mapDiscipline=src.disciplineId;render();
       }));
@@ -12964,6 +13077,11 @@ function renderSourceAdd(wrap){
         }
       }
       DATA.sources.push(newSrc);
+      // V12 fix: garante que a disciplina da fonte fique ATIVA
+      if(newSrc.disciplineId){
+        const disc = DATA.disciplines.find(d=>d.id===newSrc.disciplineId);
+        if(disc && !disc.active){ disc.active = true; }
+      }
       save();
       ST.srcInput={name:'',type:'relatorio',contentType:'misto',content:'',disciplineId:ST.srcInput.disciplineId};
       ST.srcImportState = {mode:'saved',justSavedId:newSrc.id,organizing:false,pdfLoading:false,organizedResult:null,pdfMeta:null};
@@ -13408,6 +13526,11 @@ function renderSourceAdd(wrap){
       }catch(e){}
     }
     DATA.sources.push(newSrc);
+    // V12 fix: garante que a disciplina da fonte fique ATIVA (senão fonte aparece como "Total:1 Ativas:0")
+    if(newSrc.disciplineId){
+      const disc = DATA.disciplines.find(d=>d.id===newSrc.disciplineId);
+      if(disc && !disc.active){ disc.active = true; }
+    }
     save();
     ST.srcInput={name:'',type:'relatorio',contentType:'misto',content:'',disciplineId:ST.srcInput.disciplineId};
     ST.srcImportState = {mode:'saved',justSavedId:newSrc.id,organizing:false,pdfLoading:false,organizedResult:null,pdfMeta:null};
@@ -17044,7 +17167,9 @@ function renderImportedImport(wrap){
         }
       });
       uploadLbl.appendChild(pdfInp);
-      uploadLbl.addEventListener('click',()=>pdfInp.click());
+      // V12 fix: removido `uploadLbl.addEventListener('click',()=>pdfInp.click())`.
+      // O <label> wrapping um <input type="file"> já abre o picker NATIVAMENTE quando clicado.
+      // O addEventListener extra fazia o picker abrir duas vezes seguidas.
       pdfArea.appendChild(uploadLbl);
       const hint = mk('p','txt3');hint.style.cssText='margin-top:.5rem;font-size:11.5px;line-height:1.5';
       hint.innerHTML = 'O texto extraído aparecerá abaixo para você revisar. O parser detecta questões C/E e múltipla escolha automaticamente. Se o TEC mudou o layout e algo não for detectado, ajuste o texto manualmente antes de salvar.';
@@ -18778,7 +18903,8 @@ function renderNotebookPractice(wrap){
           mapBtn.addEventListener('click',()=>mapNavigate(errRef.disciplineId,errRef.topic));
           ctaRow.appendChild(mapBtn);
         }
-        fb.insertBefore(ctaRow,actions);
+        // V12 fix: appendar ctaRow direto em fb. Era insertBefore num actions ainda não anexado → NotFoundError
+        fb.appendChild(ctaRow);
       }
     }
     fb.appendChild(actions);
@@ -19443,21 +19569,34 @@ function renderPractice(){
   // Source toggle: AI or Imported
   if(!ST.practQ&&!ST.practLoading){
     const importedCount = (DATA.importedQuestions||[]).length;
-    const toggle = mk('div','flex');toggle.style.cssText='gap:8px;margin-bottom:1rem;flex-wrap:wrap';
-    const lbl = mk('span','txt2');lbl.textContent='Origem das questões:';lbl.style.marginRight='4px';
+    const toggle = mk('div');toggle.style.cssText='margin-bottom:1rem';
+
+    // V12: Header com explicação clara da diferença
+    const lbl = mk('div');lbl.style.cssText='font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px';
+    lbl.textContent='Origem das questões';
     toggle.appendChild(lbl);
+
+    const btnRow = mk('div','flex');btnRow.style.cssText='gap:8px;flex-wrap:wrap';
+
     const aiBtn = mk('button','conf-btn'+(ST.practiceSource==='ai'?' sel-c':''));
-    aiBtn.style.cssText='padding:6px 12px;font-size:12.5px';
-    aiBtn.innerHTML='🤖 IA (baseada nas suas fontes)';
+    aiBtn.style.cssText='padding:10px 14px;font-size:12.5px;text-align:left;flex:1;min-width:240px;line-height:1.4';
+    aiBtn.innerHTML = '<div style="font-weight:700;margin-bottom:2px">🤖 Geradas pela IA (novas)</div>'+
+      '<div style="font-size:11px;font-weight:500;color:var(--text2);line-height:1.4">Questões inéditas no estilo da sua banca, criadas em tempo real a partir das suas fontes ativas.</div>';
+    aiBtn.title = 'A IA cria questões novas baseadas no material que você importou. Cada uma é única, focada nos seus pontos fracos. Custa créditos.';
     aiBtn.addEventListener('click',()=>{ST.practiceSource='ai';render();});
-    toggle.appendChild(aiBtn);
+    btnRow.appendChild(aiBtn);
+
     if(importedCount>0){
       const impBtn = mk('button','conf-btn'+(ST.practiceSource==='imported'?' sel-c':''));
-      impBtn.style.cssText='padding:6px 12px;font-size:12.5px';
-      impBtn.innerHTML=`📋 Importadas (${importedCount})`;
+      impBtn.style.cssText='padding:10px 14px;font-size:12.5px;text-align:left;flex:1;min-width:240px;line-height:1.4';
+      impBtn.innerHTML = `<div style="font-weight:700;margin-bottom:2px">📋 Históricas das bancas (${importedCount})</div>`+
+        '<div style="font-size:11px;font-weight:500;color:var(--text2);line-height:1.4">Questões que já caíram em provas anteriores — você importou (TEC, PDF) ou pegou de cadernos da comunidade.</div>';
+      impBtn.title = 'Banco de questões reais que já caíram em provas. Você importa de plataformas como TEC Concursos ou pega cadernos compartilhados na descoberta. Não consome créditos pra praticar.';
       impBtn.addEventListener('click',()=>{ST.practiceSource='imported';render();});
-      toggle.appendChild(impBtn);
+      btnRow.appendChild(impBtn);
     }
+
+    toggle.appendChild(btnRow);
     wrap.appendChild(toggle);
 
     if(ST.practiceSource==='imported'){
@@ -21543,7 +21682,12 @@ SAÍDA (JSON puro, sem markdown):
     model:DATA.config.model||'claude-haiku-4-5-20251001',
     max_tokens:4000,
     system:sys,
-    messages:[{role:'user',content:userMsg}]
+    messages:[{role:'user',content:userMsg}],
+    // V12: Importação de fonte é gratuita pro usuário (custo é da plataforma).
+    // Backend NÃO decrementa créditos quando free_action está presente.
+    // Razão: importar fonte é a porta de entrada — bloquear por créditos cria atrito ruim.
+    // E conteúdo importado enriquece o cache compartilhado da comunidade.
+    free_action: 'organize_import'
   };
   const r = await apiGenerate(body);
   if(!r.ok){
@@ -21975,7 +22119,7 @@ function renderBreadcrumb(){
 function viewLabel(view){
   const labels = {
     dashboard:'Painel', sources:'Fontes', methods:'Métodos', imported:'Banco',
-    srs:'Flashcards', mapa:'Mapa', pomodoro:'Pomodoro', settings:'Config',
+    srs:'Flashcards', mapa:'Mapa', pomodoro:'Pomodoro', settings:'Conta',
     history:'Histórico', practice:'Questões', simulado:'Simulado',
     calibration:'Calibração', drill:'Drill', examiner:'Examinador',
     elaborative:'Elaboração', interleaving:'Interleaving', usage:'Uso da IA',
@@ -27315,9 +27459,12 @@ function renderExamQuestionsTab(wrap, exam){
     discSel.addEventListener('change',e=>{
       q.disciplineId = e.target.value || null;
       save();
-      // re-render só linha pra atualizar resultado
-      const newRow = renderExamQuestionRow(exam, idx);
-      row.replaceWith(newRow);
+      // V12 fix: NÃO re-renderiza a linha inteira (causava bug onde primeira seleção sumia).
+      // Apenas atualiza o cálculo de score na barra superior se existir.
+      const stats = document.querySelector('.exam-stats-summary');
+      if(stats && typeof updateExamStatsSummary === 'function'){
+        try{updateExamStatsSummary(exam);}catch(_){}
+      }
     });
     discEl.appendChild(discSel);
     row.appendChild(discEl);
@@ -27341,8 +27488,8 @@ function renderExamQuestionsTab(wrap, exam){
     mineIn.addEventListener('change',e=>{
       q.myAnswer = (e.target.value||'').toUpperCase();
       save();
-      const newRow = renderExamQuestionRow(exam, idx);
-      row.replaceWith(newRow);
+      // V12: render completo (era row.replaceWith que perdia event listeners do delete)
+      render();
     });
     mineEl.appendChild(mineIn);
     row.appendChild(mineEl);
@@ -27352,8 +27499,7 @@ function renderExamQuestionsTab(wrap, exam){
     gabIn.addEventListener('change',e=>{
       q.gabarito = (e.target.value||'').toUpperCase();
       save();
-      const newRow = renderExamQuestionRow(exam, idx);
-      row.replaceWith(newRow);
+      render();
     });
     gabEl.appendChild(gabIn);
     row.appendChild(gabEl);
@@ -31666,9 +31812,30 @@ function renderSettings(){
   });
   const del = mkBtn('Apagar tudo','btn btn-danger');
   del.addEventListener('click',()=>{
-    if(confirm('APAGAR TODOS os dados? (fontes, estatísticas, cards — tudo)\n\nIsso não pode ser desfeito.')){
+    if(confirm('APAGAR TODOS os dados? (fontes, estatísticas, cards, dados da prova — tudo)\n\nIsso não pode ser desfeito.')){
       localStorage.removeItem(STORAGE_KEY);
-      DATA = defaultData();render();
+      DATA = defaultData();
+      // V12 fix: também limpa dados da prova no profile remoto (target_exam_*)
+      // Antes só apagava localStorage mas o painel lê de AUTH.profile, então prova "fantasma" ficava
+      if(typeof saveProfile === 'function' && AUTH.user){
+        saveProfile({
+          target_exam_name: '',
+          target_exam_board: '',
+          target_exam_date: null,
+          target_type: '',
+          target_role: '',
+          target_institution: ''
+        }).catch(e=>console.warn('Falha ao limpar profile:',e));
+        if(AUTH.profile){
+          AUTH.profile.target_exam_name = null;
+          AUTH.profile.target_exam_board = null;
+          AUTH.profile.target_exam_date = null;
+          AUTH.profile.target_type = null;
+          AUTH.profile.target_role = null;
+          AUTH.profile.target_institution = null;
+        }
+      }
+      render();
     }
   });
   actions.appendChild(exp);actions.appendChild(imp);actions.appendChild(del);
@@ -34559,6 +34726,10 @@ function showFeedbackModal(){
   const content = mk('div');
   m.appendChild(content);
 
+  // V12 fix: preserva o que o usuário digitou ao alternar entre tabs.
+  // Antes, ir pra "Minhas mensagens" e voltar zerava tudo — perda de texto frustrante.
+  const draft = { selectedCat: 'sugestao', subject: '', message: '' };
+
   function renderNewMessage(){
     content.innerHTML = '';
     const lblCat = mk('label');lblCat.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px';
@@ -34572,7 +34743,7 @@ function showFeedbackModal(){
       {value:'elogio',icon:'😊',label:'Elogio'},
       {value:'outro',icon:'💬',label:'Outro'}
     ];
-    let selectedCat = 'sugestao';
+    let selectedCat = draft.selectedCat || 'sugestao';
     function updateCatVisual(){
       // V12: tons neutros — sem fundo roxo, só borda mais grossa e fundo levemente mais escuro quando selecionado
       catRow.querySelectorAll('button').forEach(b=>{
@@ -34587,7 +34758,7 @@ function showFeedbackModal(){
       const btn = mk('button');btn.type='button';btn.dataset.cat=c.value;
       btn.style.cssText = 'padding:.5rem .25rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;color:var(--text2);font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px;transition:all .15s';
       btn.innerHTML = `<span style="font-size:18px">${c.icon}</span><span>${c.label}</span>`;
-      btn.addEventListener('click',()=>{ selectedCat=c.value; updateCatVisual(); });
+      btn.addEventListener('click',()=>{ selectedCat=c.value; draft.selectedCat=c.value; updateCatVisual(); });
       catRow.appendChild(btn);
     });
     updateCatVisual();
@@ -34599,6 +34770,8 @@ function showFeedbackModal(){
     const subjIn = mk('input');subjIn.type='text';subjIn.maxLength=200;
     subjIn.placeholder='Resumo curto (3-200 caracteres)';
     subjIn.style.cssText='width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit';
+    subjIn.value = draft.subject || '';
+    subjIn.addEventListener('input',()=>{draft.subject = subjIn.value;});
     content.appendChild(subjIn);
 
     const lblMsg = mk('label');lblMsg.style.cssText='display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;margin-top:.75rem';
@@ -34607,6 +34780,8 @@ function showFeedbackModal(){
     const ta = mk('textarea');ta.rows=6;ta.maxLength=5000;
     ta.placeholder='Descreva com detalhes...';
     ta.style.cssText='width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit;resize:vertical;min-height:100px';
+    ta.value = draft.message || '';
+    ta.addEventListener('input',()=>{draft.message = ta.value;});
     content.appendChild(ta);
 
     const status = mk('div');status.style.cssText='margin-top:.75rem;font-size:12px;min-height:18px';
@@ -34627,13 +34802,19 @@ function showFeedbackModal(){
       if(msg.length<5){status.textContent='⚠ Mensagem curta demais.';status.style.color='var(--red-text)';return;}
       sendBtn.disabled=true;sendBtn.textContent='Enviando...';status.textContent='';
       try{
+        // V12 fix: inclui 'status: new' explicitamente — a constraint user_feedback_status_valid
+        // bloqueia inserts sem valor válido. Valores comuns: new, open, in_progress, resolved, closed.
         const {error} = await supa.from('user_feedback').insert({
           user_id: AUTH.user.id,
           kind: selectedCat,
           subject: subj,
-          message: msg
+          message: msg,
+          status: 'new'
         });
         if(error)throw error;
+        // V12: limpa o draft após envio com sucesso pra próxima vez começar limpo
+        draft.subject = '';
+        draft.message = '';
         m.innerHTML='';
         const okBox = mk('div');okBox.style.cssText='text-align:center;padding:1.5rem 1rem';
         okBox.innerHTML = `<div style="font-size:48px;margin-bottom:.75rem">✅</div>
@@ -34847,6 +35028,8 @@ function toggleTheme(){
   const next = current==='dark'?'light':'dark';
   localStorage.setItem('nexus_theme',next);
   applyTheme();
+  // V12 fix: re-renderiza pra que o ícone do botão de tema na topbar atualize com o tema novo
+  try{ if(typeof render === 'function') render(); }catch(_){}
 }
 
 // --- Focus mode (zen) ---
@@ -34911,35 +35094,46 @@ function isTyping(){
   return false;
 }
 
-// Hunt visible answer buttons and click them.
+// V12: Hunt visible answer buttons and click them.
 // Priority: Certo/Errado (C/E methods), then any letter button for MC.
+// Compatível com todas as telas: prática IA, banco importado, simulado, calibração.
 function dispatchAnswer(letter){
-  const buttons = Array.from(document.querySelectorAll('.btn-ans, .btn-c, .btn-e'));
+  // Aceita também data-answer (futuras telas) e botões com kbd hint
+  const buttons = Array.from(document.querySelectorAll('.btn-ans, .btn-c, .btn-e, [data-answer]'));
   const visible = buttons.filter(b=>!b.disabled&&b.offsetParent!==null);
   if(visible.length===0)return false;
   const clickAndFlash = btn=>{
     btn.click();
-    // Find nearest question card and apply brief flash
-    const card = document.querySelector('.fb-card.ok')?null:document.querySelector('.question-card, .card.fade');
-    // We don't know yet if answer was right or wrong; the flash from DOM happens via the existing .fb-card styling.
     return true;
   };
   if(letter==='C'){
     const found = visible.find(b=>{
-      const t=(b.textContent||'').trim().toUpperCase();
-      return t==='CERTO'||t==='C';
+      // Pega via classe primeiro (mais confiável)
+      if(b.classList.contains('btn-c'))return true;
+      // Fallback: data-answer
+      if(b.dataset && b.dataset.answer === 'C')return true;
+      // Fallback texto: pega só letras (ignora kbd hints inseridos como <span>)
+      const t = (b.textContent||'').trim().replace(/\s+/g,' ').toUpperCase();
+      // Match: começa com "Certo" ou é exatamente "C"
+      return t.startsWith('CERTO') || t === 'C';
     });
     if(found)return clickAndFlash(found);
   }
   if(letter==='E'){
     const found = visible.find(b=>{
-      const t=(b.textContent||'').trim().toUpperCase();
-      return t==='ERRADO'||t==='E';
+      if(b.classList.contains('btn-e'))return true;
+      if(b.dataset && b.dataset.answer === 'E')return true;
+      const t = (b.textContent||'').trim().replace(/\s+/g,' ').toUpperCase();
+      return t.startsWith('ERRADO') || t === 'E';
     });
     if(found)return clickAndFlash(found);
   }
   if(/^[A-E]$/.test(letter)){
-    const found = visible.find(b=>(b.textContent||'').trim().toUpperCase()===letter);
+    const found = visible.find(b=>{
+      if(b.dataset && b.dataset.answer === letter)return true;
+      const t = (b.textContent||'').trim().toUpperCase();
+      return t === letter || t.startsWith(letter + ')') || t.startsWith(letter + '.');
+    });
     if(found)return clickAndFlash(found);
   }
   return false;
@@ -34986,13 +35180,21 @@ document.addEventListener('keydown',e=>{
   }
 
   // Atalhos sem Shift
-  if(k==='C'){handled = dispatchAnswer('C');}
-  else if(k==='E'){handled = dispatchAnswer('E');}
+  // V12: Fluxo de prática mais inteligente — se C/E não conseguir responder
+  // (porque já respondeu), tenta "próxima" como fallback. Reduz frustração.
+  if(k==='C'){
+    handled = dispatchAnswer('C');
+    if(!handled) handled = dispatchNext();
+  }
+  else if(k==='E'){
+    handled = dispatchAnswer('E');
+    if(!handled) handled = dispatchNext();
+  }
   else if(k==='A'||k==='B'||k==='D'){
-    // A, B, D para múltipla escolha (C e E já tratados acima)
     handled = dispatchAnswer(k);
   }
   else if(e.key===' '||k===' '){
+    // Espaço: prioriza próxima (fluxo natural), e se não tem próxima, tenta confirmar resposta
     handled = dispatchNext();
   }
   else if(k==='F'){
