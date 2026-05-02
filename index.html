@@ -15635,82 +15635,134 @@ function renderSourceAdd(wrap){
       if(result.text.length > 200){
         ST.srcImportState.organizing = true;
         render();
-        // Timeout de 120s — apostila grande + 16k tokens de output pode demorar
+        // Timeout de 180s — apostilas grandes processam em múltiplos chunks
         let aiRes = null;
+        let aiFailed = false;
+        let aiErrMsg = null;
         try{
+          console.log('[import] iniciando smartOrganizeContent. Texto bruto:', result.text.length, 'chars');
           aiRes = await Promise.race([
             smartOrganizeContent(result.text, {classify: true}),
-            new Promise((_, rej) => setTimeout(()=>rej(new Error('timeout 120s')), 120000))
+            new Promise((_, rej) => setTimeout(()=>rej(new Error('timeout 180s')), 180000))
           ]);
+          console.log('[import] smartOrganizeContent retornou:', aiRes ? 'objeto' : 'null', aiRes);
+        }catch(aiErr){
+          aiFailed = true;
+          aiErrMsg = aiErr.message || String(aiErr);
+          console.error('[import] IA falhou:', aiErr);
+        }
 
-          if(aiRes){
-            // 1. NOME DA FONTE (sempre — sobrescreve mesmo)
-            if(aiRes.suggestedName){
-              ST.srcInput.name = String(aiRes.suggestedName).slice(0, 80);
-            }
-
-            // 2. CONTEÚDO ORGANIZADO
-            if(aiRes.organized){
-              ST.srcInput.content = aiRes.organized;
-            }
-
-            // 3. DISCIPLINA — se não existe, CRIA uma nova
-            if(aiRes.disciplineName){
-              const detectedName = String(aiRes.disciplineName).trim();
-              // Tenta achar disciplina existente (case-insensitive, sem acentos)
-              const normalize = s => (s||'').toLowerCase()
-                .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-              const detectedNorm = normalize(detectedName);
-              let existingDisc = (DATA.disciplines||[]).find(d =>
-                normalize(d.name) === detectedNorm
-              );
-              if(!existingDisc && detectedName.length >= 3){
-                // CRIA NOVA disciplina
-                const used = DATA.disciplines.map(d=>d.color);
-                const palette = (typeof DISC_COLORS !== 'undefined' && Array.isArray(DISC_COLORS))
-                  ? DISC_COLORS
-                  : ['#5b9bd5','#ed7d31','#70ad47','#ffc000','#7030a0','#c00000','#0070c0'];
-                const free = palette.find(c=>!used.includes(c)) || palette[DATA.disciplines.length%palette.length];
-                existingDisc = {
-                  id: 'disc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
-                  name: detectedName,
-                  color: free,
-                  active: true,
-                  createdAt: Date.now(),
-                  autoCreated: true // marca que veio da IA pra mostrar hint
-                };
-                DATA.disciplines.push(existingDisc);
-                showToast(`+ Disciplina criada: ${detectedName}`, 4500);
-              }
-              if(existingDisc){
-                if(!existingDisc.active) existingDisc.active = true;
-                ST.srcInput.disciplineId = existingDisc.id;
-              }
-            }
-
-            // 4. TIPO DE MATERIAL (livro, apostila, aula, etc)
-            if(aiRes.materialType && SRC_TYPES[aiRes.materialType]){
-              ST.srcInput.type = aiRes.materialType;
-            }
-
-            // 5. TIPO DE CONTEÚDO (teoria, exercicios, lei seca, etc)
-            if(aiRes.contentType && CONTENT_TYPES[aiRes.contentType]){
-              ST.srcInput.contentType = aiRes.contentType;
-            }
-
-            // 6. DATA DO MATERIAL
-            if(aiRes.detectedDate){
-              const dm = String(aiRes.detectedDate).match(/^(\d{4})-(\d{2})/);
-              if(dm) ST.srcInput.materialDate = `${dm[1]}-${dm[2]}`;
-            }
+        if(aiRes && !aiFailed){
+          // 1. NOME DA FONTE (sempre — sobrescreve mesmo)
+          if(aiRes.suggestedName){
+            ST.srcInput.name = String(aiRes.suggestedName).slice(0, 80);
+            console.log('[import] nome preenchido:', ST.srcInput.name);
+          } else {
+            console.warn('[import] IA não retornou suggestedName');
           }
 
-          save(); // persiste disciplina nova + srcInput
-        }catch(aiErr){
-          // IA falhou — segue sem organizar
-          console.warn('[IA auto-organize falhou]', aiErr);
-          showToast('⚠ Organização automática indisponível. Preencha os campos manualmente abaixo.', 6000);
+          // 2. CONTEÚDO ORGANIZADO
+          if(aiRes.organized && aiRes.organized.length > 100){
+            ST.srcInput.content = aiRes.organized;
+            console.log('[import] conteúdo organizado:', aiRes.organized.length, 'chars');
+          } else {
+            console.warn('[import] IA não retornou organized adequado, mantendo texto cru');
+            ST.srcInput.content = result.text;
+          }
+
+          // 3. DISCIPLINA — se não existe, CRIA uma nova
+          if(aiRes.disciplineName){
+            const detectedName = String(aiRes.disciplineName).trim();
+            const normalize = s => (s||'').toLowerCase()
+              .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+            const detectedNorm = normalize(detectedName);
+            let existingDisc = (DATA.disciplines||[]).find(d =>
+              normalize(d.name) === detectedNorm
+            );
+            if(!existingDisc && detectedName.length >= 3){
+              const used = DATA.disciplines.map(d=>d.color);
+              const palette = (typeof DISC_COLORS !== 'undefined' && Array.isArray(DISC_COLORS))
+                ? DISC_COLORS
+                : ['#5b9bd5','#ed7d31','#70ad47','#ffc000','#7030a0','#c00000','#0070c0'];
+              const free = palette.find(c=>!used.includes(c)) || palette[DATA.disciplines.length%palette.length];
+              existingDisc = {
+                id: 'disc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+                name: detectedName,
+                color: free,
+                active: true,
+                createdAt: Date.now(),
+                autoCreated: true
+              };
+              DATA.disciplines.push(existingDisc);
+              showToast(`+ Disciplina criada: ${detectedName}`, 4500);
+              console.log('[import] disciplina nova criada:', detectedName);
+            } else if(existingDisc){
+              console.log('[import] disciplina existente usada:', existingDisc.name);
+            }
+            if(existingDisc){
+              if(!existingDisc.active) existingDisc.active = true;
+              ST.srcInput.disciplineId = existingDisc.id;
+            }
+          } else {
+            console.warn('[import] IA não retornou disciplineName');
+          }
+
+          // 4. TIPO DE MATERIAL (livro, apostila, aula, etc)
+          if(aiRes.materialType && SRC_TYPES[aiRes.materialType]){
+            ST.srcInput.type = aiRes.materialType;
+            console.log('[import] tipo de material:', aiRes.materialType);
+          } else {
+            // V14 final: se IA não escolheu, default 'livro' (texto longo didático)
+            ST.srcInput.type = 'livro';
+            console.warn('[import] IA não retornou materialType válido, usando "livro"');
+          }
+
+          // 5. TIPO DE CONTEÚDO
+          if(aiRes.contentType && CONTENT_TYPES[aiRes.contentType]){
+            ST.srcInput.contentType = aiRes.contentType;
+            console.log('[import] tipo de conteúdo:', aiRes.contentType);
+          } else {
+            // V14 final: se IA não escolheu, default 'teoria' (PDFs costumam ser teoria)
+            ST.srcInput.contentType = 'teoria';
+            console.warn('[import] IA não retornou contentType válido, usando "teoria"');
+          }
+
+          // 6. DATA DO MATERIAL — IA detectou ou data atual
+          if(aiRes.detectedDate){
+            const dm = String(aiRes.detectedDate).match(/^(\d{4})-(\d{2})/);
+            if(dm){
+              ST.srcInput.materialDate = `${dm[1]}-${dm[2]}`;
+              console.log('[import] data detectada:', ST.srcInput.materialDate);
+            }
+          }
+          if(!ST.srcInput.materialDate){
+            // V14 final (Jean pediu): se não detectou, usa mês/ano ATUAL
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth()+1).padStart(2,'0');
+            ST.srcInput.materialDate = `${yyyy}-${mm}`;
+            console.log('[import] data padrão (mês atual):', ST.srcInput.materialDate);
+          }
+
+          save();
+        } else {
+          // IA falhou COMPLETAMENTE — mostra erro VISÍVEL e usa defaults inteligentes
+          console.error('[import] IA falhou ou retornou null. Usando defaults.');
+          // Mantém o texto cru no conteúdo (usuário precisa editar manualmente)
+          ST.srcInput.content = result.text;
+          // Default: livro + teoria + data atual
+          ST.srcInput.type = 'livro';
+          ST.srcInput.contentType = 'teoria';
+          if(!ST.srcInput.materialDate){
+            const now = new Date();
+            ST.srcInput.materialDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+          }
+          // Mostra erro claro pro usuário com instrução
+          const errDetail = aiErrMsg ? '\n\nDetalhe técnico: ' + aiErrMsg : '';
+          alert('⚠ A IA não conseguiu organizar o conteúdo automaticamente.\n\nO texto cru do PDF foi colocado no campo "Conteúdo". Os outros campos foram preenchidos com valores padrão.\n\nVocê pode:\n1. Editar manualmente os campos\n2. Ou cancelar e tentar de novo (a IA pode estar instável)' + errDetail);
+          save();
         }
+
         // SEMPRE termina o estado organizing e vai pra review
         ST.srcImportState = {
           mode: 'review',
@@ -26012,6 +26064,97 @@ function extractTOCSection(text, entry){
 // the text the user provided, to avoid double-content-injection.
 async function smartOrganizeContent(rawText,opts){
   opts = opts||{};
+
+  // V14 final: PROCESSAMENTO EM CHUNKS para apostilas grandes.
+  // Se texto > 25k chars, divide em pedaços de ~22k, organiza cada um, e junta.
+  // Isso permite organizar APOSTILAS INTEIRAS sem perder conteúdo nem resumir.
+  // Antes: tudo em 1 chamada com max_tokens 8k → IA resumia ou cortava.
+  // Agora: 1ª chamada faz metadados + 1ª seção; chamadas seguintes só organizam o resto.
+  const CHUNK_SIZE = 22000;
+  if(rawText.length > CHUNK_SIZE * 1.2){
+    return await smartOrganizeChunked(rawText, opts);
+  }
+
+  return await smartOrganizeSingle(rawText, opts);
+}
+
+// V14 final: organização em chunks — mantém TODO o conteúdo da apostila
+async function smartOrganizeChunked(rawText, opts){
+  const CHUNK_SIZE = 22000;
+  console.log('[smartOrganize] usando MODO CHUNKED. Total:', rawText.length, 'chars');
+  // 1ª chamada: extrai metadados + organiza primeiro chunk
+  const firstChunk = rawText.slice(0, CHUNK_SIZE);
+  const firstResult = await smartOrganizeSingle(firstChunk, {...opts, isFirstChunk: true});
+  console.log('[smartOrganize chunked] 1º chunk processado. organizedLen:', firstResult.organized?.length);
+
+  // Chunks seguintes: só organização (usa metadados do 1º)
+  const chunks = [];
+  let pos = CHUNK_SIZE;
+  while(pos < rawText.length){
+    chunks.push(rawText.slice(pos, pos + CHUNK_SIZE));
+    pos += CHUNK_SIZE;
+  }
+  console.log('[smartOrganize chunked] processando', chunks.length, 'chunks adicionais...');
+
+  let allOrganized = firstResult.organized || '';
+  for(let i=0;i<chunks.length;i++){
+    console.log(`[smartOrganize chunked] chunk ${i+2}/${chunks.length+1}...`);
+    try{
+      const partial = await smartOrganizeOnlyContent(chunks[i]);
+      if(partial && partial.length > 50){
+        allOrganized += '\n\n' + partial;
+      }
+    }catch(e){
+      console.warn(`[smartOrganize chunked] chunk ${i+2} falhou:`, e.message);
+      // Concatena texto cru limpo se IA falhou nesse chunk
+      allOrganized += '\n\n' + chunks[i];
+    }
+  }
+
+  return {
+    ...firstResult,
+    organized: allOrganized
+  };
+}
+
+// V14 final: chamada para organizar APENAS o conteúdo (sem metadados),
+// usada nos chunks 2+ do modo chunked.
+async function smartOrganizeOnlyContent(textChunk){
+  const sys = `Organize o trecho de texto fornecido em formato Markdown legível. NÃO RESUMA — preserve TODO o conteúdo técnico. REMOVA: nomes de cursinhos (Estratégia, Gran Cursos, Direção, AlfaCon, Damásio, CERS, Ouse Saber, Tec, etc), nomes de professores, marcas d'água, "Página X de Y", saudações ("Olá pessoal", "vamos lá"), URLs.
+
+ORGANIZE: use ## para seções, **negrito** com moderação para termos-chave. Mantenha numeração de artigos/leis. Preserve listas, tabelas, exemplos.
+
+NÃO ENVOLVA EM JSON. Retorne APENAS o markdown organizado, nada mais.`;
+  const body = {
+    model:DATA.config.model||'claude-haiku-4-5-20251001',
+    max_tokens: 8192,
+    system:sys,
+    messages:[{role:'user',content:'Organize este trecho:\n\n' + textChunk}],
+    free_action: 'organize_import'
+  };
+  const r = await apiGenerate(body);
+  if(!r.ok){
+    const errText = await r.text().catch(()=>'');
+    throw new Error('chunk-api-'+r.status+': '+errText.slice(0,150));
+  }
+  const d = await r.json();
+  if(d.usage){
+    logUsage({
+      model:body.model,kind:'organize',action:'organize_source_chunk',
+      input:d.usage.input_tokens||0,output:d.usage.output_tokens||0,
+      cacheRead:d.usage.cache_read_input_tokens||0,
+      cacheCreation:d.usage.cache_creation_input_tokens||0
+    });
+  }
+  if(d.type === 'error' || d.error){
+    throw new Error('IA error: '+JSON.stringify(d.error||d).slice(0,150));
+  }
+  const txt = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+  return txt;
+}
+
+async function smartOrganizeSingle(rawText,opts){
+  opts = opts||{};
   const discNames = DATA.disciplines.map(d=>`"${d.name}"`).join(', ');
   // Lista clara dos VALORES VÁLIDOS que a IA deve escolher
   const contentTypeKeys = Object.keys(CONTENT_TYPES).filter(k=>k!=='misto');
@@ -26028,7 +26171,7 @@ async function smartOrganizeContent(rawText,opts){
   // 1. METADADOS PRIMEIRO no JSON, organized POR ÚLTIMO (se truncar, ainda temos os metadados)
   // 2. Instruções com EXEMPLOS explícitos de erros comuns ("NÃO copie nome do arquivo")
   // 3. Lista de valores válidos como STRING ENUM
-  // 4. max_tokens: 8000 (apostilas longas + metadados não cabem em 4000)
+  // 4. max_tokens: 8192 (limite seguro do Haiku)
   // 5. Reforço explícito: NÃO resumir, manter TODA a teoria
   const sys = `Você é um assistente que extrai metadados E organiza conteúdo de estudo a partir de texto bruto extraído de PDFs (apostilas, livros, slides, transcrições).
 
@@ -26071,7 +26214,7 @@ REGRAS CRÍTICAS — VIOLAÇÃO DESSAS REGRAS É ERRO:
    c) ORGANIZE em seções com títulos curtos (## Título). Mantenha parágrafos legíveis.
    d) Use Markdown: ## para seções, **negrito** pra termos-chave (NÃO abuse), listas só onde já são listas.
    e) Preserve numeração de artigos, leis, parágrafos.
-   f) Se o texto tem 30000 caracteres, o organized deve ter cerca de 25000+ (só remove ruído, não resume).
+   f) Se o texto tem 22000 caracteres, o organized deve ter cerca de 18000+ (só remove ruído, não resume).
 
 FORMATO DA SAÍDA — JSON puro, METADADOS PRIMEIRO, organized POR ÚLTIMO:
 
@@ -26087,18 +26230,21 @@ FORMATO DA SAÍDA — JSON puro, METADADOS PRIMEIRO, organized POR ÚLTIMO:
 
 NÃO retorne markdown wrapper (\`\`\`json). NÃO escreva texto antes ou depois do JSON. Comece com { e termine com }.`;
 
-  const userMsg = `Texto bruto extraído do PDF a ser organizado:\n\n${rawText.slice(0,40000)}${rawText.length>40000?'\n\n[texto truncado em 40k chars]':''}`;
+  const userMsg = `Texto bruto extraído do PDF a ser organizado:\n\n${rawText.slice(0,25000)}${rawText.length>25000?'\n\n[texto truncado em 25k chars]':''}`;
   const body = {
     model:DATA.config.model||'claude-haiku-4-5-20251001',
-    max_tokens: 16000, // V14 final: aumentado de 4000 → 16000 pra caber TODA a teoria sem resumir + metadados
+    max_tokens: 8192, // V14 final: 8192 é o limite seguro do Haiku 4.5. Maior estourava no backend.
     system:sys,
     messages:[{role:'user',content:userMsg}],
     free_action: 'organize_import'
   };
+  console.log('[smartOrganize] enviando request, input chars:', rawText.length, 'truncado para:', userMsg.length);
   const r = await apiGenerate(body);
+  console.log('[smartOrganize] response status:', r.status, r.ok);
   if(!r.ok){
     const errText = await r.text().catch(()=>'');
-    throw new Error('api-'+r.status+': '+errText.slice(0,150));
+    console.error('[smartOrganize] HTTP error:', r.status, errText);
+    throw new Error('api-'+r.status+': '+errText.slice(0,200));
   }
   const d = await r.json();
   if(d.usage){
@@ -26109,18 +26255,26 @@ NÃO retorne markdown wrapper (\`\`\`json). NÃO escreva texto antes ou depois d
       cacheCreation:d.usage.cache_creation_input_tokens||0
     });
   }
-  const txt = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-  // V14 fix: log do output bruto pro usuário/admin debugar via console (Jean reportou
-  // que IA não preenchia campos — assim podemos ver o que ela realmente retornou)
-  if(typeof window !== 'undefined' && window.console){
-    console.log('[smartOrganize raw output]', txt.slice(0, 500) + (txt.length > 500 ? '...' : ''));
-    console.log('[smartOrganize total length]', txt.length, 'chars');
+  // Detecta resposta de erro vs sucesso
+  if(d.type === 'error' || d.error){
+    console.error('[smartOrganize] API returned error:', d.error || d);
+    throw new Error('IA retornou erro: ' + JSON.stringify(d.error || d).slice(0, 200));
   }
+  const txt = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  console.log('[smartOrganize] raw output (primeiros 800 chars):', txt.slice(0, 800));
+  console.log('[smartOrganize] total output length:', txt.length, 'chars');
+  console.log('[smartOrganize] stop_reason:', d.stop_reason);
+
+  if(!txt || txt.length < 50){
+    throw new Error('IA retornou resposta vazia ou muito curta (' + txt.length + ' chars)');
+  }
+
   let clean = txt.replace(/```json\n?|\n?```/g,'').trim();
   let parsed = null;
   try {
     parsed = JSON.parse(clean);
   } catch (e) {
+    console.warn('[smartOrganize] JSON.parse direto falhou, tentando regex...', e.message);
     // Tenta extrair o primeiro { ... } balanceado
     const match = clean.match(/\{[\s\S]*\}/);
     if(match){
@@ -26137,33 +26291,31 @@ NÃO retorne markdown wrapper (\`\`\`json). NÃO escreva texto antes ou depois d
         }
         if(lastValid > 0){
           try { parsed = JSON.parse(clean.slice(0, lastValid+1)); }
-          catch(__) {}
+          catch(__) {
+            console.error('[smartOrganize] todas as tentativas de parse falharam');
+          }
         }
       }
     }
   }
-  // Log do parsed pra debug
-  if(parsed && typeof window !== 'undefined' && window.console){
-    console.log('[smartOrganize parsed fields]', {
-      hasName: !!parsed.suggestedName,
-      hasDiscipline: !!parsed.disciplineName,
-      hasMaterialType: !!parsed.materialType,
-      hasContentType: !!parsed.contentType,
-      hasDate: !!parsed.detectedDate,
+  // Log detalhado do parsed pra debug
+  if(parsed){
+    console.log('[smartOrganize] parsed com sucesso. Campos:', {
+      suggestedName: parsed.suggestedName,
+      disciplineName: parsed.disciplineName,
+      materialType: parsed.materialType,
+      contentType: parsed.contentType,
+      detectedDate: parsed.detectedDate,
+      topicsCount: (parsed.topics||[]).length,
       organizedLen: parsed.organized ? parsed.organized.length : 0
     });
+    return parsed;
   }
-  if(parsed) return parsed;
-  // Fallback: retorna o texto cru como "organized" pra não travar
-  return {
-    organized: rawText,
-    topics: [],
-    suggestedName: null,
-    detectedDate: null,
-    disciplineName: null,
-    materialType: null,
-    contentType: null
-  };
+  // V14 FINAL: NÃO retorna mais fallback silencioso com texto cru.
+  // Em vez disso, JOGA O ERRO pro caller mostrar mensagem clara ao usuário.
+  // Antes: usuário via texto cru do PDF como "organizado" e ficava confuso.
+  console.error('[smartOrganize] FALHOU. Output bruto da IA:', txt);
+  throw new Error('IA retornou JSON inválido. Output (primeiros 200 chars): ' + clean.slice(0, 200));
 }
 
 /* ====== MAPA DA MATÉRIA ====== */
