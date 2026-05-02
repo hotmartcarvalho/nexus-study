@@ -6449,6 +6449,52 @@ const BRAND = {
   fullLogo: '/logo-light.png'
 };
 const STORAGE_KEY = 'nexus_pl_v4';
+const REFERRAL_KEY = 'gralia_referral';
+const REFERRAL_TTL_DAYS = 30;
+
+// V13: Captura código de afiliado da URL (?ref=xyz) e salva em localStorage.
+// Usado depois no signup pra creditar o afiliado.
+// Persiste por 30 dias mesmo se o usuário não criar conta imediatamente.
+(function captureReferral(){
+  try{
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref') || params.get('REF');
+    if(ref && /^[a-zA-Z0-9_-]{3,40}$/.test(ref)){
+      const existing = localStorage.getItem(REFERRAL_KEY);
+      // Não sobrescreve referral existente (first-touch attribution)
+      if(!existing){
+        localStorage.setItem(REFERRAL_KEY, JSON.stringify({
+          code: ref.toLowerCase(),
+          capturedAt: Date.now()
+        }));
+      }
+    }
+    // Limpa referral expirado
+    const stored = localStorage.getItem(REFERRAL_KEY);
+    if(stored){
+      try{
+        const obj = JSON.parse(stored);
+        const ageDays = (Date.now() - (obj.capturedAt||0)) / (86400*1000);
+        if(ageDays > REFERRAL_TTL_DAYS){
+          localStorage.removeItem(REFERRAL_KEY);
+        }
+      }catch(_){
+        localStorage.removeItem(REFERRAL_KEY);
+      }
+    }
+  }catch(e){
+    // Falha silenciosa — não quebra o app
+  }
+})();
+
+function getStoredReferral(){
+  try{
+    const s = localStorage.getItem(REFERRAL_KEY);
+    if(!s) return null;
+    const obj = JSON.parse(s);
+    return obj.code || null;
+  }catch(_){return null;}
+}
 
 // === USERNAMES RESERVADOS (não podem ser usados) ===
 const RESERVED_USERNAMES = new Set([
@@ -7637,6 +7683,33 @@ function examStats(exam){
   const total = qs.length;
   const pct = withGab.length > 0 ? Math.round((correct.length / withGab.length) * 100) : 0;
 
+  // V13: Breakdown por tipo de questão (C/E vs Múltipla escolha)
+  // Detecta pelo gabarito: 1 letra + (C/E) ou (A/B/C/D/E)
+  const isCE = (q)=>{
+    const g = String(q.gabaritoFinal||q.gabarito||'').trim().toUpperCase();
+    return g === 'C' || g === 'E' || (q.kind === 'CE');
+  };
+  const isMC = (q)=>{
+    const g = String(q.gabaritoFinal||q.gabarito||'').trim().toUpperCase();
+    return /^[A-E]$/.test(g) && g !== 'C' && g !== 'E';
+  };
+  const ceQs = qs.filter(isCE);
+  const mcQs = qs.filter(isMC);
+  const ceCorrect = ceQs.filter(q=>{
+    if(!q.myAnswer || !q.gabarito) return false;
+    return String(q.myAnswer).trim().toUpperCase() === String(q.gabaritoFinal||q.gabarito).trim().toUpperCase();
+  }).length;
+  const mcCorrect = mcQs.filter(q=>{
+    if(!q.myAnswer || !q.gabarito) return false;
+    return String(q.myAnswer).trim().toUpperCase() === String(q.gabaritoFinal||q.gabarito).trim().toUpperCase();
+  }).length;
+  const ceWithGab = ceQs.filter(q=>q.gabarito).length;
+  const mcWithGab = mcQs.filter(q=>q.gabarito).length;
+  const byType = {
+    ce: {total: ceQs.length, correct: ceCorrect, withGab: ceWithGab, pct: ceWithGab > 0 ? Math.round((ceCorrect/ceWithGab)*100) : 0},
+    mc: {total: mcQs.length, correct: mcCorrect, withGab: mcWithGab, pct: mcWithGab > 0 ? Math.round((mcCorrect/mcWithGab)*100) : 0}
+  };
+
   // Por disciplina
   const byDisc = {};
   qs.forEach(q=>{
@@ -7663,7 +7736,7 @@ function examStats(exam){
   return {
     total, answered: answered.length, withGab: withGab.length,
     correct: correct.length, incorrect: incorrect.length, blank: blank.length,
-    pct, byDisc, totalTimeSec
+    pct, byDisc, byType, totalTimeSec
   };
 }
 
@@ -7965,6 +8038,15 @@ function buildContent(){
     directive = '\n\n--- DIRETRIZ DE ESTILO ---\nConteúdo é majoritariamente JURISPRUDÊNCIA. Priorize: (a) cenários APLICADOS ao caso concreto, (b) variação de contexto para testar se o candidato entendeu a tese, (c) diferenciação entre o que a Súmula/STF decidiu e o que é o texto legal puro. Evite literalidade de lei que não esteja explícita no conteúdo.\n';
   } else if(dominant==='doutrina'){
     directive = '\n\n--- DIRETRIZ DE ESTILO ---\nConteúdo é majoritariamente DOUTRINA. Priorize: (a) CLASSIFICAÇÕES e distinções conceituais, (b) comparações entre correntes/autores, (c) aplicação do conceito a situações práticas.\n';
+  } else if(dominant==='exercicios'){
+    // V13: Diretiva pra exercícios — material já é prática, devemos VARIAR ângulos e EVITAR repetir
+    directive = '\n\n--- DIRETRIZ DE ESTILO ---\nConteúdo é uma LISTA DE EXERCÍCIOS já existente. Priorize: (a) NOVOS ângulos de pegadinha sobre os mesmos tópicos (não copie questões existentes — invente variações), (b) generalize armadilhas comuns identificadas nas questões pra criar variações, (c) cobre tópicos correlatos que ficaram de fora, (d) explore consequências e exceções pouco mencionadas.\n';
+  } else if(dominant==='resumo'){
+    // V13: Diretiva pra resumos — material é condensado, devemos APROFUNDAR pontos importantes
+    directive = '\n\n--- DIRETRIZ DE ESTILO ---\nConteúdo é um RESUMO condensado. Priorize: (a) testar EXATAMENTE os pontos destacados (negrito, marcadores, listas) que indicam relevância pra prova, (b) explorar exceções e detalhes que o resumo só mencionou de passagem, (c) checar se o estudante entende os PRINCÍPIOS subjacentes — não só decora os marcadores. Evite extrapolar pra temas não mencionados no resumo.\n';
+  } else if(dominant==='mapa_mental'){
+    // V13: Mapa mental — material é esquemático, focar em RELAÇÕES e classificações
+    directive = '\n\n--- DIRETRIZ DE ESTILO ---\nConteúdo é um MAPA MENTAL esquemático. Priorize: (a) testar RELAÇÕES entre conceitos (qual deriva de qual, qual é exceção a qual), (b) classificações e hierarquias mostradas nos ramos, (c) reconhecimento de PADRÕES estruturais. Não exija detalhes que o mapa não mostra explicitamente.\n';
   }
   return srcs.map(s=>{
     const disc = getDiscipline(s.disciplineId);
@@ -9020,22 +9102,20 @@ function showModelComparisonModal(methodKey){
 
 function renderModelExample(ex, compKey){
   if(compKey === 'practice'){
+    // V12: Visual replica o fb-card real (cartão de feedback que o usuário vê após responder).
+    const isOk = (ex.answer||'').toLowerCase().startsWith('cert');
     return `
-      <div class="mce-block">
-        <div class="mce-label">Questão</div>
-        <p class="mce-text">${escapeHTML(ex.question)}</p>
-      </div>
-      <div class="mce-block">
-        <div class="mce-label">Resposta</div>
-        <p class="mce-text"><b>${escapeHTML(ex.answer)}</b></p>
-      </div>
-      <div class="mce-block">
-        <div class="mce-label">Explicação</div>
-        <p class="mce-text">${escapeHTML(ex.explanation)}</p>
-      </div>
-      <div class="mce-block">
-        <div class="mce-label">Armadilhas detectadas</div>
-        <p class="mce-text">${escapeHTML(ex.traps)}</p>
+      <div style="padding:1rem 1.125rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;border-left:3px solid ${isOk?'var(--accent)':'var(--red)'}">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Questão</div>
+        <p style="margin:0 0 .75rem;font-size:13.5px;line-height:1.55;color:var(--text)">${escapeHTML(ex.question)}</p>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Gabarito</div>
+        <p style="margin:0 0 .75rem;font-size:13px;font-weight:700;color:${isOk?'var(--accent-text)':'var(--red-text)'}">${escapeHTML(ex.answer)}</p>
+        <div style="background:var(--surface2);padding:.625rem .75rem;border-radius:8px;font-size:12.5px;line-height:1.55;color:var(--text2);margin-bottom:.5rem">
+          <b style="color:var(--text)">Explicação:</b> ${escapeHTML(ex.explanation)}
+        </div>
+        <div style="background:var(--red-light);border-left:3px solid var(--red);padding:.5rem .75rem;border-radius:0 8px 8px 0;font-size:12px;line-height:1.55;color:var(--red-text)">
+          <b>Armadilha:</b> ${escapeHTML(ex.traps)}
+        </div>
       </div>
     `;
   }
@@ -9048,14 +9128,14 @@ function renderModelExample(ex, compKey){
     `;
   }
   if(compKey === 'flashcard_create'){
+    // V12: Visual igual ao card real do SRS — mesma estrutura, mesma divisão frente/verso
+    // Antes: caixinhas com label "Frente" / "Verso" — ficava abstrato.
+    // Agora: replicamos o look do srs-flip pra usuário ver exatamente como o card aparece.
     return `
-      <div class="mce-block">
-        <div class="mce-label">Frente (pergunta)</div>
-        <p class="mce-text">${formatFlashcardText(ex.front)}</p>
-      </div>
-      <div class="mce-block">
-        <div class="mce-label">Verso (resposta)</div>
-        <div class="mce-text">${formatFlashcardText(ex.back)}</div>
+      <div class="srs-flip" style="margin:0;min-height:auto;padding:1.25rem 1rem">
+        <div class="srs-front" style="font-size:14.5px">${formatFlashcardText(ex.front)}</div>
+        <div class="srs-divider"></div>
+        <div class="srs-back" style="font-size:13.5px">${formatFlashcardText(ex.back)}</div>
       </div>
     `;
   }
@@ -9592,7 +9672,7 @@ function showFAQModal(){
 
     {q:'Os créditos não usados acumulam mês a mês?', a:'Os créditos do PLANO resetam mensalmente (vira saldo 250/700/2000 todo mês). Os créditos de TOP-UP (avulsos) nunca expiram — somam ao saldo e ficam disponíveis indefinidamente.'},
 
-    {q:'Tem desconto BETA?', a:'Sim. Os 200 primeiros assinantes pagantes ganham desconto vitalício escalonado: 1º ao 50º (Pioneiro) — 30% por 6 meses · 51º ao 100º (Veterano) — 20% por 3 meses · 101º ao 200º (Beta) — 10% por 1 mês. Cada nível inclui selo permanente no perfil.'},
+    {q:'Tem desconto BETA?', a:'Sim. Os 100 primeiros assinantes pagantes ganham desconto progressivo no primeiro mês: 1º ao 30º (Pioneiro) — 30% off · 31º ao 60º (Veterano) — 20% off · 61º ao 100º (Beta) — 10% off. Cada nível inclui selo permanente no perfil.'},
 
     {q:'Posso cancelar a qualquer momento?', a:'Sim. Cancela em Configurações → Minha assinatura. Sem fidelidade, sem multa. Você mantém acesso até o fim do período pago. Os créditos avulsos comprados continuam seus pra sempre.'},
 
@@ -9911,23 +9991,25 @@ function renderWelcome(){
   wrap.appendChild(hero);
 
   // ====== TRANSPARÊNCIA: ESTUDO ATIVO + PASSIVO ======
-  // (Pedido específico: ser franco que vídeo-aula e PDF são essenciais antes do estudo ativo)
+  // V12: Copy reescrita pra ser mais direta e empática.
+  // Antes: tom defensivo ("não substitui"). Agora: posiciona como complemento natural.
   const transparenciaSec = mk('section','wel-section wel-base-section');
-  const transpLbl = mk('div','wel-section-label');transpLbl.textContent='Antes de tudo: a base';
+  const transpLbl = mk('div','wel-section-label');transpLbl.textContent='Onde o Gralia entra na sua rotina';
   transparenciaSec.appendChild(transpLbl);
-  const transpHead = mk('h2','wel-section-title');transpHead.textContent='Estudo ativo é poderoso. Mas só funciona com base teórica sólida.';
+  const transpHead = mk('h2','wel-section-title');transpHead.textContent='Continue estudando do seu jeito. A gente cuida do que ninguém cuida.';
   transparenciaSec.appendChild(transpHead);
   const transpBody = mk('div','wel-base-body');
   transpBody.innerHTML = `
-    <p class="wel-base-text">Antes de testar conhecimento com questões e flashcards, você precisa <b>entender a teoria</b>. Isso é leitura de PDFs, livros e assistir vídeo-aulas — o que chamamos de estudo passivo. Sem essa base, o estudo ativo vira chute educado.</p>
-    <p class="wel-base-text">O Gralia não substitui sua fonte principal de teoria. Ele <b>potencializa o que você já estudou</b>, transformando leitura em retenção de longo prazo.</p>
+    <p class="wel-base-text">Estudar concurso é trabalho árduo. Você lê PDFs, assiste videoaula, faz resumo. Tudo isso é <b>essencial</b> — e nenhum app pode (ou deve) substituir. Mas tem um problema com o que vem depois: <b>fixar o que você estudou e entender exatamente onde tá errando</b>.</p>
+    <p class="wel-base-text">É aí que entram repetição espaçada, prática deliberada, calibração de confiança e análise de padrões de erro. Ferramentas que <b>quase ninguém aplica</b> porque dão trabalho de organizar manualmente. O Gralia automatiza isso.</p>
     <div class="wel-base-flow">
-      <div class="wbfl-step"><div class="wbfl-num">1</div><div class="wbfl-content"><b>Veja a teoria</b><span>PDFs, livros, vídeo-aulas — o conteúdo bruto</span></div></div>
+      <div class="wbfl-step"><div class="wbfl-num">1</div><div class="wbfl-content"><b>Sua teoria</b><span>PDFs, videoaulas, resumos — o que você já consome</span></div></div>
       <div class="wbfl-arrow">→</div>
-      <div class="wbfl-step"><div class="wbfl-num">2</div><div class="wbfl-content"><b>Pratique aqui</b><span>Questões, flashcards, mapa, mentor IA</span></div></div>
+      <div class="wbfl-step"><div class="wbfl-num">2</div><div class="wbfl-content"><b>Aqui no Gralia</b><span>Questões, flashcards, mapa, mentor IA</span></div></div>
       <div class="wbfl-arrow">→</div>
-      <div class="wbfl-step active"><div class="wbfl-num">3</div><div class="wbfl-content"><b>Fixa e evolui</b><span>Revisão espaçada, padrões dos seus erros</span></div></div>
+      <div class="wbfl-step active"><div class="wbfl-num">3</div><div class="wbfl-content"><b>Domínio real</b><span>Fixação de longo prazo + identificação de armadilhas</span></div></div>
     </div>
+    <p class="wel-base-text" style="margin-top:1rem;font-size:13.5px;color:var(--text2)">⚡ <b>O que isso significa na prática:</b> você gasta o mesmo tempo lendo, mas extrai 5× mais. A diferença não é o quanto você estuda — é o que você faz com o conteúdo depois.</p>
   `;
   transparenciaSec.appendChild(transpBody);
   wrap.appendChild(transparenciaSec);
@@ -11037,13 +11119,15 @@ function renderWelcome(){
   const betaHead = mk('h2','wel-section-title');betaHead.textContent='Construa o Gralia com a gente — e ganhe desconto BETA';
   betaSec.appendChild(betaHead);
   const betaSub = mk('p','wel-section-sub');
-  betaSub.textContent='Estamos nas primeiras versões. Os 200 primeiros assinantes ganham desconto progressivo nos primeiros meses de assinatura.';
+  // V13: Distribuição mais sustentável — 100 pessoas total, 1 mês de desconto cada.
+  // Antes era 200 pessoas com 6m/3m/1m — caro demais em volume.
+  betaSub.textContent='Estamos nas primeiras versões. Os 100 primeiros assinantes ganham desconto progressivo no primeiro mês.';
   betaSec.appendChild(betaSub);
   const betaGrid = mk('div','wel-beta-grid');
   [
-    {pos:'1-50', pct:'30%', label:'pelos 6 primeiros meses', tag:'Pioneiros'},
-    {pos:'51-150', pct:'20%', label:'pelos 3 primeiros meses', tag:'Veteranos'},
-    {pos:'151-200', pct:'10%', label:'pelo 1º mês', tag:'Beta'}
+    {pos:'1-30', pct:'30%', label:'no 1º mês de assinatura', tag:'Pioneiros'},
+    {pos:'31-60', pct:'20%', label:'no 1º mês de assinatura', tag:'Veteranos'},
+    {pos:'61-100', pct:'10%', label:'no 1º mês de assinatura', tag:'Beta'}
   ].forEach((b,i)=>{
     const card = mk('div','wel-beta-card'+(i===0?' wbc-featured':''));
     card.innerHTML = `<div class="wbc-tag">${b.tag}</div><div class="wbc-pos">Assinantes ${b.pos}</div><div class="wbc-pct">${b.pct}</div><div class="wbc-lbl">${b.label}</div>`;
@@ -11051,7 +11135,7 @@ function renderWelcome(){
   });
   betaSec.appendChild(betaGrid);
   const betaFooter = mk('p','wel-beta-footer');
-  betaFooter.innerHTML = '⚡ A contagem é por <b>quem assina</b> — só cria conta não vale. Garanta seu desconto sendo um dos primeiros a apoiar o projeto.';
+  betaFooter.innerHTML = '⚡ A contagem é por <b>quem assina</b> — criar conta gratuita não vale. Selo permanece no seu perfil pra sempre.';
   betaSec.appendChild(betaFooter);
   // V12: Removido da landing — desconto BETA aparece apenas na página de planos quando o usuário
   // já criou conta e foi ver os preços. Antes ficava na landing junto com os planos, mas
@@ -12900,7 +12984,21 @@ function renderSourceList(wrap){
     const nm = mk('span');nm.textContent=d.name;
     const cn = mk('span','count');cn.textContent=count;
     chip.appendChild(dot);chip.appendChild(nm);chip.appendChild(cn);
-    chip.addEventListener('click',()=>{d.active=!d.active;save();render();});
+    chip.addEventListener('click',()=>{
+      d.active=!d.active;
+      save();
+      // V12: Feedback visual claro de ativação/desativação.
+      // Antes: usuário clicava e não tinha confirmação se afetou alguma coisa.
+      // Agora: toast diz exatamente o que mudou.
+      try{
+        if(d.active){
+          showToast(`✓ ${d.name} ativada — questões e cards dessa disciplina vão aparecer no estudo`);
+        } else {
+          showToast(`${d.name} desativada — não vai aparecer mais no estudo`);
+        }
+      }catch(_){}
+      render();
+    });
     chips.appendChild(chip);
   });
   wrap.appendChild(chips);
@@ -13365,9 +13463,21 @@ function renderSourceAdd(wrap){
   const addCard = mk('div','card');
   const addH = mk('h3');addH.textContent='Adicionar fonte';addH.style.marginBottom='.5rem';
   addCard.appendChild(addH);
-  const help = mk('p','txt3');help.style.cssText='margin:0 0 1rem;font-size:12px;line-height:1.5';
-  help.textContent='Cole texto, carregue um PDF, ou deixe a IA organizar tudo para você.';
-  addCard.appendChild(help);
+  // V12: Help mais didático — exemplos visuais e fluxo claro.
+  // Antes: 1 frase genérica ("Cole texto, carregue PDF..."). Usuário ficava perdido.
+  // Agora: lista visual mostra os 3 caminhos com exemplos concretos.
+  const helpBox = mk('div');helpBox.style.cssText='margin:0 0 1rem;padding:.75rem .875rem;background:var(--surface2);border-radius:8px;font-size:12.5px;line-height:1.55';
+  helpBox.innerHTML = `
+    <div style="font-weight:700;margin-bottom:6px;color:var(--text)">3 jeitos de adicionar (escolha qualquer um):</div>
+    <div style="display:flex;flex-direction:column;gap:5px;color:var(--text2)">
+      <div>📄 <b>Subir PDF</b> — apostila, lei, manual, edital. A IA extrai e estrutura</div>
+      <div>📚 <b>Importar da comunidade</b> — fontes públicas que outros usuários publicaram</div>
+      <div>📝 <b>Colar texto</b> — copie de qualquer fonte (sites, anotações, livros)</div>
+    </div>
+    <div style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--border);font-size:11.5px;color:var(--text3)">
+      <b>Dica:</b> A IA organiza, classifica e detecta data automaticamente — você só revisa.
+    </div>`;
+  addCard.appendChild(helpBox);
 
   // Quick import actions row
   const quickRow = mk('div','smart-import-row');
@@ -13832,7 +13942,18 @@ function renderDisciplines(wrap){
     inp.addEventListener('change',e=>{d.name=e.target.value.trim()||d.name;save();render();});
     const active = mk('label');active.style.cssText='display:flex;align-items:center;gap:6px;margin:0;font-size:12px;cursor:pointer;user-select:none';
     const chk = mk('input');chk.type='checkbox';chk.checked=d.active;chk.style.width='auto';chk.style.cursor='pointer';
-    chk.addEventListener('change',e=>{d.active=e.target.checked;save();render();});
+    chk.addEventListener('change',e=>{
+      d.active=e.target.checked;
+      save();
+      try{
+        if(d.active){
+          showToast(`✓ ${d.name} ativada`);
+        } else {
+          showToast(`${d.name} desativada`);
+        }
+      }catch(_){}
+      render();
+    });
     const lab = mk('span');lab.textContent='Ativa';
     active.appendChild(chk);active.appendChild(lab);
     const del = mkBtn('×','icon-btn del');
@@ -14171,8 +14292,95 @@ function showSourceTOCModal(src){
   searchInp.addEventListener('input', e=>renderList(e.target.value));
   renderList('');
 
+  // V13: Botão pra regenerar índice via IA — útil quando TOC veio mal estruturada
+  // (ex: capítulos sem hierarquia, seções perdidas, títulos com lixo de PDF).
+  const aiBtn = mkBtn('🪄 Regenerar índice com IA','btn btn-sm');
+  aiBtn.style.cssText = 'margin-top:.875rem';
+  aiBtn.title = 'A IA relê o conteúdo e cria estrutura de capítulos/seções/subseções limpa';
+  aiBtn.addEventListener('click', async()=>{
+    if(!confirm('Regenerar o índice usando IA? Isso substitui o índice atual. Útil quando o índice ficou bagunçado ou faltam seções.')) return;
+    aiBtn.disabled = true;aiBtn.textContent = 'Regenerando...';
+    try{
+      const newToc = await regenerateTocWithAI(src);
+      if(newToc && newToc.length > 0){
+        src.toc = newToc;
+        save();
+        showToast(`✓ Índice atualizado: ${newToc.length} entradas`);
+        closeModal();
+        // Reabre com novo índice
+        setTimeout(()=>showSourceTOCModal(src), 100);
+      } else {
+        alert('A IA não conseguiu gerar índice estruturado pra esta fonte.');
+        aiBtn.disabled = false;aiBtn.textContent = '🪄 Regenerar índice com IA';
+      }
+    }catch(e){
+      alert('Erro: ' + (e.message || e));
+      aiBtn.disabled = false;aiBtn.textContent = '🪄 Regenerar índice com IA';
+    }
+  });
+  m.appendChild(aiBtn);
+
   showModal(m);
   setTimeout(()=>searchInp.focus(), 50);
+}
+
+// V13: Regenera índice (TOC) de uma fonte usando IA.
+// Usa primeiros 25k chars (suficiente pra entender estrutura sem custar caro).
+async function regenerateTocWithAI(src){
+  const sample = (src.content||'').slice(0, 25000);
+  if(sample.length < 200) throw new Error('Conteúdo muito curto');
+
+  const sys = `Você analisa textos de estudo (apostilas, leis, livros) e identifica estrutura hierárquica de capítulos/seções/subseções.
+
+REGRAS:
+- Identifique apenas títulos REAIS (não confunda com listas, itens enumerados em parágrafos)
+- Hierarquia: level 0 = capítulo, level 1 = seção, level 2 = subseção
+- Pra cada entrada, indique startChar (índice no texto onde começa o conteúdo após o título)
+- Ignore: headers/footers de PDF, números de página, marca d'água, "Continua na próxima página"
+- Títulos curtos (max 80 chars). Limpe lixo (ex: "1.2.3 ___ Princípios" → "Princípios")
+
+SAÍDA — JSON puro, array:
+[
+  {"title":"Capítulo 1 — Princípios","level":0,"startChar":120},
+  {"title":"Legalidade","level":1,"startChar":380},
+  {"title":"Aplicação prática","level":2,"startChar":920},
+  ...
+]
+
+Se não conseguir identificar estrutura clara (texto sem títulos), retorne []`;
+
+  const body = {
+    model: DATA.config.model || 'claude-haiku-4-5-20251001',
+    max_tokens: 3000,
+    system: sys,
+    messages: [{role:'user', content: 'Identifique a estrutura desta fonte:\n\n' + sample}],
+    free_action: 'organize_import'
+  };
+  const r = await apiGenerate(body);
+  if(!r.ok){
+    const errText = await r.text().catch(()=>'');
+    throw new Error('api-' + r.status + ': ' + errText.slice(0,150));
+  }
+  const d = await r.json();
+  if(d.usage){
+    logUsage({
+      model:body.model,kind:'toc',action:'regenerate_toc',
+      input:d.usage.input_tokens||0,output:d.usage.output_tokens||0,
+      cacheRead:d.usage.cache_read_input_tokens||0,
+      cacheCreation:d.usage.cache_creation_input_tokens||0
+    });
+  }
+  const txt = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+  const clean = txt.replace(/```json\n?|\n?```/g,'').trim();
+  const parsed = JSON.parse(clean);
+  if(!Array.isArray(parsed)) return [];
+
+  // Calcula endChar baseado no startChar do próximo
+  parsed.forEach((entry, i)=>{
+    entry.id = 'toc_' + i + '_' + Math.random().toString(36).slice(2,7);
+    entry.endChar = i < parsed.length - 1 ? parsed[i+1].startChar : (src.content||'').length;
+  });
+  return parsed;
 }
 
 // Modal pra ver o trecho completo de uma seção
@@ -14664,7 +14872,7 @@ function extractCargo(meta){
 }
 
 function getBankFilters(stateKey){
-  if(!ST[stateKey])ST[stateKey]={disc:'all',source:'all',kind:'all',banca:'all',cargo:'all',topic:'all',perf:'all',search:''};
+  if(!ST[stateKey])ST[stateKey]={disc:'all',source:'all',kind:'all',banca:'all',cargo:'all',topic:'all',perf:'all',period:'all',search:''};
   // migrate old shape with "meta" to new shape
   if(ST[stateKey].meta!==undefined){
     delete ST[stateKey].meta;
@@ -14672,6 +14880,8 @@ function getBankFilters(stateKey){
     if(!ST[stateKey].cargo)ST[stateKey].cargo='all';
   }
   if(ST[stateKey].topic===undefined)ST[stateKey].topic='all';
+  // V13: período default
+  if(ST[stateKey].period===undefined)ST[stateKey].period='all';
   return ST[stateKey];
 }
 function applyBankFilters(bank,f){
@@ -14689,6 +14899,14 @@ function applyBankFilters(bank,f){
   if(f.perf==='never')r = r.filter(q=>!q.attempts);
   else if(f.perf==='high')r = r.filter(q=>q.attempts>0 && (q.correctCount||0)/q.attempts>=0.7);
   else if(f.perf==='low')r = r.filter(q=>q.attempts>0 && (q.correctCount||0)/q.attempts<0.5);
+  // V13: Filtro temporal — última vez que foi praticada
+  if(f.period === '7d'){
+    const cutoff = Date.now() - 7*86400*1000;
+    r = r.filter(q => q.lastPracticedAt && q.lastPracticedAt > cutoff);
+  } else if(f.period === '30d'){
+    const cutoff = Date.now() - 30*86400*1000;
+    r = r.filter(q => q.lastPracticedAt && q.lastPracticedAt > cutoff);
+  }
   if(f.search&&f.search.trim()){
     const t = f.search.toLowerCase().trim();
     r = r.filter(q=>(q.enunciado||'').toLowerCase().includes(t));
@@ -14785,6 +15003,19 @@ function renderBankFilters(stateKey,bank){
     ['low','Acerto <50%',lowCnt]
   ]));
 
+  // V13: Filtro temporal — questões adicionadas/praticadas em janelas recentes
+  // Útil pra ver "como tô esta semana" vs "como sempre fui"
+  const now = Date.now();
+  const W7D = now - 7*86400*1000;
+  const W30D = now - 30*86400*1000;
+  const recent7 = bank.filter(q => q.lastPracticedAt && q.lastPracticedAt > W7D).length;
+  const recent30 = bank.filter(q => q.lastPracticedAt && q.lastPracticedAt > W30D).length;
+  chipRows.appendChild(buildChipGroup('Período','period',[
+    ['all','Sempre'],
+    ['7d','Últimos 7 dias',recent7],
+    ['30d','Últimos 30 dias',recent30]
+  ]));
+
   // Banca filter (separate from cargo)
   const bancas = {};
   bank.forEach(q=>{const b=extractBanca(q.meta);if(b)bancas[b]=(bancas[b]||0)+1;});
@@ -14873,8 +15104,12 @@ function saveAIQuestion(method,q,modelId){
     existing.seenCount = (existing.seenCount||1)+1;
     save();return existing;
   }
+  // V13: ID determinístico baseado em hash do enunciado.
+  // Permite identificar mesma questão entre múltiplos usuários/dispositivos
+  // (futura deduplicação global, indexação no banco compartilhado da comunidade).
+  const stableId = 'aiq_' + simpleHash(target).toString(36) + '_' + Math.random().toString(36).slice(2,5);
   const rec = {
-    id:Date.now()+''+Math.random(),
+    id: stableId,
     enunciado:q.question,
     answer:q.correct_answer,
     kind:'CE',
@@ -14889,11 +15124,58 @@ function saveAIQuestion(method,q,modelId){
     trapType:q.trap_type||0,
     createdAt:Date.now(),
     seenCount:1,
-    attempts:0,correctCount:0
+    attempts:0,correctCount:0,
+    // V13: Hash do enunciado pra dedup global futura
+    contentHash: simpleHash(target).toString(36)
   };
   DATA.importedQuestions.push(rec);
   if(DATA.importedQuestions.length>1500)DATA.importedQuestions=DATA.importedQuestions.slice(-1500);
-  save();return rec;
+  save();
+
+  // V13: Publica no pool comunitário em background (não bloqueia).
+  // Reduz custo coletivo: outras pessoas com mesmo hash não regeneram.
+  // O servidor deduplica por content_hash (PRIMARY KEY).
+  // Usuário pode optar por NÃO publicar via DATA.config.shareAIQuestions = false
+  if(supa && AUTH.user && DATA.config.shareAIQuestions !== false){
+    const payload = {
+      content_hash: rec.contentHash,
+      enunciado: rec.enunciado,
+      answer: rec.answer,
+      kind: rec.kind,
+      explanation: rec.explanation,
+      trap: rec.trap,
+      keyword: rec.keyword,
+      trap_type: rec.trapType,
+      topic: rec.topic,
+      ai_method: rec.aiMethod,
+      ai_model: rec.aiModel,
+      contributor_id: AUTH.user.id
+    };
+    // upsert por content_hash — se já existe, ignora (não polui com regravações)
+    setTimeout(()=>{
+      supa.from('ai_question_pool').upsert(payload, {
+        onConflict: 'content_hash',
+        ignoreDuplicates: true
+      }).then(({error})=>{
+        if(error && !/(does not exist|relation)/i.test(error.message||'')){
+          console.warn('[ai_pool] publish failed:', error.message);
+        }
+      }).catch(()=>{});
+    }, 0);
+  }
+
+  return rec;
+}
+
+// V13: Hash simples (djb2) — determinístico, rápido, não-criptográfico.
+// Usado pra gerar IDs estáveis de questões IA e detectar duplicatas globais.
+function simpleHash(str){
+  let h = 5381;
+  for(let i=0; i<str.length; i++){
+    h = ((h << 5) + h) + str.charCodeAt(i);
+    h = h & 0xFFFFFFFF; // 32-bit
+  }
+  return Math.abs(h);
 }
 // Returns short list of recent AI question enunciados for a method (for prompt seeding)
 function recentAIQuestionsFor(method,limit){
@@ -15057,6 +15339,119 @@ function cleanTecPdfText(text){
   // Remove leading/trailing blank lines
   cleaned = cleaned.replace(/^\s+|\s+$/g,'');
   return cleaned;
+}
+
+// V13: Extrator inteligente de questões via IA.
+// Diferente de parseImportedQuestions (regex específico do TEC), funciona com QUALQUER PDF.
+// Identifica banca, matéria, enunciado, alternativas, gabarito automaticamente.
+// Quebra texto longo em chunks e processa em paralelo até max 10k+ questões.
+async function extractQuestionsWithAI(rawText, opts){
+  opts = opts || {};
+  const onProgress = opts.onProgress || (()=>{});
+
+  // Estimativa de chunks: ~3500 chars por chunk = ~7-10 questões por chunk típico
+  const CHUNK_SIZE = 3500;
+  const chunks = [];
+  // Tenta quebrar em pontos naturais (linhas em branco, "QUESTÃO N", numeração)
+  let remaining = rawText;
+  while(remaining.length > 0){
+    if(remaining.length <= CHUNK_SIZE){
+      chunks.push(remaining);
+      break;
+    }
+    // Procura ponto de corte natural perto de CHUNK_SIZE
+    let cutPoint = CHUNK_SIZE;
+    // Tenta achar fim de "Gabarito: X" ou "RESPOSTA: X" ou linha em branco dupla
+    const slice = remaining.substring(0, CHUNK_SIZE + 500);
+    const naturalCut = slice.search(/\n\n(QUEST[ÃA]O\s+\d+|\d+\.\s|Q\.\s*\d+)/i);
+    if(naturalCut > CHUNK_SIZE * 0.5){
+      cutPoint = naturalCut;
+    } else {
+      // Fallback: corta no fim de uma frase
+      const lastDot = slice.lastIndexOf('.', CHUNK_SIZE);
+      if(lastDot > CHUNK_SIZE * 0.7) cutPoint = lastDot + 1;
+    }
+    chunks.push(remaining.substring(0, cutPoint));
+    remaining = remaining.substring(cutPoint).trimStart();
+  }
+
+  onProgress({phase:'starting', totalChunks: chunks.length, processedChunks: 0, questionsFound: 0});
+
+  const allQuestions = [];
+  // Processa chunks SEQUENCIALMENTE pra não estourar rate limit
+  // (paralelo seria mais rápido, mas Anthropic API pode bloquear)
+  const sys = `Você extrai questões de concurso público de um texto bruto (PDF, OCR, copiado de site).
+
+REGRAS:
+- Identifique cada questão com: enunciado completo, alternativas (se houver), gabarito (letra ou C/E)
+- Detecte banca, ano, cargo, disciplina/matéria SE estiverem indicados perto da questão (cabeçalho, rodapé, etiqueta)
+- Tipo: 'CE' (Certo/Errado) ou 'MC' (Múltipla escolha)
+- Pra MC: extraia as letras das alternativas (A, B, C, D, E)
+- Se NÃO tiver gabarito explícito no texto, deixe answer como null
+- Ignore: cabeçalhos institucionais, URLs, números de página, marcas d'água
+- Se 2 questões parecem ser a mesma (texto idêntico), agrupe em uma só
+
+SAÍDA — array JSON puro, SEM markdown:
+[
+  {
+    "enunciado": "texto completo da questão",
+    "kind": "CE" ou "MC",
+    "alternatives": [{"letter":"A","text":"..."}],  // só pra MC, omitir pra CE
+    "answer": "C" ou "A" ou null,
+    "banca": "CESPE/CEBRASPE" ou null,
+    "ano": 2024 ou null,
+    "cargo": "Auditor Fiscal" ou null,
+    "disciplina": "Direito Administrativo" ou null,
+    "topico": "Princípios" ou null
+  }
+]
+
+Se NÃO encontrar nenhuma questão neste trecho, retorne []`;
+
+  for(let i = 0; i < chunks.length; i++){
+    onProgress({phase:'extracting', totalChunks: chunks.length, processedChunks: i, questionsFound: allQuestions.length});
+    try{
+      const body = {
+        model: DATA.config.model || 'claude-haiku-4-5-20251001',
+        max_tokens: 4000,
+        system: sys,
+        messages: [{role:'user', content: 'Extraia as questões deste trecho:\n\n' + chunks[i]}],
+        // Importação é gratuita pro usuário (custo da plataforma).
+        free_action: 'extract_questions_pdf'
+      };
+      const r = await apiGenerate(body);
+      if(!r.ok){
+        const errText = await r.text().catch(()=>'');
+        throw new Error('api-' + r.status + ': ' + errText.slice(0,150));
+      }
+      const d = await r.json();
+      if(d.usage){
+        logUsage({
+          model:body.model,kind:'extract',action:'extract_questions_pdf',
+          input:d.usage.input_tokens||0,output:d.usage.output_tokens||0,
+          cacheRead:d.usage.cache_read_input_tokens||0,
+          cacheCreation:d.usage.cache_creation_input_tokens||0
+        });
+      }
+      const txt = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+      const clean = txt.replace(/```json\n?|\n?```/g,'').trim();
+      try{
+        const parsed = JSON.parse(clean);
+        if(Array.isArray(parsed)){
+          allQuestions.push(...parsed);
+        }
+      }catch(parseErr){
+        console.warn('[extract] chunk '+i+' parse failed:', parseErr.message);
+      }
+    }catch(err){
+      console.warn('[extract] chunk '+i+' failed:', err.message);
+      // Continua com próximos chunks (não para tudo se 1 falha)
+    }
+  }
+
+  onProgress({phase:'done', totalChunks: chunks.length, processedChunks: chunks.length, questionsFound: allQuestions.length});
+
+  return allQuestions;
 }
 
 function parseImportedQuestions(raw){
@@ -16373,6 +16768,34 @@ function renderHistory(){
   // Apply discipline filter first
   let filteredByDisc = filter==='all'?all:all.filter(e=>e.disciplineId===filter);
 
+  // V13: Filtro por período — útil pra ver "esta semana" vs "sempre"
+  const periodFilter = ST.historyPeriod || 'all';
+  if(periodFilter !== 'all'){
+    const now = Date.now();
+    const cutoff = periodFilter === '7d' ? now - 7*86400*1000
+                 : periodFilter === '30d' ? now - 30*86400*1000
+                 : now - 90*86400*1000;
+    filteredByDisc = filteredByDisc.filter(e => (e.ts||0) > cutoff);
+  }
+
+  // Chips de período
+  const periodRow = mk('div','disc-filter');periodRow.style.cssText='margin-bottom:.75rem;font-size:11.5px';
+  const periodOpts = [
+    {key:'all', label:'Sempre'},
+    {key:'7d', label:'7 dias'},
+    {key:'30d', label:'30 dias'},
+    {key:'90d', label:'90 dias'}
+  ];
+  periodOpts.forEach(opt=>{
+    const isOn = periodFilter === opt.key;
+    const chip = mk('button','disc-chip'+(isOn?' on':''));
+    chip.style.cssText = `padding:4px 11px;font-size:11px;${isOn?'background:var(--accent-light);color:var(--accent-text);border-color:var(--accent)':''}`;
+    chip.textContent = opt.label;
+    chip.addEventListener('click',()=>{ST.historyPeriod = opt.key;render();});
+    periodRow.appendChild(chip);
+  });
+  wrap.insertBefore(periodRow, wrap.lastChild);
+
   // Apply topic filter if set (e.g. when navigated from Mapa with a specific topic)
   const topicFilter = ST.historyTopicFilter;
   if(topicFilter){
@@ -17397,9 +17820,14 @@ function renderImportedImport(wrap){
   card.appendChild(howto);
 
   // Import mode tabs
-  const modeRow = mk('div','flex');modeRow.style.cssText='gap:6px;margin:1rem 0 .75rem';
+  const modeRow = mk('div','flex');modeRow.style.cssText='gap:6px;margin:1rem 0 .75rem;flex-wrap:wrap';
   const mode = ST.importMode||'text';
-  [['text','📝 Colar texto'],['pdf','📄 Importar PDF']].forEach(([v,lbl])=>{
+  // V13: Adicionado modo 'pdf-ai' — extração inteligente via IA (qualquer PDF, não só TEC)
+  [
+    ['text','📝 Colar texto'],
+    ['pdf','📄 PDF do TEC (parser)'],
+    ['pdf-ai','✨ PDF qualquer (IA)']
+  ].forEach(([v,lbl])=>{
     const b = mk('button','filter-chip'+(mode===v?' on':''));
     b.textContent=lbl;
     b.addEventListener('click',()=>{ST.importMode=v;render();});
@@ -17407,7 +17835,95 @@ function renderImportedImport(wrap){
   });
   card.appendChild(modeRow);
 
-  if(mode==='pdf'){
+  // V13: Modo IA — explica diferença vs parser TEC
+  if(mode === 'pdf-ai'){
+    const aiNotice = mk('div');aiNotice.style.cssText='padding:.75rem 1rem;background:rgba(128,66,250,.08);border:1px solid rgba(128,66,250,.20);border-left:3px solid var(--gralia-purple);border-radius:8px;margin-bottom:.75rem;font-size:12.5px;line-height:1.55';
+    aiNotice.innerHTML = '<b style="color:var(--gralia-purple)">✨ Extração inteligente via IA</b><br>Use pra <b>qualquer PDF</b> de prova (CESPE, FCC, FGV, FUNDATEC, provas estaduais, materiais de cursinho). A IA identifica enunciado, alternativas, gabarito, banca e disciplina automaticamente. Mais lento que o parser do TEC, mas funciona com qualquer formato. <b>Custo zero pra você</b> — importação é sempre grátis.';
+    card.appendChild(aiNotice);
+
+    const pdfArea = mk('div','pdf-import-area');
+    if(ST.importPdfLoading){
+      const progressMsg = ST.importPdfProgress || 'Processando...';
+      pdfArea.innerHTML = `<div class="loading-row"><span class="spinner"></span> <span id="pdf-import-progress">${escapeHTML(progressMsg)}</span></div>`;
+    } else {
+      const uploadLbl = mk('label','pdf-upload-btn');
+      uploadLbl.innerHTML = '<span class="sib-icon">✨</span><span class="sib-body"><b>Selecionar PDF (qualquer banca)</b><span>IA identifica questões, alternativas, gabaritos automaticamente</span></span>';
+      const pdfInp = mk('input');pdfInp.type='file';pdfInp.accept='.pdf,application/pdf';pdfInp.style.display='none';
+      pdfInp.addEventListener('change', async e=>{
+        const file = e.target.files[0]; if(!file) return;
+        if(file.size > 80 * 1024 * 1024){
+          alert('PDF muito grande (>80MB). Divida em partes menores.');
+          return;
+        }
+        ST.importPdfLoading = true;
+        ST.importPdfProgress = 'Lendo PDF...';
+        render();
+        try{
+          // Passo 1: Extrai texto
+          const text = await extractPdfText(file, (curr,total)=>{
+            ST.importPdfProgress = `Lendo página ${curr}/${total}...`;
+            const progEl = document.getElementById('pdf-import-progress');
+            if(progEl) progEl.textContent = ST.importPdfProgress;
+          });
+          if(!text || text.length < 50){
+            throw new Error('Texto extraído muito curto. PDF pode ser escaneado (sem OCR).');
+          }
+          ST.importPdfProgress = `Texto extraído (${text.length.toLocaleString('pt-BR')} caracteres). Iniciando IA...`;
+          const progEl = document.getElementById('pdf-import-progress');
+          if(progEl) progEl.textContent = ST.importPdfProgress;
+
+          // Passo 2: IA extrai questões em chunks
+          const aiQuestions = await extractQuestionsWithAI(text, {
+            onProgress: (p)=>{
+              const el = document.getElementById('pdf-import-progress');
+              if(el){
+                if(p.phase === 'extracting'){
+                  el.textContent = `IA processando... ${p.processedChunks}/${p.totalChunks} chunks · ${p.questionsFound} questões encontradas`;
+                } else if(p.phase === 'done'){
+                  el.textContent = `✓ ${p.questionsFound} questões extraídas`;
+                }
+              }
+            }
+          });
+
+          // Passo 3: Converte pra formato local e adiciona ao preview
+          ST.importInput.text = '[Extraído via IA — ' + aiQuestions.length + ' questões. Veja no preview abaixo.]';
+          // Mapeia pra estrutura usada pelo preview/save
+          ST.importPreview = aiQuestions.map(q => ({
+            enunciado: q.enunciado,
+            kind: q.kind || 'CE',
+            alternatives: q.alternatives || [],
+            answer: q.answer || null,
+            meta: [q.banca, q.ano, q.cargo, q.disciplina, q.topico].filter(Boolean).join(' · ') || null,
+            disciplineHint: q.disciplina,
+            topicHint: q.topico
+          }));
+
+          ST.importPdfLoading = false;
+          ST.importPdfProgress = null;
+          const withGabarito = ST.importPreview.filter(q=>q.answer).length;
+          if(aiQuestions.length === 0){
+            showToast('⚠ A IA não encontrou questões neste PDF. Pode não ser um documento de prova.');
+          } else {
+            showToast(`✓ ${aiQuestions.length} questões extraídas via IA · ${withGabarito} com gabarito.`);
+          }
+          render();
+        }catch(err){
+          ST.importPdfLoading = false;
+          ST.importPdfProgress = null;
+          alert('Erro: ' + (err.message || err));
+          render();
+        }
+      });
+      uploadLbl.appendChild(pdfInp);
+      pdfArea.appendChild(uploadLbl);
+
+      const hint = mk('p','txt3');hint.style.cssText='margin-top:.5rem;font-size:11.5px;line-height:1.5';
+      hint.innerHTML = '<b>Funciona com:</b> provas oficiais, simulados de cursinho, listas de exercícios. <b>Não funciona bem com:</b> PDFs escaneados sem OCR, manuscritos, fotos de prova.';
+      pdfArea.appendChild(hint);
+    }
+    card.appendChild(pdfArea);
+  } else if(mode==='pdf'){
     // PDF upload area
     const pdfArea = mk('div','pdf-import-area');
     if(ST.importPdfLoading){
@@ -17571,9 +18087,27 @@ function renderImportedImport(wrap){
   saveBtn.addEventListener('click',()=>{
     const valid = (ST.importPreview||[]).filter(q=>q.answer);
     if(valid.length===0){alert('Nenhuma questão com gabarito válido.');return;}
+    // V13: Deduplicação por hash do enunciado.
+    // Antes: importar 2× a mesma prova criava 2× cada questão.
+    // Agora: pula questões já existentes no banco (silenciosamente).
+    const norm = s => (s||'').toLowerCase().replace(/\s+/g,' ').trim();
+    const existingHashes = new Set(
+      (DATA.importedQuestions||[])
+        .map(q => q.contentHash || (q.enunciado ? simpleHash(norm(q.enunciado)).toString(36) : null))
+        .filter(Boolean)
+    );
+    let addedCount = 0;
+    let skippedCount = 0;
     valid.forEach(q=>{
+      const targetNorm = norm(q.enunciado);
+      const hash = simpleHash(targetNorm).toString(36);
+      if(existingHashes.has(hash)){
+        skippedCount++;
+        return;
+      }
+      existingHashes.add(hash);
       const rec = {
-        id:Date.now()+''+Math.random(),
+        id: 'imp_' + hash + '_' + Math.random().toString(36).slice(2,5),
         enunciado:q.enunciado,
         answer:q.answer,
         kind:q.kind||'CE',
@@ -17581,15 +18115,19 @@ function renderImportedImport(wrap){
         topic:ST.importInput.topic||q.topic||'',
         source:'imported',
         createdAt:Date.now(),
-        attempts:0,correctCount:0
+        attempts:0,correctCount:0,
+        contentHash: hash // V13: hash determinístico pra dedup futura
       };
       if(q.kind==='MC'&&q.alternatives)rec.alternatives=q.alternatives;
       if(q.meta)rec.meta=q.meta;
       if(q.source)rec.sourceUrl=q.source;
       DATA.importedQuestions.push(rec);
+      addedCount++;
     });
     save();
-    alert(`${valid.length} questão(ões) adicionada(s).`);
+    let msg = `${addedCount} questão(ões) adicionada(s).`;
+    if(skippedCount > 0) msg += ` ${skippedCount} ${skippedCount===1?'duplicada':'duplicadas'} ${skippedCount===1?'foi ignorada':'foram ignoradas'}.`;
+    showToast(msg);
     ST.importInput.text='';ST.importPreview=[];
     ST.importedSubview='list';
     render();
@@ -18597,9 +19135,20 @@ function renderNotebooksList(wrap){
   wrap.appendChild(intro);
 
   // Create new notebook button
-  const createBtn = mkBtn('+ Criar caderno','btn btn-p');createBtn.style.marginBottom='1rem';
+  const ctaRow = mk('div');ctaRow.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem';
+  const createBtn = mkBtn('+ Criar caderno','btn btn-p');
   createBtn.addEventListener('click',()=>showCreateNotebookModal());
-  wrap.appendChild(createBtn);
+  ctaRow.appendChild(createBtn);
+
+  // V13: Gerador automático de série de cadernos
+  // Pega uma fonte e cria N cadernos sequenciais cobrindo o conteúdo gradualmente
+  if((DATA.sources||[]).length > 0){
+    const seriesBtn = mkBtn('🪄 Gerar série a partir de fonte','btn');
+    seriesBtn.title = 'Cria 3-5 cadernos sequenciais cobrindo uma fonte gradualmente';
+    seriesBtn.addEventListener('click',()=>showGenerateSeriesModal());
+    ctaRow.appendChild(seriesBtn);
+  }
+  wrap.appendChild(ctaRow);
 
   if(nbs.length===0){
     wrap.appendChild(infoBox('Nenhum caderno criado ainda. Clique em "Criar caderno" para começar a organizar suas questões em conjuntos temáticos.'));
@@ -18669,6 +19218,212 @@ function notebookStatsHTML(notebookId){
   if(totalAttempts===0)return `<span style="color:var(--text3)">Não praticado ainda</span>`;
   const pct = Math.round(totalCorrect/totalAttempts*100);
   return `${practiced}/${qs.length} questões praticadas · ${pct}% acertos (${totalCorrect}/${totalAttempts})`;
+}
+
+// V13: Modal pra gerar série de cadernos automaticamente a partir de uma fonte.
+// Útil pra quem importou apostila grande e quer dividir em pacotes de prática.
+function showGenerateSeriesModal(){
+  const m = mk('div');m.style.maxWidth='480px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px';
+  h.textContent = '🪄 Série automática de cadernos';
+  m.appendChild(h);
+  const p = mk('p','txt2');p.style.cssText='margin:0 0 1rem;font-size:13px;line-height:1.55';
+  p.innerHTML = 'A IA divide a fonte em <b>3-5 cadernos sequenciais</b>, cada um com 10-20 questões cobrindo um trecho específico. Bom pra apostilas longas — você pratica gradualmente.';
+  m.appendChild(p);
+
+  // Source select
+  const srcLbl = mk('label');srcLbl.textContent='Fonte';
+  m.appendChild(srcLbl);
+  const srcSel = mk('select');
+  const srcs = activeSources();
+  if(srcs.length === 0){
+    const o = mk('option');o.textContent='Nenhuma fonte ativa';o.disabled=true;
+    srcSel.appendChild(o);
+  } else {
+    srcs.forEach(s=>{
+      const o = mk('option');o.value=s.id;o.textContent=s.name;
+      srcSel.appendChild(o);
+    });
+  }
+  m.appendChild(srcSel);
+
+  // Number of notebooks
+  const nLbl = mk('label');nLbl.style.marginTop='.75rem';nLbl.textContent='Quantos cadernos?';
+  m.appendChild(nLbl);
+  const nSel = mk('select');
+  [3,4,5].forEach(n=>{
+    const o = mk('option');o.value=n;o.textContent=n+' cadernos';
+    if(n===4)o.selected=true;
+    nSel.appendChild(o);
+  });
+  m.appendChild(nSel);
+
+  // Questions per notebook
+  const qLbl = mk('label');qLbl.style.marginTop='.75rem';qLbl.textContent='Questões por caderno';
+  m.appendChild(qLbl);
+  const qSel = mk('select');
+  [10,15,20].forEach(n=>{
+    const o = mk('option');o.value=n;o.textContent=n+' questões';
+    if(n===10)o.selected=true;
+    qSel.appendChild(o);
+  });
+  m.appendChild(qSel);
+
+  // Cost warning
+  const costNote = mk('p','txt3');costNote.style.cssText='margin:.875rem 0 .25rem;padding:.5rem .75rem;background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.25);border-radius:7px;font-size:11.5px;line-height:1.55';
+  costNote.innerHTML = '⚠ <b>Atenção:</b> esse processo gasta créditos. 4 cadernos × 10 questões = ~40 créditos. <b>Confirme se tem saldo</b> antes de prosseguir.';
+  m.appendChild(costNote);
+
+  const actions = mk('div');actions.style.cssText='display:flex;gap:8px;margin-top:1rem';
+  const cancel = mkBtn('Cancelar','btn');cancel.style.flex='1';
+  cancel.addEventListener('click', closeModal);
+  actions.appendChild(cancel);
+  const go = mkBtn('🪄 Gerar série','btn btn-p');go.style.flex='2';
+  go.addEventListener('click', async()=>{
+    if(srcs.length === 0){alert('Sem fonte ativa');return;}
+    const srcId = srcSel.value;
+    const nNotebooks = parseInt(nSel.value, 10);
+    const nQuestions = parseInt(qSel.value, 10);
+    const totalCredits = nNotebooks * nQuestions;
+    if(QUOTA.remaining !== null && QUOTA.remaining < totalCredits){
+      alert(`Você tem ${QUOTA.remaining} créditos. Esta operação precisa de aproximadamente ${totalCredits}. Adicione créditos ou reduza a quantidade.`);
+      return;
+    }
+    if(!confirm(`Gerar ${nNotebooks} cadernos com ${nQuestions} questões cada? Vai consumir ~${totalCredits} créditos.`)) return;
+
+    closeModal();
+    await generateNotebookSeries(srcId, nNotebooks, nQuestions);
+  });
+  actions.appendChild(go);
+  m.appendChild(actions);
+
+  showModal(m);
+}
+
+// V13: Gera série de cadernos a partir de uma fonte
+async function generateNotebookSeries(srcId, nNotebooks, nQuestions){
+  const src = (DATA.sources||[]).find(s => s.id === srcId);
+  if(!src){alert('Fonte não encontrada');return;}
+
+  const text = src.content || '';
+  if(text.length < 200){alert('Fonte muito curta pra dividir em série');return;}
+
+  // Divide o conteúdo em N partes iguais
+  const chunkSize = Math.floor(text.length / nNotebooks);
+  const created = [];
+  let totalGenerated = 0;
+  let totalErrors = 0;
+
+  // Toast de progresso persistente
+  const progressEl = mk('div');
+  progressEl.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);box-shadow:0 4px 16px rgba(0,0,0,.12);padding:.75rem 1rem;border-radius:10px;z-index:10000;font-size:13px;font-weight:600';
+  progressEl.textContent = `🪄 Gerando série... 0/${nNotebooks}`;
+  document.body.appendChild(progressEl);
+
+  for(let i = 0; i < nNotebooks; i++){
+    progressEl.textContent = `🪄 Caderno ${i+1}/${nNotebooks} — gerando ${nQuestions} questões...`;
+    const start = i * chunkSize;
+    const end = i === nNotebooks - 1 ? text.length : (i + 1) * chunkSize;
+    const sectionText = text.slice(start, end);
+
+    try{
+      // Usa o sistema existente de geração em batch
+      const sys = `Você gera questões de concurso público em formato C/E (Cebraspe).
+
+Gere EXATAMENTE ${nQuestions} questões cobrindo o trecho fornecido. Variando os tópicos e armadilhas.
+
+SAÍDA — JSON puro array:
+[
+  {"enunciado":"...","gabarito":"C" ou "E","explicacao":"...","topico":"..."},
+  ...
+]`;
+      const userMsg = 'Trecho da fonte (parte ' + (i+1) + ' de ' + nNotebooks + '):\n\n' + sectionText.slice(0, 6000);
+      const body = {
+        model: DATA.config.model || 'claude-haiku-4-5-20251001',
+        max_tokens: 4000,
+        system: sys,
+        messages: [{role:'user', content: userMsg}]
+      };
+      const r = await apiGenerate(body);
+      if(!r.ok){
+        const errText = await r.text().catch(()=>'');
+        throw new Error('api-' + r.status + ': ' + errText.slice(0,150));
+      }
+      const d = await r.json();
+      if(d.usage){
+        logUsage({
+          model:body.model,kind:'series_batch',action:'practice',
+          input:d.usage.input_tokens||0,output:d.usage.output_tokens||0,
+          cacheRead:d.usage.cache_read_input_tokens||0,
+          cacheCreation:d.usage.cache_creation_input_tokens||0
+        });
+      }
+      const txt = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+      const clean = txt.replace(/```json\n?|\n?```/g,'').trim();
+      const questions = JSON.parse(clean);
+      if(!Array.isArray(questions) || questions.length === 0){
+        totalErrors++;
+        continue;
+      }
+
+      // Cria caderno e adiciona questões ao banco
+      if(!DATA.importedQuestions) DATA.importedQuestions = [];
+      const qIds = [];
+      questions.forEach(q=>{
+        if(!q.enunciado || !q.gabarito) return;
+        const qId = 'sq_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+        DATA.importedQuestions.push({
+          id: qId,
+          enunciado: q.enunciado,
+          answer: q.gabarito,
+          kind: 'CE',
+          disciplineId: src.disciplineId,
+          topic: q.topico || src.name,
+          source: 'ai',
+          aiMethod: 'series',
+          aiModel: body.model,
+          explanation: q.explicacao || '',
+          createdAt: Date.now(),
+          attempts: 0,
+          correctCount: 0
+        });
+        qIds.push(qId);
+      });
+
+      const nbId = 'nbs_' + Date.now() + '_' + i;
+      if(!DATA.notebooks) DATA.notebooks = [];
+      DATA.notebooks.push({
+        id: nbId,
+        name: `${src.name} — Caderno ${i+1}/${nNotebooks}`,
+        description: `Gerado automaticamente da parte ${i+1} de ${nNotebooks}`,
+        questionIds: qIds,
+        createdAt: Date.now(),
+        seriesParent: src.id,
+        seriesIndex: i + 1
+      });
+      created.push(nbId);
+      totalGenerated += questions.length;
+
+      // Salva incrementalmente — se der erro no meio, não perde progresso
+      save();
+    }catch(err){
+      console.warn('[series] Caderno '+i+' falhou:', err.message);
+      totalErrors++;
+    }
+    // Pausa entre chunks pra não estourar rate limit
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  // Remove progresso
+  if(progressEl.parentNode) progressEl.parentNode.removeChild(progressEl);
+
+  if(created.length === 0){
+    alert('Nenhum caderno foi gerado. Verifique seus créditos e tente novamente.');
+  } else {
+    const errMsg = totalErrors > 0 ? ` (${totalErrors} ${totalErrors===1?'falhou':'falharam'})` : '';
+    showToast(`✓ ${created.length}/${nNotebooks} cadernos criados · ${totalGenerated} questões${errMsg}`);
+  }
+  render();
 }
 
 function showCreateNotebookModal(){
@@ -19479,6 +20234,14 @@ async function calibSubmit(answer){
       errCtx=logError({question:ST.calibQ.question,correct_answer:ST.calibQ.correct_answer,explanation:res.explanation,trap:res.trap,keyword:res.keyword,trap_type:res.trap_type,topic:ST.calibQ.topic,method:'calibration'});
     }
     ST.calibFb={ok,explanation:res.explanation,trap:res.trap,keyword:res.keyword,confKey:ck,next:res.next,errCtx};
+    // V13: Persiste no histórico recente (24h) — atalho B usa isso pra voltar
+    addToRecentPractice({
+      q: ST.calibQ,
+      answer: answer,
+      fb: ST.calibFb,
+      method: 'calibration',
+      source: 'ai'
+    });
     // V12: persiste a próxima questão pré-carregada
     if(res.next && res.next.question){
       DATA.preloadedQuestions = DATA.preloadedQuestions || {};
@@ -19713,6 +20476,14 @@ async function drillSubmit(answer){
       errCtx=logError({question:ST.drillQ.question,correct_answer:ST.drillQ.correct_answer,explanation:res.explanation,trap:res.trap,keyword:res.keyword,trap_type:res.trap_type??ST.drillTarget,topic:ST.drillQ.topic,method:'drill'});
     }
     ST.drillFb={ok,explanation:res.explanation,trap:res.trap,keyword:res.keyword,next:res.next,errCtx};
+    // V13: Persiste no histórico recente (24h) — atalho B
+    addToRecentPractice({
+      q: ST.drillQ,
+      answer: answer,
+      fb: ST.drillFb,
+      method: 'drill',
+      source: 'ai'
+    });
     // V12: persiste a próxima como pré-carregada (por target)
     if(res.next && res.next.question){
       DATA.preloadedQuestions = DATA.preloadedQuestions || {};
@@ -20814,7 +21585,138 @@ function renderSRSGenerate(wrap){
     sb.innerHTML = msg;
     card.appendChild(sb);
   }
-  wrap.appendChild(card);return wrap;
+  wrap.appendChild(card);
+
+  // V13: Pacote semanal — lei seca + jurisprudência da semana, gerado em 1 clique
+  // Útil pra Direito (concursos jurídicos). Cria 8 cards: 5 de lei seca + 3 de jurisprudência.
+  const weeklyCard = mk('div','card');weeklyCard.style.marginTop='.875rem';
+  weeklyCard.appendChild(sLabel('🗓️ Pacote semanal — lei seca + jurisprudência'));
+  const wkP = mk('p','txt2');wkP.style.cssText='margin:0 0 .75rem;font-size:13px;line-height:1.55';
+  wkP.innerHTML = 'Em 1 clique a IA gera <b>5 cards de lei seca</b> + <b>3 cards de jurisprudência relevante</b> da disciplina escolhida. Bom pra concursos jurídicos onde decoreba de lei e julgados é frequente.';
+  weeklyCard.appendChild(wkP);
+
+  const wkRow = mk('div','grid g2');wkRow.style.marginBottom='.75rem';
+  const wkCol1 = mk('div');
+  const wkLbl = mk('label');wkLbl.textContent='Disciplina';
+  const wkSel = mk('select');
+  const lawDiscs = activeDisciplines();
+  if(lawDiscs.length === 0){
+    const o = mk('option');o.textContent='Crie uma disciplina primeiro';o.disabled=true;o.selected=true;
+    wkSel.appendChild(o);
+  } else {
+    lawDiscs.forEach(d=>{
+      const o = mk('option');o.value=d.id;o.textContent=d.name;
+      wkSel.appendChild(o);
+    });
+  }
+  wkCol1.appendChild(wkLbl);wkCol1.appendChild(wkSel);
+  wkRow.appendChild(wkCol1);
+
+  const wkCol2 = mk('div');
+  const wkLbl2 = mk('label');wkLbl2.textContent='Foco do pacote';
+  const wkFocus = mk('input');wkFocus.type='text';wkFocus.placeholder='Ex: Lei 8.112, processo administrativo, recursos';
+  wkCol2.appendChild(wkLbl2);wkCol2.appendChild(wkFocus);
+  wkRow.appendChild(wkCol2);
+  weeklyCard.appendChild(wkRow);
+
+  const wkBtn = mkBtn('Gerar pacote semanal (8 cards)','btn btn-p');
+  wkBtn.disabled = ST.srsWeeklyLoading || lawDiscs.length === 0;
+  wkBtn.addEventListener('click',()=>{
+    if(lawDiscs.length === 0){alert('Crie uma disciplina primeiro');return;}
+    srsGenerateWeeklyPack(wkSel.value, wkFocus.value.trim(), wrap);
+  });
+  weeklyCard.appendChild(wkBtn);
+  if(ST.srsWeeklyLoading) weeklyCard.appendChild(dynamicLoading('flashcard','Gerando pacote semanal...'));
+
+  wrap.appendChild(weeklyCard);
+
+  return wrap;
+}
+
+// V13: Gera pacote semanal de lei seca + jurisprudência
+async function srsGenerateWeeklyPack(disciplineId, focus, wrapEl){
+  ST.srsWeeklyLoading = true;
+  render();
+  try{
+    const disc = getDiscipline(disciplineId);
+    const discName = disc ? disc.name : 'Direito';
+    const focusStr = focus ? `Foque em: ${focus}.` : '';
+    const sys = `Você cria pacotes semanais de revisão pra concurso público. Gere EXATAMENTE 8 flashcards no formato JSON:
+
+5 cards de LEI SECA — letra de lei, súmulas, artigos importantes da disciplina.
+3 cards de JURISPRUDÊNCIA — decisões recentes do STF/STJ ou súmulas vinculantes relevantes.
+
+REGRAS:
+- Frente: pergunta direta e específica
+- Verso: resposta contendo letra da lei OU número do julgado + tese
+- Marque palavras-chave com ::palavra:: (highlight verde)
+- Use **negrito** pra ênfase
+- Cards curtos (max 3 linhas no verso)
+- Inclua MNEMÔNICO quando útil
+
+SAÍDA — apenas JSON puro, array de 8 objetos:
+[
+  {"front":"...","back":"...","type":"law"},
+  ...
+]
+type: "law" pros 5 primeiros (lei seca), "juris" pros 3 últimos (jurisprudência)`;
+
+    const userMsg = `Crie pacote semanal pra disciplina: ${discName}. ${focusStr}`;
+    const body = {
+      model: DATA.config.model || 'claude-haiku-4-5-20251001',
+      max_tokens: 3000,
+      system: sys,
+      messages: [{role:'user', content: userMsg}]
+    };
+    const r = await apiGenerate(body);
+    if(!r.ok){
+      const errText = await r.text().catch(()=>'');
+      throw new Error('api-' + r.status + ': ' + errText.slice(0,150));
+    }
+    const d = await r.json();
+    if(d.usage){
+      logUsage({
+        model:body.model,kind:'weekly_pack',action:'srs_weekly',
+        input:d.usage.input_tokens||0,output:d.usage.output_tokens||0,
+        cacheRead:d.usage.cache_read_input_tokens||0,
+        cacheCreation:d.usage.cache_creation_input_tokens||0
+      });
+    }
+    const txt = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    const clean = txt.replace(/```json\n?|\n?```/g,'').trim();
+    const cards = JSON.parse(clean);
+    if(!Array.isArray(cards) || cards.length === 0) throw new Error('Pacote vazio');
+
+    // Salva cards no SRS local
+    if(!DATA.srs) DATA.srs = {cards:[]};
+    if(!DATA.srs.cards) DATA.srs.cards = [];
+    let added = 0;
+    cards.forEach(c=>{
+      if(!c.front || !c.back) return;
+      DATA.srs.cards.push({
+        id: 'wk_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+        type: c.type === 'juris' ? 'concept' : 'concept',
+        disciplineId: disciplineId,
+        topic: focus || (c.type === 'juris' ? 'Jurisprudência' : 'Lei seca'),
+        front: c.front,
+        back: c.back,
+        easeFactor: 2.5,
+        interval: 0,
+        nextReview: Date.now(),
+        reviewCount: 0,
+        createdAt: Date.now(),
+        weeklyPack: true,
+        weeklyType: c.type
+      });
+      added++;
+    });
+    save();
+    showToast(`✓ ${added} cards criados (lei seca + jurisprudência) — vão pra revisão hoje`);
+  }catch(e){
+    alert('Erro: ' + (e.message || e));
+  }
+  ST.srsWeeklyLoading = false;
+  render();
 }
 
 function renderSRSManage(wrap,allCards){
@@ -24469,12 +25371,12 @@ function renderUserProfile(){
   since.textContent = `No Gralia desde ${cd.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}`;
   headInfo.appendChild(since);
 
-  // V12: Selo BETA (Pioneiro / Veterano / Beta)
+  // V13: Selo BETA (Pioneiro / Veterano / Beta) — limites atualizados
   if(p.beta_tier){
     const tierMap = {
-      pioneer: {label:'Pioneiro', icon:'🌟', color:'gold', desc:'1º ao 50º assinante'},
-      veteran: {label:'Veterano', icon:'⚔️', color:'silver', desc:'51º ao 100º assinante'},
-      beta:    {label:'Beta',     icon:'🧪', color:'bronze', desc:'101º ao 200º assinante'}
+      pioneer: {label:'Pioneiro', icon:'🌟', color:'gold', desc:'1º ao 30º assinante'},
+      veteran: {label:'Veterano', icon:'⚔️', color:'silver', desc:'31º ao 60º assinante'},
+      beta:    {label:'Beta',     icon:'🧪', color:'bronze', desc:'61º ao 100º assinante'}
     };
     const tier = tierMap[p.beta_tier];
     if(tier){
@@ -25521,6 +26423,155 @@ function formatRelativeDate(iso){
 }
 
 // Modal: confirmar importação
+// V13: Preview detalhada de recurso da descoberta antes de importar.
+// Mostra: descrição, stats, autor, tags, primeiras 2-3 questões (ou primeiras seções se for fonte).
+async function showResourcePreviewModal(item){
+  const m = mk('div');m.style.maxWidth='620px';m.style.width='100%';
+
+  // Header
+  const head = mk('div');head.style.cssText='display:flex;align-items:flex-start;gap:14px;margin-bottom:.875rem;padding-bottom:.875rem;border-bottom:1px solid var(--border)';
+  const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : item.resource_type === 'edital' ? '📋' : '🧠';
+  const headIcon = mk('div');headIcon.style.cssText='font-size:36px;line-height:1;flex-shrink:0';
+  headIcon.textContent = typeIcon;
+  head.appendChild(headIcon);
+
+  const headBody = mk('div');headBody.style.flex='1';
+  const headTitle = mk('h2');headTitle.style.cssText='margin:0 0 4px;font-size:18px;line-height:1.3;color:var(--text)';
+  headTitle.textContent = item.title;
+  headBody.appendChild(headTitle);
+
+  const headMeta = mk('div');headMeta.style.cssText='font-size:12px;color:var(--text3);line-height:1.5';
+  const typeName = item.resource_type === 'caderno' ? 'Caderno' :
+                   item.resource_type === 'fonte' ? 'Fonte' :
+                   item.resource_type === 'edital' ? 'Edital' :
+                   item.resource_type === 'perfil_topico' ? 'Perfil de tópico' : 'Recurso';
+  let metaParts = [typeName];
+  if(item.discipline) metaParts.push(item.discipline);
+  if(item.question_count) metaParts.push(`${item.question_count} questões`);
+  if(item.owner_display_name || item.owner_username) metaParts.push('por @' + (item.owner_username || item.owner_display_name));
+  headMeta.textContent = metaParts.join(' · ');
+  headBody.appendChild(headMeta);
+
+  head.appendChild(headBody);
+
+  const closeBtn = mk('button');
+  closeBtn.style.cssText='background:transparent;border:none;font-size:24px;color:var(--text3);cursor:pointer;line-height:1;padding:0 4px';
+  closeBtn.textContent = '×';
+  closeBtn.addEventListener('click', closeModal);
+  head.appendChild(closeBtn);
+  m.appendChild(head);
+
+  // Stats
+  if(item.total_uses !== undefined || item.useful_pct !== undefined || item.rated_count !== undefined){
+    const stats = mk('div');stats.style.cssText='display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--text3);margin-bottom:.875rem;padding:.5rem .75rem;background:var(--surface2);border-radius:7px';
+    if(item.total_uses) stats.innerHTML += `<span>📥 <b>${item.total_uses}</b> ${item.total_uses===1?'importação':'importações'}</span>`;
+    if(item.useful_pct !== null && item.useful_pct !== undefined && item.rated_count > 0) stats.innerHTML += `<span>👍 <b>${item.useful_pct}%</b> útil (${item.rated_count} avaliações)</span>`;
+    if(item.created_at) stats.innerHTML += `<span>📅 publicado ${new Date(item.created_at).toLocaleDateString('pt-BR')}</span>`;
+    m.appendChild(stats);
+  }
+
+  // Descrição
+  if(item.description){
+    const desc = mk('p','txt2');desc.style.cssText='margin:0 0 .875rem;font-size:13px;line-height:1.55';
+    desc.textContent = item.description;
+    m.appendChild(desc);
+  }
+
+  // Tags
+  if(item.tags && item.tags.length > 0){
+    const tagsRow = mk('div');tagsRow.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:.875rem';
+    item.tags.slice(0, 12).forEach(t=>{
+      const chip = mk('span','badge b-info');
+      chip.textContent = '#' + t;
+      tagsRow.appendChild(chip);
+    });
+    m.appendChild(tagsRow);
+  }
+
+  // Preview de conteúdo — busca payload completo se ainda não tem
+  const previewBox = mk('div');previewBox.style.cssText='margin-bottom:.875rem;padding:.75rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;max-height:340px;overflow-y:auto';
+  const previewLabel = mk('div');previewLabel.style.cssText='font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px';
+  previewLabel.textContent = 'Prévia';
+  previewBox.appendChild(previewLabel);
+
+  const previewContent = mk('div');previewContent.style.cssText='font-size:12.5px;line-height:1.55;color:var(--text2)';
+  previewContent.innerHTML = '<span class="txt3">Carregando prévia...</span>';
+  previewBox.appendChild(previewContent);
+  m.appendChild(previewBox);
+
+  // Actions
+  const actionsRow = mk('div');actionsRow.style.cssText='display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end';
+  const cancelBtn = mkBtn('Fechar','btn btn-sm');
+  cancelBtn.addEventListener('click', closeModal);
+  actionsRow.appendChild(cancelBtn);
+
+  const isMine = AUTH.user && AUTH.user.id === item.owner_id;
+  const alreadyImp = wasResourceImported(item.id, item.resource_type);
+
+  if(!isMine && item.resource_type !== 'edital'){
+    const importBtn = mkBtn(alreadyImp ? '↻ Re-importar' : '📥 Importar pra minha conta', 'btn btn-sm btn-p');
+    importBtn.addEventListener('click',()=>{
+      closeModal();
+      if(alreadyImp){
+        if(!confirm('Você já tem este material. Re-importar cria cópia separada (duplicata). Continuar?')) return;
+      }
+      showImportConfirmModal(item);
+    });
+    actionsRow.appendChild(importBtn);
+  }
+  m.appendChild(actionsRow);
+
+  showModal(m);
+
+  // Carrega payload completo em background pra mostrar prévia
+  try{
+    if(typeof fetchResourceFull !== 'function'){
+      previewContent.innerHTML = '<span class="txt3">Prévia indisponível</span>';
+      return;
+    }
+    const result = await fetchResourceFull(item.id);
+    if(result.error || !result.resource || !result.resource.payload){
+      previewContent.innerHTML = '<span class="txt3">Prévia indisponível</span>';
+      return;
+    }
+    const r = result.resource;
+    previewContent.innerHTML = '';
+
+    if(item.resource_type === 'caderno' && r.payload.questions){
+      // Mostra primeiras 3 questões
+      const qs = r.payload.questions.slice(0, 3);
+      qs.forEach((q, i)=>{
+        const qBox = mk('div');qBox.style.cssText='padding:.625rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:7px;margin-bottom:6px';
+        qBox.innerHTML = `
+          <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:4px">Questão ${i+1} ${q.tipo === 'CE' ? '· C/E' : '· Múltipla escolha'}</div>
+          <div style="font-size:12.5px;color:var(--text2);line-height:1.5">${escapeHTML((q.enunciado||'').slice(0, 240))}${(q.enunciado||'').length > 240 ? '...' : ''}</div>
+          ${q.gabarito ? `<div style="font-size:11px;color:var(--accent-text);margin-top:4px">Gabarito: <b>${escapeHTML(q.gabarito)}</b></div>` : ''}
+        `;
+        previewContent.appendChild(qBox);
+      });
+      if(r.payload.questions.length > 3){
+        const more = mk('p');more.style.cssText='font-size:11.5px;color:var(--text3);text-align:center;margin:8px 0 0;font-style:italic';
+        more.textContent = `+ ${r.payload.questions.length - 3} questões`;
+        previewContent.appendChild(more);
+      }
+    } else if(item.resource_type === 'fonte' && r.payload.content){
+      const text = String(r.payload.content).slice(0, 1200);
+      const txtEl = mk('div');txtEl.style.cssText='white-space:pre-wrap;font-size:12px;line-height:1.6';
+      txtEl.textContent = text + (r.payload.content.length > 1200 ? '...' : '');
+      previewContent.appendChild(txtEl);
+    } else if(item.resource_type === 'perfil_topico' && r.payload.content){
+      const text = String(r.payload.content).slice(0, 1500);
+      const txtEl = mk('div');txtEl.style.cssText='white-space:pre-wrap;font-size:12px;line-height:1.6';
+      txtEl.innerHTML = formatFlashcardText(text + (r.payload.content.length > 1500 ? '\n\n...' : ''));
+      previewContent.appendChild(txtEl);
+    } else {
+      previewContent.innerHTML = '<span class="txt3">Prévia não disponível pra este tipo de recurso</span>';
+    }
+  }catch(e){
+    previewContent.innerHTML = '<span class="txt3">Erro ao carregar prévia</span>';
+  }
+}
+
 function showImportConfirmModal(item){
   const m = mk('div');m.style.maxWidth='460px';
   const typeIcon = item.resource_type === 'caderno' ? '📝' : item.resource_type === 'fonte' ? '📚' : item.resource_type === 'edital' ? '📋' : '🧠';
@@ -27873,8 +28924,11 @@ function renderExamQuestionsTab(wrap, exam){
   // Quick stats
   if(stats.total > 0){
     const qs = mk('div','exam-quick-stats');
+    // V13: Inclui breakdown por tipo
+    const ceLine = stats.byType && stats.byType.ce.total > 0 ? ` · <span style="color:var(--text3);font-size:11px">C/E: ${stats.byType.ce.total}</span>` : '';
+    const mcLine = stats.byType && stats.byType.mc.total > 0 ? ` <span style="color:var(--text3);font-size:11px">· ME: ${stats.byType.mc.total}</span>` : '';
     qs.innerHTML = `
-      <span><b>${stats.total}</b> questões</span>
+      <span><b>${stats.total}</b> questões${ceLine}${mcLine}</span>
       <span class="ok"><b>${stats.correct}</b> acertos</span>
       <span class="err"><b>${stats.incorrect}</b> erros</span>
       <span><b>${stats.blank}</b> brancos</span>
@@ -28153,6 +29207,24 @@ function renderExamResultsTab(wrap, exam){
     <div class="erm-lbl">acertos com gabarito conhecido</div>
   `;
   wrap.appendChild(main);
+
+  // V13: Breakdown por tipo de questão (C/E vs Múltipla escolha) — pedido do usuário
+  if(stats.byType && (stats.byType.ce.total > 0 || stats.byType.mc.total > 0)){
+    const typeRow = mk('div');typeRow.style.cssText='display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:1rem';
+    if(stats.byType.ce.total > 0){
+      const ceBadge = mk('div');ceBadge.style.cssText='padding:.5rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:9px;font-size:12px;text-align:center;min-width:120px';
+      const cePctColor = stats.byType.ce.pct >= 60 ? 'var(--accent-text)' : stats.byType.ce.pct >= 40 ? 'var(--amber-text)' : 'var(--red-text)';
+      ceBadge.innerHTML = `<div style="font-weight:600;color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Certo/Errado</div><div style="font-weight:700;color:var(--text);font-size:14px">${stats.byType.ce.correct}/${stats.byType.ce.withGab}</div><div style="color:${cePctColor};font-weight:700;font-size:13px">${stats.byType.ce.pct}%</div>`;
+      typeRow.appendChild(ceBadge);
+    }
+    if(stats.byType.mc.total > 0){
+      const mcBadge = mk('div');mcBadge.style.cssText='padding:.5rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:9px;font-size:12px;text-align:center;min-width:120px';
+      const mcPctColor = stats.byType.mc.pct >= 60 ? 'var(--accent-text)' : stats.byType.mc.pct >= 40 ? 'var(--amber-text)' : 'var(--red-text)';
+      mcBadge.innerHTML = `<div style="font-weight:600;color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">Múltipla escolha</div><div style="font-weight:700;color:var(--text);font-size:14px">${stats.byType.mc.correct}/${stats.byType.mc.withGab}</div><div style="color:${mcPctColor};font-weight:700;font-size:13px">${stats.byType.mc.pct}%</div>`;
+      typeRow.appendChild(mcBadge);
+    }
+    wrap.appendChild(typeRow);
+  }
 
   // Stats grid
   const grid = mk('div','exam-result-grid');
@@ -29822,6 +30894,129 @@ function renderAdminDashboard(){
   giftCard.appendChild(giftBody);
   wrap.appendChild(giftCard);
 
+  // === V13: Card admin — gerenciar cupons de desconto ===
+  // Admin pode criar cupons (campanhas, afiliados) e ver uso.
+  const couponCard = mk('section','admin-card');
+  couponCard.appendChild(adminSectionLabel('🎟 Cupons'));
+  const couponHead = mk('h2','admin-section-title');
+  couponHead.textContent = 'Cupons de desconto';
+  couponCard.appendChild(couponHead);
+  const couponBody = mk('div');couponBody.style.cssText='padding:0';
+  const couponHelp = mk('p','txt2');couponHelp.style.cssText='margin:0 0 .875rem;font-size:13px;line-height:1.55';
+  couponHelp.textContent = 'Crie cupons % off pra campanhas (BETA50), afiliados (JOAO15), cortesia individual (RODRIGO20).';
+  couponBody.appendChild(couponHelp);
+
+  // Form simplificado
+  const cpForm = mk('div');cpForm.style.cssText='display:grid;grid-template-columns:1fr 90px 100px;gap:6px;margin-bottom:.625rem';
+  const cpCode = mk('input');cpCode.type='text';cpCode.placeholder='CÓDIGO (ex: BETA50)';cpCode.style.textTransform='uppercase';
+  cpCode.style.cssText+=';padding:.45rem .625rem;font-size:12.5px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit;text-transform:uppercase';
+  cpForm.appendChild(cpCode);
+  const cpPct = mk('input');cpPct.type='number';cpPct.placeholder='%';cpPct.min='1';cpPct.max='100';
+  cpPct.style.cssText='padding:.45rem .625rem;font-size:12.5px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit';
+  cpForm.appendChild(cpPct);
+  const cpMax = mk('input');cpMax.type='number';cpMax.placeholder='Máx usos';cpMax.min='1';
+  cpMax.style.cssText='padding:.45rem .625rem;font-size:12.5px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit';
+  cpForm.appendChild(cpMax);
+  couponBody.appendChild(cpForm);
+
+  const cpDesc = mk('input');cpDesc.type='text';cpDesc.placeholder='Descrição (interno, ex: Lançamento BETA)';
+  cpDesc.style.cssText='width:100%;padding:.45rem .625rem;font-size:12.5px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit;margin-bottom:.625rem';
+  couponBody.appendChild(cpDesc);
+
+  const cpDays = mk('div');cpDays.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:.625rem;font-size:12px';
+  cpDays.innerHTML = '<span style="color:var(--text3)">Válido por:</span>';
+  const cpDaysInp = mk('input');cpDaysInp.type='number';cpDaysInp.placeholder='dias';cpDaysInp.value='30';cpDaysInp.min='1';cpDaysInp.max='365';
+  cpDaysInp.style.cssText='width:80px;padding:.35rem .5rem;font-size:12.5px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit';
+  cpDays.appendChild(cpDaysInp);
+  cpDays.appendChild(Object.assign(mk('span'),{textContent:'dias (vazio = sem expiração)'}));
+  couponBody.appendChild(cpDays);
+
+  const cpCreateBtn = mkBtn('+ Criar cupom','btn btn-sm btn-p');
+  couponBody.appendChild(cpCreateBtn);
+  const cpResult = mk('div');cpResult.style.cssText='margin-top:8px;font-size:12px;line-height:1.5';
+  couponBody.appendChild(cpResult);
+
+  // Lista de cupons existentes (carrega ao expandir)
+  const cpListWrap = mk('div');cpListWrap.style.cssText='margin-top:1rem;padding-top:.875rem;border-top:1px solid var(--border)';
+  cpListWrap.innerHTML = '<div style="font-size:11.5px;color:var(--text3);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Cupons existentes</div><div class="cp-list" style="font-size:12px;line-height:1.5"><span style="color:var(--text3)">Carregando...</span></div>';
+  couponBody.appendChild(cpListWrap);
+
+  // Carrega lista
+  setTimeout(async()=>{
+    const list = cpListWrap.querySelector('.cp-list');
+    if(!supa){list.innerHTML='<span style="color:var(--text3)">Supabase não configurado</span>';return;}
+    try{
+      const {data, error} = await supa
+        .from('coupons')
+        .select('code, description, discount_pct, valid_until, max_uses, uses_count, active')
+        .order('created_at', {ascending: false})
+        .limit(20);
+      if(error) throw error;
+      if(!data || data.length === 0){
+        list.innerHTML = '<span style="color:var(--text3)">Nenhum cupom criado ainda.</span>';
+        return;
+      }
+      list.innerHTML = data.map(c=>{
+        const expiry = c.valid_until ? new Date(c.valid_until).toLocaleDateString('pt-BR') : 'sem prazo';
+        const usage = c.max_uses ? `${c.uses_count}/${c.max_uses}` : `${c.uses_count} usos`;
+        const status = c.active ? '✓' : '✗';
+        return `<div style="padding:.5rem .625rem;background:var(--surface2);border-radius:7px;margin-bottom:5px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><b style="font-family:ui-monospace,monospace;font-size:12.5px">${escapeHTML(c.code)}</b> · ${c.discount_pct}% off · ${escapeHTML(c.description||'')}</div><div style="color:var(--text3)">${status} ${usage} · ${expiry}</div></div>`;
+      }).join('');
+    }catch(e){
+      const msg = (e.message||String(e)).toLowerCase();
+      if(msg.includes('coupons') || msg.includes('does not exist') || msg.includes('relation')){
+        list.innerHTML = '<span style="color:var(--red-text)">Tabela "coupons" não existe. Rode o SQL gralia-v13-coupons.sql.</span>';
+      } else {
+        list.innerHTML = '<span style="color:var(--red-text)">Erro: '+escapeHTML(e.message||String(e))+'</span>';
+      }
+    }
+  }, 100);
+
+  cpCreateBtn.addEventListener('click', async()=>{
+    const code = (cpCode.value||'').trim().toUpperCase();
+    const pct = parseInt(cpPct.value, 10);
+    const maxUses = cpMax.value ? parseInt(cpMax.value, 10) : null;
+    const desc = (cpDesc.value||'').trim();
+    const days = cpDaysInp.value ? parseInt(cpDaysInp.value, 10) : null;
+
+    if(!code || code.length < 3){alert('Código inválido (mín 3 caracteres)');return;}
+    if(!/^[A-Z0-9]+$/.test(code)){alert('Código deve ter apenas letras maiúsculas e números');return;}
+    if(!pct || pct < 1 || pct > 100){alert('% inválido (1-100)');return;}
+
+    cpCreateBtn.disabled = true; cpCreateBtn.textContent = '...';
+    try{
+      const insert = {
+        code: code,
+        description: desc || null,
+        discount_pct: pct,
+        max_uses: maxUses
+      };
+      if(days){
+        const validUntil = new Date(Date.now() + days*86400*1000).toISOString();
+        insert.valid_until = validUntil;
+      }
+      const {error} = await supa.from('coupons').insert(insert);
+      if(error) throw error;
+      cpResult.innerHTML = `<span style="color:var(--accent-text)">✓ Cupom <b>${code}</b> criado.</span>`;
+      cpCode.value = ''; cpPct.value = ''; cpMax.value = ''; cpDesc.value = '';
+      // Recarrega lista
+      setTimeout(()=>render(), 600);
+    }catch(e){
+      const msg = (e.message||String(e)).toLowerCase();
+      if(msg.includes('coupons') || msg.includes('does not exist')){
+        cpResult.innerHTML = '<span style="color:var(--red-text)">Tabela coupons não existe. Rode o SQL gralia-v13-coupons.sql.</span>';
+      } else if(msg.includes('duplicate') || msg.includes('unique')){
+        cpResult.innerHTML = '<span style="color:var(--red-text)">Já existe cupom com esse código.</span>';
+      } else {
+        cpResult.innerHTML = '<span style="color:var(--red-text)">Erro: '+escapeHTML(e.message||String(e))+'</span>';
+      }
+    }
+    cpCreateBtn.disabled = false; cpCreateBtn.textContent = '+ Criar cupom';
+  });
+
+  couponCard.appendChild(couponBody);
+  wrap.appendChild(couponCard);
+
   // === Card: Health checks ===
   const healthCard = mk('section','admin-card');
   healthCard.appendChild(adminSectionLabel('🩺 Saúde do sistema'));
@@ -31043,14 +32238,98 @@ function showSubscribeModal(plan, billingPeriod){
 
   const pricing = calculatePlanPrice(plan, billingPeriod);
   const periodLabel = billingPeriod === 'yearly' ? 'anual' : 'mensal';
+
+  // V12: Estado do cupom — guarda código e validação retornada do servidor.
+  let couponState = {code: '', valid: null, discountPct: 0, error: null};
+
   const summary = mk('div','subscribe-summary');
-  summary.innerHTML = `
-    <div class="ss-row"><span>Plano:</span><b>${escapeHTML(plan.name)} (${periodLabel})</b></div>
-    <div class="ss-row"><span>Créditos por mês:</span><b>${plan.credits_per_month}</b></div>
-    ${pricing.discountPct > 0 ? `<div class="ss-row"><span>Preço base:</span><span style="text-decoration:line-through;color:var(--text3)">R$ ${pricing.original.toFixed(2).replace('.',',')}</span></div><div class="ss-row"><span>Desconto BETA:</span><b style="color:var(--accent-text)">−${pricing.discountPct}%</b></div>` : ''}
-    <div class="ss-row total"><span>Total:</span><b>R$ ${pricing.final.toFixed(2).replace('.',',')} / ${billingPeriod==='yearly'?'ano':'mês'}</b></div>
-  `;
+  function renderSummary(){
+    let finalPrice = pricing.final;
+    let extraDiscount = 0;
+    if(couponState.valid && couponState.discountPct > 0){
+      extraDiscount = pricing.final * (couponState.discountPct / 100);
+      finalPrice = pricing.final - extraDiscount;
+    }
+    summary.innerHTML = `
+      <div class="ss-row"><span>Plano:</span><b>${escapeHTML(plan.name)} (${periodLabel})</b></div>
+      <div class="ss-row"><span>Créditos por mês:</span><b>${plan.credits_per_month}</b></div>
+      ${pricing.discountPct > 0 ? `<div class="ss-row"><span>Preço base:</span><span style="text-decoration:line-through;color:var(--text3)">R$ ${pricing.original.toFixed(2).replace('.',',')}</span></div><div class="ss-row"><span>Desconto BETA:</span><b style="color:var(--accent-text)">−${pricing.discountPct}%</b></div>` : ''}
+      ${couponState.valid && couponState.discountPct > 0 ? `<div class="ss-row"><span>Cupom <b style="color:var(--accent-text)">${escapeHTML(couponState.code.toUpperCase())}</b>:</span><b style="color:var(--accent-text)">−${couponState.discountPct}% (R$ ${extraDiscount.toFixed(2).replace('.',',')})</b></div>` : ''}
+      <div class="ss-row total"><span>Total:</span><b>R$ ${finalPrice.toFixed(2).replace('.',',')} / ${billingPeriod==='yearly'?'ano':'mês'}</b></div>
+    `;
+  }
+  renderSummary();
   m.appendChild(summary);
+
+  // V12: Campo de cupom de desconto — opcional, validação via Supabase RPC.
+  const couponWrap = mk('div');couponWrap.style.cssText='margin:.875rem 0 .5rem;padding:.625rem .75rem;background:var(--surface2);border-radius:8px';
+  const couponLbl = mk('div');couponLbl.style.cssText='font-size:11.5px;color:var(--text3);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px';
+  couponLbl.textContent = '🎟 Tem um cupom?';
+  couponWrap.appendChild(couponLbl);
+
+  const couponRow = mk('div');couponRow.style.cssText='display:flex;gap:6px';
+  const couponInp = mk('input');couponInp.type='text';couponInp.placeholder='Ex: BETA50';
+  couponInp.style.cssText='flex:1;padding:.45rem .625rem;font-size:12.5px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit;text-transform:uppercase;letter-spacing:.5px';
+  couponInp.maxLength = 20;
+  couponInp.value = couponState.code;
+  couponInp.addEventListener('input',e=>{
+    couponState.code = e.target.value.trim().toUpperCase();
+    couponState.valid = null;
+    couponState.error = null;
+    e.target.value = couponState.code;
+    renderCouponMsg();
+  });
+  couponRow.appendChild(couponInp);
+
+  const applyBtn = mkBtn('Aplicar','btn btn-sm');
+  applyBtn.style.flexShrink='0';
+  couponRow.appendChild(applyBtn);
+  couponWrap.appendChild(couponRow);
+
+  const couponMsg = mk('div');couponMsg.style.cssText='font-size:11.5px;line-height:1.4;margin-top:6px';
+  couponWrap.appendChild(couponMsg);
+  function renderCouponMsg(){
+    if(couponState.error){
+      couponMsg.innerHTML = `<span style="color:var(--red-text)">⚠ ${escapeHTML(couponState.error)}</span>`;
+    } else if(couponState.valid){
+      couponMsg.innerHTML = `<span style="color:var(--accent-text)">✓ Cupom válido — desconto de ${couponState.discountPct}% aplicado</span>`;
+    } else {
+      couponMsg.innerHTML = '';
+    }
+  }
+
+  applyBtn.addEventListener('click', async()=>{
+    if(!couponState.code){ couponState.error = 'Informe um código'; renderCouponMsg(); return; }
+    applyBtn.disabled = true;
+    applyBtn.textContent = '...';
+    couponState.error = null;
+    try{
+      const {data, error} = await supa.rpc('validate_coupon', {
+        p_code: couponState.code,
+        p_plan_id: plan.id
+      });
+      if(error) throw error;
+      if(data && data.valid){
+        couponState.valid = true;
+        couponState.discountPct = data.discount_pct || 0;
+      } else {
+        couponState.valid = false;
+        couponState.error = (data && data.reason) || 'Cupom inválido ou expirado';
+      }
+    }catch(e){
+      const msg = (e.message||String(e)).toLowerCase();
+      if(msg.includes('validate_coupon') || msg.includes('does not exist')){
+        couponState.error = 'Sistema de cupons ainda não configurado';
+      } else {
+        couponState.error = 'Erro: '+(e.message||e);
+      }
+    }
+    applyBtn.disabled = false;
+    applyBtn.textContent = 'Aplicar';
+    renderCouponMsg();
+    renderSummary();
+  });
+  m.appendChild(couponWrap);
 
   // Disclaimer
   const disclaimer = mk('div', 'subscribe-disclaimer');
@@ -31082,7 +32361,9 @@ function showSubscribeModal(plan, billingPeriod){
         },
         body: JSON.stringify({
           plan_id: plan.id,
-          billing_period: billingPeriod
+          billing_period: billingPeriod,
+          // V12: passa cupom se aplicado e válido
+          coupon_code: (couponState.valid && couponState.code) ? couponState.code : null
         })
       });
       if(!r.ok){
@@ -31735,46 +33016,68 @@ function buildForestScene(trees){
   // === ARAUCÁRIAS — silhuetas mais realistas ===
   // Araucária angustifolia tem formato característico: tronco reto, copa em "guarda-chuva"
   // com galhos horizontais que formam coroa achatada no topo
+  // V12: Araucária mais realista — antes parecia "pinheiro de natal".
+  // Características reais da Araucaria angustifolia:
+  // - Tronco MUITO alto e fino, retilíneo
+  // - Copa concentrada no topo em formato de guarda-chuva invertido
+  // - Galhos horizontais ascendentes com folhagem nas pontas (não em toda extensão)
+  // - Silhueta característica: tronco longo + copa achatada compacta no topo
   function drawAraucaria(cx, cy, scale, type){
-    const trunkW = 3.5 * scale;
-    const trunkH = 55 * scale;
+    const trunkW = 2.8 * scale;
+    const trunkH = 75 * scale; // Era 55 — agora mais alto pra silhueta correta
     const top = cy - trunkH;
     const grad = type==='ancient' ? 'treeAncient' :
                  type==='mature' ? 'treeMature' :
                  type==='young' ? 'treeYoung' : 'treeSeed';
     let s = '';
-    // Tronco — afunilando levemente
+
+    // Tronco — retilíneo, fino, com leve textura
     s += `<path d="M ${cx - trunkW/2} ${cy}
-      L ${cx - trunkW*0.4} ${top + trunkH*0.3}
-      L ${cx - trunkW*0.3} ${top}
-      L ${cx + trunkW*0.3} ${top}
-      L ${cx + trunkW*0.4} ${top + trunkH*0.3}
+      L ${cx - trunkW*0.35} ${top + trunkH*0.5}
+      L ${cx - trunkW*0.28} ${top}
+      L ${cx + trunkW*0.28} ${top}
+      L ${cx + trunkW*0.35} ${top + trunkH*0.5}
       L ${cx + trunkW/2} ${cy} Z"
       fill="url(#${grad})" opacity="0.95"/>`;
 
-    // Galhos horizontais com pontas penduradas (coroa em guarda-chuva)
-    // Camadas de baixo pra cima, cada vez menores até o topo achatado
-    const layers = type==='ancient' ? 6 : type==='mature' ? 5 : type==='young' ? 4 : 3;
+    // Galhos só no terço superior (diferente do pinheiro de natal)
+    // Em araucárias reais, os galhos inferiores caem com a idade
+    const crownStart = top + trunkH*0.55;  // só começa galhos a partir de 55% pra cima
+    const layers = type==='ancient' ? 5 : type==='mature' ? 4 : type==='young' ? 3 : 2;
+
     for(let i=0; i<layers; i++){
       const ratio = i / layers;
-      const layerY = top - (i * 14 * scale) + 4*scale;
-      const layerW = (32 * (1 - ratio*0.55)) * scale;
-      const layerH = 4 * scale;
-      // Galho horizontal (elipse achatada)
-      s += `<ellipse cx="${cx}" cy="${layerY}" rx="${layerW}" ry="${layerH}" fill="url(#${grad})" opacity="${0.95 - i*0.04}"/>`;
-      // Pequenas pontas penduradas (3 por galho)
-      const tipCount = 3 + Math.floor((1-ratio)*2);
-      for(let k=0; k<tipCount; k++){
-        const tx = cx + (k - (tipCount-1)/2) * (layerW * 1.7 / tipCount);
-        const ty = layerY + layerH;
-        s += `<line x1="${tx}" y1="${layerY}" x2="${tx}" y2="${ty + 5*scale}" stroke="url(#${grad})" stroke-width="${0.7*scale}" opacity="0.85" stroke-linecap="round"/>`;
+      const layerY = crownStart - (i * 9 * scale);
+      // Galhos crescem em comprimento conforme sobe — copa em V invertido
+      const layerW = (8 + ratio*32) * scale;
+      const tipDrop = 6 * scale; // pontas pendem pra baixo
+
+      // Galho central horizontal — duas linhas convergindo (galho ascendente leve)
+      s += `<path d="M ${cx - layerW} ${layerY + tipDrop*0.3}
+        Q ${cx - layerW*0.5} ${layerY - tipDrop*0.4}, ${cx} ${layerY - tipDrop*0.5}
+        Q ${cx + layerW*0.5} ${layerY - tipDrop*0.4}, ${cx + layerW} ${layerY + tipDrop*0.3}"
+        stroke="url(#${grad})" stroke-width="${1.2*scale}" fill="none" opacity="${0.92 - i*0.06}"/>`;
+
+      // Pontas com folhagem em "tufos" nas extremidades (típico da araucária)
+      const tipCount = Math.max(2, Math.floor(layerW / (8*scale)));
+      for(let k=0; k<=tipCount; k++){
+        const t = (k - tipCount/2) / (tipCount/2 || 1); // -1 a 1
+        const tx = cx + t * layerW;
+        const ty = layerY + tipDrop*0.3 + Math.abs(t) * tipDrop * 0.6;
+
+        // Tufo de folhas no fim do galho — pequena elipse vertical
+        const tufW = 1.8 * scale;
+        const tufH = 4 * scale;
+        s += `<ellipse cx="${tx}" cy="${ty + tufH*0.5}" rx="${tufW}" ry="${tufH}" fill="url(#${grad})" opacity="${0.88 - i*0.05}"/>`;
       }
     }
-    // Topo achatado — coroa final
-    const crownY = top - layers*14*scale + 4*scale;
-    const crownW = 14 * scale;
-    s += `<ellipse cx="${cx}" cy="${crownY - 3*scale}" rx="${crownW}" ry="${3*scale}" fill="url(#${grad})" opacity="0.92"/>`;
-    s += `<ellipse cx="${cx}" cy="${crownY - 6*scale}" rx="${crownW*0.7}" ry="${2.5*scale}" fill="url(#${grad})" opacity="0.88"/>`;
+
+    // Topo da árvore — copa achatada característica (ponta arredondada, não pontiaguda)
+    const crownTopY = crownStart - layers*9*scale;
+    const crownTopW = 11 * scale;
+    s += `<ellipse cx="${cx}" cy="${crownTopY}" rx="${crownTopW}" ry="${4*scale}" fill="url(#${grad})" opacity="0.95"/>`;
+    s += `<ellipse cx="${cx}" cy="${crownTopY - 3*scale}" rx="${crownTopW*0.55}" ry="${2*scale}" fill="url(#${grad})" opacity="0.88"/>`;
+
     return s;
   }
 
@@ -32123,8 +33426,10 @@ function renderSettings(){
   const indexItems = [
     {target:'sec-perfil', icon:'👤', label:'Perfil'},
     {target:'sec-subscription', icon:'💳', label:'Assinatura'},
+    {target:'sec-affiliate', icon:'🤝', label:'Afiliados'},
     {target:'sec-aparencia', icon:'🎨', label:'Aparência'},
     {target:'sec-notif', icon:'🔔', label:'Notificações'},
+    {target:'sec-privacy', icon:'🔒', label:'Privacidade'},
     {target:'sec-feedback', icon:'💬', label:'Fale conosco'},
     {target:'sec-dados', icon:'💾', label:'Dados'}
   ];
@@ -32412,6 +33717,69 @@ function renderSettings(){
     wrap.appendChild(subCard);
   }
 
+  // ===== V13: Card de afiliados — só se logado =====
+  // Cada usuário recebe um link único pra divulgar e ganhar % das vendas que indicar.
+  if(isAuthed() && AUTH.profile && AUTH.profile.username){
+    const affCard = mk('div','card');affCard.style.marginTop='1rem';
+    affCard.id = 'sec-affiliate';
+    affCard.appendChild(sLabel('🤝 Programa de afiliados'));
+    const affDesc = mk('p','txt2');affDesc.style.cssText='margin:0 0 .875rem;font-size:13px;line-height:1.55';
+    affDesc.innerHTML = 'Compartilhe seu link e ganhe <b>30% de comissão</b> das 3 primeiras mensalidades dos novos assinantes que indicar. Pago via PIX no fim de cada mês.';
+    affCard.appendChild(affDesc);
+
+    const affLink = window.location.origin + '/?ref=' + encodeURIComponent(AUTH.profile.username);
+    const linkBox = mk('div');linkBox.style.cssText='display:flex;align-items:center;gap:6px;padding:.5rem .75rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:.5rem';
+    const linkInp = mk('input');linkInp.type='text';linkInp.value=affLink;linkInp.readOnly=true;
+    linkInp.style.cssText='flex:1;border:none;background:transparent;color:var(--text2);font-size:12.5px;font-family:ui-monospace,monospace;outline:none';
+    linkInp.addEventListener('click',e=>e.target.select());
+    linkBox.appendChild(linkInp);
+    const copyBtn = mkBtn('📋 Copiar','btn btn-sm');
+    copyBtn.addEventListener('click',()=>{
+      try{
+        navigator.clipboard.writeText(affLink);
+        showToast('✓ Link copiado pra área de transferência');
+      }catch(_){
+        linkInp.select();document.execCommand('copy');
+        showToast('✓ Link copiado');
+      }
+    });
+    linkBox.appendChild(copyBtn);
+    affCard.appendChild(linkBox);
+
+    // Stats placeholder — carrega via RPC se houver
+    const statsBox = mk('div');statsBox.style.cssText='display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:.5rem';
+    statsBox.innerHTML = `
+      <div style="padding:.625rem .5rem;background:var(--surface);border:1px solid var(--border);border-radius:7px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--text);line-height:1" id="aff-clicks">—</div><div style="font-size:10.5px;color:var(--text3);margin-top:3px">cliques</div></div>
+      <div style="padding:.625rem .5rem;background:var(--surface);border:1px solid var(--border);border-radius:7px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--text);line-height:1" id="aff-signups">—</div><div style="font-size:10.5px;color:var(--text3);margin-top:3px">cadastros</div></div>
+      <div style="padding:.625rem .5rem;background:var(--surface);border:1px solid var(--border);border-radius:7px;text-align:center"><div style="font-size:18px;font-weight:700;color:var(--accent-text);line-height:1" id="aff-earned">R$ —</div><div style="font-size:10.5px;color:var(--text3);margin-top:3px">a receber</div></div>
+    `;
+    affCard.appendChild(statsBox);
+
+    // Carrega stats via RPC
+    setTimeout(async()=>{
+      if(!supa) return;
+      try{
+        const {data} = await supa.rpc('get_my_affiliate_stats');
+        if(data){
+          const c = document.getElementById('aff-clicks');
+          const s = document.getElementById('aff-signups');
+          const e = document.getElementById('aff-earned');
+          if(c) c.textContent = data.click_count || 0;
+          if(s) s.textContent = data.signup_count || 0;
+          if(e) e.textContent = 'R$ ' + (data.amount_pending || 0).toFixed(2).replace('.',',');
+        }
+      }catch(_){
+        // RPC não existe ainda — ok
+      }
+    }, 200);
+
+    const affHelp = mk('p','txt3');affHelp.style.cssText='margin:8px 0 0;font-size:11px;line-height:1.5';
+    affHelp.textContent = 'Quando alguém clica no seu link, é creditado a você por 30 dias. Se essa pessoa virar assinante nesse período, você ganha comissão das 3 primeiras mensalidades. Pagamentos a partir de R$ 50 acumulados.';
+    affCard.appendChild(affHelp);
+
+    wrap.appendChild(affCard);
+  }
+
   // ===== MINHA CONTA — only if auth is active =====
   if(isAuthed()){
     const accCard = mk('div','card');accCard.style.marginTop='1rem';
@@ -32538,6 +33906,36 @@ function renderSettings(){
   nr.appendChild(nLbl);nr.appendChild(nChk);
   nCard.appendChild(nr);
   wrap.appendChild(nCard);
+
+  // V13: Card de Privacidade — controle do pool comunitário de questões IA
+  const privCard = mk('div','card');privCard.style.marginTop='1rem';
+  privCard.id = 'sec-privacy';
+  privCard.appendChild(sLabel('Privacidade'));
+  const privDesc = mk('p','txt2');privDesc.style.cssText='margin:0 0 .875rem;font-size:13px;line-height:1.55';
+  privDesc.innerHTML = 'Controle como seus dados são usados pra melhorar a plataforma.';
+  privCard.appendChild(privDesc);
+
+  const shareRow = mk('div');shareRow.style.cssText='display:flex;align-items:flex-start;gap:10px;padding:.625rem .75rem;background:var(--surface2);border-radius:8px';
+  const shareInfo = mk('div');shareInfo.style.flex='1';
+  shareInfo.innerHTML = `
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">🤝 Contribuir com banco comunitário</div>
+    <div style="font-size:11.5px;color:var(--text2);line-height:1.5">Quando você gera questões com IA, elas vão pro pool compartilhado (sem seu nome). Outros usuários acessam questões já criadas, reduzindo custo coletivo. Você só envia o conteúdo da questão — nunca seus dados pessoais ou desempenho.</div>
+  `;
+  shareRow.appendChild(shareInfo);
+  const shareChk = mk('input');shareChk.type='checkbox';
+  // Default: true (opt-out, não opt-in)
+  shareChk.checked = DATA.config.shareAIQuestions !== false;
+  shareChk.style.cssText='width:auto;cursor:pointer;margin-top:2px';
+  shareChk.addEventListener('change',e=>{
+    DATA.config.shareAIQuestions = e.target.checked;
+    save();
+    showToast(e.target.checked
+      ? '✓ Você está contribuindo com o banco comunitário'
+      : 'Compartilhamento desativado — suas questões ficam só na sua conta');
+  });
+  shareRow.appendChild(shareChk);
+  privCard.appendChild(shareRow);
+  wrap.appendChild(privCard);
 
   const rCard = mk('div','card');rCard.style.marginTop='1rem';
   rCard.id = 'sec-dados';
@@ -36216,6 +37614,8 @@ async function syncUp(){
 }
 
 // Baixa DATA do Supabase. Retorna null se usuário novo sem dados.
+// V12 fix: distingue "conta nova sem dados" de "erro real". Antes engolia tudo
+// e retornava null, fazendo handleFirstLoginMerge tratar erro como conta vazia.
 async function syncDown(){
   if(!isAuthed())return null;
   AUTH.syncing = true;
@@ -36229,14 +37629,18 @@ async function syncDown(){
       10000,
       'syncDown'
     );
-    if(error)throw error;
+    if(error){
+      // Erro REAL — propaga (não silencia)
+      AUTH.syncError = error.message||'erro desconhecido';
+      throw error;
+    }
     AUTH.lastSyncAt = Date.now();
     AUTH.syncError = null;
     return data?.data||null;
   }catch(e){
     AUTH.syncError = e.message||'erro desconhecido';
     console.error('[NEXUS] syncDown error:',e);
-    return null;
+    throw e; // Re-throw pra caller saber que foi erro, não vazio
   }finally{
     AUTH.syncing = false;
     updateSyncIndicator();
@@ -36303,8 +37707,35 @@ async function handleFirstLoginMerge(){
     }
     return;
   }
+
+  // V12 fix: timing race em signup novo. user_data pode ainda não existir,
+  // ou trigger de criação de profile pode não ter rodado. Retry com backoff.
+  let remote = null;
+  let lastErr = null;
+  for(let attempt = 0; attempt < 3; attempt++){
+    try{
+      remote = await syncDown();
+      // Se chegou aqui sem exception, deu certo (mesmo retornando null = conta nova)
+      lastErr = null;
+      break;
+    }catch(e){
+      lastErr = e;
+      console.warn('[NEXUS] handleFirstLoginMerge attempt '+(attempt+1)+' failed:', e.message);
+      // Backoff: 500ms, 1s, 2s
+      await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt)));
+    }
+  }
+
+  // Se mesmo após retries continua erro, não bloqueia o usuário —
+  // ele consegue usar a plataforma com DATA local até sync funcionar
+  if(lastErr){
+    console.error('[NEXUS] handleFirstLoginMerge falhou após 3 tentativas:', lastErr);
+    showToast('⚠ Sincronização inicial demorando — seus dados estão seguros localmente. Tentaremos de novo.');
+    // Não marca _mergeHandled pra tentar de novo em próxima sessão
+    return;
+  }
+
   const hasLocalData = (DATA.errors||[]).length>0||(DATA.srs?.cards||[]).length>0||(DATA.sources||[]).length>0;
-  const remote = await syncDown();
 
   if(!remote&&!hasLocalData){
     // Usuário novo, nada para fazer
@@ -36317,8 +37748,13 @@ async function handleFirstLoginMerge(){
     // Subir dados locais para a conta nova
     const confirmed = confirm('Encontramos dados locais neste dispositivo (questões, erros, flashcards). Deseja enviá-los para sua conta na nuvem? Clique OK para sincronizar ou Cancelar para manter a conta vazia.');
     if(confirmed){
-      await syncUp();
-      showToast('✓ Dados enviados para sua conta.');
+      try{
+        await syncUp();
+        showToast('✓ Dados enviados para sua conta.');
+      }catch(e){
+        showToast('⚠ Erro ao enviar dados: ' + (e.message||e) + '. Tentaremos de novo automaticamente.');
+        return; // Não marca _mergeHandled pra tentar de novo
+      }
     }
     if(!DATA.config) DATA.config = {};
     DATA.config._mergeHandled = AUTH.user.id;
@@ -36343,8 +37779,13 @@ async function handleFirstLoginMerge(){
     save();
     showToast('✓ Dados da conta carregados.');
   } else {
-    await syncUp();
-    showToast('✓ Dados locais enviados para a conta.');
+    try{
+      await syncUp();
+      showToast('✓ Dados locais enviados para a conta.');
+    }catch(e){
+      showToast('⚠ Erro ao enviar: ' + (e.message||e));
+      return;
+    }
   }
   if(!DATA.config) DATA.config = {};
   DATA.config._mergeHandled = AUTH.user.id;
@@ -36373,12 +37814,24 @@ async function authSignUp(email, password, username, displayName){
   const meta = {};
   if(username) meta.username = username;
   if(displayName) meta.display_name = displayName;
+  // V13: Se houver referral capturado da URL, passa pra creditar afiliado
+  const ref = getStoredReferral();
+  if(ref) meta.referral_code = ref;
   const {data,error} = await supa.auth.signUp({
     email,
     password,
     options: { data: meta }
   });
   if(error)throw error;
+  // Após signup bem-sucedido, registra atribuição via RPC e limpa cookie
+  if(ref && data.user){
+    setTimeout(async()=>{
+      try{
+        await supa.rpc('register_referral', {p_code: ref});
+        localStorage.removeItem(REFERRAL_KEY);
+      }catch(_){}
+    }, 500);
+  }
   return data;
 }
 
