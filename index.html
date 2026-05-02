@@ -15518,23 +15518,34 @@ function renderSourceAdd(wrap){
 
   // ---------- Stage 3: Main form ----------
   const addCard = mk('div','card');
-  const addH = mk('h3');addH.textContent='Adicionar fonte';addH.style.marginBottom='.5rem';
+  const addH = mk('h3');
+  // V14 redesign: título muda de acordo com estado (Jean reportou que ficava
+  // estranho ver "Adicionar fonte" enquanto IA já estava processando).
+  if(is.pdfLoading || is.organizing){
+    addH.textContent = 'Processando sua fonte...';
+  } else {
+    addH.textContent = 'Adicionar fonte';
+  }
+  addH.style.marginBottom='.5rem';
   addCard.appendChild(addH);
-  // V12: Help mais didático — exemplos visuais e fluxo claro.
-  // Antes: 1 frase genérica ("Cole texto, carregue PDF..."). Usuário ficava perdido.
-  // Agora: lista visual mostra os 3 caminhos com exemplos concretos.
-  const helpBox = mk('div');helpBox.style.cssText='margin:0 0 1rem;padding:.75rem .875rem;background:var(--surface2);border-radius:8px;font-size:12.5px;line-height:1.55';
-  helpBox.innerHTML = `
-    <div style="font-weight:700;margin-bottom:6px;color:var(--text)">3 jeitos de adicionar (escolha qualquer um):</div>
-    <div style="display:flex;flex-direction:column;gap:5px;color:var(--text2)">
-      <div>📄 <b>Subir PDF</b> — apostila, lei, manual. <b style="color:var(--accent-text)">A IA já limpa, estrutura e classifica automaticamente</b></div>
-      <div>📚 <b>Importar da comunidade</b> — fontes públicas que outros usuários publicaram</div>
-      <div>📝 <b>Colar texto</b> — depois clique em "Organizar com IA" se quiser limpar</div>
-    </div>
-    <div style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--border);font-size:11.5px;color:var(--text3)">
-      <b>Dica:</b> A IA remove ruído (cabeçalhos, marcas d'água, "professor X"), detecta data e classifica disciplina automaticamente.
-    </div>`;
-  addCard.appendChild(helpBox);
+
+  // V14 redesign: helpBox SÓ aparece quando NÃO estiver carregando — assim o
+  // usuário não fica vendo "3 jeitos de adicionar" enquanto a IA já está fazendo.
+  if(!is.pdfLoading && !is.organizing){
+    // V12: Help mais didático — exemplos visuais e fluxo claro.
+    const helpBox = mk('div');helpBox.style.cssText='margin:0 0 1rem;padding:.75rem .875rem;background:var(--surface2);border-radius:8px;font-size:12.5px;line-height:1.55';
+    helpBox.innerHTML = `
+      <div style="font-weight:700;margin-bottom:6px;color:var(--text)">3 jeitos de adicionar (escolha qualquer um):</div>
+      <div style="display:flex;flex-direction:column;gap:5px;color:var(--text2)">
+        <div>📄 <b>Subir PDF</b> — apostila, lei, manual. <b style="color:var(--accent-text)">A IA já limpa, estrutura e classifica automaticamente</b></div>
+        <div>📚 <b>Importar da comunidade</b> — fontes públicas que outros usuários publicaram</div>
+        <div>📝 <b>Colar texto</b> — depois clique em "Organizar com IA" se quiser limpar</div>
+      </div>
+      <div style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--border);font-size:11.5px;color:var(--text3)">
+        <b>Dica:</b> A IA remove ruído (cabeçalhos, marcas d'água, "professor X"), detecta data e classifica disciplina automaticamente.
+      </div>`;
+    addCard.appendChild(helpBox);
+  }
 
   // Quick import actions row
   const quickRow = mk('div','smart-import-row');
@@ -15617,46 +15628,90 @@ function renderSourceAdd(wrap){
       const tocMsg = ST.srcImportState.pdfMeta.toc ? ` · ${ST.srcImportState.pdfMeta.toc.length} seções detectadas` : '';
       showToast('✓ PDF processado · ' + result.pageCount + ' páginas · ' + result.text.length.toLocaleString('pt-BR') + ' caracteres' + tocMsg);
 
-      // V14: AUTOMATICAMENTE roda IA pra organizar conteúdo após PDF.
-      // Antes: usuário tinha que clicar "Organizar com IA" depois.
-      // Agora: já organiza direto pra dar agilidade. Usuário só revisa o resultado.
-      // Custo: free_action 'organize_import' — não consome créditos.
+      // V14 redesign: AUTOMATICAMENTE roda IA pra organizar conteúdo após PDF
+      // e PREENCHER TODOS OS CAMPOS do form (nome, disciplina, tipo, conteúdo, data).
+      // Se a disciplina detectada não existir, CRIA UMA NOVA automaticamente.
+      // Usuário só revisa e salva.
       if(result.text.length > 200){
         ST.srcImportState.organizing = true;
         render();
-        // V14 fix: timeout de 60s pra evitar travar se IA não responder
+        // Timeout de 60s pra evitar travar se IA não responder
         let aiRes = null;
         try{
           aiRes = await Promise.race([
             smartOrganizeContent(result.text, {classify: true}),
             new Promise((_, rej) => setTimeout(()=>rej(new Error('timeout 60s')), 60000))
           ]);
-          if(aiRes && aiRes.classification){
-            if(aiRes.classification.disciplineId && DATA.disciplines.find(d=>d.id===aiRes.classification.disciplineId)){
-              ST.srcInput.disciplineId = aiRes.classification.disciplineId;
+
+          if(aiRes){
+            // 1. NOME DA FONTE (sempre — sobrescreve mesmo)
+            if(aiRes.suggestedName){
+              ST.srcInput.name = String(aiRes.suggestedName).slice(0, 80);
             }
-            if(aiRes.classification.contentType && CONTENT_TYPES[aiRes.classification.contentType]){
-              ST.srcInput.contentType = aiRes.classification.contentType;
+
+            // 2. CONTEÚDO ORGANIZADO
+            if(aiRes.organized){
+              ST.srcInput.content = aiRes.organized;
+            }
+
+            // 3. DISCIPLINA — se não existe, CRIA uma nova
+            if(aiRes.disciplineName){
+              const detectedName = String(aiRes.disciplineName).trim();
+              // Tenta achar disciplina existente (case-insensitive, sem acentos)
+              const normalize = s => (s||'').toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+              const detectedNorm = normalize(detectedName);
+              let existingDisc = (DATA.disciplines||[]).find(d =>
+                normalize(d.name) === detectedNorm
+              );
+              if(!existingDisc && detectedName.length >= 3){
+                // CRIA NOVA disciplina
+                const used = DATA.disciplines.map(d=>d.color);
+                const palette = (typeof DISC_COLORS !== 'undefined' && Array.isArray(DISC_COLORS))
+                  ? DISC_COLORS
+                  : ['#5b9bd5','#ed7d31','#70ad47','#ffc000','#7030a0','#c00000','#0070c0'];
+                const free = palette.find(c=>!used.includes(c)) || palette[DATA.disciplines.length%palette.length];
+                existingDisc = {
+                  id: 'disc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+                  name: detectedName,
+                  color: free,
+                  active: true,
+                  createdAt: Date.now(),
+                  autoCreated: true // marca que veio da IA pra mostrar hint
+                };
+                DATA.disciplines.push(existingDisc);
+                showToast(`+ Disciplina criada: ${detectedName}`, 4500);
+              }
+              if(existingDisc){
+                if(!existingDisc.active) existingDisc.active = true;
+                ST.srcInput.disciplineId = existingDisc.id;
+              }
+            }
+
+            // 4. TIPO DE MATERIAL (livro, apostila, aula, etc)
+            if(aiRes.materialType && SRC_TYPES[aiRes.materialType]){
+              ST.srcInput.type = aiRes.materialType;
+            }
+
+            // 5. TIPO DE CONTEÚDO (teoria, exercicios, lei seca, etc)
+            if(aiRes.contentType && CONTENT_TYPES[aiRes.contentType]){
+              ST.srcInput.contentType = aiRes.contentType;
+            }
+
+            // 6. DATA DO MATERIAL
+            if(aiRes.detectedDate){
+              const dm = String(aiRes.detectedDate).match(/^(\d{4})-(\d{2})/);
+              if(dm) ST.srcInput.materialDate = `${dm[1]}-${dm[2]}`;
             }
           }
-          if(aiRes && aiRes.suggestedName && (!ST.srcInput.name || ST.srcInput.name.trim() === '' || ST.srcInput.name === cleanSourceTitle(file.name))){
-            ST.srcInput.name = String(aiRes.suggestedName).slice(0, 80);
-          }
-          if(aiRes && aiRes.detectedDate && !ST.srcInput.materialDate){
-            const dm = String(aiRes.detectedDate).match(/^(\d{4})-(\d{2})/);
-            if(dm) ST.srcInput.materialDate = `${dm[1]}-${dm[2]}`;
-          }
-          if(aiRes && aiRes.organized){
-            ST.srcInput.content = aiRes.organized;
-          }
+
+          save(); // persiste disciplina nova + srcInput
         }catch(aiErr){
           // IA falhou — segue sem organizar
           console.warn('[IA auto-organize falhou]', aiErr);
-          showToast('⚠ Organização automática indisponível, mas você pode salvar a fonte normal.', 5000);
+          showToast('⚠ Organização automática indisponível. Preencha os campos manualmente abaixo.', 6000);
         }
-        // V14 fix: SEMPRE termina o estado organizing e vai pra review (mesmo se IA falhar).
-        // Antes: se a IA falhasse, o flag organizing ficava como false mas o mode permanecia
-        // 'form' e o usuário ficava com a UI parada vendo "Carregando..." pra sempre.
+        // SEMPRE termina o estado organizing e vai pra review
         ST.srcImportState = {
           mode: 'review',
           organizing: false,
@@ -15812,15 +15867,34 @@ function renderSourceAdd(wrap){
     });
     quickRow.appendChild(smartBtn);
   }
-  addCard.appendChild(quickRow);
+  // V14 redesign: quickRow (upload PDF + organize) só aparece se NÃO estiver carregando
+  if(!is.pdfLoading && !is.organizing){
+    addCard.appendChild(quickRow);
+  }
 
+  // V14 redesign: card grande e claro durante carregamento de PDF (Jean reportou
+  // que ficava confuso com indicador pequeno + form vazio à mostra).
   if(is.pdfLoading){
-    const pl = mk('div','loading-row');pl.style.margin='.5rem 0';
-    const sp = mk('span','spinner');pl.appendChild(sp);
-    const txt = mk('span');txt.id='pdf-progress-txt';txt.style.marginLeft='6px';
-    txt.textContent = is.pdfProgress&&is.pdfProgress.total>0 ? `Lendo página ${is.pdfProgress.current}/${is.pdfProgress.total}...` : 'Carregando pdf.js...';
-    pl.appendChild(txt);
-    addCard.appendChild(pl);
+    const stateCard = mk('div');
+    stateCard.style.cssText = 'padding:1.75rem 1.5rem;background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));border:1px solid rgba(128,66,250,.18);border-left:3px solid var(--gralia-purple);border-radius:10px;margin:1rem 0;text-align:center';
+    const ico = mk('div');
+    ico.style.cssText = 'font-size:32px;line-height:1;margin-bottom:.5rem';
+    ico.textContent = '📄';
+    stateCard.appendChild(ico);
+    const ttl = mk('h3');
+    ttl.style.cssText = 'margin:0 0 .375rem;font-size:15px;font-weight:700';
+    ttl.textContent = 'Lendo o PDF...';
+    stateCard.appendChild(ttl);
+    const sub = mk('p','txt2');
+    sub.id = 'pdf-progress-txt';
+    sub.style.cssText = 'margin:0;font-size:12.5px';
+    sub.textContent = is.pdfProgress&&is.pdfProgress.total>0 ? `Página ${is.pdfProgress.current} de ${is.pdfProgress.total}` : 'Carregando bibliotecas de PDF...';
+    stateCard.appendChild(sub);
+    const stepLbl = mk('p','txt3');
+    stepLbl.style.cssText = 'margin:.625rem 0 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px';
+    stepLbl.textContent = '⏳ Etapa 1 de 2';
+    stateCard.appendChild(stepLbl);
+    addCard.appendChild(stateCard);
   }
 
   // Card de metadados do PDF (aparece quando PDF foi processado)
@@ -15924,134 +15998,168 @@ function renderSourceAdd(wrap){
   }
 
   if(is.organizing){
-    // V14: Loading específico pra importação (item 41) — não fala em "questões"
-    addCard.appendChild(dynamicLoading('source_import','Lendo o material que você enviou...'));
+    // V14 redesign: card visual claro pra indicar IA organizando (etapa 2)
+    const orgCard = mk('div');
+    orgCard.style.cssText = 'padding:1.75rem 1.5rem;background:linear-gradient(135deg,rgba(128,66,250,.06),var(--surface));border:1px solid rgba(128,66,250,.20);border-left:3px solid var(--gralia-purple);border-radius:10px;margin:1rem 0;text-align:center';
+    const ico = mk('div');
+    ico.style.cssText = 'font-size:32px;line-height:1;margin-bottom:.5rem;animation:pulse-soft 1.6s ease-in-out infinite';
+    ico.textContent = '✨';
+    orgCard.appendChild(ico);
+    const ttl = mk('h3');
+    ttl.style.cssText = 'margin:0 0 .375rem;font-size:15px;font-weight:700';
+    ttl.textContent = 'IA organizando o conteúdo...';
+    orgCard.appendChild(ttl);
+    const sub = mk('p','txt2');
+    sub.style.cssText = 'margin:0;font-size:12.5px;line-height:1.5';
+    sub.innerHTML = 'Identificando disciplina, tipo de material, nome da fonte, data e estruturando o texto.<br><span style="font-size:11.5px;color:var(--text3)">Pode levar até 30 segundos.</span>';
+    orgCard.appendChild(sub);
+    const stepLbl = mk('p','txt3');
+    stepLbl.style.cssText = 'margin:.625rem 0 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px';
+    stepLbl.textContent = '⏳ Etapa 2 de 2';
+    orgCard.appendChild(stepLbl);
+    addCard.appendChild(orgCard);
   }
 
-  // Form fields
-  const row1 = mk('div','grid g2');row1.style.cssText='margin-top:1rem;margin-bottom:.75rem';
-  const col1 = mk('div');
-  const lblN = mk('label');lblN.textContent='Nome da fonte';
-  const inpN = mk('input');inpN.type='text';inpN.placeholder='Ex: Áudio - Contrainteligência';
-  inpN.value=ST.srcInput.name;
-  inpN.addEventListener('input',e=>{ST.srcInput.name=e.target.value;saveBtn.disabled=!canSave();});
-  col1.appendChild(lblN);col1.appendChild(inpN);
-  const col2 = mk('div');
-  const lblT = mk('label');lblT.textContent='Tipo de material';
-  const sel = mk('select');
-  Object.entries(SRC_TYPES).forEach(([k,v])=>{
-    const o = mk('option');o.value=k;o.textContent=v.icon+' '+v.label;
-    if(ST.srcInput.type===k)o.selected=true;
-    sel.appendChild(o);
-  });
-  sel.addEventListener('change',e=>{ST.srcInput.type=e.target.value;});
-  col2.appendChild(lblT);col2.appendChild(sel);
-  row1.appendChild(col1);row1.appendChild(col2);
-  addCard.appendChild(row1);
-
-  const lblD = mk('label');lblD.textContent='Disciplina';
-  const selD = mk('select');
-  DATA.disciplines.forEach(d=>{
-    const o = mk('option');o.value=d.id;o.textContent=d.name;
-    if(ST.srcInput.disciplineId===d.id)o.selected=true;
-    selD.appendChild(o);
-  });
-  selD.addEventListener('change',e=>{ST.srcInput.disciplineId=e.target.value;});
-  addCard.appendChild(lblD);addCard.appendChild(selD);
-
-  const lblCT = mk('label');lblCT.textContent='Tipo de conteúdo (ajusta o estilo das questões geradas)';lblCT.style.marginTop='.75rem';
-  const selCT = mk('select');
-  Object.entries(CONTENT_TYPES).forEach(([k,v])=>{
-    const o = mk('option');o.value=k;o.textContent=v.label+' — '+v.desc;
-    if((ST.srcInput.contentType||'misto')===k)o.selected=true;
-    selCT.appendChild(o);
-  });
-  selCT.addEventListener('change',e=>{ST.srcInput.contentType=e.target.value;});
-  addCard.appendChild(lblCT);addCard.appendChild(selCT);
-
-  // Data do material — ajuda a identificar material desatualizado
-  const lblDate = mk('label');lblDate.textContent='Data do material (ano ou ano/mês — opcional)';lblDate.style.marginTop='.75rem';
-  const inpDate = mk('input');inpDate.type='month';
-  if(ST.srcInput.materialDate)inpDate.value=ST.srcInput.materialDate;
-  inpDate.addEventListener('change',e=>{ST.srcInput.materialDate=e.target.value;});
-  // V14: Click em qualquer lugar do input abre o picker (não só no ícone)
-  inpDate.addEventListener('mousedown', e=>{
-    // Só intercepta se NÃO clicou no calendário-icon nativo (que já funciona)
-    // showPicker() é a API moderna pra forçar abertura do picker.
-    if(typeof inpDate.showPicker === 'function'){
-      try{ inpDate.showPicker(); e.preventDefault(); }catch(_){}
-    }
-  });
-  addCard.appendChild(lblDate);addCard.appendChild(inpDate);
-
-  const lblC = mk('label');lblC.textContent='Conteúdo';lblC.style.marginTop='.75rem';
-  const ta = mk('textarea');ta.rows=8;
-  ta.placeholder='Cole aqui transcrição, relatório, resumo, slides, flashcards ou qualquer texto de estudo...';
-  ta.value=ST.srcInput.content;
-  ta.addEventListener('input',e=>{ST.srcInput.content=e.target.value;saveBtn.disabled=!canSave();});
-  addCard.appendChild(lblC);addCard.appendChild(ta);
-
-  const saveBtn = mkBtn('Adicionar fonte →','btn btn-p');saveBtn.style.marginTop='.875rem';
+  // V14 redesign: SE estiver carregando PDF ou IA organizando, ESCONDE TODOS os campos
+  // do form (Jean reportou várias vezes: campos vazios não podem ficar à mostra
+  // enquanto a IA vai preenchê-los). Volta a aparecer JÁ PREENCHIDO depois.
+  // Único caso: também pulamos o form se o estado é 'review' (já tratado acima com `return wrap`),
+  // mas como "review" já retornou no início, aqui consideramos só pdfLoading ou organizing.
+  // Quando ambos são false: form aparece, podendo estar preenchido ou em branco.
+  // Variável saveBtn é referenciada nos handlers de input — declaramos antes pra evitar TDZ.
+  let saveBtn;
   const canSave = () => ST.srcInput.name.trim()&&ST.srcInput.content.trim().length>20;
-  saveBtn.disabled = !canSave();
-  saveBtn.addEventListener('click',()=>{
-    const newSrc = {
-      id:Date.now()+''+Math.random(),
-      name:ST.srcInput.name.trim(),
-      type:ST.srcInput.type,
-      contentType:ST.srcInput.contentType||'misto',
-      materialDate:ST.srcInput.materialDate||null,
-      disciplineId:ST.srcInput.disciplineId,
-      content:ST.srcInput.content.trim(),
-      createdAt:Date.now()
-    };
-    // Se origem foi PDF, anexa metadados pra mostrar depois
-    if(ST.srcImportState && ST.srcImportState.pdfMeta){
-      newSrc.sourceFormat = 'pdf';
-      newSrc.pdfMeta = {
-        fileName: ST.srcImportState.pdfMeta.fileName,
-        pageCount: ST.srcImportState.pdfMeta.pageCount,
-        fileSize: ST.srcImportState.pdfMeta.fileSize,
-        title: ST.srcImportState.pdfMeta.title || null,
-        author: ST.srcImportState.pdfMeta.author || null
-      };
-      // V5 Fase B: salva TOC se foi detectado
-      if(ST.srcImportState.pdfMeta.toc && ST.srcImportState.pdfMeta.toc.length > 0){
-        newSrc.toc = ST.srcImportState.pdfMeta.toc;
+
+  if(!is.pdfLoading && !is.organizing){
+    // Form fields
+    const row1 = mk('div','grid g2');row1.style.cssText='margin-top:1rem;margin-bottom:.75rem';
+    const col1 = mk('div');
+    const lblN = mk('label');lblN.textContent='Nome da fonte';
+    const inpN = mk('input');inpN.type='text';inpN.placeholder='Ex: Áudio - Contrainteligência';
+    inpN.value=ST.srcInput.name;
+    inpN.addEventListener('input',e=>{ST.srcInput.name=e.target.value;if(saveBtn)saveBtn.disabled=!canSave();});
+    col1.appendChild(lblN);col1.appendChild(inpN);
+    const col2 = mk('div');
+    const lblT = mk('label');lblT.textContent='Tipo de material';
+    const sel = mk('select');
+    Object.entries(SRC_TYPES).forEach(([k,v])=>{
+      const o = mk('option');o.value=k;o.textContent=v.icon+' '+v.label;
+      if(ST.srcInput.type===k)o.selected=true;
+      sel.appendChild(o);
+    });
+    sel.addEventListener('change',e=>{ST.srcInput.type=e.target.value;});
+    col2.appendChild(lblT);col2.appendChild(sel);
+    row1.appendChild(col1);row1.appendChild(col2);
+    addCard.appendChild(row1);
+
+    const lblD = mk('label');lblD.textContent='Disciplina';
+    const selD = mk('select');
+    DATA.disciplines.forEach(d=>{
+      const o = mk('option');o.value=d.id;o.textContent=d.name;
+      if(ST.srcInput.disciplineId===d.id)o.selected=true;
+      selD.appendChild(o);
+    });
+    selD.addEventListener('change',e=>{ST.srcInput.disciplineId=e.target.value;});
+    addCard.appendChild(lblD);addCard.appendChild(selD);
+
+    const lblCT = mk('label');lblCT.textContent='Tipo de conteúdo (ajusta o estilo das questões geradas)';lblCT.style.marginTop='.75rem';
+    const selCT = mk('select');
+    Object.entries(CONTENT_TYPES).forEach(([k,v])=>{
+      const o = mk('option');o.value=k;o.textContent=v.label+' — '+v.desc;
+      if((ST.srcInput.contentType||'misto')===k)o.selected=true;
+      selCT.appendChild(o);
+    });
+    selCT.addEventListener('change',e=>{ST.srcInput.contentType=e.target.value;});
+    addCard.appendChild(lblCT);addCard.appendChild(selCT);
+
+    // Data do material — ajuda a identificar material desatualizado
+    const lblDate = mk('label');lblDate.textContent='Data do material (ano ou ano/mês — opcional)';lblDate.style.marginTop='.75rem';
+    const inpDate = mk('input');inpDate.type='month';
+    if(ST.srcInput.materialDate)inpDate.value=ST.srcInput.materialDate;
+    inpDate.addEventListener('change',e=>{ST.srcInput.materialDate=e.target.value;});
+    // V14: Click em qualquer lugar do input abre o picker (não só no ícone)
+    inpDate.addEventListener('mousedown', e=>{
+      // Só intercepta se NÃO clicou no calendário-icon nativo (que já funciona)
+      // showPicker() é a API moderna pra forçar abertura do picker.
+      if(typeof inpDate.showPicker === 'function'){
+        try{ inpDate.showPicker(); e.preventDefault(); }catch(_){}
       }
-    }
-    // Se for fonte de texto sem PDF mas substancial, tenta indexar também
-    if(!newSrc.toc && newSrc.content && newSrc.content.length > 5000){
-      try{
-        const detected = detectTOCHeuristic(newSrc.content);
-        if(detected.length >= 3) newSrc.toc = detected;
-      }catch(e){}
-    }
-    DATA.sources.push(newSrc);
-    // V12 fix: garante que a disciplina da fonte fique ATIVA (senão fonte aparece como "Total:1 Ativas:0")
-    if(newSrc.disciplineId){
-      const disc = DATA.disciplines.find(d=>d.id===newSrc.disciplineId);
-      if(disc && !disc.active){ disc.active = true; }
-    }
-    save();
-    ST.srcInput={name:'',type:'relatorio',contentType:'misto',content:'',disciplineId:ST.srcInput.disciplineId};
-    ST.srcImportState = {mode:'saved',justSavedId:newSrc.id,organizing:false,pdfLoading:false,organizedResult:null,pdfMeta:null};
-    // V14 fix: muda automaticamente pra aba "Minhas fontes" pra mostrar a fonte recém-criada (item 41)
-    // Antes: ficava na aba "Adicionar" e usuário pensava que não tinha sido salva.
-    ST.srcSubview = 'list';
-    // V12: Pré-carrega 1 questão em background pra agilizar primeiro uso
-    if(typeof preloadQuestionForSource === 'function'){
-      preloadQuestionForSource(newSrc).catch(()=>{});
-    }
-    showToast('✓ Fonte adicionada e ativa: '+newSrc.name, 4500);
-    render();
-  });
-  addCard.appendChild(saveBtn);
+    });
+    addCard.appendChild(lblDate);addCard.appendChild(inpDate);
+
+    const lblC = mk('label');lblC.textContent='Conteúdo';lblC.style.marginTop='.75rem';
+    const ta = mk('textarea');ta.rows=8;
+    ta.placeholder='Cole aqui transcrição, relatório, resumo, slides, flashcards ou qualquer texto de estudo...';
+    ta.value=ST.srcInput.content;
+    ta.addEventListener('input',e=>{ST.srcInput.content=e.target.value;if(saveBtn)saveBtn.disabled=!canSave();});
+    addCard.appendChild(lblC);addCard.appendChild(ta);
+
+    saveBtn = mkBtn('Adicionar fonte →','btn btn-p');saveBtn.style.marginTop='.875rem';
+    saveBtn.disabled = !canSave();
+    saveBtn.addEventListener('click',()=>{
+      const newSrc = {
+        id:Date.now()+''+Math.random(),
+        name:ST.srcInput.name.trim(),
+        type:ST.srcInput.type,
+        contentType:ST.srcInput.contentType||'misto',
+        materialDate:ST.srcInput.materialDate||null,
+        disciplineId:ST.srcInput.disciplineId,
+        content:ST.srcInput.content.trim(),
+        createdAt:Date.now()
+      };
+      // Se origem foi PDF, anexa metadados pra mostrar depois
+      if(ST.srcImportState && ST.srcImportState.pdfMeta){
+        newSrc.sourceFormat = 'pdf';
+        newSrc.pdfMeta = {
+          fileName: ST.srcImportState.pdfMeta.fileName,
+          pageCount: ST.srcImportState.pdfMeta.pageCount,
+          fileSize: ST.srcImportState.pdfMeta.fileSize,
+          title: ST.srcImportState.pdfMeta.title || null,
+          author: ST.srcImportState.pdfMeta.author || null
+        };
+        // V5 Fase B: salva TOC se foi detectado
+        if(ST.srcImportState.pdfMeta.toc && ST.srcImportState.pdfMeta.toc.length > 0){
+          newSrc.toc = ST.srcImportState.pdfMeta.toc;
+        }
+      }
+      // Se for fonte de texto sem PDF mas substancial, tenta indexar também
+      if(!newSrc.toc && newSrc.content && newSrc.content.length > 5000){
+        try{
+          const detected = detectTOCHeuristic(newSrc.content);
+          if(detected.length >= 3) newSrc.toc = detected;
+        }catch(e){}
+      }
+      DATA.sources.push(newSrc);
+      // V12 fix: garante que a disciplina da fonte fique ATIVA (senão fonte aparece como "Total:1 Ativas:0")
+      if(newSrc.disciplineId){
+        const disc = DATA.disciplines.find(d=>d.id===newSrc.disciplineId);
+        if(disc && !disc.active){ disc.active = true; }
+      }
+      save();
+      ST.srcInput={name:'',type:'relatorio',contentType:'misto',content:'',disciplineId:ST.srcInput.disciplineId};
+      ST.srcImportState = {mode:'saved',justSavedId:newSrc.id,organizing:false,pdfLoading:false,organizedResult:null,pdfMeta:null};
+      // V14 fix: muda automaticamente pra aba "Minhas fontes" pra mostrar a fonte recém-criada (item 41)
+      // Antes: ficava na aba "Adicionar" e usuário pensava que não tinha sido salva.
+      ST.srcSubview = 'list';
+      // V12: Pré-carrega 1 questão em background pra agilizar primeiro uso
+      if(typeof preloadQuestionForSource === 'function'){
+        preloadQuestionForSource(newSrc).catch(()=>{});
+      }
+      showToast('✓ Fonte adicionada e ativa: '+newSrc.name, 4500);
+      render();
+    });
+    addCard.appendChild(saveBtn);
+  }
+  // Fim do if(!is.pdfLoading && !is.organizing) — durante carregamento, só vê o status
+
   wrap.appendChild(addCard);
 
-  const tip = mk('div','card');tip.style.marginTop='.75rem';
-  tip.innerHTML='<div class="section-label">💡 Como adicionar fontes</div><ul class="txt2" style="padding-left:1.25rem;line-height:1.8;"><li><b>PDF:</b> use o botão "Anexar PDF" — o texto é extraído automaticamente, sem nomes de professores ou links</li><li><b>Texto:</b> copie de qualquer lugar (apostila digital, NotebookLM, sites) e cole no campo de conteúdo</li><li><b>Áudio/Vídeo:</b> abra a transcrição (legenda) → copie → cole como "Áudio" ou "Vídeo"</li><li><b>Flashcards de outras plataformas:</b> exporte como texto → cole como "Flashcards"</li><li><b>Mais a fonte que se parece com a sua realidade de estudo</b>, melhor — a IA usa esse contexto pra fazer questões parecidas com o que cai na sua prova</li></ul>';
-  wrap.appendChild(tip);
+  // V14 redesign: tip "Como adicionar fontes" só aparece quando não está processando
+  if(!is.pdfLoading && !is.organizing){
+    const tip = mk('div','card');tip.style.marginTop='.75rem';
+    tip.innerHTML='<div class="section-label">💡 Como adicionar fontes</div><ul class="txt2" style="padding-left:1.25rem;line-height:1.8;"><li><b>PDF:</b> use o botão "Anexar PDF" — o texto é extraído automaticamente, sem nomes de professores ou links</li><li><b>Texto:</b> copie de qualquer lugar (apostila digital, NotebookLM, sites) e cole no campo de conteúdo</li><li><b>Áudio/Vídeo:</b> abra a transcrição (legenda) → copie → cole como "Áudio" ou "Vídeo"</li><li><b>Flashcards de outras plataformas:</b> exporte como texto → cole como "Flashcards"</li><li><b>Mais a fonte que se parece com a sua realidade de estudo</b>, melhor — a IA usa esse contexto pra fazer questões parecidas com o que cai na sua prova</li></ul>';
+    wrap.appendChild(tip);
+  }
   return wrap;
 }
 
@@ -25881,10 +25989,14 @@ function extractTOCSection(text, entry){
 // the text the user provided, to avoid double-content-injection.
 async function smartOrganizeContent(rawText,opts){
   opts = opts||{};
-  const discNames = DATA.disciplines.map(d=>`${d.id}: ${d.name}`).join(', ');
+  const discNames = DATA.disciplines.map(d=>`${d.name}`).join(', ');
   const contentTypes = Object.entries(CONTENT_TYPES).map(([k,v])=>`${k}: ${v.label}`).join(', ');
-  // V12: Prompt expandido pra TAMBÉM sugerir nome inteligente da fonte e detectar data.
-  // Usuário não precisa pensar nesses metadados — IA infere e ele só confirma/edita.
+  // V14: Lista de tipos de material disponíveis pra IA escolher (livro, apostila, etc)
+  const materialTypes = Object.entries(SRC_TYPES).map(([k,v])=>`${k}: ${v.label}`).join(', ');
+  // V14 redesign: IA agora preenche TODOS os campos do form (item: importação não preenchia)
+  // Antes: só preenchia name + content + às vezes disciplineId + contentType
+  // Agora: também preenche materialType (tipo do material) e detecta disciplina mesmo
+  // se não estiver cadastrada (retorna disciplineName, e o front cria a disciplina nova)
   const sys = `Organize o texto fornecido em formato estruturado para estudo, REMOVENDO RUÍDO de cursinhos e fontes não autorais. Infira metadados úteis.
 
 REGRAS DE LIMPEZA AGRESSIVA — REMOVA SEMPRE:
@@ -25907,17 +26019,19 @@ REGRAS DE ORGANIZAÇÃO:
 REGRAS DE METADADOS (sempre que possível, sem inventar):
 - "suggestedName": Nome curto e descritivo da fonte (ex: "Direito Administrativo - Princípios", "Lei 8.112 - Servidores Públicos"). Máximo 60 chars. Use o conteúdo, NÃO o nome do arquivo. NÃO inclua nome do cursinho ou professor.
 - "detectedDate": Se o texto mencionar data, ano ou período (edição 2024, atualizado em jul/2024, aula de 03/2024), retorne YYYY-MM. Se só ano: YYYY-01. Se nada, null.
-${opts.classify?`
-- "disciplineId": Disciplina mais provável (entre: ${discNames}). null se nenhuma se encaixar.
-- "contentType": Tipo de conteúdo (entre: ${contentTypes}). Padrão: misto.`:''}
+- "disciplineName": Nome da disciplina/matéria principal do conteúdo (ex: "Direito Constitucional", "Português", "Raciocínio Lógico", "Direito Penal"). Use formato de título com Maiúsculas. SEMPRE retorne uma sugestão de nome — mesmo se não existir entre as cadastradas (${discNames || 'nenhuma cadastrada'}), o sistema vai criar.
+- "materialType": Tipo do material (escolha 1 entre: ${materialTypes}). Default: "livro" para textos longos didáticos, "aula" para transcrições de aula, "slides" pra apresentações, "caderno" pra listas de exercícios.
+- "contentType": Tipo de conteúdo (escolha 1 entre: ${contentTypes}). Padrão: "misto".
 
-SAÍDA (JSON puro, sem markdown):
+SAÍDA (JSON puro, sem markdown, sem backticks, sem comentários antes ou depois):
 {
   "organized":"texto completo limpo e estruturado em Markdown",
   "topics":["título seção 1","título seção 2"],
   "suggestedName":"Nome sugerido curto",
   "detectedDate":"YYYY-MM ou null",
-  "classification":${opts.classify?'{"disciplineId":"...","contentType":"..."}':'null'}
+  "disciplineName":"Direito Constitucional",
+  "materialType":"livro",
+  "contentType":"teoria"
 }`;
   const userMsg = `Organize este conteúdo:\n\n${rawText.slice(0,30000)}${rawText.length>30000?'\n\n[...texto truncado para economia]':''}`;
   const body = {
