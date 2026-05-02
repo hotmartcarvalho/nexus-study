@@ -105,9 +105,9 @@ a{color:var(--accent)}
 }
 .quick-fab:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(128,66,250,.5),0 3px 10px rgba(0,0,0,.15)}
 .quick-fab:active{transform:scale(.96)}
-@media(min-width:1100px){
-  body.has-sidebar .quick-fab{display:none}
-}
+/* V14: FAB de acesso rápido fica visível em TODOS os tamanhos de tela
+   (item: "quero aquela tela flutuante de acesso rápido" — Jean reportou que
+   sumiu no desktop). Antes era escondido quando sidebar estava ativa. */
 body.method-focus-mode .quick-fab,
 body.srs-focus-mode .quick-fab{display:none !important}
 
@@ -123,6 +123,7 @@ body.mobile-nav-open .feedback-floating-btn,
 body.mobile-nav-open .shortcuts-floating-btn{display:none !important}
 
 
+/* V14: SIDEBAR LATERAL — desktop only (>=1100px).
    Em telas menores, sidebar fica oculta e a navegação volta pra topbar.
    Layout: sidebar fixa à esquerda (220px), conteúdo principal puxa pra direita.
    V14: Pode ser recolhida (60px) via toggle pra ganhar espaço de leitura. */
@@ -7282,6 +7283,7 @@ const SRC_TYPES = {
   livro:{icon:'📕',label:'Livro',bg:'var(--accent-light)',color:'var(--accent-text)'},
   aula:{icon:'🎓',label:'Aula',bg:'var(--blue-light)',color:'var(--blue-text)'},
   relatorio:{icon:'📄',label:'Relatório / PDF',bg:'var(--blue-light)',color:'var(--blue-text)'},
+  apostila:{icon:'📚',label:'Apostila',bg:'var(--accent-light)',color:'var(--accent-text)'},
   audio:{icon:'🎧',label:'Áudio transcrito',bg:'var(--purple-light)',color:'var(--purple-text)'},
   video:{icon:'🎬',label:'Vídeo transcrito',bg:'var(--amber-light)',color:'var(--amber-text)'},
   slides:{icon:'📊',label:'Slides',bg:'var(--accent-light)',color:'var(--accent-text)'},
@@ -8652,7 +8654,11 @@ function buildContent(){
     const disc = getDiscipline(s.disciplineId);
     const dLbl = disc?` (disciplina: ${disc.name})`:'';
     const tLbl = s.contentType&&s.contentType!=='misto' ? ` [${(CONTENT_TYPES[s.contentType]||{}).label||s.contentType}]` : '';
-    return `[${SRC_TYPES[s.type].label.toUpperCase()}${dLbl}${tLbl}: ${s.name}]\n${s.content}`;
+    // V14 fix: usa fallback se s.type não existir em SRC_TYPES (item: erro fatal em /methods)
+    // Antes: SRC_TYPES[s.type].label estourava com TypeError quando type era undefined ou desconhecido
+    const srcTypeInfo = SRC_TYPES[s.type] || {label: s.type || 'fonte'};
+    const srcLabel = (srcTypeInfo.label || 'fonte').toUpperCase();
+    return `[${srcLabel}${dLbl}${tLbl}: ${s.name}]\n${s.content}`;
   }).join('\n\n---\n\n') + directive + (function(){
     // V12: Anexa contexto de banca, se houver
     const bc = getBancaContext();
@@ -10654,8 +10660,9 @@ function buildAppSidebar(){
   }
 
   // Brand — usa logo oficial do BRAND, com troca automática por tema
+  // V14: Logo aumentado de 28px → 40px (item: logo extremamente pequeno)
   const brand = mk('div','app-sidebar-brand');
-  brand.innerHTML = `<img src="${BRAND.birdLogo}" alt="Gralia" class="brand-bird brand-bird-light" style="width:28px;height:28px;object-fit:contain"><img src="${BRAND.birdLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark" style="width:28px;height:28px;object-fit:contain"><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
+  brand.innerHTML = `<img src="${BRAND.birdLogo}" alt="Gralia" class="brand-bird brand-bird-light"><img src="${BRAND.birdLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark"><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
   brand.style.cursor = 'pointer';
   brand.addEventListener('click',()=>{ST.view='dashboard';render();});
   sb.appendChild(brand);
@@ -13182,7 +13189,7 @@ function buildOnboardingChecklist(){
 
 const TUTORIAL_EXAMPLE_SOURCE = {
   name: '🎓 Exemplo: Princípios Fundamentais da CF/88',
-  type: 'apostila',
+  type: 'livro',
   contentType: 'teoria',
   content: `## Princípios Fundamentais da República — CF/88, Art. 1º a 4º
 
@@ -15617,9 +15624,14 @@ function renderSourceAdd(wrap){
       if(result.text.length > 200){
         ST.srcImportState.organizing = true;
         render();
+        // V14 fix: timeout de 60s pra evitar travar se IA não responder
+        let aiRes = null;
         try{
-          const aiRes = await smartOrganizeContent(result.text, {classify: true});
-          if(aiRes.classification){
+          aiRes = await Promise.race([
+            smartOrganizeContent(result.text, {classify: true}),
+            new Promise((_, rej) => setTimeout(()=>rej(new Error('timeout 60s')), 60000))
+          ]);
+          if(aiRes && aiRes.classification){
             if(aiRes.classification.disciplineId && DATA.disciplines.find(d=>d.id===aiRes.classification.disciplineId)){
               ST.srcInput.disciplineId = aiRes.classification.disciplineId;
             }
@@ -15627,21 +15639,40 @@ function renderSourceAdd(wrap){
               ST.srcInput.contentType = aiRes.classification.contentType;
             }
           }
-          if(aiRes.suggestedName && (!ST.srcInput.name || ST.srcInput.name.trim() === '' || ST.srcInput.name === cleanSourceTitle(file.name))){
+          if(aiRes && aiRes.suggestedName && (!ST.srcInput.name || ST.srcInput.name.trim() === '' || ST.srcInput.name === cleanSourceTitle(file.name))){
             ST.srcInput.name = String(aiRes.suggestedName).slice(0, 80);
           }
-          if(aiRes.detectedDate && !ST.srcInput.materialDate){
+          if(aiRes && aiRes.detectedDate && !ST.srcInput.materialDate){
             const dm = String(aiRes.detectedDate).match(/^(\d{4})-(\d{2})/);
             if(dm) ST.srcInput.materialDate = `${dm[1]}-${dm[2]}`;
           }
-          ST.srcInput.content = aiRes.organized || result.text;
-          ST.srcImportState = {mode:'review', organizing:false, pdfLoading:false, organizedResult: aiRes, pdfMeta: ST.srcImportState.pdfMeta};
+          if(aiRes && aiRes.organized){
+            ST.srcInput.content = aiRes.organized;
+          }
         }catch(aiErr){
           // IA falhou — segue sem organizar
-          ST.srcImportState.organizing = false;
           console.warn('[IA auto-organize falhou]', aiErr);
-          // Não bloqueia — usuário ainda pode salvar manualmente
+          showToast('⚠ Organização automática indisponível, mas você pode salvar a fonte normal.', 5000);
         }
+        // V14 fix: SEMPRE termina o estado organizing e vai pra review (mesmo se IA falhar).
+        // Antes: se a IA falhasse, o flag organizing ficava como false mas o mode permanecia
+        // 'form' e o usuário ficava com a UI parada vendo "Carregando..." pra sempre.
+        ST.srcImportState = {
+          mode: 'review',
+          organizing: false,
+          pdfLoading: false,
+          organizedResult: aiRes,
+          pdfMeta: ST.srcImportState.pdfMeta
+        };
+      } else {
+        // Texto curto — não tenta organizar, vai direto pro review
+        ST.srcImportState = {
+          mode: 'review',
+          organizing: false,
+          pdfLoading: false,
+          organizedResult: null,
+          pdfMeta: ST.srcImportState.pdfMeta
+        };
       }
 
       render();
@@ -25913,8 +25944,27 @@ SAÍDA (JSON puro, sem markdown):
     });
   }
   const txt = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-  const clean = txt.replace(/```json\n?|\n?```/g,'').trim();
-  return JSON.parse(clean);
+  // V14 fix: extração de JSON robusta — se IA retornar texto fora do JSON ou
+  // truncar, tenta extrair só o objeto válido. Antes: JSON.parse direto estourava.
+  let clean = txt.replace(/```json\n?|\n?```/g,'').trim();
+  try {
+    return JSON.parse(clean);
+  } catch (e) {
+    // Tenta extrair o primeiro { ... } balanceado
+    const match = clean.match(/\{[\s\S]*\}/);
+    if(match){
+      try { return JSON.parse(match[0]); }
+      catch(_) {}
+    }
+    // Fallback: retorna o texto cru como "organized" pra não travar
+    return {
+      organized: rawText,
+      topics: [],
+      suggestedName: null,
+      detectedDate: null,
+      classification: null
+    };
+  }
 }
 
 /* ====== MAPA DA MATÉRIA ====== */
@@ -34272,6 +34322,31 @@ function renderAdminDashboard(){
   const refreshBtn = mkBtn('🔄 Atualizar','btn btn-sm');
   refreshBtn.addEventListener('click',()=>render());
   head.appendChild(refreshBtn);
+
+  // V14: Testar conexão com a API — agora SÓ no painel admin (item: mover daqui pra lá)
+  const testApiBtn = mkBtn('🔌 Testar API','btn btn-sm');
+  testApiBtn.style.marginLeft = '6px';
+  testApiBtn.title = 'Faz uma chamada simples pra verificar conexão e modelo configurado';
+  testApiBtn.addEventListener('click', async()=>{
+    testApiBtn.disabled = true;
+    const orig = testApiBtn.textContent;
+    testApiBtn.textContent = 'Testando...';
+    try{
+      const r = await apiGenerate({model:DATA.config.model,max_tokens:20,messages:[{role:'user',content:'oi'}]});
+      if(r.ok){
+        showToast('✓ Conexão OK. Servidor e modelo respondendo.', 5000);
+      } else {
+        const t = await r.text().catch(()=>'');
+        showToast(`✗ Erro ${r.status}: ${t.slice(0,140)}`, 8000);
+      }
+    }catch(e){
+      showToast('✗ Falha: ' + (e.message||e), 6000);
+    }
+    testApiBtn.disabled = false;
+    testApiBtn.textContent = orig;
+  });
+  head.appendChild(testApiBtn);
+
   wrap.appendChild(head);
 
   // === Card: Orçamento de API ===
@@ -40978,35 +41053,8 @@ function renderSettings(){
     hintModel.textContent='⚠ Se aparecer erro ao usar algum método, volte para Haiku 4.5 (padrão).';
     apiCard.appendChild(hintModel);
 
-    // V14: Testar conexão com a API SAI da Conta (item 36) — só admin tem acesso
-    // pra evitar o usuário comum gastar crédito sem necessidade.
-    if(typeof isAdminUser === 'function' && isAdminUser()){
-      const testRow = mk('div','flex');testRow.style.marginTop='1rem';testRow.style.gap='8px';
-      const testBtn = mkBtn('🔌 Testar conexão com a API','btn');
-      const testOut = mk('span','txt2');testOut.style.flex='1';
-      testBtn.addEventListener('click',async()=>{
-        testOut.textContent='';testOut.style.color='var(--text2)';
-        testBtn.disabled=true;testBtn.textContent='Testando...';
-        try{
-          const r = await apiGenerate({model:DATA.config.model,max_tokens:20,messages:[{role:'user',content:'oi'}]});
-          if(r.ok){
-            testOut.textContent='✓ Conexão OK. Servidor e modelo respondendo.';
-            testOut.style.color='var(--accent-text)';
-          } else {
-            const t = await r.text();
-            console.error('Test API error',r.status,t);
-            testOut.textContent=`✗ Erro ${r.status}: ${t.slice(0,150)}`;
-            testOut.style.color='var(--red-text)';
-          }
-        }catch(e){
-          testOut.textContent='✗ Falha de rede: '+(e.message||e);
-          testOut.style.color='var(--red-text)';
-        }
-        testBtn.disabled=false;testBtn.textContent='🔌 Testar conexão com a API';
-      });
-      testRow.appendChild(testBtn);testRow.appendChild(testOut);
-      apiCard.appendChild(testRow);
-    }
+    // V14: Botão "Testar conexão com a API" REMOVIDO da Conta — agora fica APENAS no
+    // Painel admin pra evitar uso por usuário comum.
 
     wrap.appendChild(apiCard);
   }
