@@ -159,6 +159,8 @@ a{color:var(--accent)}
 .ddi-body{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
 .ddi-body b{font-size:13px;font-weight:600;line-height:1.25}
 .ddi-body span{font-size:11.5px;color:var(--text3);line-height:1.4}
+/* V14: Badge contador no menu — destaca itens com ações pendentes */
+.ddi-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin-left:6px;padding:0 5px;background:var(--gralia-purple);color:#fff;border-radius:9px;font-size:10.5px;font-weight:700;line-height:1;letter-spacing:.2px}
 
 /* Mobile hamburger (hidden on desktop) */
 .mobile-hamb{display:none;background:transparent;border:none;font-size:20px;width:34px;height:34px;align-items:center;justify-content:center;color:var(--text);cursor:pointer;padding:0;flex-shrink:0}
@@ -395,6 +397,99 @@ html.dark .countdown-pill.countdown-near{color:#e8c068}
 }
 
 .page{max-width:740px;margin:0 auto;padding:1.75rem 1.25rem}
+/* V14: Em telas grandes, dá mais respiro ao conteúdo central — evita scroll desnecessário.
+   Mantém max-width pra leitura confortável (não mais de 920px), mas centraliza melhor. */
+@media(min-width:1280px){
+  .page{max-width:880px;padding:1.75rem 1.5rem}
+}
+@media(min-width:1500px){
+  .page{max-width:920px}
+}
+
+/* V14: Quick sidebar — barra lateral fixa no canto direito em desktop XL.
+   Aparece apenas em ≥1400px com atalhos rápidos pros métodos mais usados.
+   Não interfere no fluxo principal — fica posicionada ao lado da .page */
+.quick-sidebar{display:none}
+@media(min-width:1400px){
+  .quick-sidebar{
+    display:flex;
+    position:fixed;
+    right:24px;
+    top:80px;
+    width:200px;
+    flex-direction:column;
+    gap:8px;
+    z-index:50;
+    pointer-events:auto;
+  }
+  .qs-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:.875rem 1rem;
+    box-shadow:0 1px 3px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.04);
+  }
+  .qs-card-head{
+    font-size:10.5px;
+    font-weight:700;
+    color:var(--text3);
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    margin-bottom:8px;
+  }
+  .qs-quick-btn{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    width:100%;
+    padding:.5rem .625rem;
+    background:transparent;
+    border:none;
+    border-radius:7px;
+    cursor:pointer;
+    font-family:inherit;
+    font-size:12.5px;
+    color:var(--text);
+    text-align:left;
+    transition:background .12s;
+  }
+  .qs-quick-btn:hover{background:var(--surface2)}
+  .qs-quick-btn .qsi{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+  .qs-quick-btn .qsl{flex:1;font-weight:500}
+  .qs-quick-btn .qsc{font-size:10.5px;color:var(--gralia-purple);font-weight:700;flex-shrink:0}
+  .qs-cmdk{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:.5rem .75rem;
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:8px;
+    cursor:pointer;
+    font-family:inherit;
+    width:100%;
+    font-size:11.5px;
+    color:var(--text2);
+    transition:all .12s;
+  }
+  .qs-cmdk:hover{background:var(--surface3);color:var(--text)}
+  .qs-cmdk kbd{
+    margin-left:auto;
+    padding:1px 5px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:4px;
+    font-size:10px;
+    font-family:ui-monospace,monospace;
+  }
+}
+/* Em telas com largura insuficiente, cabe sidebar mas .page seria empurrada */
+@media(min-width:1400px) and (max-width:1599px){
+  .quick-sidebar{display:none}
+}
+@media(min-width:1600px){
+  .quick-sidebar{display:flex}
+}
 
 /* Map merged topic tag — aparece em tópicos deduplicados */
 .map-merged-tag{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 6px;border-radius:999px;background:var(--purple-light);color:var(--purple-text);border:1px solid var(--purple);margin-left:6px;cursor:help;letter-spacing:.3px;line-height:1}
@@ -2283,6 +2378,285 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 .rating-btn:active{transform:translateY(0)}
 .rating-btn b{display:block;font-size:14px;margin-bottom:3px}
 .rating-hint{font-size:10.5px;color:var(--text3);margin-top:2px;font-weight:500}
+
+/* === V14: Modo Foco SRS — visual premium fullscreen pra revisão === */
+/* Usuário entra clicando em "🎯 Modo Foco" em SRS Study. Cobre toda a tela
+   com visual minimalista, card grande, sem distração. */
+body.srs-focus-mode{overflow:hidden}
+body.srs-focus-mode .topbar,
+body.srs-focus-mode .page > .breadcrumb-row,
+body.srs-focus-mode .pomodoro-fab,
+body.srs-focus-mode .mobile-hamb{display:none !important}
+
+.srs-focus-overlay{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  background:linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+  display:flex;
+  flex-direction:column;
+  padding:2rem 1.5rem;
+  animation:srsFocusFadeIn .25s ease;
+}
+@keyframes srsFocusFadeIn{from{opacity:0}to{opacity:1}}
+
+.srs-focus-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  max-width:920px;
+  width:100%;
+  margin:0 auto 1rem;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.srs-focus-progress{
+  flex:1;
+  min-width:200px;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+.srs-fp-label{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+.srs-fp-bar{
+  height:6px;
+  background:var(--surface3);
+  border-radius:3px;
+  overflow:hidden;
+  position:relative;
+}
+.srs-fp-fill{
+  height:100%;
+  background:linear-gradient(90deg, var(--gralia-purple), var(--accent));
+  border-radius:3px;
+  transition:width .3s ease;
+}
+.srs-fp-stats{
+  display:flex;
+  gap:14px;
+  font-size:12px;
+  color:var(--text2);
+  font-weight:500;
+}
+.srs-fp-stats b{color:var(--text);font-weight:700}
+
+.srs-focus-exit{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:.5rem .875rem;
+  font-size:12px;
+  font-weight:600;
+  color:var(--text2);
+  cursor:pointer;
+  font-family:inherit;
+  transition:all .15s;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.srs-focus-exit:hover{
+  background:var(--surface2);
+  color:var(--text);
+}
+
+/* O card central — grande, premium */
+.srs-focus-stage{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  max-width:760px;
+  width:100%;
+  margin:0 auto;
+  position:relative;
+}
+.srs-focus-meta{
+  display:flex;
+  gap:8px;
+  margin-bottom:1rem;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+.srs-focus-meta .badge,
+.srs-focus-meta .disc-tag{font-size:11.5px;padding:4px 10px}
+
+.srs-focus-card{
+  width:100%;
+  min-height:340px;
+  max-height:60vh;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:22px;
+  padding:3rem 2.5rem;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  box-shadow:
+    0 1px 3px rgba(0,0,0,.04),
+    0 8px 24px rgba(0,0,0,.06),
+    0 24px 48px rgba(0,0,0,.04);
+  position:relative;
+  overflow-y:auto;
+  transition:transform .35s cubic-bezier(.4,.0,.2,1), box-shadow .25s;
+  cursor:pointer;
+}
+.srs-focus-card:hover{
+  box-shadow:
+    0 2px 6px rgba(0,0,0,.06),
+    0 12px 32px rgba(0,0,0,.08),
+    0 32px 64px rgba(0,0,0,.06);
+}
+.srs-focus-card.flipped{
+  transform:rotateX(0);
+  background:linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%);
+}
+.srs-focus-front,
+.srs-focus-back{
+  font-size:20px;
+  line-height:1.7;
+  color:var(--text);
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+.srs-focus-front{font-weight:600}
+.srs-focus-back{font-weight:400;color:var(--text)}
+.srs-focus-back strong{color:var(--text);font-weight:700}
+
+@media (max-width:640px){
+  .srs-focus-card{
+    padding:2rem 1.5rem;
+    min-height:280px;
+    border-radius:16px;
+  }
+  .srs-focus-front,.srs-focus-back{font-size:16.5px}
+}
+
+.srs-focus-divider{
+  border-top:1px dashed var(--border);
+  margin:1.5rem 0;
+  position:relative;
+}
+.srs-focus-divider::after{
+  content:'•••';
+  position:absolute;
+  top:-12px;
+  left:50%;
+  transform:translateX(-50%);
+  background:var(--surface);
+  padding:0 12px;
+  color:var(--text3);
+  letter-spacing:3px;
+  font-size:10px;
+}
+
+/* CTA "Revelar resposta" — botão grande no centro */
+.srs-focus-reveal{
+  margin-top:1.5rem;
+  padding:.875rem 2rem;
+  background:linear-gradient(135deg, var(--gralia-purple), var(--accent));
+  color:#fff;
+  border:none;
+  border-radius:12px;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  font-family:inherit;
+  letter-spacing:.2px;
+  box-shadow:0 4px 12px rgba(128,66,250,.25);
+  transition:all .15s;
+}
+.srs-focus-reveal:hover{
+  transform:translateY(-1px);
+  box-shadow:0 6px 18px rgba(128,66,250,.32);
+}
+.srs-focus-reveal:active{transform:translateY(0)}
+
+/* Botões de rating — maiores, com cor */
+.srs-focus-rating{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  width:100%;
+  max-width:760px;
+  margin:1.5rem auto 0;
+}
+@media (max-width:640px){
+  .srs-focus-rating{grid-template-columns:repeat(2,1fr)}
+}
+.srs-focus-rate-btn{
+  padding:1rem .5rem;
+  border-radius:14px;
+  border:1.5px solid var(--border);
+  background:var(--surface);
+  font-family:inherit;
+  cursor:pointer;
+  transition:all .15s;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+}
+.srs-focus-rate-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 6px 16px rgba(0,0,0,.06);
+}
+.srs-focus-rate-btn b{font-size:14.5px;font-weight:700;letter-spacing:-.2px}
+.srs-focus-rate-btn small{font-size:10.5px;color:var(--text3);font-weight:500}
+.srs-focus-rate-btn .key{
+  display:inline-block;
+  margin-top:4px;
+  padding:1px 7px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:5px;
+  font-family:ui-monospace,monospace;
+  font-size:10px;
+  color:var(--text3);
+  font-weight:600;
+}
+.srs-focus-rate-btn.r-again{color:var(--red-text);border-color:rgba(232,76,76,.25)}
+.srs-focus-rate-btn.r-again:hover{background:var(--red-light)}
+.srs-focus-rate-btn.r-hard{color:var(--amber-text);border-color:rgba(245,158,11,.25)}
+.srs-focus-rate-btn.r-hard:hover{background:rgba(245,158,11,.08)}
+.srs-focus-rate-btn.r-good{color:var(--text);border-color:rgba(0,0,0,.15)}
+.srs-focus-rate-btn.r-good:hover{background:var(--surface2)}
+.srs-focus-rate-btn.r-easy{color:var(--accent-text);border-color:rgba(73,197,137,.25)}
+.srs-focus-rate-btn.r-easy:hover{background:var(--accent-light)}
+
+/* Footer — atalhos visíveis */
+.srs-focus-footer{
+  text-align:center;
+  font-size:11.5px;
+  color:var(--text3);
+  margin-top:1rem;
+  display:flex;
+  gap:14px;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+.srs-focus-footer kbd{
+  font-family:ui-monospace,monospace;
+  font-size:10.5px;
+  padding:1px 6px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:4px;
+  color:var(--text2);
+}
+
+/* Empty state premium */
+.srs-focus-done{
+  text-align:center;
+  max-width:480px;
+  padding:2rem;
+}
+.srs-focus-done-icon{font-size:64px;margin-bottom:1rem}
+.srs-focus-done h2{margin:0 0 .5rem;font-size:24px;font-weight:700;letter-spacing:-.5px}
+.srs-focus-done p{margin:0 0 1.5rem;font-size:14px;color:var(--text2);line-height:1.65}
+
+/* === fim SRS Focus Mode === */
 
 .pomo-main{text-align:center;padding:2rem 1rem}
 .pomo-phase{font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin-bottom:.75rem}
@@ -4697,6 +5071,16 @@ async function searchPublicResources(filters){
       const setIds = new Set(allowedOwnerIds);
       items = items.filter(item => setIds.has(item.owner_id));
     }
+    // V14: Filtro client-side por tipo de conteúdo (teoria, lei seca, etc).
+    // O contentType vem dentro de payload.contentType pra fontes, ou metadata.
+    // Como RPC não retorna esses campos, fazemos um pre-fetch quando filtro está ativo.
+    // Por enquanto: filtramos pelo campo content_type se existir no item retornado.
+    if(filters.contentType){
+      items = items.filter(item => {
+        const ct = item.content_type || (item.metadata && item.metadata.contentType);
+        return ct === filters.contentType;
+      });
+    }
     return {items};
   }catch(err){
     return {error: err.message || 'Erro', items: []};
@@ -7024,6 +7408,8 @@ function defaultData(){
     // Config inicial vem VAZIO — usuário preenche em "Sobre o concurso" no Painel
     // V12: corrige bug onde toda nova conta vinha com dados específicos do dev
     config:{apiKey:'',model:'claude-haiku-4-5-20251001',notifications:true,examName:'',examDate:null,userName:'',examBank:'',examRole:''},
+    // V14: Última visita — usado pra mensagem de "Bem-vindo de volta" após ausência
+    lastVisitAt: Date.now(),
     disciplines:[],
     sources:[],
     session:{total:0,correct:0,dna:{0:0,1:0,2:0,3:0,4:0,5:0},
@@ -8613,12 +8999,30 @@ function showCreditsBreakdownPopover(anchor){
     <div style="margin-top:8px;font-size:11px;color:var(--text3);line-height:1.5">
       Cada ação mostra o custo exato <b>antes</b> de rodar. Você nunca é cobrado por surpresa.
     </div>
+    ${remaining < 10 ? `<div style="margin-top:12px;padding:.75rem .875rem;background:linear-gradient(135deg,rgba(128,66,250,.08),rgba(128,66,250,.02));border:1px solid rgba(128,66,250,.30);border-radius:9px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:22px;line-height:1">${remaining === 0 ? '⚠️' : '⚡'}</span>
+      <div style="flex:1;font-size:12px;line-height:1.5">
+        <b style="color:var(--gralia-purple)">${remaining === 0 ? 'Créditos esgotados' : 'Créditos quase no fim'}</b><br>
+        <span style="color:var(--text2)">Faça upgrade pra continuar gerando</span>
+      </div>
+      <button class="cbp-upgrade" style="background:var(--gralia-purple);color:#fff;border:none;border-radius:7px;padding:.5rem .875rem;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Ver planos</button>
+    </div>` : ''}
   `;
 
   document.body.appendChild(pop);
 
   // Close button
   pop.querySelector('.cbp-close').addEventListener('click',()=>pop.remove());
+
+  // V14: Botão "Ver planos" se aparecer
+  const upgradeBtn = pop.querySelector('.cbp-upgrade');
+  if(upgradeBtn){
+    upgradeBtn.addEventListener('click',()=>{
+      pop.remove();
+      ST.view = 'upgrade';
+      render();
+    });
+  }
 
   // Click-outside fecha
   setTimeout(()=>{
@@ -9481,6 +9885,61 @@ function showConfirmModal(config){
   showModal(m);
 }
 
+// V14: Sidebar lateral pra desktop XL — atalhos rápidos pros métodos mais usados.
+// Aparece apenas em telas ≥1600px (CSS controla visibilidade). Em telas menores fica none.
+function buildQuickSidebar(){
+  const wrap = mk('aside','quick-sidebar');
+
+  // Card de atalhos rápidos
+  const quickCard = mk('div','qs-card');
+  const quickHead = mk('div','qs-card-head');
+  quickHead.textContent = '⚡ Acesso rápido';
+  quickCard.appendChild(quickHead);
+
+  // Calcula contadores pra mostrar badges
+  const dueSrs = (DATA.srs.cards||[]).filter(c=>(c.nextReview||0)<=Date.now() && c.active!==false).length;
+  const errorsNoCard = (DATA.errors||[]).filter(e=>!e.hasCard).length;
+
+  const quickActions = [
+    {view:'practice', icon:'📝', label:'Praticar', count:null},
+    {view:'calibration', icon:'🎯', label:'Calibrar', count:null},
+    {view:'srs', icon:'🎴', label:'Flashcards', count:dueSrs > 0 ? dueSrs : null},
+    {view:'history', icon:'📜', label:'Erros', count:errorsNoCard > 0 ? errorsNoCard : null},
+    {view:'simulado', icon:'⏱', label:'Simulado', count:null},
+    {view:'mapa', icon:'🗺', label:'Mapa', count:null}
+  ];
+
+  quickActions.forEach(a=>{
+    const btn = mk('button','qs-quick-btn');
+    btn.type = 'button';
+    if(ST.view === a.view) btn.style.background = 'var(--accent-light)';
+    btn.innerHTML = `<span class="qsi">${a.icon}</span><span class="qsl">${escapeHTML(a.label)}</span>${a.count ? `<span class="qsc">${a.count}</span>` : ''}`;
+    btn.addEventListener('click', ()=>{
+      clearNavStack();
+      ST.view = a.view;
+      render();
+    });
+    quickCard.appendChild(btn);
+  });
+
+  wrap.appendChild(quickCard);
+
+  // Card Cmd+K
+  const cmdkCard = mk('div','qs-card');
+  cmdkCard.style.padding = '0';
+  cmdkCard.style.background = 'transparent';
+  cmdkCard.style.border = 'none';
+  cmdkCard.style.boxShadow = 'none';
+  const cmdkBtn = mk('button','qs-cmdk');
+  cmdkBtn.type = 'button';
+  cmdkBtn.innerHTML = `<span style="font-size:13px">🔍</span><span>Buscar tudo</span><kbd>Ctrl K</kbd>`;
+  cmdkBtn.addEventListener('click', ()=>showCommandPalette());
+  cmdkCard.appendChild(cmdkBtn);
+  wrap.appendChild(cmdkCard);
+
+  return wrap;
+}
+
 /* RENDER */
 const APP = $('app');
 function render(){
@@ -9541,7 +10000,9 @@ function render(){
     editals:renderEditals,editalView:renderEditalView,
     admin:renderAdminDashboard, eyeCare:renderEyeCare,
     forest:renderForest,
-    plans:renderPlans, cancelSubscription:renderCancelSubscription
+    plans:renderPlans, cancelSubscription:renderCancelSubscription,
+    legalUpdates:renderLegalUpdates,
+    upgrade:renderUpgrade
   };
   // Contextual breadcrumb — shows where user came from
   if(ST.navStack.length>0){
@@ -9577,6 +10038,11 @@ function render(){
     },50);
   }
   APP.appendChild(pg);
+
+  // V14: Quick sidebar — só aparece em telas grandes, só pra logged-in, só fora de modo foco
+  if(isAuthed() && !isFocusMode() && !ST.srsFocusActive){
+    try{ APP.appendChild(buildQuickSidebar()); }catch(e){ console.warn('[quick sidebar]', e); }
+  }
 
   // V12: Botão flutuante "Modo foco" — agora maior, mais visível, com label no desktop
   // (item 18: ícone de meditação 🧘 era pouco intuitivo, ficava escondido)
@@ -11384,6 +11850,7 @@ function renderTopbar(){
     {type:'group',key:'community',label:'Comunidade',icon:'🌐',children:[
       {view:'discover',label:'Descobrir',icon:'🔍',desc:'Materiais públicos da comunidade'},
       {view:'feed',label:'Da rede',icon:'📡',desc:'Atividade de quem você segue'},
+      {view:'legalUpdates',label:'Atualizações',icon:'⚖️',desc:'Novas leis, súmulas e jurisprudência relevantes'},
       {view:'forest',label:'Pinhal de Araucárias',icon:'🌲',desc:'Acompanhe seu progresso visualmente'}
     ]},
     {type:'tab',view:'settings',label:'Conta',icon:'👤'}
@@ -11420,7 +11887,16 @@ function renderTopbar(){
       const dd = mk('div','tab-dd');
       entry.children.forEach(child=>{
         const item = mk('button','tab-dd-item'+(ST.view===child.view?' on':''));
-        item.innerHTML = `<span class="ddi-icon">${child.icon}</span><span class="ddi-body"><b>${child.label}</b><span>${child.desc}</span></span>`;
+        // V14: Badge contador pra views com ações pendentes
+        let badge = '';
+        if(child.view === 'srs'){
+          const due = (DATA.srs.cards||[]).filter(c=>(c.nextReview||0)<=Date.now() && c.active!==false).length;
+          if(due > 0) badge = `<span class="ddi-badge">${due}</span>`;
+        } else if(child.view === 'history'){
+          const recentNoCard = (DATA.errors||[]).filter(e=>!e.hasCard && (Date.now()-(e.date||0)) < 24*3600*1000).length;
+          if(recentNoCard > 0) badge = `<span class="ddi-badge">${recentNoCard}</span>`;
+        }
+        item.innerHTML = `<span class="ddi-icon">${child.icon}</span><span class="ddi-body"><b>${child.label}${badge}</b><span>${child.desc}</span></span>`;
         item.addEventListener('click',()=>{
           clearNavStack();
           ST.view=child.view;
@@ -11748,6 +12224,183 @@ function buildOnboardingChecklist(){
 }
 
 
+// V14: Tutorial guiado pós-cadastro — oferece uma fonte de exemplo pra o usuário
+// experimentar todos os métodos sem precisar carregar conteúdo dele.
+// Aparece UMA VEZ pra usuários novos (controlado por DATA.tutorialOffered).
+
+const TUTORIAL_EXAMPLE_SOURCE = {
+  name: '🎓 Exemplo: Princípios Fundamentais da CF/88',
+  type: 'apostila',
+  contentType: 'teoria',
+  content: `## Princípios Fundamentais da República — CF/88, Art. 1º a 4º
+
+A Constituição Federal de 1988 estabelece, logo nos primeiros artigos, os princípios fundamentais que orientam toda a ordem jurídica brasileira. Esses princípios são divididos em quatro grandes blocos: forma de Estado e governo, fundamentos, separação de poderes e princípios das relações internacionais.
+
+## 1. Fundamentos da República (Art. 1º, incisos I a V)
+
+A República Federativa do Brasil é constituída em Estado Democrático de Direito e tem como fundamentos: a soberania, a cidadania, a dignidade da pessoa humana, os valores sociais do trabalho e da livre iniciativa, e o pluralismo político.
+
+A doutrina costuma usar o mnemônico SO-CI-DI-VA-PLU para memorizar os fundamentos: Soberania, Cidadania, Dignidade, Valores sociais, Pluralismo.
+
+A dignidade da pessoa humana é o fundamento mais invocado em decisões do STF, sendo considerada o "valor-fonte" do ordenamento jurídico. Os valores sociais do trabalho e da livre iniciativa formam, juntos, o fundamento V — não são dois fundamentos separados, ainda que essa seja uma armadilha comum em provas.
+
+## 2. Soberania popular (Art. 1º, parágrafo único)
+
+Todo o poder emana do povo, que o exerce por meio de representantes eleitos ou diretamente. O exercício direto do poder se dá por três instrumentos previstos no Art. 14: plebiscito, referendo e iniciativa popular.
+
+Atenção: voto é forma de exercício INDIRETO do poder, pois elege representantes. Confundir voto com forma direta é erro frequente.
+
+## 3. Separação dos Poderes (Art. 2º)
+
+São Poderes da União, independentes e harmônicos entre si: o Legislativo, o Executivo e o Judiciário. A independência é absoluta, mas a harmonia exige cooperação institucional. Esse equilíbrio se manifesta no sistema de freios e contrapesos (checks and balances).
+
+A separação de poderes é cláusula pétrea (Art. 60, §4º, III) — não pode ser abolida por emenda constitucional.
+
+## 4. Objetivos Fundamentais (Art. 3º)
+
+Constituem objetivos fundamentais da República: construir uma sociedade livre, justa e solidária; garantir o desenvolvimento nacional; erradicar a pobreza e a marginalização e reduzir as desigualdades sociais e regionais; promover o bem de todos sem preconceitos.
+
+Mnemônico: CONSTRUIR-GARANTIR-ERRADICAR-PROMOVER (CO-GA-ER-PRO).
+
+Importante distinguir: o Art. 1º traz FUNDAMENTOS (o que somos), o Art. 3º traz OBJETIVOS (o que queremos alcançar). Banca pode trocar os termos como armadilha.
+
+## 5. Princípios das Relações Internacionais (Art. 4º)
+
+São dez princípios: independência nacional; prevalência dos direitos humanos; autodeterminação dos povos; não-intervenção; igualdade entre os Estados; defesa da paz; solução pacífica dos conflitos; repúdio ao terrorismo e ao racismo; cooperação entre os povos para o progresso da humanidade; concessão de asilo político.
+
+O parágrafo único do Art. 4º estabelece a busca pela integração econômica, política, social e cultural dos povos da América Latina, visando à formação de uma comunidade latino-americana de nações.
+
+## Pegadinhas comuns em prova
+
+- "A dignidade da pessoa humana é objetivo da República": ERRADO. É fundamento (Art. 1º), não objetivo (Art. 3º).
+- "São quatro Poderes": ERRADO. São três (Legislativo, Executivo, Judiciário). MP não é Poder.
+- "Plebiscito vem depois da decisão": ERRADO. Plebiscito é ANTES (consulta prévia); referendo é DEPOIS (ratificação).
+- "Princípios das relações internacionais permitem intervenção": ERRADO. Não-intervenção é princípio expresso.`
+};
+
+function loadExampleSourceForTutorial(){
+  // Verifica disciplina existente ou cria
+  let disc = (DATA.disciplines||[]).find(d => /constituc/i.test(d.name));
+  if(!disc){
+    disc = {
+      id: 'disc_' + Date.now(),
+      name: 'Direito Constitucional',
+      color: '#5b9bd5',
+      active: true,
+      createdAt: Date.now()
+    };
+    DATA.disciplines.push(disc);
+  } else if(!disc.active){
+    disc.active = true;
+  }
+
+  // Cria a fonte
+  const src = {
+    id: 'src_example_' + Date.now(),
+    name: TUTORIAL_EXAMPLE_SOURCE.name,
+    type: TUTORIAL_EXAMPLE_SOURCE.type,
+    contentType: TUTORIAL_EXAMPLE_SOURCE.contentType,
+    content: TUTORIAL_EXAMPLE_SOURCE.content,
+    disciplineId: disc.id,
+    active: true,
+    createdAt: Date.now(),
+    isExample: true
+  };
+  DATA.sources = DATA.sources || [];
+  DATA.sources.push(src);
+  save();
+  return src;
+}
+
+function showTutorialModal(){
+  if(DATA.tutorialOffered) return;
+
+  const m = mk('div');
+  m.style.cssText = 'max-width:540px;width:100%;padding:.5rem';
+
+  const head = mk('div');
+  head.style.cssText = 'text-align:center;margin-bottom:1.25rem';
+  const ico = mk('div');
+  ico.style.cssText = 'font-size:48px;margin-bottom:.75rem';
+  ico.textContent = '🎓';
+  head.appendChild(ico);
+  const h = mk('h2');
+  h.style.cssText = 'margin:0 0 .5rem;font-size:22px;font-weight:700;letter-spacing:-.4px';
+  h.textContent = 'Quer fazer um tour rápido?';
+  head.appendChild(h);
+  const sub = mk('p');
+  sub.style.cssText = 'margin:0;font-size:14px;color:var(--text2);line-height:1.65';
+  sub.innerHTML = 'A gente pode carregar uma <b>fonte exemplo</b> (Princípios Fundamentais da CF/88) pra você testar todos os métodos antes de carregar seu próprio material.';
+  head.appendChild(sub);
+  m.appendChild(head);
+
+  // Highlights do que o tutorial faz
+  const points = mk('div');
+  points.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem';
+  [
+    ['📚', 'Carrega 1 fonte exemplo (Direito Constitucional)'],
+    ['📝', 'Você testa Calibração, Prática e Simulado com ela'],
+    ['🎴', 'Vê o sistema de flashcards funcionando'],
+    ['🗑', 'Pode apagar a fonte depois com 1 clique']
+  ].forEach(p=>{
+    const row = mk('div');
+    row.style.cssText='display:flex;gap:10px;align-items:center;font-size:13px;color:var(--text);padding:5px 0';
+    row.innerHTML = `<span style="font-size:18px;flex-shrink:0">${p[0]}</span><span>${escapeHTML(p[1])}</span>`;
+    points.appendChild(row);
+  });
+  m.appendChild(points);
+
+  // CTAs
+  const actions = mk('div');
+  actions.style.cssText = 'display:flex;flex-direction:column;gap:8px';
+
+  const yesBtn = mk('button','btn btn-p');
+  yesBtn.style.cssText = 'padding:.875rem 1.25rem;font-size:14px;font-weight:700';
+  yesBtn.innerHTML = '✨ Sim, carregar fonte exemplo';
+  yesBtn.addEventListener('click', ()=>{
+    const src = loadExampleSourceForTutorial();
+    DATA.tutorialOffered = true;
+    save();
+    closeModal();
+    showToast('✓ Fonte exemplo carregada! Vamos pra Calibração?', 6000);
+    setTimeout(()=>{
+      ST.view = 'calibration';
+      render();
+    }, 800);
+  });
+  actions.appendChild(yesBtn);
+
+  const noBtn = mk('button','btn');
+  noBtn.style.cssText = 'padding:.625rem 1.25rem;font-size:13px;color:var(--text2)';
+  noBtn.innerHTML = 'Não, vou carregar minhas próprias fontes';
+  noBtn.addEventListener('click', ()=>{
+    DATA.tutorialOffered = true;
+    save();
+    closeModal();
+    setTimeout(()=>{
+      ST.view = 'sources';
+      ST.srcSubview = 'add';
+      render();
+      showToast('Pra começar, adicione uma fonte (PDF ou texto colado).', 6000);
+    }, 200);
+  });
+  actions.appendChild(noBtn);
+
+  const skipLink = mk('button');
+  skipLink.style.cssText = 'background:transparent;border:none;color:var(--text3);font-size:11.5px;cursor:pointer;padding:.5rem;margin-top:.25rem';
+  skipLink.textContent = 'Decidir depois (some este aviso)';
+  skipLink.addEventListener('click', ()=>{
+    DATA.tutorialOffered = true;
+    save();
+    closeModal();
+  });
+  actions.appendChild(skipLink);
+
+  m.appendChild(actions);
+
+  showModal(m);
+}
+
 function renderDashboard(){
   const wrap = mk('div','fade');
   const s = DATA.session;
@@ -12024,6 +12677,12 @@ function renderDashboard(){
   // ===== INSIGHT (só aparece com atividade mínima) =====
   const insightCard = buildInsightCard();
   if(insightCard) wrap.appendChild(insightCard);
+
+  // V14: Dica do dia — rotativa, baseada em dia do ano (mesma p/ todos no mesmo dia)
+  // Educa o usuário sobre técnicas de estudo cientificamente comprovadas.
+  // Pode ser dispensada (DATA.tipsDismissed = true).
+  const tipCard = buildTipOfTheDayCard();
+  if(tipCard) wrap.appendChild(tipCard);
 
   // ===== USAGE — admin only =====
   if(isAdminUser()){
@@ -13097,6 +13756,14 @@ function renderSourceList(wrap){
     const meta = mk('div','src-meta');
     const mt1 = mk('span');mt1.textContent=`${cfg.label} · ${(src.content.length/1000).toFixed(1)}k chars`;
     meta.appendChild(mt1);
+    // V14: Badge "Exemplo" pra fontes de tutorial
+    if(src.isExample){
+      const exTag = mk('span','src-meta-tag');
+      exTag.style.cssText='background:rgba(245,158,11,.10);color:var(--amber-text);border:1px solid rgba(245,158,11,.25)';
+      exTag.textContent = '🎓 Exemplo';
+      exTag.title = 'Fonte de tutorial — apague quando carregar a sua';
+      meta.appendChild(exTag);
+    }
     // Badge: origem PDF (V5)
     if(src.sourceFormat === 'pdf' && src.pdfMeta){
       const pdfTag = mk('span','src-meta-tag src-meta-pdf');
@@ -13470,12 +14137,12 @@ function renderSourceAdd(wrap){
   helpBox.innerHTML = `
     <div style="font-weight:700;margin-bottom:6px;color:var(--text)">3 jeitos de adicionar (escolha qualquer um):</div>
     <div style="display:flex;flex-direction:column;gap:5px;color:var(--text2)">
-      <div>📄 <b>Subir PDF</b> — apostila, lei, manual, edital. A IA extrai e estrutura</div>
+      <div>📄 <b>Subir PDF</b> — apostila, lei, manual. <b style="color:var(--accent-text)">A IA já limpa, estrutura e classifica automaticamente</b></div>
       <div>📚 <b>Importar da comunidade</b> — fontes públicas que outros usuários publicaram</div>
-      <div>📝 <b>Colar texto</b> — copie de qualquer fonte (sites, anotações, livros)</div>
+      <div>📝 <b>Colar texto</b> — depois clique em "Organizar com IA" se quiser limpar</div>
     </div>
     <div style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--border);font-size:11.5px;color:var(--text3)">
-      <b>Dica:</b> A IA organiza, classifica e detecta data automaticamente — você só revisa.
+      <b>Dica:</b> A IA remove ruído (cabeçalhos, marcas d'água, "professor X"), detecta data e classifica disciplina automaticamente.
     </div>`;
   addCard.appendChild(helpBox);
 
@@ -13559,6 +14226,41 @@ function renderSourceAdd(wrap){
       ST.srcImportState.pdfProgress = null;
       const tocMsg = ST.srcImportState.pdfMeta.toc ? ` · ${ST.srcImportState.pdfMeta.toc.length} seções detectadas` : '';
       showToast('✓ PDF processado · ' + result.pageCount + ' páginas · ' + result.text.length.toLocaleString('pt-BR') + ' caracteres' + tocMsg);
+
+      // V14: AUTOMATICAMENTE roda IA pra organizar conteúdo após PDF.
+      // Antes: usuário tinha que clicar "Organizar com IA" depois.
+      // Agora: já organiza direto pra dar agilidade. Usuário só revisa o resultado.
+      // Custo: free_action 'organize_import' — não consome créditos.
+      if(result.text.length > 200){
+        ST.srcImportState.organizing = true;
+        render();
+        try{
+          const aiRes = await smartOrganizeContent(result.text, {classify: true});
+          if(aiRes.classification){
+            if(aiRes.classification.disciplineId && DATA.disciplines.find(d=>d.id===aiRes.classification.disciplineId)){
+              ST.srcInput.disciplineId = aiRes.classification.disciplineId;
+            }
+            if(aiRes.classification.contentType && CONTENT_TYPES[aiRes.classification.contentType]){
+              ST.srcInput.contentType = aiRes.classification.contentType;
+            }
+          }
+          if(aiRes.suggestedName && (!ST.srcInput.name || ST.srcInput.name.trim() === '' || ST.srcInput.name === cleanSourceTitle(file.name))){
+            ST.srcInput.name = String(aiRes.suggestedName).slice(0, 80);
+          }
+          if(aiRes.detectedDate && !ST.srcInput.materialDate){
+            const dm = String(aiRes.detectedDate).match(/^(\d{4})-(\d{2})/);
+            if(dm) ST.srcInput.materialDate = `${dm[1]}-${dm[2]}`;
+          }
+          ST.srcInput.content = aiRes.organized || result.text;
+          ST.srcImportState = {mode:'review', organizing:false, pdfLoading:false, organizedResult: aiRes, pdfMeta: ST.srcImportState.pdfMeta};
+        }catch(aiErr){
+          // IA falhou — segue sem organizar
+          ST.srcImportState.organizing = false;
+          console.warn('[IA auto-organize falhou]', aiErr);
+          // Não bloqueia — usuário ainda pode salvar manualmente
+        }
+      }
+
       render();
     }catch(err){
       ST.srcImportState.pdfLoading = false;
@@ -13655,16 +14357,19 @@ function renderSourceAdd(wrap){
   if(is.pdfLoading) pdfLbl.classList.add('loading');
   quickRow.appendChild(pdfLbl);
 
-  // Smart organize (enabled only when there's content)
+  // V14: Botão "Organizar com IA" agora aparece SÓ se o usuário já tem texto colado manualmente.
+  // Pra PDF, IA roda automaticamente após extração — não precisa de clique.
+  // Antes: aparecia sempre, e usuário precisava clicar manualmente. Agora: só pra texto colado.
   const hasContent = (ST.srcInput.content||'').trim().length>100;
-  const smartBtn = mk('button','smart-import-btn'+(hasContent?'':' disabled'));
-  smartBtn.innerHTML = '<span class="sib-icon">📚</span><span class="sib-body"><b>Organizar com IA</b><span>Estrutura em tópicos + classifica disciplina</span></span>';
-  if(hasContent){
+  const hasPdfLoaded = ST.srcImportState.pdfMeta && ST.srcImportState.pdfMeta.fileName;
+  // Só mostra botão se houver texto E NÃO foi PDF (PDF organiza sozinho)
+  if(hasContent && !hasPdfLoaded){
+    const smartBtn = mk('button','smart-import-btn');
+    smartBtn.innerHTML = '<span class="sib-icon">✨</span><span class="sib-body"><b>Organizar texto colado com IA</b><span>Limpa, estrutura e classifica em 1 clique (grátis)</span></span>';
     smartBtn.addEventListener('click',async()=>{
       ST.srcImportState.organizing = true;render();
       try{
         const res = await smartOrganizeContent(ST.srcInput.content,{classify:true});
-        // Apply classification if provided
         if(res.classification){
           if(res.classification.disciplineId&&DATA.disciplines.find(d=>d.id===res.classification.disciplineId)){
             ST.srcInput.disciplineId = res.classification.disciplineId;
@@ -13673,19 +14378,15 @@ function renderSourceAdd(wrap){
             ST.srcInput.contentType = res.classification.contentType;
           }
         }
-        // V12: Aplica nome sugerido se o usuário não preencheu nada
         if(res.suggestedName && (!ST.srcInput.name || ST.srcInput.name.trim() === '')){
           ST.srcInput.name = String(res.suggestedName).slice(0,80);
         }
-        // V12: Aplica data detectada se não foi preenchida manualmente
         if(res.detectedDate && !ST.srcInput.materialDate){
-          // Aceita YYYY-MM ou YYYY-MM-DD
           const dateMatch = String(res.detectedDate).match(/^(\d{4})-(\d{2})/);
           if(dateMatch){
             ST.srcInput.materialDate = `${dateMatch[1]}-${dateMatch[2]}`;
           }
         }
-        // Update content with organized version
         ST.srcInput.content = res.organized||ST.srcInput.content;
         ST.srcImportState = {mode:'review',organizing:false,pdfLoading:false,organizedResult:res};
         render();
@@ -13695,8 +14396,8 @@ function renderSourceAdd(wrap){
         render();
       }
     });
+    quickRow.appendChild(smartBtn);
   }
-  quickRow.appendChild(smartBtn);
   addCard.appendChild(quickRow);
 
   if(is.pdfLoading){
@@ -14745,9 +15446,21 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →'){
   const exp = mk('p','txt');exp.style.marginTop='.75rem';exp.style.marginBottom='.875rem';exp.textContent=explanation;
   card.appendChild(exp);
   if(trap||keyword){
-    const meta = mk('div','meta-box');
-    if(trap){const t=mk('p');t.style.margin='0';t.innerHTML=`<strong>Armadilha:</strong> ${trap}`;meta.appendChild(t);}
-    if(keyword){const k=mk('p');k.style.margin='0';k.innerHTML=`<strong>Gatilho:</strong> ${keyword}`;meta.appendChild(k);}
+    // V14: Layout mais visual — armadilha em destaque vermelho/amber, gatilho em ciano
+    const meta = mk('div');
+    meta.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-bottom:.875rem';
+    if(trap){
+      const t = mk('div');
+      t.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:.625rem .875rem;background:rgba(232,76,76,.06);border-left:3px solid var(--red);border-radius:0 8px 8px 0;font-size:13px;line-height:1.55';
+      t.innerHTML = `<span style="font-size:16px;flex-shrink:0;line-height:1.4">⚠️</span><span style="color:var(--text)"><b style="color:var(--red-text)">Armadilha:</b> ${escapeHTML(trap)}</span>`;
+      meta.appendChild(t);
+    }
+    if(keyword){
+      const k = mk('div');
+      k.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:.625rem .875rem;background:rgba(245,158,11,.07);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;font-size:13px;line-height:1.55';
+      k.innerHTML = `<span style="font-size:16px;flex-shrink:0;line-height:1.4">🎯</span><span style="color:var(--text)"><b style="color:var(--amber-text)">Palavra-gatilho:</b> <span style="background:rgba(245,158,11,.15);padding:1px 6px;border-radius:4px;font-weight:600">${escapeHTML(keyword)}</span></span>`;
+      meta.appendChild(k);
+    }
     card.appendChild(meta);
   }
 
@@ -14816,20 +15529,36 @@ function handleErr(e,container){
   console.error('NEXUS error:',e);
   const msg = e.message||String(e);
   let text = 'Erro ao conectar com a IA.';
-  if(msg.includes('no-content'))text='⚠ Adicione fontes em "Fontes" e ative ao menos uma disciplina.';
-  else if(msg.includes('no-key'))text='⚠ Chave API não configurada. Vá em "Config" e cole sua chave.';
-  else if(msg.includes('network'))text='⚠ Falha de rede ou CORS. Veja o console do navegador (F12) para detalhes.';
-  else if(msg.includes('api-401')||msg.includes('api-403'))text='⚠ Chave API inválida ou sem crédito. Confira em console.anthropic.com.';
-  else if(msg.includes('api-404'))text='⚠ Modelo não encontrado. Vá em Config e selecione outro modelo (sugestão: claude-haiku-4-5-20251001).';
-  else if(msg.includes('api-429'))text='⚠ Limite de requisições atingido. Aguarde alguns segundos.';
+  let canRetry = true;
+  if(msg.includes('no-content')){text='⚠ Adicione fontes em "Fontes" e ative ao menos uma disciplina.';canRetry=false;}
+  else if(msg.includes('no-key')){text='⚠ Chave API não configurada. Vá em "Config" e cole sua chave.';canRetry=false;}
+  else if(msg.includes('network'))text='⚠ Falha de rede. Verifique sua conexão e tente de novo.';
+  else if(msg.includes('api-401')||msg.includes('api-403')){text='⚠ Chave API inválida ou sem crédito.';canRetry=false;}
+  else if(msg.includes('api-404')){text='⚠ Modelo não encontrado. Vá em Config e selecione outro modelo.';canRetry=false;}
+  else if(msg.includes('api-429'))text='⚠ Limite de requisições atingido. Aguarde 30s e tente de novo.';
+  else if(msg.includes('api-5'))text='⚠ Servidor da IA fora do ar. Aguarde 30s e tente de novo.';
   else if(msg.includes('api-'))text='⚠ Erro da API: '+msg.replace('api-','').slice(0,200);
   else if(msg.includes('JSON')||msg.includes('parse'))text='⚠ A IA retornou resposta inválida. Tente novamente.';
   else text='⚠ '+msg.slice(0,250);
 
-  // Always log to DOM if container provided, and also store as last error for persistent banner
   ST.lastError = {text, at: Date.now()};
   if(container&&container.appendChild){
-    container.appendChild(errorBox(text));
+    const errBox = errorBox(text);
+    container.appendChild(errBox);
+    // V14: Botão Tentar novamente quando o erro é transitório (rede, 429, 5xx)
+    if(canRetry){
+      const retryRow = mk('div');
+      retryRow.style.cssText = 'margin-top:.5rem;display:flex;gap:6px;flex-wrap:wrap';
+      const retryBtn = mkBtn('↻ Tentar novamente','btn btn-sm');
+      retryBtn.style.cssText = 'background:var(--surface);border-color:var(--border)';
+      retryBtn.addEventListener('click', ()=>{
+        // Re-renderiza a view atual — o handler de cada método decide o que fazer
+        // (em geral, mostra a tela inicial do método pra o usuário clicar Iniciar de novo)
+        try{ render(); }catch(_){ location.reload(); }
+      });
+      retryRow.appendChild(retryBtn);
+      container.appendChild(retryRow);
+    }
   } else {
     alert(text);
   }
@@ -16718,6 +17447,120 @@ function renderMapTopicDetail(map){
   return panel;
 }
 
+// V14: Caixa de stats com sparkline pra histórico de erros.
+// Mostra: total no período, média/dia, tendência (sobe/desce/estável), top topic, top trap.
+function buildHistoryStatsBox(errors, period){
+  if(!errors || errors.length === 0) return null;
+
+  const box = mk('div');
+  box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem 1.125rem;margin-bottom:1rem';
+
+  const total = errors.length;
+  const days = period === '7d' ? 7 : period === '30d' ? 30 : period === '90d' ? 90 : 30;
+  const now = new Date();
+  now.setHours(23,59,59,999);
+  const buckets = new Array(days).fill(0);
+  errors.forEach(e=>{
+    const d = e.date || e.ts;
+    if(!d) return;
+    const diff = Math.floor((now - d) / 86400000);
+    if(diff >= 0 && diff < days){
+      buckets[days - 1 - diff]++;
+    }
+  });
+
+  const total24h = buckets[buckets.length - 1] || 0;
+  const total7d = buckets.slice(-7).reduce((s,n)=>s+n,0);
+  const avgPerDay = (total / Math.max(1, days)).toFixed(1);
+
+  // Tendência: comparar últimos 1/3 vs primeiros 1/3
+  const third = Math.floor(days / 3);
+  const recent = buckets.slice(-third).reduce((s,n)=>s+n,0);
+  const past = buckets.slice(0, third).reduce((s,n)=>s+n,0);
+  const trend = recent > past * 1.3 ? 'sobe' : recent < past * 0.7 ? 'desce' : 'estavel';
+
+  // Top topic
+  const topicCount = {};
+  errors.forEach(e=>{
+    const t = (e.topic||'').trim();
+    if(t) topicCount[t] = (topicCount[t]||0) + 1;
+  });
+  const topTopics = Object.entries(topicCount).sort((a,b)=>b[1]-a[1]).slice(0,3);
+
+  // Top trap
+  const trapCount = {};
+  errors.forEach(e=>{
+    const t = e.trapType ?? e.trap_type;
+    if(t !== undefined && t !== null) trapCount[t] = (trapCount[t]||0) + 1;
+  });
+  const topTrap = Object.entries(trapCount).sort((a,b)=>b[1]-a[1])[0];
+
+  // Header com números grandes
+  const head = mk('div');
+  head.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:10px;margin-bottom:.875rem';
+  const cells = [
+    {val: total, lbl: 'erros'},
+    {val: avgPerDay, lbl: 'média/dia'},
+    {val: total7d, lbl: 'últ. 7d'},
+    {val: total24h, lbl: 'últ. 24h'}
+  ];
+  cells.forEach(c=>{
+    const cell = mk('div');
+    cell.style.cssText = 'text-align:center';
+    cell.innerHTML = `<div style="font-size:22px;font-weight:800;color:var(--text);letter-spacing:-.5px;line-height:1">${c.val}</div><div style="font-size:10.5px;color:var(--text3);margin-top:2px;text-transform:uppercase;letter-spacing:.4px;font-weight:600">${escapeHTML(c.lbl)}</div>`;
+    head.appendChild(cell);
+  });
+  box.appendChild(head);
+
+  // Sparkline (gráfico de barrinhas SVG simples)
+  if(buckets.length > 0 && Math.max(...buckets) > 0){
+    const max = Math.max(...buckets);
+    const w = 100;
+    const h = 32;
+    const barW = w / buckets.length;
+    const bars = buckets.map((v,i)=>{
+      const bh = (v / max) * h;
+      const x = (i * barW) + 0.5;
+      const y = h - bh;
+      const color = v === 0 ? '#e5e7eb' : v >= max * 0.7 ? '#dc2626' : v >= max * 0.4 ? '#f59e0b' : '#10b981';
+      return `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${(barW - 1).toFixed(2)}" height="${Math.max(1, bh).toFixed(2)}" fill="${color}" rx="0.6"/>`;
+    }).join('');
+    const sparkline = mk('div');
+    sparkline.style.cssText = 'margin-bottom:.625rem';
+    const sparkLbl = mk('div');
+    sparkLbl.style.cssText = 'font-size:10.5px;color:var(--text3);margin-bottom:4px;display:flex;justify-content:space-between;font-weight:600';
+    const periodLabel = period === '7d' ? 'Últimos 7 dias' : period === '30d' ? 'Últimos 30 dias' : period === '90d' ? 'Últimos 90 dias' : `Últimos ${days} dias`;
+    sparkLbl.innerHTML = `<span>${escapeHTML(periodLabel)}</span>` +
+      (trend === 'sobe' ? '<span style="color:var(--red-text)">↗ subindo</span>' :
+       trend === 'desce' ? '<span style="color:var(--accent-text)">↘ caindo</span>' :
+       '<span style="color:var(--text3)">→ estável</span>');
+    sparkline.appendChild(sparkLbl);
+    const svgWrap = mk('div');
+    svgWrap.innerHTML = `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:36px;display:block">${bars}</svg>`;
+    sparkline.appendChild(svgWrap);
+    box.appendChild(sparkline);
+  }
+
+  // Top tópicos + top trap
+  const breakdown = mk('div');
+  breakdown.style.cssText = 'border-top:1px solid var(--border);padding-top:.625rem;margin-top:.5rem;font-size:11.5px;color:var(--text2);line-height:1.6';
+  let breakdownHtml = '';
+  if(topTopics.length > 0){
+    const list = topTopics.map(([t,c]) => `<b style="color:var(--text)">${escapeHTML(t)}</b> (${c})`).join(', ');
+    breakdownHtml += `<div><b style="color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-size:10.5px">Tópicos com mais erros:</b> ${list}</div>`;
+  }
+  if(topTrap){
+    const trapName = TRAP_TYPES[parseInt(topTrap[0])] || topTrap[0];
+    breakdownHtml += `<div style="margin-top:4px"><b style="color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-size:10.5px">Armadilha mais frequente:</b> <b style="color:var(--text)">${escapeHTML(trapName)}</b> (${topTrap[1]}×)</div>`;
+  }
+  if(breakdownHtml){
+    breakdown.innerHTML = breakdownHtml;
+    box.appendChild(breakdown);
+  }
+
+  return box;
+}
+
 function renderHistory(){
   const wrap = mk('div','fade');
 
@@ -16815,6 +17658,11 @@ function renderHistory(){
     wrap.appendChild(infoBox(topicFilter?`Nenhum erro registrado em "${topicFilter}".`:'Nenhum erro nessa disciplina.'));
     return wrap;
   }
+
+  // V14: Stats summary com gráfico de erros por dia (últimos N dias do filtro)
+  // Útil pra ver tendência: tá errando mais ou menos com o tempo?
+  const statsBox = buildHistoryStatsBox(filteredByDisc, periodFilter);
+  if(statsBox) wrap.appendChild(statsBox);
 
   // SORT CONTROL — disponível antes da lista
   const recurrenceMap = {};
@@ -19241,11 +20089,30 @@ function showGenerateSeriesModal(){
     srcSel.appendChild(o);
   } else {
     srcs.forEach(s=>{
-      const o = mk('option');o.value=s.id;o.textContent=s.name;
+      const o = mk('option');o.value=s.id;
+      const tocCount = (s.toc||[]).length;
+      o.textContent = s.name + (tocCount > 0 ? ` · ${tocCount} seções` : '');
       srcSel.appendChild(o);
     });
   }
   m.appendChild(srcSel);
+
+  // V14: Indicador se a fonte tem TOC — explica divisão semântica
+  const tocInfo = mk('div');
+  tocInfo.style.cssText = 'margin-top:6px;padding:.5rem .75rem;background:var(--surface2);border-radius:7px;font-size:11.5px;color:var(--text2);line-height:1.55';
+  function updateTocInfo(){
+    const sel = srcs.find(s => s.id === srcSel.value);
+    if(sel && sel.toc && sel.toc.length >= 2){
+      tocInfo.innerHTML = `✨ <b>Esta fonte tem índice (${sel.toc.length} seções)</b> — vamos usar a divisão por capítulos em vez de cortar por bytes. Cada caderno cobre uma parte coerente.`;
+      tocInfo.style.color = 'var(--accent-text)';
+    } else {
+      tocInfo.innerHTML = 'ℹ Esta fonte não tem índice — vai dividir o texto por bytes (igual a parte 1, parte 2...). Pra divisão semântica, gere o índice na fonte primeiro.';
+      tocInfo.style.color = 'var(--text2)';
+    }
+  }
+  if(srcs.length > 0) updateTocInfo();
+  srcSel.addEventListener('change', updateTocInfo);
+  m.appendChild(tocInfo);
 
   // Number of notebooks
   const nLbl = mk('label');nLbl.style.marginTop='.75rem';nLbl.textContent='Quantos cadernos?';
@@ -19301,6 +20168,9 @@ function showGenerateSeriesModal(){
 }
 
 // V13: Gera série de cadernos a partir de uma fonte
+// V14: Quando a fonte tem TOC (índice), usa as seções como divisão semântica
+//      em vez de divisão por bytes. Mais coerente porque cada caderno cobre
+//      um capítulo/tópico real, não um pedaço arbitrário do texto.
 async function generateNotebookSeries(srcId, nNotebooks, nQuestions){
   const src = (DATA.sources||[]).find(s => s.id === srcId);
   if(!src){alert('Fonte não encontrada');return;}
@@ -19308,26 +20178,44 @@ async function generateNotebookSeries(srcId, nNotebooks, nQuestions){
   const text = src.content || '';
   if(text.length < 200){alert('Fonte muito curta pra dividir em série');return;}
 
-  // Divide o conteúdo em N partes iguais
-  const chunkSize = Math.floor(text.length / nNotebooks);
+  // V14: Tenta usar TOC se houver — divisão semântica > divisão por bytes
+  const toc = src.toc || [];
+  const useToc = toc.length >= 2 && toc.length <= nNotebooks * 2;
+  let chunks; // array de {label, content}
+  if(useToc){
+    // Agrupa seções do TOC em N grupos balanceados
+    chunks = groupTocIntoChunks(toc, text, nNotebooks);
+  } else {
+    // Fallback antigo: divisão por bytes
+    const chunkSize = Math.floor(text.length / nNotebooks);
+    chunks = [];
+    for(let i = 0; i < nNotebooks; i++){
+      const start = i * chunkSize;
+      const end = i === nNotebooks - 1 ? text.length : (i + 1) * chunkSize;
+      chunks.push({
+        label: `Parte ${i+1}/${nNotebooks}`,
+        content: text.slice(start, end)
+      });
+    }
+  }
+
   const created = [];
   let totalGenerated = 0;
   let totalErrors = 0;
+  const total = chunks.length;
 
   // Toast de progresso persistente
   const progressEl = mk('div');
   progressEl.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);box-shadow:0 4px 16px rgba(0,0,0,.12);padding:.75rem 1rem;border-radius:10px;z-index:10000;font-size:13px;font-weight:600';
-  progressEl.textContent = `🪄 Gerando série... 0/${nNotebooks}`;
+  progressEl.textContent = `🪄 Gerando série... 0/${total}`;
   document.body.appendChild(progressEl);
 
-  for(let i = 0; i < nNotebooks; i++){
-    progressEl.textContent = `🪄 Caderno ${i+1}/${nNotebooks} — gerando ${nQuestions} questões...`;
-    const start = i * chunkSize;
-    const end = i === nNotebooks - 1 ? text.length : (i + 1) * chunkSize;
-    const sectionText = text.slice(start, end);
+  for(let i = 0; i < chunks.length; i++){
+    const chunk = chunks[i];
+    progressEl.textContent = `🪄 Caderno ${i+1}/${total} (${chunk.label}) — gerando ${nQuestions} questões...`;
+    const sectionText = chunk.content;
 
     try{
-      // Usa o sistema existente de geração em batch
       const sys = `Você gera questões de concurso público em formato C/E (Cebraspe).
 
 Gere EXATAMENTE ${nQuestions} questões cobrindo o trecho fornecido. Variando os tópicos e armadilhas.
@@ -19337,7 +20225,7 @@ SAÍDA — JSON puro array:
   {"enunciado":"...","gabarito":"C" ou "E","explicacao":"...","topico":"..."},
   ...
 ]`;
-      const userMsg = 'Trecho da fonte (parte ' + (i+1) + ' de ' + nNotebooks + '):\n\n' + sectionText.slice(0, 6000);
+      const userMsg = 'Trecho da fonte (' + chunk.label + '):\n\n' + sectionText.slice(0, 6000);
       const body = {
         model: DATA.config.model || 'claude-haiku-4-5-20251001',
         max_tokens: 4000,
@@ -19366,7 +20254,6 @@ SAÍDA — JSON puro array:
         continue;
       }
 
-      // Cria caderno e adiciona questões ao banco
       if(!DATA.importedQuestions) DATA.importedQuestions = [];
       const qIds = [];
       questions.forEach(q=>{
@@ -19378,7 +20265,7 @@ SAÍDA — JSON puro array:
           answer: q.gabarito,
           kind: 'CE',
           disciplineId: src.disciplineId,
-          topic: q.topico || src.name,
+          topic: q.topico || chunk.label,
           source: 'ai',
           aiMethod: 'series',
           aiModel: body.model,
@@ -19394,8 +20281,13 @@ SAÍDA — JSON puro array:
       if(!DATA.notebooks) DATA.notebooks = [];
       DATA.notebooks.push({
         id: nbId,
-        name: `${src.name} — Caderno ${i+1}/${nNotebooks}`,
-        description: `Gerado automaticamente da parte ${i+1} de ${nNotebooks}`,
+        // V14: nome do caderno usa o label da seção quando TOC disponível
+        name: useToc
+          ? `${src.name} — ${chunk.label}`
+          : `${src.name} — Caderno ${i+1}/${total}`,
+        description: useToc
+          ? `Gerado automaticamente da seção: ${chunk.label}`
+          : `Gerado automaticamente da parte ${i+1} de ${total}`,
         questionIds: qIds,
         createdAt: Date.now(),
         seriesParent: src.id,
@@ -19404,26 +20296,75 @@ SAÍDA — JSON puro array:
       created.push(nbId);
       totalGenerated += questions.length;
 
-      // Salva incrementalmente — se der erro no meio, não perde progresso
       save();
     }catch(err){
       console.warn('[series] Caderno '+i+' falhou:', err.message);
       totalErrors++;
     }
-    // Pausa entre chunks pra não estourar rate limit
     await new Promise(r => setTimeout(r, 500));
   }
 
-  // Remove progresso
   if(progressEl.parentNode) progressEl.parentNode.removeChild(progressEl);
 
   if(created.length === 0){
     alert('Nenhum caderno foi gerado. Verifique seus créditos e tente novamente.');
   } else {
     const errMsg = totalErrors > 0 ? ` (${totalErrors} ${totalErrors===1?'falhou':'falharam'})` : '';
-    showToast(`✓ ${created.length}/${nNotebooks} cadernos criados · ${totalGenerated} questões${errMsg}`);
+    const tocMsg = useToc ? ' usando o índice da fonte' : '';
+    showToast(`✓ ${created.length}/${total} cadernos criados${tocMsg} · ${totalGenerated} questões${errMsg}`);
   }
   render();
+}
+
+// V14: Agrupa seções do TOC em N grupos balanceados (cada grupo = 1 caderno).
+// Estratégia: distribui sections sequenciais entre N grupos tentando equalizar
+// o tamanho de texto de cada grupo (mas mantendo continuidade).
+function groupTocIntoChunks(toc, text, nGroups){
+  if(toc.length <= nGroups){
+    // Cada seção vira um caderno (e se sobrar grupos, ignora)
+    return toc.map(t => {
+      const start = t.startChar || 0;
+      const end = t.endChar || text.length;
+      return {
+        label: t.title || `Seção ${t.id}`,
+        content: text.slice(start, end)
+      };
+    });
+  }
+  // Calcula tamanhos de cada seção
+  const sized = toc.map(t => {
+    const start = t.startChar || 0;
+    const end = t.endChar || text.length;
+    return {
+      title: t.title || 'Seção',
+      content: text.slice(start, end),
+      size: end - start
+    };
+  });
+  const totalSize = sized.reduce((s,t)=>s+t.size, 0);
+  const targetPerGroup = totalSize / nGroups;
+  const groups = [];
+  let currentGroup = [];
+  let currentSize = 0;
+  for(const sec of sized){
+    currentGroup.push(sec);
+    currentSize += sec.size;
+    if(currentSize >= targetPerGroup && groups.length < nGroups - 1){
+      groups.push(currentGroup);
+      currentGroup = [];
+      currentSize = 0;
+    }
+  }
+  if(currentGroup.length > 0) groups.push(currentGroup);
+  // Converte cada grupo em chunk
+  return groups.map(g => {
+    const titles = g.map(s => s.title).slice(0, 2);
+    const titleStr = titles.length === 1 ? titles[0] : titles[0] + ' → ' + titles[titles.length - 1];
+    return {
+      label: titleStr,
+      content: g.map(s => s.content).join('\n\n')
+    };
+  });
 }
 
 function showCreateNotebookModal(){
@@ -20150,15 +21091,47 @@ function renderCalibration(){
 
   if(ST.calibLoading&&!ST.calibQ){wrap.appendChild(dynamicLoading('question','Gerando questão...'));return wrap;}
   if(!ST.calibQ){
-    wrap.appendChild(buildModelPicker('calibration'));
-    const fpCalib = buildFocusPicker();
-    if(fpCalib) wrap.appendChild(fpCalib);
+    // V14: Layout limpo — CTA grande no topo, opções avançadas em collapse
     const lastB = buildLastGenBadge('calibration','question');
-    if(lastB){lastB.style.marginBottom='.875rem';wrap.appendChild(lastB);}
-    const b = mk('button','btn btn-p');
-    b.innerHTML = 'Iniciar calibração → ' + aiCostBadgeHTML('practice_question',{methodKey:'calibration'});
-    b.addEventListener('click',()=>calibStart(wrap));
-    wrap.appendChild(b);return wrap;
+    if(lastB){lastB.style.marginBottom='.75rem';wrap.appendChild(lastB);}
+
+    const ctaCard = mk('div');
+    ctaCard.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.5rem 1.5rem;margin-bottom:1rem;text-align:center';
+    const ctaIcon = mk('div');
+    ctaIcon.style.cssText = 'font-size:36px;margin-bottom:.5rem';
+    ctaIcon.textContent = '🎯';
+    ctaCard.appendChild(ctaIcon);
+    const ctaTitle = mk('h2');
+    ctaTitle.style.cssText='margin:0 0 .25rem;font-size:18px;font-weight:700;letter-spacing:-.3px';
+    ctaTitle.textContent = 'Pronto pra calibrar?';
+    ctaCard.appendChild(ctaTitle);
+    const ctaSub = mk('p','txt2');
+    ctaSub.style.cssText='margin:0 0 1.125rem;font-size:13px;line-height:1.5';
+    ctaSub.textContent = 'Você responde C/E e marca quanto tem de certeza — descobrimos seu padrão de "falsa segurança"';
+    ctaCard.appendChild(ctaSub);
+
+    const startBtn = mk('button','btn btn-p');
+    startBtn.style.cssText='font-size:14.5px;padding:.75rem 2rem;font-weight:700';
+    startBtn.innerHTML = '⚡ Iniciar calibração ' + aiCostBadgeHTML('practice_question',{methodKey:'calibration'});
+    startBtn.addEventListener('click',()=>calibStart(wrap));
+    ctaCard.appendChild(startBtn);
+    wrap.appendChild(ctaCard);
+
+    // Opções avançadas em collapse
+    const advWrap = mk('details');
+    advWrap.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:10px';
+    const advSum = mk('summary');
+    advSum.style.cssText='padding:.625rem .875rem;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text2);user-select:none;list-style:none;display:flex;align-items:center;gap:6px';
+    advSum.innerHTML = '<span style="font-size:12px">⚙</span> Opções avançadas <span style="color:var(--text3);font-size:11px;font-weight:500">— modelo IA, foco em seção</span>';
+    advWrap.appendChild(advSum);
+    const advBody = mk('div');
+    advBody.style.cssText='padding:.75rem .875rem 1rem;border-top:1px solid var(--border)';
+    advBody.appendChild(buildModelPicker('calibration'));
+    const fpCalib = buildFocusPicker();
+    if(fpCalib){fpCalib.style.marginTop='.625rem';advBody.appendChild(fpCalib);}
+    advWrap.appendChild(advBody);
+    wrap.appendChild(advWrap);
+    return wrap;
   }
 
   wrap.appendChild(methodTopStrip('calibration','question'));
@@ -20281,13 +21254,44 @@ function renderExaminer(){
 
   if(ST.examLoading&&!ST.examConcept){wrap.appendChild(loading('Buscando conceito...'));return wrap;}
   if(ST.examStep==='start'||!ST.examConcept){
-    wrap.appendChild(buildModelPicker('examiner'));
+    // V14: Layout limpo
     const lastB = buildLastGenBadge('examiner','question');
-    if(lastB){lastB.style.marginBottom='.875rem';wrap.appendChild(lastB);}
-    const b = mk('button','btn btn-p');
-    b.innerHTML = 'Receber conceito → ' + aiCostBadgeHTML('examiner_review',{methodKey:'examiner'});
-    b.addEventListener('click',()=>examFetch(wrap));
-    wrap.appendChild(b);return wrap;
+    if(lastB){lastB.style.marginBottom='.625rem';wrap.appendChild(lastB);}
+
+    const ctaCard = mk('div');
+    ctaCard.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.5rem 1.5rem;margin-bottom:1rem;text-align:center';
+    const ctaIcon = mk('div');
+    ctaIcon.style.cssText = 'font-size:36px;margin-bottom:.5rem';
+    ctaIcon.textContent = '✍️';
+    ctaCard.appendChild(ctaIcon);
+    const ctaTitle = mk('h2');
+    ctaTitle.style.cssText='margin:0 0 .25rem;font-size:18px;font-weight:700;letter-spacing:-.3px';
+    ctaTitle.textContent = 'Vire o examinador';
+    ctaCard.appendChild(ctaTitle);
+    const ctaSub = mk('p','txt2');
+    ctaSub.style.cssText='margin:0 0 1.125rem;font-size:13px;line-height:1.5';
+    ctaSub.textContent = 'A IA dá um conceito correto. Você cria uma assertiva ERRADA com armadilha — e ganha estrelas pela sutileza.';
+    ctaCard.appendChild(ctaSub);
+
+    const startBtn = mk('button','btn btn-p');
+    startBtn.style.cssText='font-size:14.5px;padding:.75rem 2rem;font-weight:700';
+    startBtn.innerHTML = '⚡ Receber conceito ' + aiCostBadgeHTML('examiner_review',{methodKey:'examiner'});
+    startBtn.addEventListener('click',()=>examFetch(wrap));
+    ctaCard.appendChild(startBtn);
+    wrap.appendChild(ctaCard);
+
+    const advWrap = mk('details');
+    advWrap.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:10px';
+    const advSum = mk('summary');
+    advSum.style.cssText='padding:.625rem .875rem;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text2);user-select:none;list-style:none;display:flex;align-items:center;gap:6px';
+    advSum.innerHTML = '<span style="font-size:12px">⚙</span> Opções avançadas';
+    advWrap.appendChild(advSum);
+    const advBody = mk('div');
+    advBody.style.cssText='padding:.75rem .875rem 1rem;border-top:1px solid var(--border)';
+    advBody.appendChild(buildModelPicker('examiner'));
+    advWrap.appendChild(advBody);
+    wrap.appendChild(advWrap);
+    return wrap;
   }
 
   wrap.appendChild(methodTopStrip('examiner','question'));
@@ -20369,11 +21373,15 @@ function renderDrill(){
   wrap.appendChild(buildMethodInfoPanel('drill'));
 
   if(ST.drillTarget===null&&!ST.drillQ){
-    wrap.appendChild(buildModelPicker('drill'));
-    const fpDrill = buildFocusPicker();
-    if(fpDrill) wrap.appendChild(fpDrill);
     const lastB = buildLastGenBadge('drill','question');
-    if(lastB){lastB.style.marginBottom='.875rem';wrap.appendChild(lastB);}
+    if(lastB){lastB.style.marginBottom='.625rem';wrap.appendChild(lastB);}
+
+    // V14: Cards de armadilhas como ação principal — visível direto
+    const intro = mk('p','txt2');
+    intro.style.cssText='margin:0 0 .875rem;font-size:13px;line-height:1.5';
+    intro.textContent = 'Escolha o tipo de armadilha que mais te derruba pra fazer um drill focado:';
+    wrap.appendChild(intro);
+
     const totalErr = Object.values(s.dna).reduce((a,b)=>a+b,0);
     const ds = mk('div','grid g2');
     TRAP_TYPES.forEach((name,i)=>{
@@ -20394,7 +21402,24 @@ function renderDrill(){
       dc.addEventListener('click',()=>drillStart(i,wrap));
       ds.appendChild(dc);
     });
-    wrap.appendChild(ds);return wrap;
+    wrap.appendChild(ds);
+
+    // Opções avançadas em collapse
+    const advWrap = mk('details');
+    advWrap.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-top:1rem';
+    const advSum = mk('summary');
+    advSum.style.cssText='padding:.625rem .875rem;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text2);user-select:none;list-style:none;display:flex;align-items:center;gap:6px';
+    advSum.innerHTML = '<span style="font-size:12px">⚙</span> Opções avançadas <span style="color:var(--text3);font-size:11px;font-weight:500">— modelo IA, foco em seção</span>';
+    advWrap.appendChild(advSum);
+    const advBody = mk('div');
+    advBody.style.cssText='padding:.75rem .875rem 1rem;border-top:1px solid var(--border)';
+    advBody.appendChild(buildModelPicker('drill'));
+    const fpDrill = buildFocusPicker();
+    if(fpDrill){fpDrill.style.marginTop='.625rem';advBody.appendChild(fpDrill);}
+    advWrap.appendChild(advBody);
+    wrap.appendChild(advWrap);
+
+    return wrap;
   }
 
   if(ST.drillTarget!==null){
@@ -20516,13 +21541,44 @@ function renderElaborative(){
 
   if(ST.elabLoading&&!ST.elabQ){wrap.appendChild(loading('Buscando fato...'));return wrap;}
   if(!ST.elabQ){
-    wrap.appendChild(buildModelPicker('elaborative'));
+    // V14: Layout limpo
     const lastB = buildLastGenBadge('elaborative','question');
-    if(lastB){lastB.style.marginBottom='.875rem';wrap.appendChild(lastB);}
-    const b = mk('button','btn btn-p');
-    b.innerHTML = 'Receber pergunta → ' + aiCostBadgeHTML('practice_question',{methodKey:'elaborative'});
-    b.addEventListener('click',()=>elabFetch(wrap));
-    wrap.appendChild(b);return wrap;
+    if(lastB){lastB.style.marginBottom='.625rem';wrap.appendChild(lastB);}
+
+    const ctaCard = mk('div');
+    ctaCard.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.5rem 1.5rem;margin-bottom:1rem;text-align:center';
+    const ctaIcon = mk('div');
+    ctaIcon.style.cssText = 'font-size:36px;margin-bottom:.5rem';
+    ctaIcon.textContent = '🧠';
+    ctaCard.appendChild(ctaIcon);
+    const ctaTitle = mk('h2');
+    ctaTitle.style.cssText='margin:0 0 .25rem;font-size:18px;font-weight:700;letter-spacing:-.3px';
+    ctaTitle.textContent = 'Pronto pra elaborar?';
+    ctaCard.appendChild(ctaTitle);
+    const ctaSub = mk('p','txt2');
+    ctaSub.style.cssText='margin:0 0 1.125rem;font-size:13px;line-height:1.5';
+    ctaSub.textContent = 'Você recebe um fato e responde "por quê?". A IA avalia a profundidade do raciocínio — fixa o conteúdo no nível mais profundo.';
+    ctaCard.appendChild(ctaSub);
+
+    const startBtn = mk('button','btn btn-p');
+    startBtn.style.cssText='font-size:14.5px;padding:.75rem 2rem;font-weight:700';
+    startBtn.innerHTML = '⚡ Receber pergunta ' + aiCostBadgeHTML('practice_question',{methodKey:'elaborative'});
+    startBtn.addEventListener('click',()=>elabFetch(wrap));
+    ctaCard.appendChild(startBtn);
+    wrap.appendChild(ctaCard);
+
+    const advWrap = mk('details');
+    advWrap.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:10px';
+    const advSum = mk('summary');
+    advSum.style.cssText='padding:.625rem .875rem;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text2);user-select:none;list-style:none;display:flex;align-items:center;gap:6px';
+    advSum.innerHTML = '<span style="font-size:12px">⚙</span> Opções avançadas';
+    advWrap.appendChild(advSum);
+    const advBody = mk('div');
+    advBody.style.cssText='padding:.75rem .875rem 1rem;border-top:1px solid var(--border)';
+    advBody.appendChild(buildModelPicker('elaborative'));
+    advWrap.appendChild(advBody);
+    wrap.appendChild(advWrap);
+    return wrap;
   }
 
   wrap.appendChild(methodTopStrip('elaborative','question'));
@@ -20621,67 +21677,100 @@ function renderPractice(){
   // Source toggle: AI or Imported
   if(!ST.practQ&&!ST.practLoading){
     const importedCount = (DATA.importedQuestions||[]).length;
-    const toggle = mk('div');toggle.style.cssText='margin-bottom:1rem';
 
-    // V12: Header com explicação clara da diferença
-    const lbl = mk('div');lbl.style.cssText='font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px';
-    lbl.textContent='Origem das questões';
-    toggle.appendChild(lbl);
+    // V14: Layout limpo — CTA no topo, configurações avançadas collapsadas.
+    // Antes: tudo empilhado fazia o usuário ter que rolar muito antes de iniciar.
+    // Agora: ação principal visível imediatamente, opções escondidas em "Avançado".
 
-    const btnRow = mk('div','flex');btnRow.style.cssText='gap:8px;flex-wrap:wrap';
-
-    const aiBtn = mk('button','conf-btn'+(ST.practiceSource==='ai'?' sel-c':''));
-    aiBtn.style.cssText='padding:10px 14px;font-size:12.5px;text-align:left;flex:1;min-width:240px;line-height:1.4';
-    aiBtn.innerHTML = '<div style="font-weight:700;margin-bottom:2px">🤖 Geradas pela IA (novas)</div>'+
-      '<div style="font-size:11px;font-weight:500;color:var(--text2);line-height:1.4">Questões inéditas no estilo da sua banca, criadas em tempo real a partir das suas fontes ativas.</div>';
-    aiBtn.title = 'A IA cria questões novas baseadas no material que você importou. Cada uma é única, focada nos seus pontos fracos. Custa créditos.';
-    aiBtn.addEventListener('click',()=>{ST.practiceSource='ai';render();});
-    btnRow.appendChild(aiBtn);
-
-    if(importedCount>0){
-      const impBtn = mk('button','conf-btn'+(ST.practiceSource==='imported'?' sel-c':''));
-      impBtn.style.cssText='padding:10px 14px;font-size:12.5px;text-align:left;flex:1;min-width:240px;line-height:1.4';
-      impBtn.innerHTML = `<div style="font-weight:700;margin-bottom:2px">📋 Históricas das bancas (${importedCount})</div>`+
-        '<div style="font-size:11px;font-weight:500;color:var(--text2);line-height:1.4">Questões que já caíram em provas anteriores — você importou (TEC, PDF) ou pegou de cadernos da comunidade.</div>';
-      impBtn.title = 'Banco de questões reais que já caíram em provas. Você importa de plataformas como TEC Concursos ou pega cadernos compartilhados na descoberta. Não consome créditos pra praticar.';
-      impBtn.addEventListener('click',()=>{ST.practiceSource='imported';render();});
-      btnRow.appendChild(impBtn);
-    }
-
-    toggle.appendChild(btnRow);
-    wrap.appendChild(toggle);
-
-    if(ST.practiceSource==='imported'){
+    // Se tem questões importadas, mostra escolha de origem como primeira coisa
+    if(importedCount > 0 && ST.practiceSource === 'imported'){
       const info = mk('div','alert alert-info');
-      info.innerHTML='Usando o banco de questões importadas. <a href="#" id="goImp">Abrir prática de importadas →</a>';
+      info.style.cssText='padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap';
+      info.innerHTML='<div style="font-size:13.5px"><b>📋 Modo: questões importadas</b><br><span style="color:var(--text2);font-size:12.5px">Practica com questões reais que você importou. Não consome créditos.</span></div>';
+      const goBtn = mkBtn('Abrir →','btn btn-p');
+      goBtn.addEventListener('click',()=>{ST.view='imported';ST.importedSubview='practice';render();});
+      info.appendChild(goBtn);
       wrap.appendChild(info);
-      setTimeout(()=>{const l=$('goImp');if(l)l.addEventListener('click',e=>{e.preventDefault();ST.view='imported';ST.importedSubview='practice';render();});},0);
-      const openBtn = mkBtn('Abrir prática de importadas →','btn btn-p');openBtn.style.marginTop='.5rem';
-      openBtn.addEventListener('click',()=>{ST.view='imported';ST.importedSubview='practice';render();});
-      wrap.appendChild(openBtn);
+      // Botão pra trocar pra modo IA
+      const switchToAi = mkBtn('Voltar pra modo IA','btn btn-sm');
+      switchToAi.style.cssText='margin-top:.625rem';
+      switchToAi.addEventListener('click',()=>{ST.practiceSource='ai';render();});
+      wrap.appendChild(switchToAi);
       return wrap;
     }
 
-    // Model selector for AI mode
-    wrap.appendChild(buildModelPicker('practice'));
-    // V12: Foco em seção (se houver fontes indexadas)
-    const fpPract = buildFocusPicker();
-    if(fpPract) wrap.appendChild(fpPract);
+    // Modo IA — CTA grande no topo
     const lastBadge = buildLastGenBadge('practice','question');
-    if(lastBadge){lastBadge.style.marginBottom='.875rem';wrap.appendChild(lastBadge);}
+    if(lastBadge){lastBadge.style.marginBottom='.75rem';wrap.appendChild(lastBadge);}
 
-    const b = mk('button','btn btn-p');
-    b.innerHTML = 'Iniciar → ' + aiCostBadgeHTML('practice_question',{methodKey:'practice'});
-    b.addEventListener('click',()=>practStart(wrap));
-    wrap.appendChild(b);
-    // V12: Dica de conforto visual — também aparece no Practice (item 15)
-    // Usuário tá prestes a passar muito tempo respondendo questões.
+    const ctaCard = mk('div');
+    ctaCard.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.5rem 1.5rem;margin-bottom:1rem;text-align:center';
+    const ctaIcon = mk('div');
+    ctaIcon.style.cssText = 'font-size:36px;margin-bottom:.5rem';
+    ctaIcon.textContent = '📝';
+    ctaCard.appendChild(ctaIcon);
+    const ctaTitle = mk('h2');
+    ctaTitle.style.cssText='margin:0 0 .25rem;font-size:18px;font-weight:700;letter-spacing:-.3px';
+    ctaTitle.textContent = 'Pronto pra praticar?';
+    ctaCard.appendChild(ctaTitle);
+    const ctaSub = mk('p','txt2');
+    ctaSub.style.cssText='margin:0 0 1.125rem;font-size:13px;line-height:1.5';
+    ctaSub.textContent = 'Questão Cebraspe gerada agora pelo material das suas fontes ativas';
+    ctaCard.appendChild(ctaSub);
+
+    const startBtn = mk('button','btn btn-p');
+    startBtn.style.cssText='font-size:14.5px;padding:.75rem 2rem;font-weight:700';
+    startBtn.innerHTML = '⚡ Começar agora ' + aiCostBadgeHTML('practice_question',{methodKey:'practice'});
+    startBtn.addEventListener('click',()=>practStart(wrap));
+    ctaCard.appendChild(startBtn);
+    wrap.appendChild(ctaCard);
+
+    // V14: "Opções avançadas" — só pra quem quer customizar
+    const advWrap = mk('details');
+    advWrap.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:1rem';
+    const advSum = mk('summary');
+    advSum.style.cssText='padding:.625rem .875rem;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text2);user-select:none;list-style:none;display:flex;align-items:center;gap:6px';
+    advSum.innerHTML = '<span style="font-size:12px">⚙</span> Opções avançadas <span style="color:var(--text3);font-size:11px;font-weight:500">— modelo IA, foco em seção, origem</span>';
+    advWrap.appendChild(advSum);
+    const advBody = mk('div');
+    advBody.style.cssText='padding:.75rem .875rem 1rem;border-top:1px solid var(--border)';
+
+    // Origem das questões (só se tiver importadas)
+    if(importedCount > 0){
+      const sourceRow = mk('div');
+      sourceRow.style.cssText='margin-bottom:.875rem';
+      const sl = mk('div');sl.style.cssText='font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px';
+      sl.textContent = 'Origem das questões';
+      sourceRow.appendChild(sl);
+      const btnRow = mk('div');btnRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+      const aiBtn = mk('button','filter-chip on');
+      aiBtn.style.cssText='padding:6px 12px;font-size:12px';
+      aiBtn.innerHTML = '🤖 IA (novas)';
+      aiBtn.addEventListener('click',()=>{ST.practiceSource='ai';render();});
+      btnRow.appendChild(aiBtn);
+      const impBtn = mk('button','filter-chip');
+      impBtn.style.cssText='padding:6px 12px;font-size:12px';
+      impBtn.innerHTML = `📋 Importadas (${importedCount})`;
+      impBtn.addEventListener('click',()=>{ST.practiceSource='imported';render();});
+      btnRow.appendChild(impBtn);
+      sourceRow.appendChild(btnRow);
+      advBody.appendChild(sourceRow);
+    }
+
+    // Modelo
+    advBody.appendChild(buildModelPicker('practice'));
+    // Foco em seção
+    const fpPract = buildFocusPicker();
+    if(fpPract){fpPract.style.marginTop='.625rem';advBody.appendChild(fpPract);}
+
+    advWrap.appendChild(advBody);
+    wrap.appendChild(advWrap);
+
+    // Dica de conforto visual — link discreto no rodapé
     const eyeHint = mk('button','eye-hint-link');
     eyeHint.type = 'button';
-    eyeHint.innerHTML = '👁 <span>Dica: ajuste tela e iluminação antes de começar — reduz fadiga ocular</span>';
+    eyeHint.innerHTML = '👁 <span>Cuidar dos olhos antes de começar</span>';
     eyeHint.addEventListener('click',()=>{
-      // V12 fix: usa navigateTo + navStack pra preservar caminho de volta.
-      // Antes: ST.view='eyeCare' direto → única forma de voltar era ir pra Config (UX ruim).
       navigateTo('eyeCare',{label:'Prática'});
     });
     wrap.appendChild(eyeHint);
@@ -21073,13 +22162,45 @@ function renderInterleaving(){
 
   if(ST.interLoading&&!ST.interQ){wrap.appendChild(dynamicLoading('question','Gerando questão...'));return wrap;}
   if(!ST.interQ){
-    wrap.appendChild(buildModelPicker('interleaving'));
+    // V14: Layout limpo — CTA grande, opções avançadas em collapse
     const lastB = buildLastGenBadge('interleaving','question');
-    if(lastB){lastB.style.marginBottom='.875rem';wrap.appendChild(lastB);}
-    const b = mk('button','btn btn-p');
-    b.innerHTML = 'Iniciar intercalação → ' + aiCostBadgeHTML('practice_question',{methodKey:'interleaving'});
-    b.addEventListener('click',()=>interStart(wrap));
-    wrap.appendChild(b);return wrap;
+    if(lastB){lastB.style.marginBottom='.625rem';wrap.appendChild(lastB);}
+
+    const ctaCard = mk('div');
+    ctaCard.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.5rem 1.5rem;margin-bottom:1rem;text-align:center';
+    const ctaIcon = mk('div');
+    ctaIcon.style.cssText = 'font-size:36px;margin-bottom:.5rem';
+    ctaIcon.textContent = '🔀';
+    ctaCard.appendChild(ctaIcon);
+    const ctaTitle = mk('h2');
+    ctaTitle.style.cssText='margin:0 0 .25rem;font-size:18px;font-weight:700;letter-spacing:-.3px';
+    ctaTitle.textContent = 'Pronto pra intercalar tópicos?';
+    ctaCard.appendChild(ctaTitle);
+    const ctaSub = mk('p','txt2');
+    ctaSub.style.cssText='margin:0 0 1.125rem;font-size:13px;line-height:1.5';
+    ctaSub.textContent = 'A IA muda de tópico a cada questão — força você a escolher a regra certa antes de responder';
+    ctaCard.appendChild(ctaSub);
+
+    const startBtn = mk('button','btn btn-p');
+    startBtn.style.cssText='font-size:14.5px;padding:.75rem 2rem;font-weight:700';
+    startBtn.innerHTML = '⚡ Iniciar intercalação ' + aiCostBadgeHTML('practice_question',{methodKey:'interleaving'});
+    startBtn.addEventListener('click',()=>interStart(wrap));
+    ctaCard.appendChild(startBtn);
+    wrap.appendChild(ctaCard);
+
+    // Opções avançadas em collapse
+    const advWrap = mk('details');
+    advWrap.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:10px';
+    const advSum = mk('summary');
+    advSum.style.cssText='padding:.625rem .875rem;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--text2);user-select:none;list-style:none;display:flex;align-items:center;gap:6px';
+    advSum.innerHTML = '<span style="font-size:12px">⚙</span> Opções avançadas <span style="color:var(--text3);font-size:11px;font-weight:500">— modelo IA</span>';
+    advWrap.appendChild(advSum);
+    const advBody = mk('div');
+    advBody.style.cssText='padding:.75rem .875rem 1rem;border-top:1px solid var(--border)';
+    advBody.appendChild(buildModelPicker('interleaving'));
+    advWrap.appendChild(advBody);
+    wrap.appendChild(advWrap);
+    return wrap;
   }
 
   wrap.appendChild(methodTopStrip('interleaving','question'));
@@ -21227,6 +22348,174 @@ function renderSRS(){
   return wrap;
 }
 
+// V14: Modo Foco SRS — overlay fullscreen pra revisão de flashcards.
+// Construído como DOM separado anexado ao body. Quando Esc é pressionado ou
+// usuário clica "Sair", remove tudo e volta ao SRS Study normal.
+// Atalhos: Espaço = revelar, 1/2/3/4 = rating (errei/difícil/bom/fácil), Esc = sair.
+function renderSRSFocusOverlay(card, dueList){
+  // Remove overlay anterior se existir (re-render)
+  const existing = document.querySelector('.srs-focus-overlay');
+  if(existing) existing.remove();
+
+  if(!card){
+    // Nenhum card devido — mostra estado "concluído"
+    const overlay = mk('div','srs-focus-overlay');
+    const stage = mk('div','srs-focus-stage');
+    const done = mk('div','srs-focus-done');
+    done.innerHTML = `
+      <div class="srs-focus-done-icon">🌳</div>
+      <h2>Tudo revisado!</h2>
+      <p>Você terminou todos os flashcards devidos. Volte mais tarde quando os próximos estiverem prontos.</p>
+    `;
+    const exitBtn = mkBtn('Voltar','btn btn-p');
+    exitBtn.addEventListener('click',()=>exitSRSFocus());
+    done.appendChild(exitBtn);
+    stage.appendChild(done);
+    overlay.appendChild(stage);
+    document.body.appendChild(overlay);
+    return;
+  }
+
+  const reviewedNow = (DATA.session && DATA.session.srsReviewed) || 0;
+  const totalToday = reviewedNow + dueList.length;
+  const progressPct = totalToday > 0 ? Math.round((reviewedNow / totalToday) * 100) : 0;
+
+  const overlay = mk('div','srs-focus-overlay');
+  overlay.id = 'srs-focus-overlay';
+
+  // Header com progresso e exit
+  const header = mk('div','srs-focus-header');
+  const progress = mk('div','srs-focus-progress');
+  const progLbl = mk('div','srs-fp-label');
+  progLbl.textContent = '🎯 Sessão de revisão';
+  const progBar = mk('div','srs-fp-bar');
+  const progFill = mk('div','srs-fp-fill');
+  progFill.style.width = progressPct + '%';
+  progBar.appendChild(progFill);
+  const progStats = mk('div','srs-fp-stats');
+  progStats.innerHTML = `
+    <span><b>${reviewedNow}</b> revisados</span>
+    <span><b>${dueList.length}</b> restantes</span>
+    <span>${progressPct}%</span>
+  `;
+  progress.appendChild(progLbl);
+  progress.appendChild(progBar);
+  progress.appendChild(progStats);
+  header.appendChild(progress);
+
+  const exitBtn = mk('button','srs-focus-exit');
+  exitBtn.innerHTML = '<span>✕</span> <span>Sair (Esc)</span>';
+  exitBtn.addEventListener('click', exitSRSFocus);
+  header.appendChild(exitBtn);
+  overlay.appendChild(header);
+
+  // Stage central
+  const stage = mk('div','srs-focus-stage');
+
+  // Meta — disciplina + tipo + erro
+  const meta = mk('div','srs-focus-meta');
+  const tCfg = CARD_TYPES[card.type] || CARD_TYPES.concept;
+  const typeChip = mk('span','badge b-info');
+  typeChip.textContent = tCfg.emoji + ' ' + tCfg.label;
+  meta.appendChild(typeChip);
+  const disc = getDiscipline(card.disciplineId);
+  if(disc){
+    const dTag = mk('span','disc-tag');
+    dTag.style.background = disc.color + '22';
+    dTag.style.color = disc.color;
+    dTag.style.fontWeight = '600';
+    dTag.textContent = disc.name;
+    meta.appendChild(dTag);
+  }
+  if(card.fromErrorId){
+    const fr = mk('span','badge b-warn');
+    fr.textContent = '🎯 De erro';
+    meta.appendChild(fr);
+  }
+  stage.appendChild(meta);
+
+  // Card grande
+  const focusCard = mk('div','srs-focus-card' + (ST.srsShowBack ? ' flipped' : ''));
+  const front = mk('div','srs-focus-front');
+  front.innerHTML = formatFlashcardText(normText(card.front));
+  focusCard.appendChild(front);
+  if(ST.srsShowBack){
+    const div = mk('div','srs-focus-divider');
+    focusCard.appendChild(div);
+    const back = mk('div','srs-focus-back');
+    back.innerHTML = formatFlashcardText(normText(card.back));
+    focusCard.appendChild(back);
+  }
+  // Click no card revela
+  focusCard.addEventListener('click',()=>{
+    if(!ST.srsShowBack){
+      ST.srsShowBack = true;
+      render();
+    }
+  });
+  stage.appendChild(focusCard);
+
+  // Reveal CTA OU rating buttons
+  if(!ST.srsShowBack){
+    const reveal = mk('button','srs-focus-reveal');
+    reveal.textContent = 'Revelar resposta';
+    reveal.addEventListener('click',()=>{
+      ST.srsShowBack = true;
+      render();
+    });
+    stage.appendChild(reveal);
+  } else {
+    // Rating premium
+    const rateRow = mk('div','srs-focus-rating');
+    const ratings = [
+      {label:'Errei', sub:'Vou rever agora', cls:'r-again', rating:0, key:'1'},
+      {label:'Difícil', sub:'Custou lembrar', cls:'r-hard', rating:1, key:'2'},
+      {label:'Bom', sub:'Lembrei normal', cls:'r-good', rating:2, key:'3'},
+      {label:'Fácil', sub:'Sabia de cor', cls:'r-easy', rating:3, key:'4'}
+    ];
+    ratings.forEach(r=>{
+      const b = mk('button','srs-focus-rate-btn ' + r.cls);
+      const bold = mk('b');bold.textContent = r.label;
+      const small = mk('small');small.textContent = r.sub;
+      const key = mk('span','key');key.textContent = r.key;
+      b.appendChild(bold);b.appendChild(small);b.appendChild(key);
+      b.addEventListener('click',()=>{
+        srsRate(card, r.rating);
+        DATA.session.srsReviewed = (DATA.session.srsReviewed || 0) + 1;
+        save();
+        const newDue = srsActiveDue(ST.srsStudyDisc);
+        ST.srsCurrent = newDue[0] || null;
+        ST.srsShowBack = false;
+        render();
+      });
+      rateRow.appendChild(b);
+    });
+    stage.appendChild(rateRow);
+  }
+
+  overlay.appendChild(stage);
+
+  // Footer com atalhos
+  const footer = mk('div','srs-focus-footer');
+  if(!ST.srsShowBack){
+    footer.innerHTML = '<span><kbd>Espaço</kbd> revelar</span><span><kbd>Esc</kbd> sair</span><span><kbd>E</kbd> editar</span>';
+  } else {
+    footer.innerHTML = '<span><kbd>1</kbd> errei</span><span><kbd>2</kbd> difícil</span><span><kbd>3</kbd> bom</span><span><kbd>4</kbd> fácil</span><span><kbd>Esc</kbd> sair</span>';
+  }
+  overlay.appendChild(footer);
+
+  document.body.appendChild(overlay);
+}
+
+// Sai do Modo Foco
+function exitSRSFocus(){
+  ST.srsFocusActive = false;
+  document.body.classList.remove('srs-focus-mode');
+  const overlay = document.querySelector('.srs-focus-overlay');
+  if(overlay) overlay.remove();
+  render();
+}
+
 function renderSRSStudy(wrap,due,total){
   // Discipline filter chips — appears if there are 2+ active disciplines with cards
   const actDiscs = activeDisciplines();
@@ -21346,6 +22635,16 @@ function renderSRSStudy(wrap,due,total){
     const fr = mk('span','badge b-warn');fr.textContent='🎯 De erro';meta.appendChild(fr);
   }
   const rightWrap = mk('div','flex');rightWrap.style.cssText='gap:4px;margin-left:auto';
+  // V14: Modo Foco — fullscreen premium pra revisão sem distração
+  const focusBtn = mkBtn('🎯 Modo Foco','btn btn-sm');
+  focusBtn.title = 'Modo focado em tela cheia — só você e os flashcards';
+  focusBtn.style.cssText = 'border-color:var(--gralia-purple);color:var(--gralia-purple);font-weight:600';
+  focusBtn.addEventListener('click',()=>{
+    ST.srsFocusActive = true;
+    document.body.classList.add('srs-focus-mode');
+    render();
+  });
+  rightWrap.appendChild(focusBtn);
   // Ver na matéria
   if(card.tags&&card.tags[0]){
     const mapBtn = mkBtn('🗺️','btn btn-sm');mapBtn.title='Ver no Mapa da Matéria';
@@ -21357,6 +22656,11 @@ function renderSRSStudy(wrap,due,total){
   rightWrap.appendChild(edit);
   meta.appendChild(rightWrap);
   wrap.appendChild(meta);
+
+  // V14: Se Modo Foco ativo, sobrepõe overlay (renderizado fora do flow normal)
+  if(ST.srsFocusActive){
+    setTimeout(()=>renderSRSFocusOverlay(card, filteredDue),0);
+  }
 
   const flip = mk('div','srs-flip');
   const f = mk('div','srs-front');f.innerHTML=formatFlashcardText(normText(card.front));
@@ -21587,151 +22891,57 @@ function renderSRSGenerate(wrap){
   }
   wrap.appendChild(card);
 
-  // V13: Pacote semanal — lei seca + jurisprudência da semana, gerado em 1 clique
-  // Útil pra Direito (concursos jurídicos). Cria 8 cards: 5 de lei seca + 3 de jurisprudência.
-  const weeklyCard = mk('div','card');weeklyCard.style.marginTop='.875rem';
-  weeklyCard.appendChild(sLabel('🗓️ Pacote semanal — lei seca + jurisprudência'));
-  const wkP = mk('p','txt2');wkP.style.cssText='margin:0 0 .75rem;font-size:13px;line-height:1.55';
-  wkP.innerHTML = 'Em 1 clique a IA gera <b>5 cards de lei seca</b> + <b>3 cards de jurisprudência relevante</b> da disciplina escolhida. Bom pra concursos jurídicos onde decoreba de lei e julgados é frequente.';
-  weeklyCard.appendChild(wkP);
-
-  const wkRow = mk('div','grid g2');wkRow.style.marginBottom='.75rem';
-  const wkCol1 = mk('div');
-  const wkLbl = mk('label');wkLbl.textContent='Disciplina';
-  const wkSel = mk('select');
-  const lawDiscs = activeDisciplines();
-  if(lawDiscs.length === 0){
-    const o = mk('option');o.textContent='Crie uma disciplina primeiro';o.disabled=true;o.selected=true;
-    wkSel.appendChild(o);
-  } else {
-    lawDiscs.forEach(d=>{
-      const o = mk('option');o.value=d.id;o.textContent=d.name;
-      wkSel.appendChild(o);
-    });
-  }
-  wkCol1.appendChild(wkLbl);wkCol1.appendChild(wkSel);
-  wkRow.appendChild(wkCol1);
-
-  const wkCol2 = mk('div');
-  const wkLbl2 = mk('label');wkLbl2.textContent='Foco do pacote';
-  const wkFocus = mk('input');wkFocus.type='text';wkFocus.placeholder='Ex: Lei 8.112, processo administrativo, recursos';
-  wkCol2.appendChild(wkLbl2);wkCol2.appendChild(wkFocus);
-  wkRow.appendChild(wkCol2);
-  weeklyCard.appendChild(wkRow);
-
-  const wkBtn = mkBtn('Gerar pacote semanal (8 cards)','btn btn-p');
-  wkBtn.disabled = ST.srsWeeklyLoading || lawDiscs.length === 0;
-  wkBtn.addEventListener('click',()=>{
-    if(lawDiscs.length === 0){alert('Crie uma disciplina primeiro');return;}
-    srsGenerateWeeklyPack(wkSel.value, wkFocus.value.trim(), wrap);
-  });
-  weeklyCard.appendChild(wkBtn);
-  if(ST.srsWeeklyLoading) weeklyCard.appendChild(dynamicLoading('flashcard','Gerando pacote semanal...'));
-
-  wrap.appendChild(weeklyCard);
-
   return wrap;
-}
-
-// V13: Gera pacote semanal de lei seca + jurisprudência
-async function srsGenerateWeeklyPack(disciplineId, focus, wrapEl){
-  ST.srsWeeklyLoading = true;
-  render();
-  try{
-    const disc = getDiscipline(disciplineId);
-    const discName = disc ? disc.name : 'Direito';
-    const focusStr = focus ? `Foque em: ${focus}.` : '';
-    const sys = `Você cria pacotes semanais de revisão pra concurso público. Gere EXATAMENTE 8 flashcards no formato JSON:
-
-5 cards de LEI SECA — letra de lei, súmulas, artigos importantes da disciplina.
-3 cards de JURISPRUDÊNCIA — decisões recentes do STF/STJ ou súmulas vinculantes relevantes.
-
-REGRAS:
-- Frente: pergunta direta e específica
-- Verso: resposta contendo letra da lei OU número do julgado + tese
-- Marque palavras-chave com ::palavra:: (highlight verde)
-- Use **negrito** pra ênfase
-- Cards curtos (max 3 linhas no verso)
-- Inclua MNEMÔNICO quando útil
-
-SAÍDA — apenas JSON puro, array de 8 objetos:
-[
-  {"front":"...","back":"...","type":"law"},
-  ...
-]
-type: "law" pros 5 primeiros (lei seca), "juris" pros 3 últimos (jurisprudência)`;
-
-    const userMsg = `Crie pacote semanal pra disciplina: ${discName}. ${focusStr}`;
-    const body = {
-      model: DATA.config.model || 'claude-haiku-4-5-20251001',
-      max_tokens: 3000,
-      system: sys,
-      messages: [{role:'user', content: userMsg}]
-    };
-    const r = await apiGenerate(body);
-    if(!r.ok){
-      const errText = await r.text().catch(()=>'');
-      throw new Error('api-' + r.status + ': ' + errText.slice(0,150));
-    }
-    const d = await r.json();
-    if(d.usage){
-      logUsage({
-        model:body.model,kind:'weekly_pack',action:'srs_weekly',
-        input:d.usage.input_tokens||0,output:d.usage.output_tokens||0,
-        cacheRead:d.usage.cache_read_input_tokens||0,
-        cacheCreation:d.usage.cache_creation_input_tokens||0
-      });
-    }
-    const txt = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-    const clean = txt.replace(/```json\n?|\n?```/g,'').trim();
-    const cards = JSON.parse(clean);
-    if(!Array.isArray(cards) || cards.length === 0) throw new Error('Pacote vazio');
-
-    // Salva cards no SRS local
-    if(!DATA.srs) DATA.srs = {cards:[]};
-    if(!DATA.srs.cards) DATA.srs.cards = [];
-    let added = 0;
-    cards.forEach(c=>{
-      if(!c.front || !c.back) return;
-      DATA.srs.cards.push({
-        id: 'wk_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-        type: c.type === 'juris' ? 'concept' : 'concept',
-        disciplineId: disciplineId,
-        topic: focus || (c.type === 'juris' ? 'Jurisprudência' : 'Lei seca'),
-        front: c.front,
-        back: c.back,
-        easeFactor: 2.5,
-        interval: 0,
-        nextReview: Date.now(),
-        reviewCount: 0,
-        createdAt: Date.now(),
-        weeklyPack: true,
-        weeklyType: c.type
-      });
-      added++;
-    });
-    save();
-    showToast(`✓ ${added} cards criados (lei seca + jurisprudência) — vão pra revisão hoje`);
-  }catch(e){
-    alert('Erro: ' + (e.message || e));
-  }
-  ST.srsWeeklyLoading = false;
-  render();
 }
 
 function renderSRSManage(wrap,allCards){
   if(allCards.length===0){
     wrap.appendChild(infoBox('Sem cards nas disciplinas ativas.'));return wrap;
   }
+
+  // V14: Campo de busca — útil quando deck é grande (50+ cards)
+  if(allCards.length >= 10){
+    const searchRow = mk('div');
+    searchRow.style.cssText='margin-bottom:.625rem';
+    const searchInp = mk('input');
+    searchInp.type = 'search';
+    searchInp.placeholder = '🔍 Buscar nos cards (frente, verso, tópico)';
+    searchInp.style.cssText = 'width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit';
+    searchInp.value = ST.srsSearchTerm || '';
+    let searchTimer;
+    searchInp.addEventListener('input', e=>{
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(()=>{
+        ST.srsSearchTerm = e.target.value.trim();
+        render();
+      }, 220);
+    });
+    searchRow.appendChild(searchInp);
+    wrap.appendChild(searchRow);
+  }
+
+  // Aplica filtro de busca antes do filtro de tipo
+  let searched = allCards;
+  if(ST.srsSearchTerm && ST.srsSearchTerm.trim()){
+    const q = ST.srsSearchTerm.toLowerCase().trim();
+    searched = allCards.filter(c=>{
+      const front = (c.front||'').toLowerCase();
+      const back = (c.back||'').toLowerCase();
+      const topic = (c.topic||'').toLowerCase();
+      const tags = (c.tags||[]).join(' ').toLowerCase();
+      return front.includes(q) || back.includes(q) || topic.includes(q) || tags.includes(q);
+    });
+  }
+
   // Type filter
   const tf = mk('div','flex');tf.style.gap='4px';tf.style.marginBottom='.875rem';tf.style.flexWrap='wrap';
   const allBtn = mk('button','conf-btn'+(ST.srsFilterType==='all'?' sel-c':''));
   allBtn.style.cssText='padding:5px 12px;font-size:11.5px';
-  allBtn.textContent='Todos ('+allCards.length+')';
+  allBtn.textContent='Todos ('+searched.length+')';
   allBtn.addEventListener('click',()=>{ST.srsFilterType='all';render();});
   tf.appendChild(allBtn);
   Object.entries(CARD_TYPES).forEach(([k,v])=>{
-    const count = allCards.filter(c=>c.type===k).length;
+    const count = searched.filter(c=>c.type===k).length;
     if(count===0)return;
     const b = mk('button','conf-btn'+(ST.srsFilterType===k?' sel-c':''));
     b.style.cssText='padding:5px 12px;font-size:11.5px';
@@ -21741,7 +22951,16 @@ function renderSRSManage(wrap,allCards){
   });
   wrap.appendChild(tf);
 
-  const filtered = ST.srsFilterType==='all'?allCards:allCards.filter(c=>c.type===ST.srsFilterType);
+  const filtered = ST.srsFilterType==='all'?searched:searched.filter(c=>c.type===ST.srsFilterType);
+
+  // V14: Mensagem se busca não retorna nada
+  if(filtered.length === 0 && ST.srsSearchTerm){
+    const empty = mk('div','card');
+    empty.style.cssText='padding:1.5rem;text-align:center;color:var(--text2)';
+    empty.innerHTML = `Nenhum card encontrado pra <b>"${escapeHTML(ST.srsSearchTerm)}"</b>. Tente outras palavras.`;
+    wrap.appendChild(empty);
+    return wrap;
+  }
 
   // SORT CONTROL
   const sortControl = buildSortControl({
@@ -22941,26 +24160,35 @@ async function smartOrganizeContent(rawText,opts){
   const contentTypes = Object.entries(CONTENT_TYPES).map(([k,v])=>`${k}: ${v.label}`).join(', ');
   // V12: Prompt expandido pra TAMBÉM sugerir nome inteligente da fonte e detectar data.
   // Usuário não precisa pensar nesses metadados — IA infere e ele só confirma/edita.
-  const sys = `Organize o texto fornecido em formato estruturado para estudo, e infira metadados úteis.
+  const sys = `Organize o texto fornecido em formato estruturado para estudo, REMOVENDO RUÍDO de cursinhos e fontes não autorais. Infira metadados úteis.
+
+REGRAS DE LIMPEZA AGRESSIVA — REMOVA SEMPRE:
+- Nomes de professores que aparecem isoladamente (ex: "Prof. João Silva", "Profa Maria")
+- Nomes de cursinhos (ex: "Estratégia Concursos", "Gran Cursos", "Direção Concursos", "AlfaCon", "Damásio", "Cers", "Ouse Saber", etc)
+- Cabeçalhos repetidos em todas páginas (logos, "© 2024 Cursinho X")
+- Rodapés ("Página X de Y", URLs do cursinho, "Material exclusivo do aluno")
+- Marcas d'água (texto repetido em diagonal, "DEMO", "SAMPLE")
+- Avisos legais e direitos autorais
+- "Olá pessoal", "Vamos lá!", "Vamos estudar agora", saudações genéricas
+- Frases promocionais ("Acesse nosso site", "Curtiu? Compartilhe", "Curso completo em...")
+- Numeração de páginas em qualquer formato
 
 REGRAS DE ORGANIZAÇÃO:
 - Divida em seções lógicas, cada uma com título curto
-- Para cada seção, escreva um resumo de 1-2 frases no início
-- Preserve o CONTEÚDO original — não invente, não remova informação importante
-- Remova apenas ruído (paginação, marcas d'água, repetições óbvias)
-- Use formatação Markdown: ## para títulos, texto corrido para seções
-- Se o texto for curto ou já organizado, retorne praticamente como recebeu
+- Preserve o CONTEÚDO TÉCNICO — não invente, não remova informação relevante
+- Use formatação Markdown: ## para títulos
+- Mantenha texto corrido legível, sem listas desnecessárias
 
 REGRAS DE METADADOS (sempre que possível, sem inventar):
-- "suggestedName": Nome curto e descritivo da fonte (ex: "Direito Administrativo - Princípios", "Lei 8.112 - Servidores Públicos", "Aula CESPE - Controle de Constitucionalidade"). Máximo 60 caracteres. Use o conteúdo, NÃO o nome do arquivo.
-- "detectedDate": Se o texto mencionar data, ano ou período (edição 2024, atualizado em jul/2024, aula de 03/2024, etc), retorne em formato YYYY-MM. Se só ano: YYYY-01. Se nada, null.
+- "suggestedName": Nome curto e descritivo da fonte (ex: "Direito Administrativo - Princípios", "Lei 8.112 - Servidores Públicos"). Máximo 60 chars. Use o conteúdo, NÃO o nome do arquivo. NÃO inclua nome do cursinho ou professor.
+- "detectedDate": Se o texto mencionar data, ano ou período (edição 2024, atualizado em jul/2024, aula de 03/2024), retorne YYYY-MM. Se só ano: YYYY-01. Se nada, null.
 ${opts.classify?`
 - "disciplineId": Disciplina mais provável (entre: ${discNames}). null se nenhuma se encaixar.
 - "contentType": Tipo de conteúdo (entre: ${contentTypes}). Padrão: misto.`:''}
 
 SAÍDA (JSON puro, sem markdown):
 {
-  "organized":"texto completo estruturado em Markdown",
+  "organized":"texto completo limpo e estruturado em Markdown",
   "topics":["título seção 1","título seção 2"],
   "suggestedName":"Nome sugerido curto",
   "detectedDate":"YYYY-MM ou null",
@@ -23292,6 +24520,13 @@ function topicDominantTrap(entry){
 // Saves current view before navigating, so the user can come back
 // origin = {label, restore: callback to restore any state needed}
 function navigateTo(newView,origin){
+  // V14: Sai do SRS Focus Mode ao navegar pra outra view
+  if(ST.srsFocusActive && newView !== 'srs'){
+    ST.srsFocusActive = false;
+    document.body.classList.remove('srs-focus-mode');
+    const overlay = document.querySelector('.srs-focus-overlay');
+    if(overlay) overlay.remove();
+  }
   if(origin){
     // Push current state to the stack
     ST.navStack.push({
@@ -24331,6 +25566,165 @@ SAÍDA (JSON puro, sem markdown):
   DATA.insights[dk] = insight;
   save();
   return insight;
+}
+
+// V14: Dicas educacionais rotativas — cycle baseado em dia do ano.
+// Cada dica é cientificamente fundamentada em pesquisa de cognição/aprendizagem.
+const STUDY_TIPS = [
+  {
+    icon:'🧠',
+    title:'Prática ativa > releitura passiva',
+    body:'Reler um texto cria ilusão de domínio (você reconhece o conteúdo, mas não consegue produzir do zero). Resolver questões força você a recuperar a informação — esse esforço de busca é o que fixa.',
+    source:'Karpicke & Roediger, 2008'
+  },
+  {
+    icon:'⏱️',
+    title:'Estudo espaçado > estudo concentrado',
+    body:'Estudar o mesmo tópico 3× em 3 dias diferentes é mais eficaz que estudar 3× num único dia. O esquecimento entre revisões é o que ativa a fixação na memória de longo prazo.',
+    source:'Cepeda et al., 2006'
+  },
+  {
+    icon:'🔀',
+    title:'Intercalar tópicos é melhor que estudar em bloco',
+    body:'Fazer 20 questões de Direito Administrativo seguidas parece eficiente, mas 5 de cada de 4 disciplinas alternadas melhora o desempenho na prova. Intercalar força o cérebro a escolher a regra certa antes de aplicar.',
+    source:'Rohrer & Taylor, 2007'
+  },
+  {
+    icon:'❓',
+    title:'Pergunte "por quê?" — interrogação elaborativa',
+    body:'Para cada fato que você está estudando, pergunte "por que isso é assim?" e tente responder antes de ler a explicação. Esse esforço cria conexões muito mais profundas que ler passivamente.',
+    source:'Pressley et al., 1992'
+  },
+  {
+    icon:'🎯',
+    title:'Calibração: saber o que você não sabe',
+    body:'A causa #1 de reprovação não é falta de estudo — é "falsa segurança". Marcar nível de confiança em cada questão treina você a reconhecer quando NÃO sabe (e estudar exatamente isso).',
+    source:'Dunning et al., 2003'
+  },
+  {
+    icon:'😴',
+    title:'Sono é parte do estudo',
+    body:'A consolidação de memória acontece durante o sono. Dormir 6h ou menos reduz a capacidade de fixar conteúdo aprendido em até 40%. Dormir é estudar.',
+    source:'Walker, 2017'
+  },
+  {
+    icon:'⚠️',
+    title:'Rever o erro vale 3× mais que estudar conteúdo novo',
+    body:'Quando você erra, seu cérebro está em estado de alta atenção. É o melhor momento pra fixar o conceito correto. Por isso o Histórico de Erros é uma ferramenta tão poderosa.',
+    source:'Metcalfe, 2017'
+  },
+  {
+    icon:'🎴',
+    title:'Flashcards funcionam porque exigem recuperação',
+    body:'O segredo do Anki/SRS não é repetir — é recuperar. Você não está olhando a resposta; está produzindo a resposta. Esse esforço produtivo é a base do aprendizado duradouro.',
+    source:'Bjork & Bjork, 2011'
+  },
+  {
+    icon:'📵',
+    title:'Multitarefa destrói o estudo',
+    body:'Trocar de aba entre estudo e WhatsApp causa "switching cost" cognitivo de até 40% por troca. Estudar 1h sem interrupção rende mais que 2h com celular ao lado.',
+    source:'Rubinstein et al., 2001'
+  },
+  {
+    icon:'🍎',
+    title:'Ambiente de estudo: a importância do ritual',
+    body:'Estudar sempre no mesmo lugar, com a mesma rotina (luz, temperatura, ruído ambiente) cria gatilhos cognitivos. Seu cérebro entra em "modo estudo" mais rápido.',
+    source:'Smith & Vela, 2001'
+  },
+  {
+    icon:'🏃',
+    title:'Exercício antes de estudar aumenta a retenção',
+    body:'20-30 min de exercício leve antes de uma sessão de estudo aumenta o BDNF (fator de crescimento neuronal) e melhora a memória de aprendizado dessa sessão.',
+    source:'Roig et al., 2013'
+  },
+  {
+    icon:'🤔',
+    title:'Explicar pra alguém é o melhor teste',
+    body:'Se você consegue explicar um conceito pra um leigo (filho, parceiro, etc) sem usar jargão técnico, você dominou. Se trava, é onde precisa voltar.',
+    source:'"Efeito Feynman"'
+  },
+  {
+    icon:'📊',
+    title:'Faça questões antes de saber a matéria',
+    body:'Tentar responder questões SEM ter estudado primeiro (e errar) ativa o cérebro pra prestar mais atenção quando depois você vai estudar. É o "pre-testing effect".',
+    source:'Richland et al., 2009'
+  },
+  {
+    icon:'🎼',
+    title:'Música com letra atrapalha leitura',
+    body:'Música instrumental ou ruído ambiente pode ajudar a focar, mas música com letra compete pelo mesmo recurso cognitivo de leitura/processamento de linguagem.',
+    source:'Perham & Currie, 2014'
+  },
+  {
+    icon:'☕',
+    title:'Cafeína ajuda — com moderação',
+    body:'Cafeína (200-400mg, ~2-4 cafés) melhora atenção e memória de trabalho. Acima disso, causa ansiedade e atrapalha. Evite após 14h pra não comprometer o sono.',
+    source:'Smith, 2002'
+  }
+];
+
+function buildTipOfTheDayCard(){
+  if(DATA.tipsDismissed) return null;
+
+  // Roda a dica baseado no dia do ano
+  const start = new Date(new Date().getFullYear(), 0, 0);
+  const diff = Date.now() - start;
+  const dayOfYear = Math.floor(diff / 86400000);
+  const tip = STUDY_TIPS[dayOfYear % STUDY_TIPS.length];
+
+  const card = mk('div');
+  card.style.cssText = 'background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));border:1px solid var(--border);border-left:3px solid var(--gralia-purple);border-radius:12px;padding:1rem 1.125rem;margin:0 0 1rem;display:flex;gap:14px;align-items:flex-start';
+
+  const iconCol = mk('div');
+  iconCol.style.cssText = 'font-size:30px;line-height:1;flex-shrink:0;padding-top:2px';
+  iconCol.textContent = tip.icon;
+
+  const body = mk('div');
+  body.style.flex = '1';
+
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px';
+  const lbl = mk('span');
+  lbl.style.cssText = 'font-size:10px;font-weight:700;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.6px';
+  lbl.textContent = '💡 Dica do dia';
+  head.appendChild(lbl);
+  body.appendChild(head);
+
+  const title = mk('h3');
+  title.style.cssText = 'margin:0 0 4px;font-size:14.5px;font-weight:700;letter-spacing:-.2px;color:var(--text)';
+  title.textContent = tip.title;
+  body.appendChild(title);
+
+  const text = mk('p');
+  text.style.cssText = 'margin:0;font-size:12.5px;line-height:1.6;color:var(--text2)';
+  text.textContent = tip.body;
+  body.appendChild(text);
+
+  if(tip.source){
+    const src = mk('div');
+    src.style.cssText = 'margin-top:6px;font-size:10.5px;color:var(--text3);font-style:italic';
+    src.textContent = '— ' + tip.source;
+    body.appendChild(src);
+  }
+
+  card.appendChild(iconCol);
+  card.appendChild(body);
+
+  // Dispensar
+  const dismissBtn = mk('button');
+  dismissBtn.style.cssText = 'background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;padding:4px 8px;align-self:flex-start;flex-shrink:0';
+  dismissBtn.textContent = '×';
+  dismissBtn.title = 'Esconder dicas';
+  dismissBtn.addEventListener('click', e=>{
+    e.stopPropagation();
+    if(confirm('Esconder as dicas do dia? Você pode reativar em Conta → Dados.')){
+      DATA.tipsDismissed = true;
+      save();render();
+    }
+  });
+  card.appendChild(dismissBtn);
+
+  return card;
 }
 
 // Render the insight card component on dashboard
@@ -25753,9 +27147,10 @@ function renderDiscover(){
     scopeRow.appendChild(scopeFollowing);
     wrap.appendChild(scopeRow);
 
-    // V12: Filtro por tipo de material — caderno, fonte, perfil de tópico, edital
-    // Antes não tinha filtro visível — usuário só conseguia ver tudo misturado.
-    // Sincroniza com ST.discoverFilter.type (filtro real usado na query).
+    // V14: Filtros de descoberta reorganizados.
+    // ANTES (errado): duplicava filtros que já existiam em outros lugares.
+    // AGORA: Tipo de material (caderno/fonte/perfil/edital) + Tipo de conteúdo
+    // (teoria, lei seca, jurisprudência, doutrina...) — os mesmos da hora de importar fonte.
     if(!ST.discoverFilter) ST.discoverFilter = {};
     const curType = ST.discoverFilter.type || 'all';
     const typeRow = mk('div','discover-type-row');
@@ -25783,6 +27178,47 @@ function renderDiscover(){
       typeRow.appendChild(b);
     });
     wrap.appendChild(typeRow);
+
+    // V14: NOVO — Filtro por TIPO DE CONTEÚDO (teoria, lei seca, jurisprudência...).
+    // Os mesmos tipos que o usuário escolhe ao importar uma fonte. Faz sentido na
+    // descoberta porque o tipo de conteúdo determina como o material é estudado.
+    // (Só mostra se filtro de tipo permite — só faz sentido pra fonte, perfil e caderno)
+    if(curType !== 'edital'){
+      const curContentType = ST.discoverFilter.contentType || 'all';
+      const contentRow = mk('div','discover-content-row');
+      contentRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-top:.5rem;align-items:center';
+      const contentLbl = mk('span');contentLbl.style.cssText='font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-right:4px';
+      contentLbl.textContent = 'Conteúdo:';
+      contentRow.appendChild(contentLbl);
+
+      const contentOpts = [
+        {key:'all', label:'Todos'},
+        {key:'teoria', label:'📖 Teoria'},
+        {key:'lei_seca', label:'📜 Lei seca'},
+        {key:'jurisprudencia', label:'⚖️ Jurisprudência'},
+        {key:'doutrina', label:'📚 Doutrina'},
+        {key:'exercicios', label:'💪 Exercícios'},
+        {key:'resumo', label:'📝 Resumo'},
+        {key:'mapa_mental', label:'🧠 Mapa mental'},
+        {key:'misto', label:'🧩 Misto'}
+      ];
+      contentOpts.forEach(opt=>{
+        const isOn = curContentType === opt.key;
+        const b = mk('button','dctype-chip'+(isOn?' on':''));
+        b.type='button';
+        b.style.cssText = `padding:4px 10px;border-radius:13px;border:1px solid ${isOn?'var(--accent)':'var(--border)'};background:${isOn?'var(--accent-light)':'var(--surface)'};color:${isOn?'var(--accent-text)':'var(--text2)'};font-size:11px;font-weight:600;cursor:pointer;font-family:inherit`;
+        b.textContent = opt.label;
+        b.addEventListener('click',()=>{
+          const newCt = opt.key === 'all' ? null : opt.key;
+          if((ST.discoverFilter.contentType||'all') === (newCt||'all')) return;
+          ST.discoverFilter.contentType = newCt;
+          ST.discoverItems = []; ST.discoverPage = 0; ST.discoverHasMore = true;
+          render();
+        });
+        contentRow.appendChild(b);
+      });
+      wrap.appendChild(contentRow);
+    }
   }
 
   // Aviso se sem perfil (mostrado em ambas as abas)
@@ -25928,6 +27364,7 @@ function renderDiscover(){
     const limit = 20;
     const result = await searchPublicResources({
       type: ST.discoverFilter.type,
+      contentType: ST.discoverFilter.contentType || null,
       discipline: ST.discoverFilter.discipline || null,
       search: ST.discoverFilter.search || null,
       sort: ST.discoverFilter.sort,
@@ -32006,6 +33443,145 @@ async function fetchTopupPackages(){
   }
 }
 
+// V14: Página de vendas dedicada — diferente de renderPlans (que é a tabela técnica).
+// Essa aqui é persuasiva: foca em prova de valor, urgência (vagas/edital), redução de risco.
+// Aparece quando: trial expirou, usuário tentou feature paga, ou clica "Conhecer planos" da landing.
+function renderUpgrade(){
+  const wrap = mk('div','fade upgrade-page');
+  wrap.style.cssText = 'max-width:780px;margin:0 auto';
+
+  // Hero: posicionamento emocional
+  const hero = mk('div');
+  hero.style.cssText = 'text-align:center;padding:2rem 1rem 1.5rem';
+  const heroEm = mk('div');
+  heroEm.style.cssText = 'font-size:54px;line-height:1;margin-bottom:1rem';
+  heroEm.textContent = '🎯';
+  hero.appendChild(heroEm);
+  const heroH = mk('h1');
+  heroH.style.cssText = 'margin:0 0 .75rem;font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1.2';
+  heroH.innerHTML = 'A sua prova vem.<br><span style="background:linear-gradient(90deg,var(--gralia-purple),#a572ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">Você está pronto?</span>';
+  hero.appendChild(heroH);
+  const heroP = mk('p');
+  heroP.style.cssText = 'margin:0 auto;font-size:15px;line-height:1.65;color:var(--text2);max-width:560px';
+  heroP.textContent = 'Tem concurseiro estudando 8 horas por dia há 3 anos sem passar. Outro passa em 1. A diferença não é tempo. É método. O Gralia foi feito pra essa virada.';
+  hero.appendChild(heroP);
+  wrap.appendChild(hero);
+
+  // Urgência sutil — mostra status real do trial
+  const sub = SUBSCRIPTION.data;
+  if(sub && sub.plan_id === 'trial'){
+    const trialBox = mk('div');
+    trialBox.style.cssText = 'background:linear-gradient(135deg,rgba(245,158,11,.08),var(--surface));border:1px solid rgba(245,158,11,.25);border-left:3px solid var(--amber);border-radius:10px;padding:.875rem 1.125rem;margin:0 0 1.5rem;display:flex;align-items:center;gap:12px';
+    const ico = mk('span');ico.style.cssText='font-size:24px';ico.textContent='⏳';
+    const txt = mk('div');txt.style.flex='1';
+    const endDate = sub.current_period_end ? new Date(sub.current_period_end) : null;
+    const daysLeft = endDate ? Math.max(0, Math.ceil((endDate - Date.now()) / 86400000)) : null;
+    txt.innerHTML = `<div style="font-size:13.5px;font-weight:700;color:var(--text)">Você está no trial gratuito${daysLeft !== null ? ` · ${daysLeft} ${daysLeft===1?'dia restante':'dias restantes'}` : ''}</div><div style="font-size:12px;color:var(--text2);margin-top:2px">Aproveite os créditos pra testar tudo antes de decidir.</div>`;
+    trialBox.appendChild(ico);
+    trialBox.appendChild(txt);
+    wrap.appendChild(trialBox);
+  }
+
+  // Por que Gralia? — 3 motivos sólidos
+  const whyTitle = mk('h2');
+  whyTitle.style.cssText = 'margin:1.5rem 0 .75rem;font-size:18px;font-weight:700;letter-spacing:-.3px;text-align:center';
+  whyTitle.textContent = 'O que muda no seu estudo';
+  wrap.appendChild(whyTitle);
+
+  const reasons = [
+    {
+      icon:'⚡',
+      title:'Você vê padrão de erro antes da prova',
+      body:'Cada erro é classificado em 6 tipos de armadilha (termo absoluto, inversão, generalização indevida, omissão, troca de competência, confusão de nomenclatura). Se você cai mais em "termo absoluto", o sistema te dá um drill específico até a frequência cair.',
+      proof:'Métodos: Calibração, Drill, Mapa da Matéria'
+    },
+    {
+      icon:'🎴',
+      title:'Cada erro vira flashcard automaticamente',
+      body:'Errou? A IA cria um flashcard apontando exatamente a palavra-gatilho que te enganou. Você revisa pelo SRS (algoritmo do Anki) só quando faz sentido — não cards aleatórios da comunidade.',
+      proof:'Cards focados nos SEUS erros, não nos erros dos outros'
+    },
+    {
+      icon:'🎯',
+      title:'Edital vira plano de estudo concreto',
+      body:'Cole o PDF do edital. A IA lê 80 páginas, extrai as disciplinas, calcula peso, identifica o que mais cai pra essa banca, e gera tópicos prioritários. Você sai com um plano em 2 minutos.',
+      proof:'Plano Pro: edital ilimitado + Sonnet 4.6'
+    }
+  ];
+  reasons.forEach(r=>{
+    const card = mk('div');
+    card.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.125rem 1.25rem;margin-bottom:.75rem';
+    card.innerHTML = `
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div style="font-size:30px;line-height:1;flex-shrink:0">${r.icon}</div>
+        <div style="flex:1">
+          <h3 style="margin:0 0 6px;font-size:15px;font-weight:700;letter-spacing:-.2px">${escapeHTML(r.title)}</h3>
+          <p style="margin:0 0 6px;font-size:13px;color:var(--text2);line-height:1.6">${escapeHTML(r.body)}</p>
+          <div style="font-size:11.5px;color:var(--gralia-purple);font-weight:600">→ ${escapeHTML(r.proof)}</div>
+        </div>
+      </div>`;
+    wrap.appendChild(card);
+  });
+
+  // Mini-comparação trial × pago
+  const compTitle = mk('h2');
+  compTitle.style.cssText = 'margin:1.75rem 0 .75rem;font-size:18px;font-weight:700;letter-spacing:-.3px;text-align:center';
+  compTitle.textContent = 'O que você ganha com plano pago';
+  wrap.appendChild(compTitle);
+
+  const compBox = mk('div');
+  compBox.style.cssText='background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.125rem 1.25rem;margin-bottom:1.25rem';
+  const compRows = [
+    ['Créditos mensais pra IA gerar questões/cards', 'Limitado', 'Generoso (renovação mensal)'],
+    ['Síntese completa de edital', '1 só', 'Ilimitado (Concurseiro+)'],
+    ['Modelo Sonnet 4.6 (premium)', '❌', '✅ Pro'],
+    ['Top-up avulso de créditos', '❌', '✅'],
+    ['Cards e flashcards revisáveis', '✅', '✅ (sempre grátis)'],
+    ['Importar fontes e PDFs', '✅', '✅ (sempre grátis)']
+  ];
+  const tbl = mk('table');
+  tbl.style.cssText='width:100%;border-collapse:collapse;font-size:12.5px';
+  tbl.innerHTML = `<thead><tr><th style="text-align:left;padding:8px 4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Recurso</th><th style="text-align:center;padding:8px 4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)">Trial</th><th style="text-align:center;padding:8px 4px;font-size:11px;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.5px;font-weight:700;border-bottom:1px solid var(--border)">Pago</th></tr></thead>`;
+  const tbody = mk('tbody');
+  compRows.forEach((r,i)=>{
+    const tr = mk('tr');
+    if(i < compRows.length - 1) tr.style.borderBottom = '1px solid var(--border)';
+    tr.innerHTML = `<td style="padding:9px 4px;color:var(--text2)">${escapeHTML(r[0])}</td><td style="text-align:center;padding:9px 4px;color:var(--text3)">${escapeHTML(r[1])}</td><td style="text-align:center;padding:9px 4px;color:var(--text);font-weight:600">${escapeHTML(r[2])}</td>`;
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+  compBox.appendChild(tbl);
+  wrap.appendChild(compBox);
+
+  // Garantia / redução de risco
+  const guarantee = mk('div');
+  guarantee.style.cssText='background:linear-gradient(135deg,var(--accent-light),var(--surface));border:1px solid var(--accent);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:flex;gap:14px;align-items:center';
+  guarantee.innerHTML = `
+    <div style="font-size:32px;line-height:1">🛡</div>
+    <div>
+      <div style="font-size:14px;font-weight:700;color:var(--accent-text);margin-bottom:2px">Sem fidelidade. Cancele a qualquer momento.</div>
+      <div style="font-size:12.5px;color:var(--text2);line-height:1.55">Não gostou? Cancela direto na conta, com 1 clique. Você mantém acesso até o fim do período pago. Seus dados ficam preservados.</div>
+    </div>`;
+  wrap.appendChild(guarantee);
+
+  // CTA final
+  const ctaWrap = mk('div');
+  ctaWrap.style.cssText='text-align:center;padding:1.5rem 0';
+  const ctaBtn = mk('button','btn btn-p');
+  ctaBtn.style.cssText='font-size:15px;padding:.875rem 2.25rem;font-weight:700;letter-spacing:.2px';
+  ctaBtn.innerHTML = '🚀 Ver planos e preços';
+  ctaBtn.addEventListener('click',()=>{ST.view='plans';render();});
+  ctaWrap.appendChild(ctaBtn);
+
+  const ctaNote = mk('p');
+  ctaNote.style.cssText='margin:.875rem 0 0;font-size:12px;color:var(--text3);line-height:1.55';
+  ctaNote.innerHTML = 'A partir de <b>R$ 19,90/mês</b> · Pix ou cartão · Cancela quando quiser';
+  ctaWrap.appendChild(ctaNote);
+  wrap.appendChild(ctaWrap);
+
+  return wrap;
+}
+
 function renderPlans(){
   const wrap = mk('div','fade plans-page');
 
@@ -32759,6 +34335,450 @@ function renderCancelSubscription(){
   }
 
   return wrap;
+}
+
+// V14: Página de Atualizações Jurídicas — lei seca + jurisprudência das últimas semanas.
+// Conteúdo curado pelo admin (não geração IA livre que poderia inventar fato jurídico).
+// Usuário vê feed por categoria, clica pra ler detalhe, pode marcar como lida.
+function renderLegalUpdates(){
+  const wrap = mk('div','fade legal-updates-page');
+
+  // Header
+  const head = mk('div');head.style.cssText='display:flex;align-items:flex-start;gap:14px;margin-bottom:1.25rem;padding-bottom:1rem;border-bottom:1px solid var(--border)';
+  const headIcon = mk('div');headIcon.style.cssText='font-size:38px;line-height:1;flex-shrink:0';
+  headIcon.textContent = '⚖️';
+  head.appendChild(headIcon);
+  const headBody = mk('div');headBody.style.flex='1';
+  const h = mk('h1');h.style.cssText='margin:0 0 4px;font-size:24px;letter-spacing:-.4px';
+  h.textContent = 'Atualizações';
+  const sub = mk('p','txt2');sub.style.cssText='margin:0;font-size:13.5px;line-height:1.55';
+  sub.textContent = 'Novas leis, súmulas, julgados e mudanças normativas relevantes pra concursos. Curado e revisado.';
+  headBody.appendChild(h);headBody.appendChild(sub);
+  head.appendChild(headBody);
+  wrap.appendChild(head);
+
+  // Filtros: tipo (lei/jurisprudência/súmula) + área (administrativo/penal/etc)
+  if(!ST.legalFilter) ST.legalFilter = {kind: 'all', area: 'all'};
+
+  const filtersBox = mk('div');filtersBox.style.cssText='display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem';
+
+  const kindRow = mk('div');kindRow.style.cssText='display:flex;gap:5px;flex-wrap:wrap;align-items:center';
+  const kindLbl = mk('span');kindLbl.style.cssText='font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-right:6px';
+  kindLbl.textContent = 'Tipo:';
+  kindRow.appendChild(kindLbl);
+  const kindOpts = [
+    {key:'all', label:'Tudo'},
+    {key:'lei', label:'📜 Lei'},
+    {key:'jurisprudencia', label:'⚖️ Jurisprudência'},
+    {key:'sumula', label:'📑 Súmula'},
+    {key:'mp', label:'📋 MP'},
+    {key:'decreto', label:'📜 Decreto'}
+  ];
+  kindOpts.forEach(opt=>{
+    const isOn = (ST.legalFilter.kind || 'all') === opt.key;
+    const b = mk('button');
+    b.type='button';
+    b.style.cssText = `padding:5px 10px;border-radius:13px;border:1px solid ${isOn?'var(--accent)':'var(--border)'};background:${isOn?'var(--accent-light)':'var(--surface)'};color:${isOn?'var(--accent-text)':'var(--text2)'};font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit`;
+    b.textContent = opt.label;
+    b.addEventListener('click',()=>{
+      ST.legalFilter.kind = opt.key;
+      ST.legalUpdatesItems = null;
+      render();
+    });
+    kindRow.appendChild(b);
+  });
+  filtersBox.appendChild(kindRow);
+
+  const areaRow = mk('div');areaRow.style.cssText='display:flex;gap:5px;flex-wrap:wrap;align-items:center';
+  const areaLbl = mk('span');areaLbl.style.cssText='font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-right:6px';
+  areaLbl.textContent = 'Área:';
+  areaRow.appendChild(areaLbl);
+  const areaOpts = [
+    {key:'all', label:'Todas'},
+    {key:'constitucional', label:'Constitucional'},
+    {key:'administrativo', label:'Administrativo'},
+    {key:'penal', label:'Penal'},
+    {key:'processo_penal', label:'Proc. Penal'},
+    {key:'civil', label:'Civil'},
+    {key:'processo_civil', label:'Proc. Civil'},
+    {key:'tributario', label:'Tributário'},
+    {key:'trabalho', label:'Trabalho'},
+    {key:'previdenciario', label:'Previdenciário'},
+    {key:'eleitoral', label:'Eleitoral'},
+    {key:'outros', label:'Outros'}
+  ];
+  areaOpts.forEach(opt=>{
+    const isOn = (ST.legalFilter.area || 'all') === opt.key;
+    const b = mk('button');
+    b.type='button';
+    b.style.cssText = `padding:4px 9px;border-radius:12px;border:1px solid ${isOn?'var(--accent)':'var(--border)'};background:${isOn?'var(--accent-light)':'var(--surface)'};color:${isOn?'var(--accent-text)':'var(--text2)'};font-size:11px;font-weight:600;cursor:pointer;font-family:inherit`;
+    b.textContent = opt.label;
+    b.addEventListener('click',()=>{
+      ST.legalFilter.area = opt.key;
+      ST.legalUpdatesItems = null;
+      render();
+    });
+    areaRow.appendChild(b);
+  });
+  filtersBox.appendChild(areaRow);
+
+  wrap.appendChild(filtersBox);
+
+  // Botão admin pra criar novo (apenas pra admin)
+  if(isAdminUser()){
+    const adminRow = mk('div');adminRow.style.cssText='margin-bottom:1rem';
+    const newBtn = mkBtn('+ Nova atualização (admin)','btn btn-p btn-sm');
+    newBtn.addEventListener('click',()=>showLegalUpdateEditModal(null));
+    adminRow.appendChild(newBtn);
+    wrap.appendChild(adminRow);
+  }
+
+  // Lista (carrega do Supabase em background)
+  const listWrap = mk('div');listWrap.style.cssText='display:flex;flex-direction:column;gap:.875rem';
+
+  if(!ST.legalUpdatesItems){
+    listWrap.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--text3);font-size:13px">Carregando atualizações...</div>';
+    setTimeout(async()=>{
+      if(!supa){
+        listWrap.innerHTML = '<div class="card" style="padding:1rem;color:var(--text3)">Supabase não configurado</div>';
+        return;
+      }
+      try{
+        let q = supa.from('legal_updates').select('*').eq('is_active', true).order('added_at', {ascending: false}).limit(50);
+        if(ST.legalFilter.kind && ST.legalFilter.kind !== 'all'){
+          q = q.eq('kind', ST.legalFilter.kind);
+        }
+        if(ST.legalFilter.area && ST.legalFilter.area !== 'all'){
+          q = q.eq('area', ST.legalFilter.area);
+        }
+        const {data, error} = await q;
+        if(error) throw error;
+        ST.legalUpdatesItems = data || [];
+        renderItems();
+      }catch(e){
+        const msg = (e.message||'').toLowerCase();
+        if(msg.includes('legal_updates') || msg.includes('does not exist')){
+          listWrap.innerHTML = '<div class="card" style="padding:1.25rem;color:var(--red-text)">⚠ Tabela legal_updates não existe. Rode o SQL gralia-v14-legal-updates.sql no Supabase.</div>';
+        } else {
+          listWrap.innerHTML = '<div class="card" style="padding:1rem;color:var(--red-text)">Erro: '+escapeHTML(e.message||String(e))+'</div>';
+        }
+      }
+    }, 0);
+  } else {
+    renderItems();
+  }
+
+  wrap.appendChild(listWrap);
+
+  function renderItems(){
+    const items = ST.legalUpdatesItems || [];
+    listWrap.innerHTML = '';
+    if(items.length === 0){
+      const empty = mk('div');empty.style.cssText='padding:2.5rem 1.5rem;text-align:center;background:var(--surface);border:1px dashed var(--border);border-radius:12px';
+      empty.innerHTML = '<div style="font-size:36px;margin-bottom:8px">📭</div><h3 style="margin:0 0 4px;font-size:15px">Nenhuma atualização nesse filtro</h3><p class="txt3" style="margin:0;font-size:12.5px">Volte em alguns dias — atualizações são adicionadas semanalmente.</p>';
+      listWrap.appendChild(empty);
+      return;
+    }
+
+    // Featured primeiro
+    const featured = items.filter(i=>i.is_featured);
+    const regular = items.filter(i=>!i.is_featured);
+
+    if(featured.length > 0){
+      const featLabel = mk('div');featLabel.style.cssText='font-size:11px;font-weight:700;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px';
+      featLabel.textContent = '⭐ Destaque';
+      listWrap.appendChild(featLabel);
+      featured.forEach(item=>listWrap.appendChild(buildLegalUpdateCard(item, true)));
+      if(regular.length > 0){
+        const sep = mk('div');sep.style.cssText='font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:.75rem 0 4px';
+        sep.textContent = 'Recentes';
+        listWrap.appendChild(sep);
+      }
+    }
+    regular.forEach(item=>listWrap.appendChild(buildLegalUpdateCard(item, false)));
+  }
+
+  return wrap;
+}
+
+function buildLegalUpdateCard(item, isFeatured){
+  const card = mk('div','card');
+  const accent = isFeatured ? 'var(--gralia-purple)' :
+                 item.kind === 'lei' || item.kind === 'mp' || item.kind === 'decreto' ? 'var(--accent)' :
+                 item.kind === 'jurisprudencia' || item.kind === 'sumula' ? 'var(--blue, #185fa5)' : 'var(--text3)';
+  card.style.cssText = `padding:1rem 1.125rem;cursor:pointer;border-left:3px solid ${accent};background:var(--surface)`;
+  card.addEventListener('click',()=>{
+    showLegalUpdateDetailModal(item);
+  });
+
+  // Meta superior: tipo + área + data
+  const meta = mk('div');meta.style.cssText='display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--text3);font-weight:600;margin-bottom:6px;align-items:center';
+  const kindLabel = ({lei:'📜 LEI', jurisprudencia:'⚖️ JURISPRUDÊNCIA', sumula:'📑 SÚMULA', mp:'📋 MP', decreto:'📜 DECRETO'})[item.kind] || item.kind.toUpperCase();
+  meta.innerHTML += `<span style="color:${accent}">${kindLabel}</span>`;
+  if(item.source_court) meta.innerHTML += `<span>·</span><span style="text-transform:uppercase;letter-spacing:.4px"><b>${escapeHTML(item.source_court)}</b></span>`;
+  if(item.area) meta.innerHTML += `<span>·</span><span style="text-transform:uppercase;letter-spacing:.4px">${escapeHTML(item.area).replace('_',' ')}</span>`;
+  if(item.published_official_at) meta.innerHTML += `<span>·</span><span>📅 ${new Date(item.published_official_at).toLocaleDateString('pt-BR')}</span>`;
+  if(item.importance >= 4){
+    meta.innerHTML += `<span style="background:rgba(245,158,11,.15);color:var(--amber);padding:1px 6px;border-radius:4px;font-size:10.5px">⚡ IMPORTANTE</span>`;
+  }
+  card.appendChild(meta);
+
+  // Título
+  const title = mk('h3');title.style.cssText='margin:0 0 5px;font-size:15px;line-height:1.35;color:var(--text)';
+  title.textContent = item.title;
+  card.appendChild(title);
+
+  // Reference number (Lei 14.890/24, RE 999.999, etc)
+  if(item.reference_number){
+    const ref = mk('div');ref.style.cssText='font-size:11.5px;font-family:ui-monospace,monospace;color:var(--text3);margin-bottom:6px;font-weight:600';
+    ref.textContent = item.reference_number;
+    card.appendChild(ref);
+  }
+
+  // Summary
+  const summary = mk('p');summary.style.cssText='margin:0;font-size:13px;line-height:1.55;color:var(--text2)';
+  summary.textContent = item.summary;
+  card.appendChild(summary);
+
+  // Tags
+  if(item.tags && item.tags.length > 0){
+    const tagsRow = mk('div');tagsRow.style.cssText='display:flex;flex-wrap:wrap;gap:4px;margin-top:8px';
+    item.tags.slice(0,5).forEach(t=>{
+      const chip = mk('span');chip.style.cssText='padding:2px 7px;border-radius:10px;background:var(--surface2);font-size:10.5px;color:var(--text3)';
+      chip.textContent = '#' + t;
+      tagsRow.appendChild(chip);
+    });
+    card.appendChild(tagsRow);
+  }
+
+  return card;
+}
+
+function showLegalUpdateDetailModal(item){
+  const m = mk('div');m.style.cssText='max-width:680px;width:100%;max-height:85vh;overflow-y:auto';
+
+  // Header
+  const head = mk('div');head.style.cssText='display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:.875rem;padding-bottom:.875rem;border-bottom:1px solid var(--border)';
+  const hContent = mk('div');hContent.style.flex='1';
+  const kindLabel = ({lei:'📜 Lei', jurisprudencia:'⚖️ Jurisprudência', sumula:'📑 Súmula', mp:'📋 MP', decreto:'📜 Decreto'})[item.kind] || item.kind;
+  hContent.innerHTML = `
+    <div style="font-size:11.5px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">${kindLabel}${item.source_court ? ' · ' + escapeHTML(item.source_court) : ''}${item.published_official_at ? ' · ' + new Date(item.published_official_at).toLocaleDateString('pt-BR') : ''}</div>
+    <h2 style="margin:0;font-size:18px;line-height:1.3">${escapeHTML(item.title)}</h2>
+    ${item.reference_number ? `<div style="margin-top:4px;font-size:12px;font-family:ui-monospace,monospace;color:var(--text3);font-weight:600">${escapeHTML(item.reference_number)}</div>` : ''}
+  `;
+  head.appendChild(hContent);
+  const closeBtn = mk('button');closeBtn.style.cssText='background:transparent;border:none;font-size:22px;color:var(--text3);cursor:pointer;line-height:1;padding:0 4px';
+  closeBtn.textContent = '×';
+  closeBtn.addEventListener('click', closeModal);
+  head.appendChild(closeBtn);
+  m.appendChild(head);
+
+  // Summary destaque
+  const sumBox = mk('div');sumBox.style.cssText='padding:.75rem 1rem;background:var(--accent-light);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;margin-bottom:1rem';
+  const sumLbl = mk('div');sumLbl.style.cssText='font-size:10.5px;font-weight:700;color:var(--accent-text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px';
+  sumLbl.textContent = '⚡ Resumo';
+  sumBox.appendChild(sumLbl);
+  const sumP = mk('p');sumP.style.cssText='margin:0;font-size:13.5px;line-height:1.6;color:var(--text)';
+  sumP.textContent = item.summary;
+  sumBox.appendChild(sumP);
+  m.appendChild(sumBox);
+
+  // Impacto prático
+  if(item.practical_impact){
+    const impLbl = mk('div');impLbl.style.cssText='font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px';
+    impLbl.textContent = '🎯 Por que importa pra concurso';
+    m.appendChild(impLbl);
+    const impP = mk('p');impP.style.cssText='margin:0 0 1rem;font-size:13px;line-height:1.6;color:var(--text2)';
+    impP.textContent = item.practical_impact;
+    m.appendChild(impP);
+  }
+
+  // Texto completo
+  if(item.full_text){
+    const ftLbl = mk('div');ftLbl.style.cssText='font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px';
+    ftLbl.textContent = '📄 Texto completo';
+    m.appendChild(ftLbl);
+    const ftBox = mk('div');ftBox.style.cssText='padding:.875rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:9px;font-size:12.5px;line-height:1.6;color:var(--text2);white-space:pre-wrap;margin-bottom:1rem;font-family:ui-monospace,monospace';
+    ftBox.textContent = item.full_text;
+    m.appendChild(ftBox);
+  }
+
+  // Tags
+  if(item.tags && item.tags.length > 0){
+    const tagsRow = mk('div');tagsRow.style.cssText='display:flex;flex-wrap:wrap;gap:5px;margin-bottom:1rem';
+    item.tags.forEach(t=>{
+      const chip = mk('span','badge b-info');
+      chip.textContent = '#' + t;
+      tagsRow.appendChild(chip);
+    });
+    m.appendChild(tagsRow);
+  }
+
+  // Links
+  const actionsRow = mk('div');actionsRow.style.cssText='display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)';
+  if(item.reference_url){
+    const linkBtn = mkBtn('🔗 Ver fonte oficial','btn btn-sm');
+    linkBtn.addEventListener('click',()=>window.open(item.reference_url, '_blank', 'noopener'));
+    actionsRow.appendChild(linkBtn);
+  }
+  if(isAdminUser()){
+    const editBtn = mkBtn('✎ Editar','btn btn-sm');
+    editBtn.addEventListener('click',()=>{
+      closeModal();
+      showLegalUpdateEditModal(item);
+    });
+    actionsRow.appendChild(editBtn);
+  }
+  m.appendChild(actionsRow);
+
+  // Incrementa view_count em background
+  if(supa){
+    supa.rpc('increment_legal_update_view', {p_id: item.id}).catch(()=>{});
+  }
+
+  showModal(m);
+}
+
+function showLegalUpdateEditModal(item){
+  const isNew = !item;
+  const m = mk('div');m.style.cssText='max-width:680px;width:100%;max-height:85vh;overflow-y:auto';
+  const h = mk('h2');h.style.cssText='margin:0 0 .75rem;font-size:18px';
+  h.textContent = isNew ? '✚ Nova atualização' : '✎ Editar atualização';
+  m.appendChild(h);
+
+  const data = item ? {...item} : {kind:'lei', area:'administrativo', importance:3, is_active:true, is_featured:false, tags:[]};
+
+  function makeField(label, key, type, opts){
+    opts = opts || {};
+    const wrap = mk('div');wrap.style.marginBottom='.625rem';
+    const lbl = mk('label');lbl.style.cssText='display:block;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px';
+    lbl.textContent = label;
+    wrap.appendChild(lbl);
+    let input;
+    if(type === 'textarea'){
+      input = mk('textarea');input.rows = opts.rows || 3;
+    } else if(type === 'select'){
+      input = mk('select');
+      (opts.options || []).forEach(o=>{
+        const op = mk('option');op.value=o.value;op.textContent=o.label;
+        if(data[key] === o.value) op.selected = true;
+        input.appendChild(op);
+      });
+    } else {
+      input = mk('input');input.type = type;
+    }
+    input.style.cssText = 'width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit';
+    if(type !== 'select'){
+      input.value = data[key] || '';
+    }
+    if(opts.placeholder) input.placeholder = opts.placeholder;
+    input.addEventListener('input', e=>{ data[key] = e.target.value; });
+    input.addEventListener('change', e=>{ data[key] = e.target.value; });
+    wrap.appendChild(input);
+    return wrap;
+  }
+
+  m.appendChild(makeField('Tipo', 'kind', 'select', {options: [
+    {value:'lei', label:'📜 Lei'},
+    {value:'jurisprudencia', label:'⚖️ Jurisprudência'},
+    {value:'sumula', label:'📑 Súmula'},
+    {value:'mp', label:'📋 Medida Provisória'},
+    {value:'decreto', label:'📜 Decreto'}
+  ]}));
+  m.appendChild(makeField('Área', 'area', 'select', {options: [
+    {value:'constitucional', label:'Constitucional'},
+    {value:'administrativo', label:'Administrativo'},
+    {value:'penal', label:'Penal'},
+    {value:'processo_penal', label:'Processo Penal'},
+    {value:'civil', label:'Civil'},
+    {value:'processo_civil', label:'Processo Civil'},
+    {value:'tributario', label:'Tributário'},
+    {value:'trabalho', label:'Trabalho'},
+    {value:'previdenciario', label:'Previdenciário'},
+    {value:'eleitoral', label:'Eleitoral'},
+    {value:'outros', label:'Outros'}
+  ]}));
+  m.appendChild(makeField('Tribunal (se jurisprudência)', 'source_court', 'text', {placeholder:'STF, STJ, TST, etc'}));
+  m.appendChild(makeField('Título', 'title', 'text', {placeholder:'Ex: Reforma Administrativa — Lei 14.890/24'}));
+  m.appendChild(makeField('Número/Referência', 'reference_number', 'text', {placeholder:'Lei 14.890/24 ou RE 999.999/SP ou Súmula 658'}));
+  m.appendChild(makeField('Resumo (2-4 frases)', 'summary', 'textarea', {rows:3, placeholder:'O que essa lei/julgado mudou ou estabelece?'}));
+  m.appendChild(makeField('Texto completo (opcional)', 'full_text', 'textarea', {rows:6, placeholder:'Texto da lei, ementa do julgado, súmula completa, etc'}));
+  m.appendChild(makeField('Impacto pra concurso', 'practical_impact', 'textarea', {rows:3, placeholder:'Por que importa, em que disciplinas costuma cair, padrões de cobrança'}));
+  m.appendChild(makeField('Data publicação oficial', 'published_official_at', 'date'));
+  m.appendChild(makeField('URL fonte oficial', 'reference_url', 'text', {placeholder:'https://www.planalto.gov.br/...'}));
+
+  // Tags
+  const tagsField = mk('div');tagsField.style.marginBottom='.625rem';
+  const tagsLbl = mk('label');tagsLbl.style.cssText='display:block;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px';
+  tagsLbl.textContent = 'Tags (separadas por vírgula)';
+  tagsField.appendChild(tagsLbl);
+  const tagsInp = mk('input');tagsInp.type='text';tagsInp.style.cssText = 'width:100%;padding:.5rem .75rem;font-size:13px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit';
+  tagsInp.value = (data.tags || []).join(', ');
+  tagsField.appendChild(tagsInp);
+  m.appendChild(tagsField);
+
+  // Importance
+  m.appendChild(makeField('Importância (1-5)', 'importance', 'number'));
+
+  // Featured + Active
+  const flagsRow = mk('div');flagsRow.style.cssText='display:flex;gap:1rem;margin:.75rem 0';
+  const featLbl = mk('label');featLbl.style.cssText='display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer';
+  const featChk = mk('input');featChk.type='checkbox';featChk.checked = !!data.is_featured;featChk.style.cssText='width:auto';
+  featChk.addEventListener('change', e=>{ data.is_featured = e.target.checked; });
+  featLbl.appendChild(featChk);
+  featLbl.appendChild(Object.assign(mk('span'),{textContent:'⭐ Destacar na home'}));
+  flagsRow.appendChild(featLbl);
+
+  const actLbl = mk('label');actLbl.style.cssText='display:flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer';
+  const actChk = mk('input');actChk.type='checkbox';actChk.checked = !!data.is_active;actChk.style.cssText='width:auto';
+  actChk.addEventListener('change', e=>{ data.is_active = e.target.checked; });
+  actLbl.appendChild(actChk);
+  actLbl.appendChild(Object.assign(mk('span'),{textContent:'✓ Ativo (visível pros usuários)'}));
+  flagsRow.appendChild(actLbl);
+  m.appendChild(flagsRow);
+
+  // Save / cancel
+  const actions = mk('div');actions.style.cssText='display:flex;gap:8px;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)';
+  const cancel = mkBtn('Cancelar','btn');cancel.style.flex='1';
+  cancel.addEventListener('click', closeModal);
+  actions.appendChild(cancel);
+  const save = mkBtn(isNew ? '✚ Criar' : '💾 Salvar','btn btn-p');save.style.flex='2';
+  save.addEventListener('click', async()=>{
+    if(!data.title || data.title.length < 5){alert('Título muito curto');return;}
+    if(!data.summary || data.summary.length < 10){alert('Resumo muito curto');return;}
+    save.disabled = true;save.textContent = '...';
+
+    // Tags
+    data.tags = tagsInp.value.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean);
+    // Importance
+    data.importance = parseInt(data.importance, 10) || 3;
+    // Date pode ter vindo string vazia
+    if(!data.published_official_at) delete data.published_official_at;
+
+    try{
+      if(isNew){
+        data.added_by = AUTH.user.id;
+        const {error} = await supa.from('legal_updates').insert(data);
+        if(error) throw error;
+        showToast('✓ Atualização criada');
+      } else {
+        const {id, added_by, added_at, view_count, ...updateData} = data;
+        const {error} = await supa.from('legal_updates').update(updateData).eq('id', item.id);
+        if(error) throw error;
+        showToast('✓ Atualização salva');
+      }
+      closeModal();
+      ST.legalUpdatesItems = null; // força reload
+      render();
+    }catch(e){
+      alert('Erro: ' + (e.message || e));
+      save.disabled = false;save.textContent = isNew ? '✚ Criar' : '💾 Salvar';
+    }
+  });
+  actions.appendChild(save);
+  m.appendChild(actions);
+
+  showModal(m);
 }
 
 function renderForest(){
@@ -34056,6 +36076,16 @@ function renderSettings(){
       showToast('✓ Checklist de primeiros passos reativado no painel.');
     });
     actions.appendChild(reactBtn);
+  }
+  // V14: Reativa as dicas do dia
+  if(DATA.tipsDismissed){
+    const tipsBtn = mkBtn('Mostrar dicas do dia','btn');
+    tipsBtn.addEventListener('click',()=>{
+      DATA.tipsDismissed = false;
+      save();
+      showToast('✓ Dicas do dia reativadas no painel.');
+    });
+    actions.appendChild(tipsBtn);
   }
   const del = mkBtn('Apagar tudo','btn btn-danger');
   del.addEventListener('click',()=>{
@@ -37424,7 +39454,199 @@ function dispatchNext(){
   return false;
 }
 
+// V14: Paleta de comandos — Cmd+K / Ctrl+K
+// Busca rápida por views, ações comuns, e fontes do usuário.
+// Inspirado em VS Code, Linear, Notion.
+function showCommandPalette(){
+  const existing = document.querySelector('.cmd-palette-overlay');
+  if(existing){existing.remove();return;}
+
+  const overlay = mk('div','cmd-palette-overlay');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.4);display:flex;align-items:flex-start;justify-content:center;padding-top:14vh;animation:fadeIn .12s ease';
+
+  const box = mk('div','cmd-palette-box');
+  box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:0;width:min(560px,92vw);max-height:70vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.25);animation:slideDown .15s ease';
+
+  // Search input
+  const inpWrap = mk('div');
+  inpWrap.style.cssText = 'padding:.875rem 1.125rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px';
+  const inpIcon = mk('span');
+  inpIcon.style.cssText = 'font-size:18px;color:var(--text3)';
+  inpIcon.textContent = '🔍';
+  inpWrap.appendChild(inpIcon);
+  const inp = mk('input');
+  inp.type = 'text';
+  inp.placeholder = 'Buscar página, ação ou fonte...';
+  inp.style.cssText = 'flex:1;background:transparent;border:none;outline:none;font-size:15px;color:var(--text);font-family:inherit';
+  inpWrap.appendChild(inp);
+  const escHint = mk('span');
+  escHint.style.cssText = 'padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;font-size:10.5px;color:var(--text3);font-family:ui-monospace,monospace';
+  escHint.textContent = 'esc';
+  inpWrap.appendChild(escHint);
+  box.appendChild(inpWrap);
+
+  // Results list
+  const list = mk('div');
+  list.style.cssText = 'overflow-y:auto;flex:1;padding:.5rem 0';
+  box.appendChild(list);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  // Lista de comandos disponíveis
+  function getAllCommands(){
+    const cmds = [
+      // Views principais
+      {label:'Painel', icon:'🏠', kind:'Página', keywords:'inicio home dashboard', action:()=>{ST.view='dashboard';render();}},
+      {label:'Fontes', icon:'📚', kind:'Página', keywords:'pdfs material apostila', action:()=>{ST.view='sources';render();}},
+      {label:'Métodos de estudo', icon:'🧪', kind:'Página', keywords:'praticar estudar', action:()=>{ST.view='methods';render();}},
+      {label:'Calibração', icon:'🎯', kind:'Método', keywords:'calibrar confiança', action:()=>{ST.view='calibration';render();}},
+      {label:'Resolução de questões', icon:'📝', kind:'Método', keywords:'praticar treinar pratica', action:()=>{ST.view='practice';render();}},
+      {label:'Drill DNA', icon:'🔬', kind:'Método', keywords:'drill armadilha foco', action:()=>{ST.view='drill';render();}},
+      {label:'Intercalação', icon:'🔀', kind:'Método', keywords:'interleaving misturar', action:()=>{ST.view='interleaving';render();}},
+      {label:'Examinador Invertido', icon:'✍️', kind:'Método', keywords:'inverter armadilha', action:()=>{ST.view='examiner';render();}},
+      {label:'Interrogação Elaborativa', icon:'🧠', kind:'Método', keywords:'elaborar profundidade', action:()=>{ST.view='elaborative';render();}},
+      {label:'Simulado Gralia (IA)', icon:'⏱️', kind:'Método', keywords:'simulado prova cronometrado', action:()=>{ST.view='simulado';render();}},
+      {label:'Flashcards (SRS)', icon:'🎴', kind:'Revisar', keywords:'revisar cards anki', action:()=>{ST.view='srs';render();}},
+      {label:'Histórico de erros', icon:'📜', kind:'Revisar', keywords:'erros revisar', action:()=>{ST.view='history';render();}},
+      {label:'Pomodoro', icon:'⏱', kind:'Revisar', keywords:'timer foco', action:()=>{ST.view='pomodoro';render();}},
+      {label:'Banco de questões importadas', icon:'📋', kind:'Estudar', keywords:'importadas tec banco', action:()=>{ST.view='imported';render();}},
+      // Planejar
+      {label:'Metas', icon:'🎯', kind:'Planejar', keywords:'objetivos diaria semanal mensal', action:()=>{ST.view='goals';render();}},
+      {label:'Síntese de editais', icon:'📋', kind:'Planejar', keywords:'edital prova', action:()=>{ST.view='editals';render();}},
+      {label:'Provas e simulados', icon:'📝', kind:'Planejar', keywords:'provas exames simulados', action:()=>{ST.view='exams';render();}},
+      {label:'Mapa da matéria', icon:'🗺️', kind:'Planejar', keywords:'mapa visao topicos', action:()=>{ST.view='mapa';render();}},
+      // Comunidade
+      {label:'Descobrir', icon:'🔍', kind:'Comunidade', keywords:'comunidade publico cadernos', action:()=>{ST.view='discover';render();}},
+      {label:'Da rede', icon:'📡', kind:'Comunidade', keywords:'feed atividade', action:()=>{ST.view='feed';render();}},
+      {label:'Atualizações jurídicas', icon:'⚖️', kind:'Comunidade', keywords:'leis jurisprudencia stf stj', action:()=>{ST.view='legalUpdates';render();}},
+      {label:'Pinhal de Araucárias', icon:'🌲', kind:'Comunidade', keywords:'forest gamification', action:()=>{ST.view='forest';render();}},
+      // Conta
+      {label:'Conta', icon:'👤', kind:'Conta', keywords:'conta perfil settings configuracao', action:()=>{ST.view='settings';render();}},
+      {label:'Planos', icon:'💳', kind:'Conta', keywords:'planos assinatura preço', action:()=>{ST.view='plans';render();}},
+      {label:'Fazer upgrade', icon:'🚀', kind:'Conta', keywords:'upgrade pagar premium', action:()=>{ST.view='upgrade';render();}},
+      {label:'Uso de créditos', icon:'⚡', kind:'Conta', keywords:'creditos consumo gasto', action:()=>{ST.view='usage';render();}},
+      // Ações úteis
+      {label:'Adicionar fonte (PDF/texto)', icon:'+', kind:'Ação', keywords:'adicionar nova fonte material', action:()=>{ST.view='sources';ST.srcSubview='add';render();}},
+      {label:'Mostrar atalhos de teclado', icon:'⌨', kind:'Ação', keywords:'atalhos teclado shortcuts', action:()=>{showShortcutsOverlay();}},
+      {label:'Toggle modo escuro', icon:'🌙', kind:'Ação', keywords:'tema dark light noite', action:()=>{toggleTheme();showToast(localStorage.getItem('nexus_theme')==='light'?'☀ Tema claro':'🌙 Tema escuro');}},
+      {label:'Toggle modo conforto (sépia)', icon:'☕', kind:'Ação', keywords:'sepia conforto leitura olhos', action:()=>{toggleComfortMode();}},
+    ];
+    // Adiciona fontes do usuário
+    (DATA.sources||[]).slice(0, 20).forEach(s=>{
+      cmds.push({
+        label: s.name,
+        icon: '📄',
+        kind: 'Fonte',
+        keywords: 'fonte ' + s.name.toLowerCase(),
+        action: ()=>{
+          ST.view = 'sources';
+          ST.srcSubview = 'list';
+          ST.sourceScrollTo = {sourceId: s.id};
+          render();
+        }
+      });
+    });
+    return cmds;
+  }
+
+  let allCommands = getAllCommands();
+  let selectedIdx = 0;
+  let filtered = allCommands;
+
+  function renderResults(){
+    list.innerHTML = '';
+    if(filtered.length === 0){
+      const empty = mk('div');
+      empty.style.cssText = 'padding:1.5rem;text-align:center;color:var(--text3);font-size:13px';
+      empty.textContent = 'Nenhum resultado';
+      list.appendChild(empty);
+      return;
+    }
+    filtered.slice(0, 12).forEach((c, i)=>{
+      const item = mk('div');
+      const isSel = i === selectedIdx;
+      item.style.cssText = `display:flex;align-items:center;gap:12px;padding:.625rem 1.125rem;cursor:pointer;font-size:13.5px;${isSel?'background:var(--surface2)':''}`;
+      item.dataset.idx = i;
+      const ico = mk('span');
+      ico.style.cssText = 'font-size:18px;width:22px;text-align:center;flex-shrink:0';
+      ico.textContent = c.icon;
+      const lbl = mk('span');
+      lbl.style.cssText = 'flex:1;color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+      lbl.textContent = c.label;
+      const kindTag = mk('span');
+      kindTag.style.cssText = 'font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600;flex-shrink:0';
+      kindTag.textContent = c.kind;
+      item.appendChild(ico);
+      item.appendChild(lbl);
+      item.appendChild(kindTag);
+      item.addEventListener('click', ()=>{
+        c.action();
+        overlay.remove();
+      });
+      item.addEventListener('mouseenter', ()=>{
+        selectedIdx = i;
+        renderResults();
+      });
+      list.appendChild(item);
+    });
+  }
+
+  function applyFilter(){
+    const q = inp.value.toLowerCase().trim();
+    if(!q){
+      filtered = allCommands;
+    } else {
+      filtered = allCommands.filter(c => {
+        const haystack = (c.label + ' ' + (c.keywords||'') + ' ' + (c.kind||'')).toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+    selectedIdx = 0;
+    renderResults();
+  }
+
+  inp.addEventListener('input', applyFilter);
+  inp.addEventListener('keydown', e=>{
+    if(e.key === 'Escape'){
+      overlay.remove();
+      e.preventDefault();
+    } else if(e.key === 'ArrowDown'){
+      selectedIdx = Math.min(selectedIdx + 1, Math.min(filtered.length - 1, 11));
+      renderResults();
+      e.preventDefault();
+    } else if(e.key === 'ArrowUp'){
+      selectedIdx = Math.max(0, selectedIdx - 1);
+      renderResults();
+      e.preventDefault();
+    } else if(e.key === 'Enter'){
+      if(filtered[selectedIdx]){
+        filtered[selectedIdx].action();
+        overlay.remove();
+      }
+      e.preventDefault();
+    }
+  });
+
+  // Click fora fecha
+  overlay.addEventListener('click', e=>{
+    if(e.target === overlay) overlay.remove();
+  });
+
+  // Foca input
+  setTimeout(()=>inp.focus(), 50);
+  applyFilter();
+}
+
 document.addEventListener('keydown',e=>{
+  // V14: Cmd+K / Ctrl+K — abre paleta de comandos (busca rápida)
+  // Antes de tudo, captura esse atalho mesmo se isTyping()
+  if((e.ctrlKey||e.metaKey) && (e.key==='k' || e.key==='K')){
+    e.preventDefault();
+    showCommandPalette();
+    return;
+  }
+
   if(isTyping())return;
   // V12: Não bloqueia shift (alguns atalhos usam Shift+letra)
   if(e.ctrlKey||e.metaKey||e.altKey)return;
@@ -37454,6 +39676,46 @@ document.addEventListener('keydown',e=>{
   }
 
   // Atalhos sem Shift
+  // V14: SRS Focus Mode tem atalhos próprios — bloqueia outros pra não conflitar.
+  // Atalhos: Espaço/Enter = revelar, 1234 = rating, Esc = sair, E = editar.
+  if(ST.srsFocusActive){
+    if(e.key === 'Escape' || k === 'ESCAPE'){
+      exitSRSFocus();
+      e.preventDefault();
+      return;
+    }
+    if(e.key === ' ' || e.key === 'Enter'){
+      if(!ST.srsShowBack){
+        ST.srsShowBack = true;
+        render();
+      }
+      e.preventDefault();
+      return;
+    }
+    if(ST.srsShowBack && /^[1-4]$/.test(e.key)){
+      const rating = parseInt(e.key, 10) - 1;
+      const card = ST.srsCurrent;
+      if(card){
+        srsRate(card, rating);
+        DATA.session.srsReviewed = (DATA.session.srsReviewed || 0) + 1;
+        save();
+        const newDue = srsActiveDue(ST.srsStudyDisc);
+        ST.srsCurrent = newDue[0] || null;
+        ST.srsShowBack = false;
+        render();
+      }
+      e.preventDefault();
+      return;
+    }
+    if(k === 'E' && ST.srsCurrent){
+      showEditCardModal(ST.srsCurrent, false);
+      e.preventDefault();
+      return;
+    }
+    // Outros atalhos bloqueados durante focus
+    return;
+  }
+
   // V12: Fluxo de prática mais inteligente — se C/E não conseguir responder
   // (porque já respondeu), tenta "próxima" como fallback. Reduz frustração.
   if(k==='C'){
@@ -37543,6 +39805,7 @@ function showShortcutsOverlay(){
 
       <div class="sk-section">
         <div class="sk-section-label">Navegação</div>
+        <div class="sk-row"><kbd>Ctrl</kbd>+<kbd>K</kbd><span>Paleta de comandos (busca rápida)</span></div>
         <div class="sk-row"><kbd>?</kbd><span>Mostrar/esconder este painel</span></div>
         <div class="sk-row"><kbd>ESC</kbd><span>Fechar modal aberto</span></div>
       </div>
@@ -38114,6 +40377,24 @@ async function initAuth(){
       _initialSessionHandled = true;
       // Sessão já existente — apenas carrega dados, sem prompt de merge
       ST.showAuth = false;
+      // V14: Detecta ausência prolongada e mostra toast de "Bem-vindo de volta"
+      // antes de atualizar o lastVisitAt
+      const lastVisit = DATA.lastVisitAt || Date.now();
+      const daysAway = Math.floor((Date.now() - lastVisit) / 86400000);
+      if(daysAway >= 3){
+        const profileName = (AUTH.profile && AUTH.profile.display_name) ? AUTH.profile.display_name.trim() : '';
+        const userName = profileName || (DATA.config.userName||'').trim();
+        const dueSrs = DATA.srs.cards.filter(c=>(c.nextReview||0)<=Date.now() && c.active!==false).length;
+        const greeting = userName ? `Bem-vindo de volta, ${userName}!` : 'Bem-vindo de volta!';
+        let context = ` Você ficou ${daysAway} dia${daysAway===1?'':'s'} fora.`;
+        if(dueSrs > 0) context += ` Tem ${dueSrs} flashcard${dueSrs===1?'':'s'} pra revisar.`;
+        setTimeout(()=>{
+          try{ showToast('👋 ' + greeting + context, 8000); }catch(_){}
+        }, 1800);
+      }
+      // Atualiza última visita
+      DATA.lastVisitAt = Date.now();
+      save();
       // Se não tem view definida ou tava em alguma tela transitória, manda pro dashboard
       if(!ST.view || ST.view === 'settings' && !DATA.welcomeShown){
         ST.view = 'dashboard';
@@ -38169,16 +40450,24 @@ async function initAuth(){
         setTimeout(()=>checkSubscriptionNotifications(), 1500);
       }).catch(()=>{});
       // V12: Toast de boas-vindas reformulado.
-      // Antes mencionava "Configurações" (renomeado pra "Conta") e era genérico.
-      // Agora foca no que o usuário pode fazer AGORA mesmo, mostra créditos, e o ícone ⌨.
+      // V14: Após o toast, oferece tutorial guiado pra usuários novos
       setTimeout(()=>{
         try{
           const credLine = (typeof QUOTA !== 'undefined' && QUOTA.remaining !== null)
             ? ` Você tem ${QUOTA.remaining} créditos pra explorar.`
             : '';
-          showToast('👋 Bem-vindo ao Gralia!' + credLine + ' Comece adicionando uma fonte de estudo no menu Fontes — em 1 minuto você pode estar resolvendo questões. Atalhos de teclado: ícone ⌨ no canto.', 14000);
+          showToast('👋 Bem-vindo ao Gralia!' + credLine, 6000);
         }catch(e){}
       }, 1500);
+      // V14: Tutorial guiado — só pra usuários sem fontes E que ainda não viram
+      setTimeout(()=>{
+        try{
+          const noSources = !(DATA.sources||[]).length;
+          if(noSources && !DATA.tutorialOffered){
+            showTutorialModal();
+          }
+        }catch(e){console.warn('[tutorial]', e);}
+      }, 3500);
     }
     if(event==='SIGNED_OUT'){
       // Clear sync state. Keep DATA as-is — user may log in to another account
@@ -38277,6 +40566,36 @@ document.addEventListener('error', function(ev){
 // V12: Restaura simulado em andamento se houver
 try{ restoreSimRunningIfAny(); }catch(e){ console.warn('[sim restore]', e); }
 render();
+
+// V14: Detector de offline — mostra banner quando perde conexão.
+// Importante porque várias features dependem de IA/Supabase. Avisa antes
+// que o usuário tente algo e veja erro genérico.
+function setupOfflineDetector(){
+  let offlineBanner = null;
+
+  function showOfflineBanner(){
+    if(offlineBanner) return;
+    offlineBanner = mk('div');
+    offlineBanner.id = 'offline-banner';
+    offlineBanner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9998;background:#dc2626;color:#fff;padding:.625rem 1rem;font-size:13px;font-weight:600;text-align:center;letter-spacing:.2px;box-shadow:0 2px 8px rgba(220,38,38,.3);animation:slideDown .2s ease';
+    offlineBanner.innerHTML = '⚠ Sem conexão — IA, sincronização e descobrir não funcionam offline. Seu progresso local está seguro.';
+    document.body.appendChild(offlineBanner);
+  }
+
+  function hideOfflineBanner(){
+    if(!offlineBanner) return;
+    offlineBanner.remove();
+    offlineBanner = null;
+    showToast('✓ Conexão restaurada', 3000);
+  }
+
+  // Estado inicial
+  if(!navigator.onLine) showOfflineBanner();
+
+  window.addEventListener('online', hideOfflineBanner);
+  window.addEventListener('offline', showOfflineBanner);
+}
+setupOfflineDetector();
 
 // Detecta hash #u/username pra abrir página de perfil
 function checkProfileHash(){
