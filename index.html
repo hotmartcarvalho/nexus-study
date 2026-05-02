@@ -9405,7 +9405,7 @@ const RATE_LIMITS = {
   },
   // Tamanho máximo do payload (prompt total)
   maxPayloadChars: 250000,  // 250k chars ~ 60k tokens — limite generoso mas sano
-  maxOutputTokens: 8000     // teto pro max_tokens
+  maxOutputTokens: 16000    // V14: 16k teto — apostilas inteiras + metadados precisam disso
 };
 
 // Histórico de timestamps de chamadas (em memória)
@@ -15635,12 +15635,12 @@ function renderSourceAdd(wrap){
       if(result.text.length > 200){
         ST.srcImportState.organizing = true;
         render();
-        // Timeout de 60s pra evitar travar se IA não responder
+        // Timeout de 120s — apostila grande + 16k tokens de output pode demorar
         let aiRes = null;
         try{
           aiRes = await Promise.race([
             smartOrganizeContent(result.text, {classify: true}),
-            new Promise((_, rej) => setTimeout(()=>rej(new Error('timeout 60s')), 60000))
+            new Promise((_, rej) => setTimeout(()=>rej(new Error('timeout 120s')), 120000))
           ]);
 
           if(aiRes){
@@ -25723,11 +25723,26 @@ function sanitizePdfText(rawText){
   text = text.replace(/\+\s*55\s*\d{2}\s*\d{4,5}[\s\-]?\d{4}/g, '[telefone removido]');
 
   // 5. Referências a professores — "Prof. Nome", "Professor Nome", "Prof.ª Nome"
-  // Captura nome com 1-3 palavras após "Prof"
   text = text.replace(/\b(Prof(?:essor[a]?|ª|\.)?)\s+([A-ZÁÂÃÀÄÉÊÈËÍÎÌÏÓÔÕÒÖÚÛÙÜÇÑ][a-záâãàäéêèëíîìïóôõòöúûùüçñ]+(?:\s+(?:de|da|do|dos|das)?\s*[A-ZÁÂÃÀÄÉÊÈËÍÎÌÏÓÔÕÒÖÚÛÙÜÇÑ][a-záâãàäéêèëíîìïóôõòöúûùüçñ]+){0,2})/g, '[professor]');
 
+  // V14 final: nomes de cursinhos e plataformas conhecidas — remove em qualquer contexto
+  // (Jean reportou que apostilas vinham com "Estratégia Concursos" e "Gran Cursos" no texto)
+  const COURSE_NAMES = [
+    'Estratégia Concursos','Gran Cursos','Gran Cursos Online','Direção Concursos','Direção Concursos Online',
+    'AlfaCon','Damásio','Damásio Educacional','CERS','CERS Concursos','Ouse Saber',
+    'Tec Concursos','TEC Concursos','QConcursos','Q Concursos','Estuda+','Concurso Virtual',
+    'Provas e Concursos','MasterJuris','Master Juris','Curso Aprovação','Curso para Concurso',
+    'Estratégia Carreiras Jurídicas','Estratégia Vade Mecum','Gran Cursos Concursos',
+    'Editora Juspodivm','Saraiva Educação','Método Editora','Foco Concursos',
+    'Eu Vou Passar','Folha Dirigida','EBEJI','Curso Mege','Mege','Ênfase'
+  ];
+  COURSE_NAMES.forEach(name=>{
+    // Remove em qualquer caixa, com possível ® ™ © em volta
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    text = text.replace(new RegExp(`[®™©]?\\s*${escaped}\\s*[®™©]?`, 'gi'), '');
+  });
+
   // 6. Linhas que claramente são autoria/copyright
-  // Padrão "Prof. X" no início da linha já tratado acima
   text = text.replace(/^\s*[©®™]\s*.{0,80}$/gm, '');
   text = text.replace(/^\s*(?:Todos os direitos reservados|All rights reserved|Direitos autorais).{0,120}$/gim, '');
 
@@ -25737,6 +25752,14 @@ function sanitizePdfText(rawText){
   // 8. CPF/CNPJ aparente
   text = text.replace(/\b\d{3}\.\d{3}\.\d{3}\-\d{2}\b/g, '[CPF removido]');
   text = text.replace(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2}\b/g, '[CNPJ removido]');
+
+  // V14 final: padrões comuns de rodapé/cabeçalho de cursinho
+  // "Página X de Y", "Material exclusivo", "Aluno: ..."
+  text = text.replace(/^\s*P[áa]gina\s+\d+\s+de\s+\d+\s*$/gim, '');
+  text = text.replace(/^\s*(?:Material\s+exclusivo|Apostila\s+exclusiva|Acesso\s+restrito|Reprodução\s+proibida).{0,120}$/gim, '');
+  text = text.replace(/^\s*Aluno:\s*.{0,80}$/gim, '');
+  // Saudações típicas que poluem início de aula
+  text = text.replace(/^\s*(?:Ol[áa]\s+pessoal[!.,]?|Bom\s+dia,?\s+galera[!.,]?|E\s+a[ií],?\s+pessoal[!.,]?|Vamos\s+l[áa][!.,]?|Vamos\s+ao\s+que\s+interessa[!.,]?).{0,80}$/gim, '');
 
   // 9. Limpa linhas que ficaram só com placeholders + espaços
   text = text.replace(/^[\s\[\]a-záê]*remoção[\s\[\]]*$/gim, '');
@@ -25989,58 +26012,87 @@ function extractTOCSection(text, entry){
 // the text the user provided, to avoid double-content-injection.
 async function smartOrganizeContent(rawText,opts){
   opts = opts||{};
-  const discNames = DATA.disciplines.map(d=>`${d.name}`).join(', ');
-  const contentTypes = Object.entries(CONTENT_TYPES).map(([k,v])=>`${k}: ${v.label}`).join(', ');
-  // V14: Lista de tipos de material disponíveis pra IA escolher (livro, apostila, etc)
-  const materialTypes = Object.entries(SRC_TYPES).map(([k,v])=>`${k}: ${v.label}`).join(', ');
-  // V14 redesign: IA agora preenche TODOS os campos do form (item: importação não preenchia)
-  // Antes: só preenchia name + content + às vezes disciplineId + contentType
-  // Agora: também preenche materialType (tipo do material) e detecta disciplina mesmo
-  // se não estiver cadastrada (retorna disciplineName, e o front cria a disciplina nova)
-  const sys = `Organize o texto fornecido em formato estruturado para estudo, REMOVENDO RUÍDO de cursinhos e fontes não autorais. Infira metadados úteis.
+  const discNames = DATA.disciplines.map(d=>`"${d.name}"`).join(', ');
+  // Lista clara dos VALORES VÁLIDOS que a IA deve escolher
+  const contentTypeKeys = Object.keys(CONTENT_TYPES).filter(k=>k!=='misto');
+  const materialTypeKeys = Object.keys(SRC_TYPES);
 
-REGRAS DE LIMPEZA AGRESSIVA — REMOVA SEMPRE:
-- Nomes de professores que aparecem isoladamente (ex: "Prof. João Silva", "Profa Maria")
-- Nomes de cursinhos (ex: "Estratégia Concursos", "Gran Cursos", "Direção Concursos", "AlfaCon", "Damásio", "Cers", "Ouse Saber", etc)
-- Cabeçalhos repetidos em todas páginas (logos, "© 2024 Cursinho X")
-- Rodapés ("Página X de Y", URLs do cursinho, "Material exclusivo do aluno")
-- Marcas d'água (texto repetido em diagonal, "DEMO", "SAMPLE")
-- Avisos legais e direitos autorais
-- "Olá pessoal", "Vamos lá!", "Vamos estudar agora", saudações genéricas
-- Frases promocionais ("Acesse nosso site", "Curtiu? Compartilhe", "Curso completo em...")
-- Numeração de páginas em qualquer formato
+  // V14 final: prompt completamente reescrito após Jean reportar várias falhas:
+  // - IA só preenchia 3 de 6 campos (deixava materialType, contentType, data vazios)
+  // - IA escolhia disciplina existente em vez de detectar a real
+  // - IA imitava o nome do arquivo do PDF
+  // - IA não removia ruído de cursinhos
+  // - Output truncava em 4000 tokens fazendo JSON incompleto
+  //
+  // Estratégia nova:
+  // 1. METADADOS PRIMEIRO no JSON, organized POR ÚLTIMO (se truncar, ainda temos os metadados)
+  // 2. Instruções com EXEMPLOS explícitos de erros comuns ("NÃO copie nome do arquivo")
+  // 3. Lista de valores válidos como STRING ENUM
+  // 4. max_tokens: 8000 (apostilas longas + metadados não cabem em 4000)
+  // 5. Reforço explícito: NÃO resumir, manter TODA a teoria
+  const sys = `Você é um assistente que extrai metadados E organiza conteúdo de estudo a partir de texto bruto extraído de PDFs (apostilas, livros, slides, transcrições).
 
-REGRAS DE ORGANIZAÇÃO:
-- Divida em seções lógicas, cada uma com título curto
-- Preserve o CONTEÚDO TÉCNICO — não invente, não remova informação relevante
-- Use formatação Markdown: ## para títulos
-- Mantenha texto corrido legível, sem listas desnecessárias
+REGRAS CRÍTICAS — VIOLAÇÃO DESSAS REGRAS É ERRO:
 
-REGRAS DE METADADOS (sempre que possível, sem inventar):
-- "suggestedName": Nome curto e descritivo da fonte (ex: "Direito Administrativo - Princípios", "Lei 8.112 - Servidores Públicos"). Máximo 60 chars. Use o conteúdo, NÃO o nome do arquivo. NÃO inclua nome do cursinho ou professor.
-- "detectedDate": Se o texto mencionar data, ano ou período (edição 2024, atualizado em jul/2024, aula de 03/2024), retorne YYYY-MM. Se só ano: YYYY-01. Se nada, null.
-- "disciplineName": Nome da disciplina/matéria principal do conteúdo (ex: "Direito Constitucional", "Português", "Raciocínio Lógico", "Direito Penal"). Use formato de título com Maiúsculas. SEMPRE retorne uma sugestão de nome — mesmo se não existir entre as cadastradas (${discNames || 'nenhuma cadastrada'}), o sistema vai criar.
-- "materialType": Tipo do material (escolha 1 entre: ${materialTypes}). Default: "livro" para textos longos didáticos, "aula" para transcrições de aula, "slides" pra apresentações, "caderno" pra listas de exercícios.
-- "contentType": Tipo de conteúdo (escolha 1 entre: ${contentTypes}). Padrão: "misto".
+1. NUNCA copie ou imite o nome do arquivo. NUNCA use "manual", "apostila_tal", "PROVA-2024", etc.
+   ✓ BOM: "Princípios Fundamentais da CF/88", "Lei 8.112 - Servidores Públicos"
+   ✗ RUIM: "Manual_DConst_v3", "apostila-completa", "DOC-2024-FINAL"
+   O nome deve descrever o ASSUNTO do conteúdo em até 60 caracteres, em formato de título.
 
-SAÍDA (JSON puro, sem markdown, sem backticks, sem comentários antes ou depois):
+2. SEMPRE preencha disciplineName com a matéria REAL do conteúdo, mesmo que NÃO esteja na lista de disciplinas existentes.
+   Disciplinas atuais do usuário: ${discNames || '(nenhuma)'}.
+   ✓ Se o conteúdo é sobre Constituição → "Direito Constitucional" (mesmo se o usuário só tem "Português")
+   ✗ NUNCA force a entrada na disciplina existente só porque ela existe — essa decisão é do usuário, não sua.
+
+3. SEMPRE preencha materialType escolhendo UMA das chaves: ${materialTypeKeys.join(' | ')}
+   - "livro" → livro técnico, manual amplo, tratado
+   - "apostila" → material didático de cursinho/curso
+   - "aula" → transcrição de aula/videoaula
+   - "slides" → apresentação em slides
+   - "relatorio" → PDF curto, ofício, documento
+   - "caderno" → lista de exercícios/questões
+   - "audio" / "video" → transcrição de mídia
+   - "outro" → último recurso
+
+4. SEMPRE preencha contentType escolhendo UMA das chaves: ${contentTypeKeys.join(' | ')} (ou "misto" se realmente não souber)
+   - "teoria" → conceitos, definições, explicações
+   - "exercicios" → lista de questões
+   - "resumo" → síntese muito condensada
+   - "lei_seca" → texto literal de lei
+   - "jurisprudencia" → súmulas, julgados
+   - "doutrina" → discussão acadêmica jurídica
+   - "mapa_mental" → estrutura esquemática
+
+5. detectedDate: se o texto mencionar ano, edição, "atualizado em", "rev. 2024", retorne YYYY-MM. Se só ano, use YYYY-01. Caso contrário, null.
+
+6. ORGANIZAR (campo "organized") — REGRAS:
+   a) NÃO RESUMA. Mantenha TODA a teoria, exemplos, casos, tabelas. O usuário quer estudar pelo material — não um resumo.
+   b) REMOVA ruído: nomes de professor isolados, marca/logo de cursinho (Estratégia, Gran, Direção, AlfaCon, Damásio, Cers, Ouse Saber, etc), "Olá pessoal", "vamos lá", URLs, "Página X de Y", marcas d'água, avisos de copyright.
+   c) ORGANIZE em seções com títulos curtos (## Título). Mantenha parágrafos legíveis.
+   d) Use Markdown: ## para seções, **negrito** pra termos-chave (NÃO abuse), listas só onde já são listas.
+   e) Preserve numeração de artigos, leis, parágrafos.
+   f) Se o texto tem 30000 caracteres, o organized deve ter cerca de 25000+ (só remove ruído, não resume).
+
+FORMATO DA SAÍDA — JSON puro, METADADOS PRIMEIRO, organized POR ÚLTIMO:
+
 {
-  "organized":"texto completo limpo e estruturado em Markdown",
-  "topics":["título seção 1","título seção 2"],
-  "suggestedName":"Nome sugerido curto",
-  "detectedDate":"YYYY-MM ou null",
-  "disciplineName":"Direito Constitucional",
-  "materialType":"livro",
-  "contentType":"teoria"
-}`;
-  const userMsg = `Organize este conteúdo:\n\n${rawText.slice(0,30000)}${rawText.length>30000?'\n\n[...texto truncado para economia]':''}`;
+  "suggestedName": "Nome curto do conteúdo (NÃO copie nome do arquivo)",
+  "disciplineName": "Nome da matéria real (ex: Direito Constitucional)",
+  "materialType": "livro",
+  "contentType": "teoria",
+  "detectedDate": "2024-03",
+  "topics": ["Princípios Fundamentais","Direitos e Garantias","..."],
+  "organized": "## Princípios Fundamentais\\n\\nA Constituição estabelece...\\n\\n## Soberania Popular\\n..."
+}
+
+NÃO retorne markdown wrapper (\`\`\`json). NÃO escreva texto antes ou depois do JSON. Comece com { e termine com }.`;
+
+  const userMsg = `Texto bruto extraído do PDF a ser organizado:\n\n${rawText.slice(0,40000)}${rawText.length>40000?'\n\n[texto truncado em 40k chars]':''}`;
   const body = {
     model:DATA.config.model||'claude-haiku-4-5-20251001',
-    max_tokens:4000,
+    max_tokens: 16000, // V14 final: aumentado de 4000 → 16000 pra caber TODA a teoria sem resumir + metadados
     system:sys,
     messages:[{role:'user',content:userMsg}],
-    // V12: Importação de fonte é gratuita pro usuário (custo é da plataforma).
-    // Backend NÃO decrementa créditos quando free_action está presente.
     free_action: 'organize_import'
   };
   const r = await apiGenerate(body);
@@ -26058,27 +26110,60 @@ SAÍDA (JSON puro, sem markdown, sem backticks, sem comentários antes ou depois
     });
   }
   const txt = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-  // V14 fix: extração de JSON robusta — se IA retornar texto fora do JSON ou
-  // truncar, tenta extrair só o objeto válido. Antes: JSON.parse direto estourava.
+  // V14 fix: log do output bruto pro usuário/admin debugar via console (Jean reportou
+  // que IA não preenchia campos — assim podemos ver o que ela realmente retornou)
+  if(typeof window !== 'undefined' && window.console){
+    console.log('[smartOrganize raw output]', txt.slice(0, 500) + (txt.length > 500 ? '...' : ''));
+    console.log('[smartOrganize total length]', txt.length, 'chars');
+  }
   let clean = txt.replace(/```json\n?|\n?```/g,'').trim();
+  let parsed = null;
   try {
-    return JSON.parse(clean);
+    parsed = JSON.parse(clean);
   } catch (e) {
     // Tenta extrair o primeiro { ... } balanceado
     const match = clean.match(/\{[\s\S]*\}/);
     if(match){
-      try { return JSON.parse(match[0]); }
-      catch(_) {}
+      try { parsed = JSON.parse(match[0]); }
+      catch(_) {
+        // Tentativa de recuperar JSON truncado: procura último } válido
+        let depth = 0, lastValid = -1;
+        for(let i=0;i<clean.length;i++){
+          if(clean[i]==='{') depth++;
+          else if(clean[i]==='}'){
+            depth--;
+            if(depth===0) lastValid = i;
+          }
+        }
+        if(lastValid > 0){
+          try { parsed = JSON.parse(clean.slice(0, lastValid+1)); }
+          catch(__) {}
+        }
+      }
     }
-    // Fallback: retorna o texto cru como "organized" pra não travar
-    return {
-      organized: rawText,
-      topics: [],
-      suggestedName: null,
-      detectedDate: null,
-      classification: null
-    };
   }
+  // Log do parsed pra debug
+  if(parsed && typeof window !== 'undefined' && window.console){
+    console.log('[smartOrganize parsed fields]', {
+      hasName: !!parsed.suggestedName,
+      hasDiscipline: !!parsed.disciplineName,
+      hasMaterialType: !!parsed.materialType,
+      hasContentType: !!parsed.contentType,
+      hasDate: !!parsed.detectedDate,
+      organizedLen: parsed.organized ? parsed.organized.length : 0
+    });
+  }
+  if(parsed) return parsed;
+  // Fallback: retorna o texto cru como "organized" pra não travar
+  return {
+    organized: rawText,
+    topics: [],
+    suggestedName: null,
+    detectedDate: null,
+    disciplineName: null,
+    materialType: null,
+    contentType: null
+  };
 }
 
 /* ====== MAPA DA MATÉRIA ====== */
