@@ -105,11 +105,24 @@ a{color:var(--accent)}
 }
 .quick-fab:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(128,66,250,.5),0 3px 10px rgba(0,0,0,.15)}
 .quick-fab:active{transform:scale(.96)}
+.quick-fab.open{transform:rotate(45deg);background:linear-gradient(135deg,#222 0%,#444 100%);box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.quick-fab.open:hover{transform:rotate(45deg) scale(1.08)}
+/* V15: painel flutuante de acesso rápido — animação suave ao abrir */
+.quick-fab-panel{
+  animation:fabPanelIn .18s cubic-bezier(.25,.4,.25,1.1);
+  transform-origin:bottom right;
+}
+@keyframes fabPanelIn{
+  from{opacity:0;transform:translateY(8px) scale(.96)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
 /* V14: FAB de acesso rápido fica visível em TODOS os tamanhos de tela
    (item: "quero aquela tela flutuante de acesso rápido" — Jean reportou que
    sumiu no desktop). Antes era escondido quando sidebar estava ativa. */
 body.method-focus-mode .quick-fab,
-body.srs-focus-mode .quick-fab{display:none !important}
+body.srs-focus-mode .quick-fab,
+body.method-focus-mode .quick-fab-panel,
+body.srs-focus-mode .quick-fab-panel{display:none !important}
 
 /* V14: FABs DESKTOP-ONLY (item 33) — ⌨ atalhos e 💬 fale conosco */
 @media(max-width:899px){
@@ -132,7 +145,7 @@ body.mobile-nav-open .shortcuts-floating-btn{display:none !important}
   top:0;
   left:0;
   bottom:0;
-  width:220px;
+  width:264px;
   background:var(--surface);
   border-right:1px solid var(--border);
   z-index:201;
@@ -282,8 +295,8 @@ body.sidebar-collapsed.has-sidebar .topbar{padding-left:64px}
 /* Em telas grandes (≥1100px): mostra sidebar e empurra conteúdo */
 @media(min-width:1100px){
   body.has-sidebar .app-sidebar{display:flex}
-  body.has-sidebar #app{padding-left:220px}
-  body.has-sidebar .topbar{padding-left:220px}
+  body.has-sidebar #app{padding-left:264px}
+  body.has-sidebar .topbar{padding-left:264px}
   /* Esconde colunas left e center da topbar quando sidebar ativa */
   body.has-sidebar .topbar-col-left,
   body.has-sidebar .topbar-col-center{display:none}
@@ -1468,7 +1481,8 @@ html.dark .wfb-tag-ai{color:#b08aff}
 }
 
 /* V12: Gráfico heatmap de produtividade no painel — tamanho médio com layout consistente */
-.chart-card{padding:1.125rem 1.25rem;background:var(--surface);margin-bottom:1.25rem}
+/* V15: borda + radius pra alinhar visualmente com outros cards do dashboard */
+.chart-card{padding:1.125rem 1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:1.25rem;font-family:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif}
 .chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:1rem}
 .chart-title{margin:0 0 2px;font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.1px;display:flex;align-items:center;gap:6px}
 .chart-sub{margin:0;font-size:11.5px;color:var(--text3);line-height:1.4}
@@ -1477,8 +1491,11 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .cl-cell{display:inline-block;width:13px;height:13px;border-radius:3px;background:var(--gralia-purple)}
 .chart-body{width:100%;display:flex;justify-content:center;overflow-x:auto;-webkit-overflow-scrolling:touch}
 /* SVG: largura fluida até o tamanho natural, escalando por viewBox */
-.chart-heatmap{display:block;height:auto;max-width:100%;width:100%}
-.hm-axis-lbl{font-size:10.5px;font-weight:600;fill:var(--text3);font-family:inherit}
+.chart-heatmap{display:block;height:auto;max-width:100%;width:100%;font-family:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif}
+/* V15: SVG <text> precisa de font-family EXPLÍCITO (não herda como HTML). Antes
+   usava `inherit` mas alguns browsers renderizavam com fonte serif do default SVG. */
+.hm-axis-lbl{font-size:10.5px;font-weight:600;fill:var(--text3);font-family:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif}
+.chart-heatmap text{font-family:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif}
 .chart-heatmap rect{cursor:pointer;transition:fill-opacity .15s}
 .chart-heatmap rect:hover{stroke:var(--text);stroke-width:1.5;fill-opacity:1!important}
 .chart-insight{margin:1rem 0 0;padding:.75rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:12.5px;color:var(--text2);line-height:1.55}
@@ -5596,13 +5613,17 @@ async function searchPublicResources(filters){
       items = items.filter(item => setIds.has(item.owner_id));
     }
     // V14: Filtro client-side por tipo de conteúdo (teoria, lei seca, etc).
-    // O contentType vem dentro de payload.contentType pra fontes, ou metadata.
-    // Como RPC não retorna esses campos, fazemos um pre-fetch quando filtro está ativo.
-    // Por enquanto: filtramos pelo campo content_type se existir no item retornado.
     if(filters.contentType){
       items = items.filter(item => {
         const ct = item.content_type || (item.metadata && item.metadata.contentType);
         return ct === filters.contentType;
+      });
+    }
+    // V15: Filtro client-side por status de moderação
+    if(filters.modStatus && filters.modStatus !== 'all'){
+      items = items.filter(item => {
+        const status = item.moderation_status || 'pending';
+        return status === filters.modStatus;
       });
     }
     return {items};
@@ -5718,6 +5739,28 @@ async function fetchMyPublishedResources(){
       .select('id, resource_type, title, description, discipline, question_count, is_public, created_at, updated_at, payload')
       .eq('owner_id', AUTH.user.id)
       .order('created_at', {ascending: false});
+    if(error) return {error: error.message, items: []};
+    return {items: data || []};
+  }catch(err){
+    return {error: err.message, items: []};
+  }
+}
+
+// V15: Lista fontes pendentes de revisão admin (moderation_status='pending').
+// Inclui dados do dono pra admin saber quem importou. Limit 100 — admin
+// processa em batch. Pode evoluir pra paginação se ficar grande.
+async function fetchPendingResources(){
+  if(!supa) return {items: []};
+  if(typeof isAdminUser !== 'function' || !isAdminUser()){
+    return {error: 'Apenas admin', items: []};
+  }
+  try{
+    const { data, error } = await supa.from('shared_resources')
+      .select('id, resource_type, title, description, discipline, tags, question_count, payload, owner_id, created_at, moderation_status, last_admin_edit_at')
+      .eq('is_public', true)
+      .eq('moderation_status', 'pending')
+      .order('created_at', {ascending: false})
+      .limit(100);
     if(error) return {error: error.message, items: []};
     return {items: data || []};
   }catch(err){
@@ -9969,7 +10012,27 @@ function handleNoCreditsError(){
 // no servidor. Assim a chave nunca é exposta ao cliente.
 async function callAPI(system, msgs, opts){
   const content = buildContent();
-  if(!content)throw new Error('no-content');
+  if(!content){
+    // V15: Diagnóstico claro pro usuário (Jean reportou geração quebrada após V15)
+    const totalSources = (DATA.sources||[]).length;
+    const totalDiscs = (DATA.disciplines||[]).length;
+    const activeDiscs = (DATA.disciplines||[]).filter(d=>d.active).length;
+    const sourcesWithDisc = (DATA.sources||[]).filter(s=>s.disciplineId).length;
+    console.error('[callAPI] no-content. Diagnóstico:', {
+      totalSources, totalDiscs, activeDiscs, sourcesWithDisc,
+      activeSourcesCount: typeof activeSources === 'function' ? activeSources().length : 'fn missing'
+    });
+    if(totalSources === 0){
+      throw new Error('no-content: você ainda não importou nenhuma fonte. Vá em Fontes → Adicionar e importe um material de estudo primeiro.');
+    }
+    if(activeDiscs === 0){
+      throw new Error('no-content: você tem fontes, mas nenhuma disciplina está ATIVA. Vá em Configurações → Disciplinas e ative pelo menos uma.');
+    }
+    if(sourcesWithDisc === 0){
+      throw new Error('no-content: suas fontes não têm disciplina vinculada. Edite uma fonte e selecione a disciplina.');
+    }
+    throw new Error('no-content: nenhuma fonte ativa encontrada. Verifique se a disciplina das suas fontes está ativa em Configurações.');
+  }
   // Build system as array with cache_control on the content block.
   // The system instructions change between methods but the content block is reused
   // between chat turns of the same method — so caching it saves ~90% on repeated calls.
@@ -10952,40 +11015,8 @@ function buildAppSidebar(){
     sb.appendChild(sec);
   });
 
-  // Secundário (rodapé)
-  const secondary = mk('div','app-sidebar-secondary');
-
-  // Links institucionais
-  // V14: "Como usar" abre TUTORIAL VISUAL (item 35) em vez de página de texto
-  [
-    {view:'_tutorial', icon:'📖', label:'Como usar'},
-    {view:'bancaTips', icon:'🎯', label:'Dicas das bancas'},
-    {view:'faq', icon:'💡', label:'FAQ'},
-    {view:'about', icon:'ℹ️', label:'Sobre o Gralia'}
-  ].forEach(it=>{
-    const item = mk('button','app-sidebar-item' + (ST.view === it.view ? ' active' : ''));
-    item.type = 'button';
-    item.title = it.label;
-    const ico = mk('span','app-sidebar-item-ico');
-    ico.textContent = it.icon;
-    const lbl = mk('span','app-sidebar-item-label');
-    lbl.textContent = it.label;
-    item.appendChild(ico);
-    item.appendChild(lbl);
-    item.addEventListener('click',()=>{
-      if(it.view === '_tutorial'){
-        // Abre tutorial visual ao invés de navegar
-        if(typeof showVisualTutorial === 'function') showVisualTutorial();
-        return;
-      }
-      clearNavStack();
-      ST.view = it.view;
-      render();
-    });
-    secondary.appendChild(item);
-  });
-
-  sb.appendChild(secondary);
+  // V15: secção secundária do rodapé REMOVIDA — esses 4 itens (Como usar, Dicas das bancas,
+  // FAQ, Sobre o Gralia) já estão no menu do avatar. Sidebar fica mais limpa.
 
   return sb;
 }
@@ -11131,24 +11162,123 @@ function render(){
   // V14: Quick sidebar antigo desabilitado (substituído por sidebar principal).
   // Em mobile, o quick-fab abaixo dá acesso rápido.
 
-  // V14: FAB de acesso rápido (item 21) — só em mobile/tablet onde não há sidebar.
-  // CSS controla a visibilidade via media query. Aqui só adicionamos uma vez.
+  // V15: FAB redesenhado — em vez de só abrir command palette, agora abre um
+  // CARD FLUTUANTE com atalhos pras principais funções do site. Jean explicitamente
+  // pediu pra trazer de volta esse padrão (que existia antes).
   if(showSidebar){
     // Remove FAB antigo
     const oldFab = document.querySelector('.quick-fab');
     if(oldFab) oldFab.remove();
+    const oldPanel = document.querySelector('.quick-fab-panel');
+    if(oldPanel) oldPanel.remove();
+
     const fab = mk('button','quick-fab');
     fab.type = 'button';
-    fab.title = 'Acesso rápido (Ctrl+K)';
+    fab.title = 'Acesso rápido';
     fab.setAttribute('aria-label', 'Acesso rápido');
     fab.innerHTML = '⚡';
-    fab.addEventListener('click', ()=>{
-      if(typeof showCommandPalette === 'function') showCommandPalette();
+
+    // Painel flutuante
+    const panel = mk('div','quick-fab-panel');
+    panel.style.cssText = 'position:fixed;bottom:88px;right:24px;width:280px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.18),0 4px 12px rgba(0,0,0,.08);z-index:200;padding:.875rem;display:none;flex-direction:column;gap:.25rem';
+
+    const panelHead = mk('div');
+    panelHead.style.cssText = 'padding:0 .25rem .5rem;border-bottom:1px solid var(--border);margin-bottom:.5rem';
+    const panelTitle = mk('div');
+    panelTitle.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px';
+    panelTitle.textContent = 'Acesso rápido';
+    panelHead.appendChild(panelTitle);
+    panel.appendChild(panelHead);
+
+    // Atalhos pras principais funções
+    const dueSrsCount = isAuthed() ? (DATA.srs.cards||[]).filter(c=>(c.nextReview||0)<=Date.now() && c.active!==false).length : 0;
+    const errorsCount = isAuthed() ? (DATA.errors||[]).filter(e=>!e.hasCard).length : 0;
+
+    const quickActions = [
+      {icon:'⚡', label:'Praticar questões', desc:'Treino livre com IA', action:()=>{ST.view='practice';render();}},
+      {icon:'🎴', label:'Revisar flashcards', desc:dueSrsCount > 0 ? `${dueSrsCount} pendentes` : 'SRS / repetição espaçada', badge:dueSrsCount, action:()=>{ST.view='srs';render();}},
+      {icon:'🍅', label:'Iniciar Pomodoro', desc:'Timer de foco', action:()=>{ST.view='pomodoro';render();}},
+      {icon:'🎯', label:'Calibrar com IA', desc:'Adapta dificuldade', action:()=>{ST.view='calibration';render();}},
+      {icon:'📜', label:'Histórico de erros', desc:errorsCount > 0 ? `${errorsCount} sem flashcard` : 'Reforçar pontos fracos', badge:errorsCount, action:()=>{ST.view='history';render();}},
+      {icon:'🔍', label:'Buscar tudo', desc:'Ctrl+K', action:()=>{if(typeof showCommandPalette === 'function') showCommandPalette();}},
+    ];
+
+    quickActions.forEach(qa=>{
+      const btn = mk('button');
+      btn.type = 'button';
+      btn.style.cssText = 'display:flex;align-items:center;gap:.625rem;padding:.625rem .625rem;background:transparent;border:none;border-radius:8px;cursor:pointer;text-align:left;font-family:inherit;width:100%;transition:background .12s';
+      btn.addEventListener('mouseenter', ()=>{btn.style.background='var(--surface2)';});
+      btn.addEventListener('mouseleave', ()=>{btn.style.background='transparent';});
+      const ico = mk('span');
+      ico.style.cssText = 'font-size:18px;flex-shrink:0;width:28px;text-align:center';
+      ico.textContent = qa.icon;
+      btn.appendChild(ico);
+      const body = mk('div');
+      body.style.cssText = 'flex:1;min-width:0';
+      const lbl = mk('div');
+      lbl.style.cssText = 'font-size:13px;font-weight:600;color:var(--text);line-height:1.2';
+      lbl.textContent = qa.label;
+      body.appendChild(lbl);
+      const dsc = mk('div');
+      dsc.style.cssText = 'font-size:11px;color:var(--text3);line-height:1.3;margin-top:1px';
+      dsc.textContent = qa.desc;
+      body.appendChild(dsc);
+      btn.appendChild(body);
+      if(qa.badge && qa.badge > 0){
+        const b = mk('span');
+        b.style.cssText = 'background:var(--gralia-purple);color:#fff;border-radius:999px;font-size:10.5px;font-weight:700;padding:2px 6px;min-width:18px;text-align:center;flex-shrink:0';
+        b.textContent = qa.badge > 99 ? '99+' : qa.badge;
+        btn.appendChild(b);
+      }
+      btn.addEventListener('click', ()=>{
+        panel.style.display = 'none';
+        fab.classList.remove('open');
+        qa.action();
+      });
+      panel.appendChild(btn);
     });
+
+    document.body.appendChild(panel);
+
+    // Toggle do painel
+    const togglePanel = ()=>{
+      const isOpen = panel.style.display === 'flex';
+      if(isOpen){
+        panel.style.display = 'none';
+        fab.classList.remove('open');
+      } else {
+        panel.style.display = 'flex';
+        fab.classList.add('open');
+      }
+    };
+    fab.addEventListener('click', e=>{
+      e.stopPropagation();
+      togglePanel();
+    });
+
+    // Fecha ao clicar fora
+    const outsideHandler = (e)=>{
+      if(panel.style.display === 'flex' && !panel.contains(e.target) && !fab.contains(e.target)){
+        panel.style.display = 'none';
+        fab.classList.remove('open');
+      }
+    };
+    document.addEventListener('click', outsideHandler);
+    // Fecha com Escape
+    const escHandler = (e)=>{
+      if(e.key === 'Escape' && panel.style.display === 'flex'){
+        panel.style.display = 'none';
+        fab.classList.remove('open');
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+
     document.body.appendChild(fab);
   } else {
     const oldFab = document.querySelector('.quick-fab');
     if(oldFab) oldFab.remove();
+    const oldPanel = document.querySelector('.quick-fab-panel');
+    if(oldPanel) oldPanel.remove();
   }
 
   // V14: Barra superior do Modo Foco de método — placar live + sair
@@ -14144,6 +14274,11 @@ function renderDashboard(){
     wrap.appendChild(sg);
   }
 
+  // V15: Tip do heatmap (frase dica) AGORA fica entre os 4 cards de número e o mapa.
+  // Jean pediu explicitamente esse posicionamento — antes a tip aparecia DENTRO do mapa.
+  const heatmapTip = buildHeatmapTip();
+  if(heatmapTip) wrap.appendChild(heatmapTip);
+
   // V12: Gráfico de performance — heatmap por dia da semana × hora
   // Mostra quando você tá rendendo melhor (acertos / erros / tempo focado)
   // Insights interessantes: "você acerta mais à noite", "domingo é o dia mais produtivo", etc.
@@ -14261,14 +14396,16 @@ function renderDashboard(){
     });
   }
 
-  // ===== NEXT ACTION — single clear recommendation =====
-  const nextAction = buildNextActionCard(dueSrs,errorsNoCard,overconf,s);
-  if(nextAction)wrap.appendChild(nextAction);
-
-  // ===== INSIGHT (só aparece com atividade mínima) =====
-  // Inclui o heatmap de performance (buildPerformanceHeatmap)
-  const insightCard = buildInsightCard();
-  if(insightCard) wrap.appendChild(insightCard);
+  // ===== HOJE — V15: card consolidado com Próxima Ação + Insights de hoje =====
+  // Antes eram 2 cards separados ("Próxima ação prioritária" e "Insight de hoje").
+  // Jean pediu pra unificar num único card coerente. Estrutura:
+  //   1. Header "Hoje" + data
+  //   2. Próxima ação prioritária (em destaque)
+  //   3. Stats rápidas do dia (erros / cards / foco)
+  //   4. Outras recomendações
+  //   5. (Opcional) Análise do mentor com IA
+  const todayCard = buildTodayCard(dueSrs, errorsNoCard, overconf, s);
+  if(todayCard) wrap.appendChild(todayCard);
 
   // V14: Card de Uso de IA REMOVIDO do painel — disponível só em Conta → Uso (item 24).
   // Antes aparecia pra admin e poluía o painel. Agora fica em /usage.
@@ -14358,6 +14495,260 @@ function aiCostBadgeHTML(costKey, options){
   const label = opts.label || (finalCost === 1 ? 'crédito' : 'créditos');
   const title = `Esta ação consome aproximadamente ${finalCost} ${label} de IA${mult>1?' (modelo Sonnet — mais caro que Haiku)':''}`;
   return `<span class="${cls}" title="${title}"><span class="acb-icon">⚡</span><span class="acb-text">${prefix}${finalCost} ${label}</span></span>`;
+}
+
+// V15: Card "Hoje" — consolida Próxima Ação Prioritária + Insights de hoje num
+// único card. Decisão de Jean: "consolide os dois cards num mesmo card coerente
+// e organizado". Usa as mesmas funções auxiliares (computeDailyStats, adaptiveSuggestions)
+// pra manter a lógica intacta.
+function buildTodayCard(dueSrs, errorsNoCard, overconf, sess){
+  // Decide a próxima ação prioritária (mesmo algoritmo do buildNextActionCard)
+  let rec = null;
+  const DAY = 24*60*60*1000;
+  const recentErrCount = (DATA.errors||[]).filter(e=>(Date.now()-(e.date||0))<=DAY).length;
+
+  if(dueSrs>=10){
+    rec = {emoji:'🎴',title:`${dueSrs} flashcards pendentes de revisão`,desc:'Priorize antes de criar novos — cards acumulados perdem eficácia.',cta:'Revisar agora',action:()=>{ST.view='srs';ST.srsSubview='study';render();}};
+  } else if(errorsNoCard>=5){
+    rec = {emoji:'⚠️',title:`${errorsNoCard} erros ainda sem flashcard`,desc:'Erros viram pontos de revisão. Transforme agora para não esquecer.',cta:'Criar flashcards',action:()=>{ST.view='srs';ST.srsSubview='errors';render();}};
+  } else if(recentErrCount>=3){
+    rec = {emoji:'🔁',title:`Revisar ${recentErrCount} erros das últimas 24h`,desc:'Revisar erros recentes é 3× mais eficaz que estudar conteúdo novo.',cta:'Ir ao Histórico',action:()=>{ST.view='history';render();}};
+  } else if(overconf!==null&&overconf>25){
+    rec = {emoji:'🎯',title:'Falsa segurança detectada',desc:`Você erra ${overconf}% dos "tenho certeza". Treinar Calibração vale mais que questões soltas.`,cta:'Treinar Calibração',action:()=>{ST.view='calibration';render();}};
+  } else if(dueSrs>0){
+    rec = {emoji:'🎴',title:`${dueSrs} card${dueSrs>1?'s':''} aguardando revisão`,desc:'Revisão curta — poucos minutos.',cta:'Revisar',action:()=>{ST.view='srs';ST.srsSubview='study';render();}};
+  } else if(sess.total===0&&hasContent()){
+    rec = {emoji:'📝',title:'Comece a praticar',desc:'Questões Certo/Errado estilo Cebraspe geradas do seu material.',cta:'Abrir prática',action:()=>{ST.view='practice';render();}};
+  } else if(sess.total>0){
+    rec = {emoji:'📝',title:'Continue resolvendo questões',desc:'O método mais eficaz de estudo é a prática ativa.',cta:'Continuar',action:()=>{ST.view='practice';render();}};
+  }
+
+  // Threshold pra mostrar insights/stats (pelo menos 10 atividades acumuladas)
+  const totalQuestions = (DATA.session?.total||0);
+  const totalErrors = (DATA.errors||[]).length;
+  const totalCards = (DATA.srs?.cards||[]).length;
+  const totalSources = (DATA.sources||[]).length;
+  const totalActivity = totalQuestions + totalErrors + totalCards + totalSources;
+  const showInsights = totalActivity >= 10;
+
+  // Se não há recomendação E não há insights, não renderiza nada
+  if(!rec && !showInsights) return null;
+
+  const card = mk('div','today-card');
+  card.style.cssText = 'padding:1.25rem 1.375rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:1.25rem';
+
+  // ===== HEADER =====
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)';
+  const title = mk('h3');
+  title.style.cssText = 'margin:0;font-size:16px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:6px';
+  title.innerHTML = '🌅 <span>Hoje</span>';
+  head.appendChild(title);
+  const today = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const dateBadge = mk('span','txt3');
+  dateBadge.style.cssText = 'font-size:11.5px;font-weight:600;color:var(--text3)';
+  dateBadge.textContent = `${pad(today.getDate())}/${pad(today.getMonth()+1)}/${today.getFullYear()}`;
+  head.appendChild(dateBadge);
+  card.appendChild(head);
+
+  // ===== PRÓXIMA AÇÃO (em destaque) =====
+  if(rec){
+    const action = mk('div');
+    action.style.cssText = 'display:flex;align-items:flex-start;gap:.875rem;padding:.875rem 1rem;background:linear-gradient(135deg,rgba(128,66,250,.06),var(--surface2));border:1px solid rgba(128,66,250,.18);border-left:3px solid var(--gralia-purple);border-radius:10px;margin-bottom:1rem';
+
+    const emojiCol = mk('div');
+    emojiCol.style.cssText = 'font-size:28px;line-height:1;flex-shrink:0';
+    emojiCol.textContent = rec.emoji;
+    action.appendChild(emojiCol);
+
+    const textCol = mk('div');
+    textCol.style.cssText = 'flex:1;min-width:0';
+    const lbl = mk('div');
+    lbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px';
+    lbl.textContent = '🎯 Próxima ação prioritária';
+    textCol.appendChild(lbl);
+    const recTitle = mk('div');
+    recTitle.style.cssText = 'font-size:14.5px;font-weight:700;color:var(--text);line-height:1.35;margin-bottom:3px';
+    recTitle.textContent = rec.title;
+    textCol.appendChild(recTitle);
+    const recDesc = mk('div');
+    recDesc.style.cssText = 'font-size:12.5px;color:var(--text2);line-height:1.5';
+    recDesc.textContent = rec.desc;
+    textCol.appendChild(recDesc);
+    action.appendChild(textCol);
+
+    const ctaCol = mk('div');
+    ctaCol.style.cssText = 'flex-shrink:0;align-self:center';
+    const ctaBtn = mkBtn(rec.cta + ' →','btn btn-p btn-sm');
+    ctaBtn.addEventListener('click', rec.action);
+    ctaCol.appendChild(ctaBtn);
+    action.appendChild(ctaCol);
+
+    card.appendChild(action);
+  }
+
+  if(!showInsights){
+    return card;
+  }
+
+  // ===== STATS RÁPIDAS DO DIA =====
+  const stats = computeDailyStats();
+  const suggestions = adaptiveSuggestions(stats);
+
+  const statsBar = mk('div');
+  statsBar.style.cssText = 'display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem;padding:.625rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:12.5px';
+  [
+    ['📝', stats.errors||0, 'erros hoje'],
+    ['🎴', stats.cardsReviewed||0, 'cards revisados'],
+    ['⏱', stats.focusedMin||0, 'min de foco']
+  ].forEach(([icon, val, lbl])=>{
+    const s = mk('span');
+    s.style.cssText = 'display:flex;align-items:baseline;gap:.375rem';
+    s.innerHTML = `<b style="font-size:14px;color:var(--text)">${val}</b> <span style="color:var(--text3);font-size:11.5px">${icon} ${lbl}</span>`;
+    statsBar.appendChild(s);
+  });
+  card.appendChild(statsBar);
+
+  // ===== OUTRAS RECOMENDAÇÕES =====
+  if(suggestions.length > 0){
+    const sugLbl = mk('div');
+    sugLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:.5rem 0 .5rem';
+    sugLbl.textContent = 'Outras recomendações';
+    card.appendChild(sugLbl);
+    suggestions.forEach(sug=>{
+      const row = mk('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:.75rem;padding:.5rem .25rem;border-bottom:1px solid var(--border)';
+      const body = mk('div');
+      body.style.cssText = 'flex:1;min-width:0';
+      const t = mk('div');
+      t.style.cssText = 'font-size:13px;font-weight:600;color:var(--text);line-height:1.3';
+      t.textContent = sug.label;
+      const w = mk('div');
+      w.style.cssText = 'font-size:11.5px;color:var(--text3);line-height:1.4;margin-top:1px';
+      w.textContent = sug.why;
+      body.appendChild(t);
+      body.appendChild(w);
+      const btn = mkBtn(sug.cta + ' →', 'btn btn-sm');
+      btn.addEventListener('click', sug.onClick);
+      row.appendChild(body);
+      row.appendChild(btn);
+      card.appendChild(row);
+    });
+  }
+
+  // ===== ANÁLISE DO MENTOR (IA) =====
+  const dk = dayKey();
+  const cached = DATA.insights[dk];
+  if(cached){
+    const aiSec = mk('div');
+    aiSec.style.cssText = 'margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)';
+    const aiLbl = mk('div');
+    aiLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.5rem';
+    aiLbl.innerHTML = '🧠 Análise do mentor';
+    aiSec.appendChild(aiLbl);
+    if(cached.diagnosis){
+      const diag = mk('p');
+      diag.style.cssText = 'margin:0 0 .625rem;font-size:13px;line-height:1.55;color:var(--text2)';
+      diag.textContent = cached.diagnosis;
+      aiSec.appendChild(diag);
+    }
+    if(cached.priorities && cached.priorities.length > 0){
+      const priLbl = mk('div');
+      priLbl.style.cssText = 'font-size:11.5px;font-weight:700;color:var(--text2);margin:.5rem 0 .25rem';
+      priLbl.textContent = 'Prioridades:';
+      aiSec.appendChild(priLbl);
+      const ol = mk('ol');
+      ol.style.cssText = 'margin:0 0 .625rem;padding-left:1.25rem;font-size:12.5px;line-height:1.55';
+      cached.priorities.slice(0, 3).forEach(p=>{
+        const li = mk('li');
+        li.innerHTML = `<b>${p.title||''}</b> — <span style="color:var(--text2)">${p.why||''}</span>`;
+        ol.appendChild(li);
+      });
+      aiSec.appendChild(ol);
+    }
+    if(cached.adjustments){
+      const adjLbl = mk('div');
+      adjLbl.style.cssText = 'font-size:11.5px;font-weight:700;color:var(--text2);margin:.5rem 0 .25rem';
+      adjLbl.textContent = 'Ajuste de métodos:';
+      aiSec.appendChild(adjLbl);
+      const adj = mk('p');
+      adj.style.cssText = 'margin:0 0 .625rem;font-size:12.5px;line-height:1.55;color:var(--text2)';
+      adj.textContent = cached.adjustments;
+      aiSec.appendChild(adj);
+    }
+    if(cached.tomorrow_plan && cached.tomorrow_plan.length > 0){
+      const tpLbl = mk('div');
+      tpLbl.style.cssText = 'font-size:11.5px;font-weight:700;color:var(--text2);margin:.5rem 0 .25rem';
+      tpLbl.textContent = 'Plano para amanhã:';
+      aiSec.appendChild(tpLbl);
+      const ol = mk('ol');
+      ol.style.cssText = 'margin:0;padding-left:1.25rem;font-size:12.5px;line-height:1.55';
+      cached.tomorrow_plan.slice(0, 5).forEach(p=>{
+        const li = mk('li');
+        const est = p.estimated_min ? ` <span style="color:var(--text3)">(~${p.estimated_min} min)</span>` : '';
+        li.innerHTML = `${p.task||''}${est}`;
+        ol.appendChild(li);
+      });
+      aiSec.appendChild(ol);
+    }
+    const genAt = new Date(cached.generatedAt||Date.now());
+    const info = mk('p');
+    info.style.cssText = 'margin:.75rem 0 0;font-size:10.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--text3)';
+    info.textContent = `Gerado às ${pad(genAt.getHours())}:${pad(genAt.getMinutes())}`;
+    const regen = mkBtn('🔄 Regerar','btn btn-sm');
+    regen.addEventListener('click', async ()=>{
+      regen.disabled = true; regen.textContent = 'Regerando...';
+      try{ await generateDailyInsight(true); render(); }
+      catch(e){ alert('Erro: '+(e.message||e)); regen.disabled = false; regen.textContent = '🔄 Regerar'; }
+    });
+    info.appendChild(regen);
+    aiSec.appendChild(info);
+    card.appendChild(aiSec);
+  } else {
+    // Sem análise IA ainda — mostra CTA pra gerar (se elegível)
+    const totalToday = (stats.errors||0) + (stats.correct||0) + (stats.cardsReviewed||0);
+    const needsData = stats.errors === 0 && stats.cardsReviewed === 0 && stats.focusedMin === 0;
+    if(!needsData && totalToday >= 20){
+      const aiSec = mk('div');
+      aiSec.style.cssText = 'margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)';
+      if(getCurrentPlanId() === 'trial'){
+        const trialMsg = mk('div');
+        trialMsg.style.cssText = 'display:flex;gap:.75rem;align-items:flex-start;padding:.75rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px';
+        trialMsg.innerHTML = `
+          <div style="font-size:22px;line-height:1;flex-shrink:0">🎁</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">Análise do mentor é pra assinantes</div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.5">No trial você pode <b>ver um exemplo</b> da análise. Pra receber a análise personalizada do seu dia, assine um plano.</div>
+          </div>`;
+        aiSec.appendChild(trialMsg);
+        const ctaRow = mk('div','flex');
+        ctaRow.style.cssText = 'margin-top:.625rem;gap:6px;flex-wrap:wrap';
+        const exampleBtn = mkBtn('👁 Ver exemplo','btn btn-sm');
+        exampleBtn.addEventListener('click', ()=>showInsightExampleModal());
+        ctaRow.appendChild(exampleBtn);
+        const planBtn = mkBtn('Ver planos →','btn btn-sm btn-p');
+        planBtn.addEventListener('click', ()=>{ST.view='plans';render();});
+        ctaRow.appendChild(planBtn);
+        aiSec.appendChild(ctaRow);
+      } else {
+        const genBtn = mkBtn('🎯 Gerar análise do mentor ' + aiCostBadgeHTML('insight'),'btn btn-p btn-sm');
+        const help = mk('p');
+        help.style.cssText = 'margin:6px 0 0;font-size:11px;color:var(--text3)';
+        help.textContent = 'Usa IA pra analisar seus erros do dia e sugerir ajustes. 1 vez por dia (cacheado).';
+        genBtn.addEventListener('click', async ()=>{
+          genBtn.disabled = true; genBtn.innerHTML = 'Analisando...';
+          try{ await generateDailyInsight(); render(); }
+          catch(e){ alert('Erro: '+(e.message||e)); genBtn.disabled = false; genBtn.innerHTML = '🎯 Gerar análise do mentor'; }
+        });
+        aiSec.appendChild(genBtn);
+        aiSec.appendChild(help);
+      }
+      card.appendChild(aiSec);
+    }
+  }
+
+  return card;
 }
 
 function buildNextActionCard(dueSrs,errorsNoCard,overconf,sess){
@@ -14533,7 +14924,46 @@ function buildPerformanceHeatmap(){
   chartBody.innerHTML = svg;
   card.appendChild(chartBody);
 
-  // Insight inteligente — extrai padrão útil
+  // V15: Frase dica REMOVIDA daqui — foi extraída pra `buildHeatmapTip()` que é
+  // renderizada NO FLUXO do dashboard, ENTRE os 4 cards de número e o mapa.
+  // Jean pediu: "A frase dica logo acima do mapa de produtividade e abaixo dos 4 cards".
+
+  return card;
+}
+
+// V15: Tip do heatmap — mostra padrão útil de produtividade (dia/horário em que
+// você rende mais). Renderizada entre os summary numbers e o heatmap no painel.
+// Retorna null se ainda não há dados suficientes pra gerar insight relevante.
+function buildHeatmapTip(){
+  // Coleta dados últimos 30 dias (mesma lógica do heatmap)
+  const now = Date.now();
+  const THIRTY_DAYS = 30*24*60*60*1000;
+  const errors = (DATA.errors||[]).filter(e => e.date && (now-e.date) <= THIRTY_DAYS);
+  const cardsReviewed = (DATA.srs?.cards||[])
+    .flatMap(c => (c.reviews||[]))
+    .filter(r => r.at && (now-r.at) <= THIRTY_DAYS);
+
+  const HOUR_BUCKETS = 8;
+  const dayLabels = ['DOM','SEG','TER','QUA','QUI','SEX','SAB'];
+  const hourLabels = ['0','3','6','9','12','15','18','21'];
+
+  const grid = Array.from({length:7}, ()=> new Array(HOUR_BUCKETS).fill(0));
+  const correctGrid = Array.from({length:7}, ()=> new Array(HOUR_BUCKETS).fill(0));
+
+  errors.forEach(e=>{
+    const d = new Date(e.date);
+    const dow = d.getDay();
+    const h = Math.floor(d.getHours() / 3);
+    grid[dow][h] += 1;
+  });
+  cardsReviewed.forEach(r=>{
+    const d = new Date(r.at);
+    const dow = d.getDay();
+    const h = Math.floor(d.getHours() / 3);
+    grid[dow][h] += 1;
+    if(r.rating === 'good' || r.rating === 'easy') correctGrid[dow][h] += 1;
+  });
+
   let bestSlot = null;
   let bestCount = 0;
   for(let d=0;d<7;d++){
@@ -14544,17 +14974,18 @@ function buildPerformanceHeatmap(){
       }
     }
   }
-  if(bestSlot && bestCount >= 3){
-    const insight = mk('p','chart-insight');
-    insight.innerHTML = `💡 Você rende melhor <b>${dayLabels[bestSlot.dow]}</b> entre <b>${hourLabels[bestSlot.h]}h-${parseInt(hourLabels[bestSlot.h])+3}h</b>. Considere agendar suas sessões mais difíceis nesse horário.`;
-    card.appendChild(insight);
-  } else {
-    const help = mk('p','chart-insight chart-insight-neutral');
-    help.innerHTML = `💡 Conforme você acumula mais sessões, o mapa vai mostrar seus melhores horários pra estudar. <b>Verde</b> = alta acurácia, <b>vermelho</b> = muitos erros, <b>roxo</b> = atividade.`;
-    card.appendChild(help);
-  }
 
-  return card;
+  // Card visual com o mesmo estilo de outros do dashboard (sóbrio, sem destacar demais)
+  const tip = mk('div','dash-tip-card');
+  tip.style.cssText = 'margin:1rem 0;padding:.875rem 1.125rem;background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--gralia-purple);border-radius:10px;font-size:13px;line-height:1.55;color:var(--text2)';
+  if(bestSlot && bestCount >= 3){
+    tip.innerHTML = `💡 Você rende melhor <b style="color:var(--text)">${dayLabels[bestSlot.dow]}</b> entre <b style="color:var(--text)">${hourLabels[bestSlot.h]}h-${parseInt(hourLabels[bestSlot.h])+3}h</b>. Considere agendar suas sessões mais difíceis nesse horário.`;
+  } else {
+    tip.style.borderLeftColor = 'var(--border)';
+    tip.style.color = 'var(--text3)';
+    tip.innerHTML = `💡 Conforme você acumula mais sessões, o mapa abaixo mostra seus melhores horários pra estudar. <b style="color:var(--text2)">Verde</b> = alta acurácia, <b style="color:var(--text2)">vermelho</b> = muitos erros, <b style="color:var(--text2)">roxo</b> = atividade.`;
+  }
+  return tip;
 }
 
 /* Activity timeline on dashboard — mostra eventos recentes de forma visual e navegável.
@@ -15604,6 +16035,47 @@ function renderSourceAdd(wrap){
         Suas fontes ficam disponíveis para outros assinantes. Antes de aparecerem com selo de validação, passam por revisão.
       </div>`;
     addCard.appendChild(helpBox);
+
+    // V15: CTA destacado pra Comunidade — caminho mais vantajoso (sem retrabalho).
+    // Aparece SEMPRE no topo do form, antes do upload de PDF, pra reforçar essa opção.
+    const communityCTA = mk('button');
+    communityCTA.type = 'button';
+    communityCTA.style.cssText = 'display:flex;align-items:center;gap:.875rem;width:100%;padding:1rem 1.125rem;margin:0 0 1rem;background:linear-gradient(135deg,rgba(128,66,250,.08),rgba(128,66,250,.02));border:1px solid rgba(128,66,250,.25);border-radius:12px;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s';
+    communityCTA.addEventListener('mouseenter', ()=>{
+      communityCTA.style.borderColor = 'var(--gralia-purple)';
+      communityCTA.style.background = 'linear-gradient(135deg,rgba(128,66,250,.12),rgba(128,66,250,.04))';
+      communityCTA.style.transform = 'translateY(-1px)';
+    });
+    communityCTA.addEventListener('mouseleave', ()=>{
+      communityCTA.style.borderColor = 'rgba(128,66,250,.25)';
+      communityCTA.style.background = 'linear-gradient(135deg,rgba(128,66,250,.08),rgba(128,66,250,.02))';
+      communityCTA.style.transform = 'none';
+    });
+    communityCTA.innerHTML = `
+      <div style="font-size:28px;line-height:1;flex-shrink:0">🌐</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13.5px;font-weight:700;color:var(--text);line-height:1.3;margin-bottom:2px">Buscar na Comunidade primeiro</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.45">Outros usuários já podem ter importado o material que você precisa. Aproveite e economize tempo.</div>
+      </div>
+      <div style="font-size:18px;color:var(--gralia-purple);flex-shrink:0;font-weight:600">→</div>`;
+    communityCTA.addEventListener('click', ()=>{
+      ST.view = 'discover';
+      ST.discoverTab = 'materials';
+      render();
+    });
+    addCard.appendChild(communityCTA);
+
+    // Divisor "ou"
+    const divider = mk('div');
+    divider.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin:1.25rem 0';
+    const divLineL = mk('div');divLineL.style.cssText = 'flex:1;height:1px;background:var(--border)';
+    const divTxt = mk('span');divTxt.style.cssText = 'font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px';
+    divTxt.textContent = 'ou importe um novo material';
+    const divLineR = mk('div');divLineR.style.cssText = 'flex:1;height:1px;background:var(--border)';
+    divider.appendChild(divLineL);
+    divider.appendChild(divTxt);
+    divider.appendChild(divLineR);
+    addCard.appendChild(divider);
   }
 
   // Quick import actions row
@@ -16853,7 +17325,12 @@ function handleErr(e,container){
   const msg = e.message||String(e);
   let text = 'Erro ao conectar com a IA.';
   let canRetry = true;
-  if(msg.includes('no-content')){text='⚠ Adicione fontes em "Fontes" e ative ao menos uma disciplina.';canRetry=false;}
+  if(msg.includes('no-content')){
+    // V15: Mostra a mensagem específica do diagnóstico (já vem detalhada do callAPI)
+    const detail = msg.split('no-content:')[1] ? msg.split('no-content:')[1].trim() : '';
+    text = detail ? '⚠ ' + detail : '⚠ Adicione fontes em "Fontes" e ative ao menos uma disciplina.';
+    canRetry = false;
+  }
   else if(msg.includes('no-key')){text='⚠ Chave API não configurada. Vá em "Config" e cole sua chave.';canRetry=false;}
   else if(msg.includes('network'))text='⚠ Falha de rede. Verifique sua conexão e tente de novo.';
   else if(msg.includes('api-401')||msg.includes('api-403')){text='⚠ Chave API inválida ou sem crédito.';canRetry=false;}
@@ -29375,17 +29852,36 @@ function renderDiscover(){
     return wrap;
   }
 
+  // V15 premium: cabeçalho com hierarquia visual (título + subtítulo + descrição)
   const head = mk('div','discover-head');
-  const ttl = mk('h1','page-h1');ttl.style.margin='0';
+  head.style.cssText = 'margin-bottom:1rem';
+  const headTop = mk('div');
+  headTop.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap';
+  const headLeft = mk('div');
+  headLeft.style.flex = '1';
+  const ttl = mk('h1','page-h1');
+  ttl.style.cssText = 'margin:0 0 .25rem;font-size:24px;font-weight:800;letter-spacing:-.02em';
   const subtitle = ST.discoverTab === 'people' ? 'pessoas da comunidade' : 'materiais da comunidade';
   ttl.innerHTML = `🌐 Descobrir <span class="page-h1-tag">${subtitle}</span>`;
-  head.appendChild(ttl);
+  headLeft.appendChild(ttl);
+  const desc = mk('p','txt2');
+  desc.style.cssText = 'margin:0;font-size:13px;line-height:1.5;max-width:580px';
+  if(ST.discoverTab === 'people'){
+    desc.textContent = 'Encontre concurseiros que estudam matérias parecidas e siga pra ver os materiais que eles publicam.';
+  } else {
+    desc.textContent = 'Materiais publicados pela comunidade. Selo verde = revisado por moderador. Importe pra sua conta sem custo de IA.';
+  }
+  headLeft.appendChild(desc);
+  headTop.appendChild(headLeft);
+
   // Botão contextual: muda conforme aba
   if(ST.discoverTab === 'materials' || !ST.discoverTab){
     const mineBtn = mkBtn('📚 Meus publicados','btn btn-sm');
+    mineBtn.style.flexShrink = '0';
     mineBtn.addEventListener('click',()=>showMyPublishedModal());
-    head.appendChild(mineBtn);
+    headTop.appendChild(mineBtn);
   }
+  head.appendChild(headTop);
   wrap.appendChild(head);
 
   // Abas: Materiais | Pessoas
@@ -29542,6 +30038,43 @@ function renderDiscover(){
       contentBlock.appendChild(contentRow);
       filterCard.appendChild(contentBlock);
     }
+
+    // V15: Linha 3 — filtro por status de validação (admin vê tudo, comum prefere validadas)
+    if(!ST.discoverFilter.modStatus) ST.discoverFilter.modStatus = 'all';
+    const curMod = ST.discoverFilter.modStatus;
+    const modBlock = mk('div');
+    const modLbl = mk('div');
+    modLbl.style.cssText='font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px';
+    modLbl.textContent = 'Status de revisão';
+    modBlock.appendChild(modLbl);
+    const modRow = mk('div');
+    modRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
+    const modOpts = [
+      {key:'all', label:'🌐 Todas'},
+      {key:'approved', label:'✓ Validadas'},
+      {key:'pending', label:'⏳ Em revisão'}
+    ];
+    modOpts.forEach(opt=>{
+      const isOn = curMod === opt.key;
+      const b = mk('button');
+      b.type='button';
+      b.style.cssText = `padding:5px 11px;border-radius:999px;border:1px solid ${isOn?'var(--gralia-purple)':'var(--border)'};background:${isOn?'var(--gralia-purple)':'var(--surface2)'};color:${isOn?'#fff':'var(--text2)'};font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s`;
+      b.textContent = opt.label;
+      if(!isOn){
+        b.addEventListener('mouseenter', ()=>{b.style.background='var(--accent-light)';b.style.color='var(--accent-text)';b.style.borderColor='var(--accent)';});
+        b.addEventListener('mouseleave', ()=>{b.style.background='var(--surface2)';b.style.color='var(--text2)';b.style.borderColor='var(--border)';});
+      }
+      b.addEventListener('click',()=>{
+        if(ST.discoverFilter.modStatus === opt.key) return;
+        ST.discoverFilter.modStatus = opt.key;
+        ST.discoverItems = []; ST.discoverPage = 0; ST.discoverHasMore = true;
+        render();
+      });
+      modRow.appendChild(b);
+    });
+    modBlock.appendChild(modRow);
+    filterCard.appendChild(modBlock);
+
     wrap.appendChild(filterCard);
   }
 
@@ -29686,6 +30219,7 @@ function renderDiscover(){
       sort: ST.discoverFilter.sort,
       tag: ST.discoverFilter.tag || null,
       scope: ST.discoverScope || 'all',
+      modStatus: ST.discoverFilter.modStatus || 'all',
       limit,
       offset: ST.discoverPage * limit
     });
@@ -35178,6 +35712,130 @@ function renderAdminDashboard(){
   }, 0);
 
   wrap.appendChild(fbCard);
+
+  // V15: === Card "Fontes pendentes de revisão" (moderação em batch) ===
+  // Lista todas as fontes públicas com moderation_status='pending' pra admin
+  // revisar/validar/editar em sequência sem precisar caçar uma a uma.
+  const modCard = mk('div','admin-card');
+  modCard.appendChild(adminSectionLabel('🛡 Fontes pendentes de revisão'));
+  const modSub = mk('p','txt2');
+  modSub.style.cssText = 'margin:0 0 .75rem;font-size:12.5px;line-height:1.5';
+  modSub.textContent = 'Fontes que usuários publicaram e ainda não passaram por revisão. Edite pra remover ruído (cursos, professores, gabaritos) e valide.';
+  modCard.appendChild(modSub);
+
+  const modList = mk('div');
+  modList.id = 'mod-pending-list';
+  modList.style.cssText = 'display:flex;flex-direction:column;gap:.5rem';
+  modList.innerHTML = '<div class="txt3" style="padding:1rem;text-align:center">Carregando pendentes...</div>';
+  modCard.appendChild(modList);
+
+  setTimeout(async ()=>{
+    try{
+      const result = await fetchPendingResources();
+      if(result.error){
+        modList.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text)">Erro: ${escapeHTML(result.error)}</div>`;
+        return;
+      }
+      const items = result.items || [];
+      if(items.length === 0){
+        modList.innerHTML = '<div class="txt3" style="padding:1rem;text-align:center">✓ Nenhuma fonte pendente. Tudo validado!</div>';
+        return;
+      }
+
+      // Header com contador
+      modList.innerHTML = '';
+      const counter = mk('div');
+      counter.style.cssText = 'padding:.5rem .75rem;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:6px;font-size:12px;color:var(--amber-text);font-weight:600;margin-bottom:.5rem';
+      counter.textContent = `${items.length} ${items.length === 1 ? 'fonte aguardando' : 'fontes aguardando'} revisão`;
+      modList.appendChild(counter);
+
+      items.forEach(item => {
+        const row = mk('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:.75rem;padding:.75rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px';
+
+        const icoCol = mk('div');
+        icoCol.style.cssText = 'font-size:24px;line-height:1;flex-shrink:0';
+        const typeIcon = item.resource_type === 'fonte' ? '📚' : item.resource_type === 'caderno' ? '📝' : '📄';
+        icoCol.textContent = typeIcon;
+        row.appendChild(icoCol);
+
+        const bodyCol = mk('div');
+        bodyCol.style.cssText = 'flex:1;min-width:0';
+        const titleEl = mk('div');
+        titleEl.style.cssText = 'font-size:13.5px;font-weight:600;color:var(--text);line-height:1.3;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+        titleEl.textContent = item.title || '(sem título)';
+        bodyCol.appendChild(titleEl);
+
+        const metaEl = mk('div');
+        metaEl.style.cssText = 'font-size:11.5px;color:var(--text3);line-height:1.4';
+        const dt = new Date(item.created_at);
+        const pad = n => String(n).padStart(2, '0');
+        const ago = `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}`;
+        const contentLen = (item.payload?.content || '').length;
+        const metaParts = [
+          item.discipline || '— sem disciplina —',
+          `${ago}`,
+          contentLen ? `${contentLen.toLocaleString('pt-BR')} chars` : '— vazia —'
+        ];
+        metaEl.textContent = metaParts.join(' · ');
+        bodyCol.appendChild(metaEl);
+        row.appendChild(bodyCol);
+
+        const actCol = mk('div');
+        actCol.style.cssText = 'display:flex;gap:6px;flex-shrink:0';
+
+        const editBtn = mkBtn('✏ Editar','btn btn-sm');
+        editBtn.style.fontSize = '11.5px';
+        editBtn.addEventListener('click', async ()=>{
+          editBtn.disabled = true;
+          editBtn.textContent = 'Carregando...';
+          try{
+            const result = await fetchResourceFull(item.id);
+            if(result.error || !result.resource){
+              alert('Erro: ' + (result.error || 'recurso não encontrado'));
+              editBtn.disabled = false;
+              editBtn.textContent = '✏ Editar';
+              return;
+            }
+            showAdminEditResourceModal(result.resource);
+          }catch(e){
+            alert('Erro: ' + (e.message||e));
+            editBtn.disabled = false;
+            editBtn.textContent = '✏ Editar';
+          }
+        });
+        actCol.appendChild(editBtn);
+
+        const validateBtn = mkBtn('✓','btn btn-sm');
+        validateBtn.title = 'Validar sem editar';
+        validateBtn.style.cssText = 'background:rgba(70,180,90,.12);color:#2d8a4f;border-color:rgba(70,180,90,.32);font-size:13px;padding:4px 10px';
+        validateBtn.addEventListener('click', async ()=>{
+          if(!confirm(`Validar "${item.title}" sem editar?\n\nSe a fonte tem nomes de cursinhos, professores ou gabaritos, é melhor clicar em "Editar" antes.`)) return;
+          validateBtn.disabled = true;
+          try{
+            await adminMarkResourceValidated(item.id);
+            row.style.opacity = '0.5';
+            row.style.pointerEvents = 'none';
+            showToast('✓ Validada: ' + item.title, 3500);
+            // Re-carrega lista após 1s
+            setTimeout(()=>render(), 800);
+          }catch(e){
+            alert('Erro: ' + (e.message||e));
+            validateBtn.disabled = false;
+          }
+        });
+        actCol.appendChild(validateBtn);
+
+        row.appendChild(actCol);
+        modList.appendChild(row);
+      });
+    }catch(e){
+      console.error('[mod-pending]', e);
+      modList.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text)">Erro ao carregar: ${escapeHTML(e.message||String(e))}</div>`;
+    }
+  }, 0);
+
+  wrap.appendChild(modCard);
 
   // === Footer
   const footer = mk('div','admin-footer');
