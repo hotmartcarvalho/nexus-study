@@ -9389,14 +9389,15 @@ async function fetchQuota(){
 
 const RATE_LIMITS = {
   // Janela curta — picos de uso anormais
+  // V14: 40/min pra suportar processamento paralelo de PDFs grandes (5 chunks simultâneos)
   shortWindow: {
-    seconds: 60,           // últimos 60 segundos
-    maxRequests: 15        // máximo 15 chamadas em 1 minuto
+    seconds: 60,
+    maxRequests: 40
   },
   // Janela média — uso sustentado anormal
   mediumWindow: {
     seconds: 600,          // últimos 10 minutos
-    maxRequests: 60        // máximo 60 chamadas em 10 minutos
+    maxRequests: 100       // V14: 100 em 10 minutos pra apostilas grandes
   },
   // Limite por dia (proteção do orçamento)
   dailyWindow: {
@@ -9492,8 +9493,12 @@ function validatePayload(body){
 const _inFlightCalls = new Map();
 function makeCallKey(body){
   const m = (body.messages||[])[0];
-  const head = m && typeof m.content === 'string' ? m.content.slice(0, 100) : '';
-  return body.model + '::' + head;
+  // V14: usa começo + fim + tamanho do conteúdo. Antes só usava primeiros 100 chars,
+  // o que fazia chunks paralelos com texto similar serem deduplicados (BUG).
+  const c = m && typeof m.content === 'string' ? m.content : '';
+  const head = c.slice(0, 80);
+  const tail = c.slice(-80);
+  return body.model + '::' + c.length + '::' + head + '::' + tail;
 }
 
 async function apiGenerate(body){
@@ -15646,12 +15651,11 @@ function renderSourceAdd(wrap){
               classify: true,
               onProgress: (p)=>{
                 ST.srcImportState.organizeProgress = p;
-                // Atualiza só o texto do status sem re-render full
                 const statusEl = document.getElementById('ai-organize-status');
                 if(statusEl) statusEl.textContent = p.label;
               }
             }),
-            new Promise((_, rej) => setTimeout(()=>rej(new Error('timeout 600s — PDF muito grande')), 600000))
+            new Promise((_, rej) => setTimeout(()=>rej(new Error('timeout 480s')), 480000))
           ]);
           console.log('[import] smartOrganizeContent retornou:', aiRes ? 'objeto' : 'null', aiRes);
         }catch(aiErr){
@@ -16078,7 +16082,7 @@ function renderSourceAdd(wrap){
     orgCard.appendChild(statusEl);
     const sub = mk('p','txt3');
     sub.style.cssText = 'margin:.625rem 0 0;font-size:11.5px;line-height:1.5';
-    sub.innerHTML = 'PDFs grandes (apostilas) podem levar de 1 a 5 minutos. Não feche essa aba.';
+    sub.innerHTML = 'PDFs grandes processam em paralelo. Em geral leva de 30 segundos a 2 minutos.';
     orgCard.appendChild(sub);
     const stepLbl = mk('p','txt3');
     stepLbl.style.cssText = 'margin:.625rem 0 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px';
@@ -26088,50 +26092,89 @@ function extractTOCSection(text, entry){
 async function smartOrganizeContent(rawText, opts){
   opts = opts || {};
   const onProgress = opts.onProgress || (()=>{});
-  console.log('[smartOrganize] V14 FINAL — 2 chamadas separadas');
+  console.log('[smartOrganize] V14 FINAL — paralelo + chunks grandes');
   console.log('[smartOrganize] texto bruto:', rawText.length, 'chars');
 
   // ETAPA 1: metadados (rápido, output curto)
   onProgress({phase: 'metadata', current: 0, total: 0, label: 'Identificando disciplina e metadados...'});
+  const t0 = performance.now();
   const metadata = await callMetadataAI(rawText);
-  console.log('[smartOrganize] metadados extraídos:', metadata);
+  console.log('[smartOrganize] metadados extraídos em', Math.round(performance.now()-t0), 'ms:', metadata);
 
-  // ETAPA 2: organização do conteúdo (chunked se necessário)
-  const CHUNK_SIZE = 18000;
+  // ETAPA 2: organização do conteúdo
+  // CHUNK_SIZE 30k: cabe ~9k tokens entrada -> ~6.5k saída (markdown organizado é ~75% do input).
+  // Output max_tokens 8192 = ~30k chars de saída -> cabe folgado.
+  const CHUNK_SIZE = 30000;
+  // PARALLEL_BATCH: 5 chamadas concorrentes. Anthropic API tolera bem.
+  // Tradeoff: muito alto pode dar 429 rate limit. 5 é seguro.
+  const PARALLEL_BATCH = 5;
+
   let organized;
   if(rawText.length <= CHUNK_SIZE){
-    console.log('[smartOrganize] texto cabe em 1 chunk, organizando...');
+    console.log('[smartOrganize] texto cabe em 1 chunk');
     onProgress({phase: 'organize', current: 1, total: 1, label: 'Organizando conteúdo...'});
+    const tc = performance.now();
     organized = await callOrganizeAI(rawText, 1, 1);
+    console.log('[smartOrganize] chunk único em', Math.round(performance.now()-tc), 'ms');
   } else {
+    // Divide em chunks
     const chunks = [];
     let pos = 0;
     while(pos < rawText.length){
       chunks.push(rawText.slice(pos, pos + CHUNK_SIZE));
       pos += CHUNK_SIZE;
     }
-    console.log('[smartOrganize] modo CHUNKED:', chunks.length, 'chunks');
-    const parts = [];
-    for(let i = 0; i < chunks.length; i++){
-      console.log(`[smartOrganize] chunk ${i+1}/${chunks.length}...`);
-      onProgress({phase: 'organize', current: i+1, total: chunks.length, label: `Organizando parte ${i+1} de ${chunks.length}...`});
-      try{
-        const part = await callOrganizeAI(chunks[i], i+1, chunks.length);
-        if(part && part.length > 50){
-          parts.push(part);
-        } else {
-          console.warn(`[smartOrganize] chunk ${i+1} retornou vazio, usando texto cru`);
-          parts.push(chunks[i]);
-        }
-      }catch(err){
-        console.error(`[smartOrganize] chunk ${i+1} falhou:`, err.message);
-        parts.push(chunks[i]);
+    console.log('[smartOrganize] modo PARALELO:', chunks.length, 'chunks em batches de', PARALLEL_BATCH);
+
+    // Pre-aloca array de resultados
+    const results = new Array(chunks.length);
+    let completedCount = 0;
+    onProgress({phase: 'organize', current: 0, total: chunks.length, label: `Organizando ${chunks.length} partes em paralelo...`});
+
+    // Processa em batches paralelos
+    for(let batchStart = 0; batchStart < chunks.length; batchStart += PARALLEL_BATCH){
+      const batchEnd = Math.min(batchStart + PARALLEL_BATCH, chunks.length);
+      const batchSize = batchEnd - batchStart;
+      console.log(`[smartOrganize] batch ${Math.floor(batchStart/PARALLEL_BATCH)+1}: chunks ${batchStart+1}-${batchEnd} (${batchSize} em paralelo)`);
+      const tBatch = performance.now();
+
+      const promises = [];
+      for(let i = batchStart; i < batchEnd; i++){
+        promises.push(
+          callOrganizeAI(chunks[i], i+1, chunks.length)
+            .then(part => {
+              results[i] = (part && part.length > 50) ? part : chunks[i];
+              completedCount++;
+              onProgress({
+                phase: 'organize',
+                current: completedCount,
+                total: chunks.length,
+                label: `Organizando ${completedCount}/${chunks.length} partes...`
+              });
+              console.log(`[smartOrganize] chunk ${i+1} OK (${results[i].length} chars)`);
+            })
+            .catch(err => {
+              console.error(`[smartOrganize] chunk ${i+1} FALHOU:`, err.message);
+              results[i] = chunks[i]; // fallback: usa texto cru pra não perder
+              completedCount++;
+              onProgress({
+                phase: 'organize',
+                current: completedCount,
+                total: chunks.length,
+                label: `Organizando ${completedCount}/${chunks.length} partes...`
+              });
+            })
+        );
       }
+      await Promise.all(promises);
+      console.log(`[smartOrganize] batch concluído em`, Math.round(performance.now()-tBatch), 'ms');
     }
-    organized = parts.join('\n\n');
+
+    organized = results.join('\n\n');
   }
 
-  console.log('[smartOrganize] organizedLen final:', organized.length, 'chars');
+  console.log('[smartOrganize] TEMPO TOTAL:', Math.round(performance.now()-t0), 'ms');
+  console.log('[smartOrganize] organized final:', organized.length, 'chars');
 
   return {
     suggestedName: metadata.suggestedName || null,
