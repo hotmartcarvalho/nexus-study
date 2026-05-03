@@ -153,6 +153,7 @@ body.mobile-nav-open .shortcuts-floating-btn{display:none !important}
   flex-direction:column;
   padding:12px 0;
   overflow-y:auto;
+  overflow-x:hidden;
   transition:width .22s ease;
 }
 body.sidebar-collapsed .app-sidebar{width:64px}
@@ -175,25 +176,27 @@ body.sidebar-collapsed.has-sidebar .topbar{padding-left:64px}
 .sidebar-collapse-toggle{
   position:absolute;
   top:14px;
-  right:-12px;
+  right:8px;
   width:24px;
   height:24px;
   border-radius:50%;
-  background:var(--surface);
+  background:var(--surface2);
   border:1px solid var(--border);
   cursor:pointer;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:11px;
+  font-size:13px;
   color:var(--text2);
   z-index:10;
   transition:all .15s;
   font-family:inherit;
   padding:0;
-  box-shadow:0 1px 3px rgba(0,0,0,.08);
+  line-height:1;
 }
 .sidebar-collapse-toggle:hover{background:var(--gralia-purple);color:#fff;border-color:var(--gralia-purple)}
+/* V15: quando sidebar está colapsada, centraliza o botão */
+body.sidebar-collapsed .sidebar-collapse-toggle{right:auto;left:50%;transform:translateX(-50%)}
 
 .app-sidebar-brand{
   padding:6px 18px 14px;
@@ -5309,7 +5312,7 @@ async function publishSource(sourceData, opts){
   const rawContent = (sourceData.content || '').trim();
   const content = sanitizeContentForSharing(rawContent);
   if(content.length < 50) throw new Error('Fonte vazia ou muito curta — mínimo 50 caracteres');
-  if(content.length > 200000) throw new Error('Fonte muito longa (máx 200.000 caracteres)');
+  if(content.length > 500000) throw new Error('Fonte muito longa (máx 500.000 caracteres). Considere dividir em múltiplas fontes menores.');
   const payload = {
     local_id: sourceData.id, // pra detecção de "já publicado"
     source_name: sanitizeContentForSharing(sourceData.name||''),
@@ -8880,17 +8883,85 @@ function buildContent(){
     // V13: Mapa mental — material é esquemático, focar em RELAÇÕES e classificações
     directive = '\n\n--- DIRETRIZ DE ESTILO ---\nConteúdo é um MAPA MENTAL esquemático. Priorize: (a) testar RELAÇÕES entre conceitos (qual deriva de qual, qual é exceção a qual), (b) classificações e hierarquias mostradas nos ramos, (c) reconhecimento de PADRÕES estruturais. Não exija detalhes que o mapa não mostra explicitamente.\n';
   }
-  return srcs.map(s=>{
+  // V15 fix: Trunca pra caber no limite de tokens da Anthropic API.
+  // Limite real: 200k tokens. 1 token ≈ 3.5 chars em português. Ficamos com 600k chars
+  // de teto seguro pra deixar room pro system prompt + diretivas + resposta.
+  // Quando passa do limite, ROTACIONA a janela de leitura: cada chamada usa um
+  // trecho diferente da fonte (offset persistente), pra ao longo do tempo cobrir tudo.
+  const MAX_CONTENT_CHARS = 600000;
+
+  const fullContent = srcs.map(s=>{
     const disc = getDiscipline(s.disciplineId);
     const dLbl = disc?` (disciplina: ${disc.name})`:'';
     const tLbl = s.contentType&&s.contentType!=='misto' ? ` [${(CONTENT_TYPES[s.contentType]||{}).label||s.contentType}]` : '';
-    // V14 fix: usa fallback se s.type não existir em SRC_TYPES (item: erro fatal em /methods)
-    // Antes: SRC_TYPES[s.type].label estourava com TypeError quando type era undefined ou desconhecido
     const srcTypeInfo = SRC_TYPES[s.type] || {label: s.type || 'fonte'};
     const srcLabel = (srcTypeInfo.label || 'fonte').toUpperCase();
     return `[${srcLabel}${dLbl}${tLbl}: ${s.name}]\n${s.content}`;
-  }).join('\n\n---\n\n') + directive + (function(){
-    // V12: Anexa contexto de banca, se houver
+  }).join('\n\n---\n\n');
+
+  let trimmedContent;
+  if(fullContent.length <= MAX_CONTENT_CHARS){
+    trimmedContent = fullContent;
+  } else {
+    // Conteúdo grande demais — pega janela rotativa.
+    // Distribui o orçamento de chars entre as fontes proporcionalmente ao tamanho delas,
+    // mas com mínimo garantido (8k chars cada) pra evitar fontes pequenas serem zeradas.
+    const MIN_PER_SOURCE = 8000;
+    const headerSize = 200; // overhead estimado por fonte (label + delimitadores)
+    const totalHeaderOverhead = srcs.length * headerSize + 100; // + diretivas
+    const budgetForContents = MAX_CONTENT_CHARS - totalHeaderOverhead;
+    const sumChars = srcs.reduce((acc, s) => acc + (s.content||'').length, 0);
+
+    // Avança o offset rotativo (persistente entre chamadas) pra cada fonte cobrir
+    // pedaços diferentes em chamadas sucessivas
+    if(!DATA._contentRotationOffset) DATA._contentRotationOffset = {};
+
+    const parts = srcs.map(s=>{
+      const disc = getDiscipline(s.disciplineId);
+      const dLbl = disc?` (disciplina: ${disc.name})`:'';
+      const tLbl = s.contentType&&s.contentType!=='misto' ? ` [${(CONTENT_TYPES[s.contentType]||{}).label||s.contentType}]` : '';
+      const srcTypeInfo = SRC_TYPES[s.type] || {label: s.type || 'fonte'};
+      const srcLabel = (srcTypeInfo.label || 'fonte').toUpperCase();
+      const header = `[${srcLabel}${dLbl}${tLbl}: ${s.name}]\n`;
+      const content = s.content || '';
+
+      // Calcula o budget desta fonte proporcional ao tamanho dela
+      const srcBudget = Math.max(MIN_PER_SOURCE, Math.floor(budgetForContents * (content.length / sumChars)));
+
+      if(content.length <= srcBudget){
+        return header + content;
+      }
+
+      // Janela rotativa
+      const offset = (DATA._contentRotationOffset[s.id] || 0) % content.length;
+      // Tenta começar num quebra de parágrafo próxima do offset pra não cortar palavra
+      let realOffset = offset;
+      const nlNear = content.indexOf('\n\n', offset);
+      if(nlNear !== -1 && nlNear - offset < 500){
+        realOffset = nlNear + 2;
+      }
+
+      let slice;
+      if(realOffset + srcBudget <= content.length){
+        slice = content.slice(realOffset, realOffset + srcBudget);
+      } else {
+        // Wrap: pega o final + começo
+        const tailLen = content.length - realOffset;
+        const headLen = srcBudget - tailLen;
+        slice = content.slice(realOffset) + '\n\n[…continuação do início da fonte…]\n\n' + content.slice(0, headLen);
+      }
+
+      // Avança offset pra próxima chamada (50% da janela = sobreposição)
+      DATA._contentRotationOffset[s.id] = (realOffset + Math.floor(srcBudget * 0.5)) % content.length;
+
+      return header + `[Trecho da fonte — chars ${realOffset}-${realOffset + slice.length} de ${content.length}]\n` + slice;
+    });
+    trimmedContent = parts.join('\n\n---\n\n');
+    // Salva o offset atualizado em background (não bloqueia)
+    try{ save(); }catch(_){}
+  }
+
+  return trimmedContent + directive + (function(){
     const bc = getBancaContext();
     if(bc && bc.style) return '\n\n' + bc.style;
     return '';
@@ -11162,125 +11233,14 @@ function render(){
   // V14: Quick sidebar antigo desabilitado (substituído por sidebar principal).
   // Em mobile, o quick-fab abaixo dá acesso rápido.
 
-  // V15: FAB redesenhado — em vez de só abrir command palette, agora abre um
-  // CARD FLUTUANTE com atalhos pras principais funções do site. Jean explicitamente
-  // pediu pra trazer de volta esse padrão (que existia antes).
-  if(showSidebar){
-    // Remove FAB antigo
-    const oldFab = document.querySelector('.quick-fab');
-    if(oldFab) oldFab.remove();
-    const oldPanel = document.querySelector('.quick-fab-panel');
-    if(oldPanel) oldPanel.remove();
-
-    const fab = mk('button','quick-fab');
-    fab.type = 'button';
-    fab.title = 'Acesso rápido';
-    fab.setAttribute('aria-label', 'Acesso rápido');
-    fab.innerHTML = '⚡';
-
-    // Painel flutuante
-    const panel = mk('div','quick-fab-panel');
-    panel.style.cssText = 'position:fixed;bottom:88px;right:24px;width:280px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.18),0 4px 12px rgba(0,0,0,.08);z-index:200;padding:.875rem;display:none;flex-direction:column;gap:.25rem';
-
-    const panelHead = mk('div');
-    panelHead.style.cssText = 'padding:0 .25rem .5rem;border-bottom:1px solid var(--border);margin-bottom:.5rem';
-    const panelTitle = mk('div');
-    panelTitle.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px';
-    panelTitle.textContent = 'Acesso rápido';
-    panelHead.appendChild(panelTitle);
-    panel.appendChild(panelHead);
-
-    // Atalhos pras principais funções
-    const dueSrsCount = isAuthed() ? (DATA.srs.cards||[]).filter(c=>(c.nextReview||0)<=Date.now() && c.active!==false).length : 0;
-    const errorsCount = isAuthed() ? (DATA.errors||[]).filter(e=>!e.hasCard).length : 0;
-
-    const quickActions = [
-      {icon:'⚡', label:'Praticar questões', desc:'Treino livre com IA', action:()=>{ST.view='practice';render();}},
-      {icon:'🎴', label:'Revisar flashcards', desc:dueSrsCount > 0 ? `${dueSrsCount} pendentes` : 'SRS / repetição espaçada', badge:dueSrsCount, action:()=>{ST.view='srs';render();}},
-      {icon:'🍅', label:'Iniciar Pomodoro', desc:'Timer de foco', action:()=>{ST.view='pomodoro';render();}},
-      {icon:'🎯', label:'Calibrar com IA', desc:'Adapta dificuldade', action:()=>{ST.view='calibration';render();}},
-      {icon:'📜', label:'Histórico de erros', desc:errorsCount > 0 ? `${errorsCount} sem flashcard` : 'Reforçar pontos fracos', badge:errorsCount, action:()=>{ST.view='history';render();}},
-      {icon:'🔍', label:'Buscar tudo', desc:'Ctrl+K', action:()=>{if(typeof showCommandPalette === 'function') showCommandPalette();}},
-    ];
-
-    quickActions.forEach(qa=>{
-      const btn = mk('button');
-      btn.type = 'button';
-      btn.style.cssText = 'display:flex;align-items:center;gap:.625rem;padding:.625rem .625rem;background:transparent;border:none;border-radius:8px;cursor:pointer;text-align:left;font-family:inherit;width:100%;transition:background .12s';
-      btn.addEventListener('mouseenter', ()=>{btn.style.background='var(--surface2)';});
-      btn.addEventListener('mouseleave', ()=>{btn.style.background='transparent';});
-      const ico = mk('span');
-      ico.style.cssText = 'font-size:18px;flex-shrink:0;width:28px;text-align:center';
-      ico.textContent = qa.icon;
-      btn.appendChild(ico);
-      const body = mk('div');
-      body.style.cssText = 'flex:1;min-width:0';
-      const lbl = mk('div');
-      lbl.style.cssText = 'font-size:13px;font-weight:600;color:var(--text);line-height:1.2';
-      lbl.textContent = qa.label;
-      body.appendChild(lbl);
-      const dsc = mk('div');
-      dsc.style.cssText = 'font-size:11px;color:var(--text3);line-height:1.3;margin-top:1px';
-      dsc.textContent = qa.desc;
-      body.appendChild(dsc);
-      btn.appendChild(body);
-      if(qa.badge && qa.badge > 0){
-        const b = mk('span');
-        b.style.cssText = 'background:var(--gralia-purple);color:#fff;border-radius:999px;font-size:10.5px;font-weight:700;padding:2px 6px;min-width:18px;text-align:center;flex-shrink:0';
-        b.textContent = qa.badge > 99 ? '99+' : qa.badge;
-        btn.appendChild(b);
-      }
-      btn.addEventListener('click', ()=>{
-        panel.style.display = 'none';
-        fab.classList.remove('open');
-        qa.action();
-      });
-      panel.appendChild(btn);
-    });
-
-    document.body.appendChild(panel);
-
-    // Toggle do painel
-    const togglePanel = ()=>{
-      const isOpen = panel.style.display === 'flex';
-      if(isOpen){
-        panel.style.display = 'none';
-        fab.classList.remove('open');
-      } else {
-        panel.style.display = 'flex';
-        fab.classList.add('open');
-      }
-    };
-    fab.addEventListener('click', e=>{
-      e.stopPropagation();
-      togglePanel();
-    });
-
-    // Fecha ao clicar fora
-    const outsideHandler = (e)=>{
-      if(panel.style.display === 'flex' && !panel.contains(e.target) && !fab.contains(e.target)){
-        panel.style.display = 'none';
-        fab.classList.remove('open');
-      }
-    };
-    document.addEventListener('click', outsideHandler);
-    // Fecha com Escape
-    const escHandler = (e)=>{
-      if(e.key === 'Escape' && panel.style.display === 'flex'){
-        panel.style.display = 'none';
-        fab.classList.remove('open');
-      }
-    };
-    document.addEventListener('keydown', escHandler);
-
-    document.body.appendChild(fab);
-  } else {
-    const oldFab = document.querySelector('.quick-fab');
-    if(oldFab) oldFab.remove();
-    const oldPanel = document.querySelector('.quick-fab-panel');
-    if(oldPanel) oldPanel.remove();
-  }
-
+  // V15.2: FAB flutuante REMOVIDO. Jean pediu acesso rápido SEMPRE VISÍVEL como
+  // card no painel/abas, não como flutuante. Implementado em buildQuickAccessCard()
+  // que é renderizado no fluxo do dashboard e outras views.
+  // Limpa qualquer FAB antigo que possa ter ficado no DOM.
+  const oldFab = document.querySelector('.quick-fab');
+  if(oldFab) oldFab.remove();
+  const oldPanel = document.querySelector('.quick-fab-panel');
+  if(oldPanel) oldPanel.remove();
   // V14: Barra superior do Modo Foco de método — placar live + sair
   if(ST.methodFocusActive){
     const methodViews = ['practice','calibration','drill','interleaving','examiner','elaborative'];
@@ -14251,6 +14211,10 @@ function renderDashboard(){
   hero.appendChild(heroRight);
   wrap.appendChild(hero);
 
+  // V15.2: Card de acesso rápido sempre visível (sem busca, sem ícone toggle)
+  const quickAccess = buildQuickAccessCard();
+  if(quickAccess) wrap.appendChild(quickAccess);
+
   // ===== SUMMARY NUMBERS — V12: agora logo após o hero (era no rodapé do painel)
   // Item 14 do feedback: Jean queria os 4 cards de estatísticas mais visíveis.
   // (Variáveis pct e s ficam definidas mais abaixo no fluxo — recalculadas aqui rapidamente)
@@ -14810,8 +14774,10 @@ function buildNextActionCard(dueSrs,errorsNoCard,overconf,sess){
 // V12: Heatmap de performance — quando você tá rendendo mais
 // Cruza dia da semana × hora com #acertos pra mostrar padrões temporais.
 // Inspirado em GitHub contribution graph + heatmap de produtividade.
+// V15.2: Substituído heatmap grande (7 dias × 8 horas) por barras simples por dia da semana.
+// Jean pediu: "Troque o gráfico de produtividade por outro mais sutil e pequeno".
+// Mostra só a contagem de eventos (erros + cards revisados) por dia, em barras horizontais.
 function buildPerformanceHeatmap(){
-  // Coleta dados dos últimos 30 dias
   const now = Date.now();
   const THIRTY_DAYS = 30*24*60*60*1000;
   const errors = (DATA.errors||[]).filter(e => e.date && (now-e.date) <= THIRTY_DAYS);
@@ -14820,120 +14786,149 @@ function buildPerformanceHeatmap(){
     .filter(r => r.at && (now-r.at) <= THIRTY_DAYS);
   const totalEvents = errors.length + cardsReviewed.length;
 
-  if(totalEvents < 5){
-    // Pouco dado — retorna null pra não poluir
-    return null;
-  }
+  if(totalEvents < 5) return null;
 
-  // Acumula por (dia da semana, faixa de hora)
-  // Dias: 0=dom 1=seg ... 6=sáb
-  // Horas: agrupadas em 8 faixas de 3h cada
-  const HOUR_BUCKETS = 8; // 0-3, 3-6, 6-9, 9-12, 12-15, 15-18, 18-21, 21-24
-  const grid = Array.from({length:7}, ()=>Array(HOUR_BUCKETS).fill(0));
-  const correctGrid = Array.from({length:7}, ()=>Array(HOUR_BUCKETS).fill(0));
+  const dayLabels = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const counts = new Array(7).fill(0);
+  const correct = new Array(7).fill(0);
 
-  errors.forEach(e=>{
-    const d = new Date(e.date);
-    const dow = d.getDay();
-    const hour = Math.floor(d.getHours()/3);
-    grid[dow][hour]++;
-    // Erros são sempre incorretos
+  errors.forEach(e => {
+    const dow = new Date(e.date).getDay();
+    counts[dow]++;
   });
-  cardsReviewed.forEach(r=>{
-    const d = new Date(r.at);
-    const dow = d.getDay();
-    const hour = Math.floor(d.getHours()/3);
-    grid[dow][hour]++;
-    // Cards "Bom" e "Fácil" contam como acerto
-    if(r.q >= 3) correctGrid[dow][hour]++;
+  cardsReviewed.forEach(r => {
+    const dow = new Date(r.at).getDay();
+    counts[dow]++;
+    if(r.rating === 'good' || r.rating === 'easy') correct[dow]++;
   });
 
-  // Encontra max pra normalizar opacidade
-  let maxCount = 0;
-  for(let d=0;d<7;d++){
-    for(let h=0;h<HOUR_BUCKETS;h++){
-      if(grid[d][h] > maxCount) maxCount = grid[d][h];
-    }
-  }
+  const maxCount = Math.max(...counts, 1);
 
-  // Card wrapper
-  const card = mk('div','card chart-card');
-  card.style.marginBottom = '1.25rem';
+  const card = mk('div','chart-card');
+  card.style.cssText = 'padding:1rem 1.125rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:1.25rem';
 
-  const head = mk('div','chart-head');
-  head.innerHTML = `
-    <div>
-      <h3 class="chart-title">📈 Mapa de produtividade</h3>
-      <p class="chart-sub">Quando você rende mais — últimos 30 dias</p>
-    </div>
-    <div class="chart-legend">
-      <span class="cl-min">−</span>
-      <span class="cl-cell" style="opacity:.15"></span>
-      <span class="cl-cell" style="opacity:.55"></span>
-      <span class="cl-cell" style="opacity:.92"></span>
-      <span class="cl-max">+</span>
-    </div>
-  `;
+  // Header compacto
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:.625rem;margin-bottom:.75rem';
+  const title = mk('h3');
+  title.style.cssText = 'margin:0;font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.01em;display:flex;align-items:center;gap:5px';
+  title.innerHTML = '📈 <span>Atividade por dia da semana</span>';
+  head.appendChild(title);
+  const sub = mk('span');
+  sub.style.cssText = 'font-size:10.5px;color:var(--text3);font-weight:500';
+  sub.textContent = 'últimos 30 dias';
+  head.appendChild(sub);
   card.appendChild(head);
 
-  // SVG do heatmap — V12: tamanho médio que preenche o card sem ser gigante
-  const dayLabels = ['DOM','SEG','TER','QUA','QUI','SEX','SAB'];
-  const hourLabels = ['0','3','6','9','12','15','18','21'];
+  // Barras horizontais simples
+  const list = mk('div');
+  list.style.cssText = 'display:flex;flex-direction:column;gap:.375rem';
+  for(let i = 0; i < 7; i++){
+    const row = mk('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:.625rem;font-size:11.5px';
 
-  const cellW = 44;
-  const cellH = 22;
-  const cellGap = 4;
-  const labelW = 36;
-  const labelH = 18;
-  const totalW = labelW + HOUR_BUCKETS * (cellW + cellGap);
-  const totalH = labelH + 7 * (cellH + cellGap) + 4;
+    const lbl = mk('span');
+    lbl.style.cssText = 'min-width:32px;color:var(--text2);font-weight:600;font-size:11px';
+    lbl.textContent = dayLabels[i];
+    row.appendChild(lbl);
 
-  let svg = `<svg viewBox="0 0 ${totalW} ${totalH}" class="chart-heatmap" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">`;
+    const barWrap = mk('div');
+    barWrap.style.cssText = 'flex:1;height:14px;background:var(--surface2);border-radius:4px;overflow:hidden;position:relative';
+    const bar = mk('div');
+    const pct = (counts[i] / maxCount) * 100;
+    const acc = counts[i] >= 3 ? correct[i] / counts[i] : 0;
+    let barColor = 'var(--gralia-purple)';
+    if(counts[i] >= 3 && acc >= 0.7) barColor = 'rgb(73,197,137)';
+    else if(counts[i] >= 3 && acc < 0.5) barColor = 'rgb(232,76,76)';
+    bar.style.cssText = `height:100%;width:${pct}%;background:${barColor};border-radius:4px;transition:width .4s ease;min-width:${counts[i]>0?'4px':'0'}`;
+    barWrap.appendChild(bar);
+    row.appendChild(barWrap);
 
-  hourLabels.forEach((lbl, h) => {
-    const x = labelW + h * (cellW + cellGap) + cellW/2;
-    svg += `<text x="${x}" y="${labelH-4}" text-anchor="middle" class="hm-axis-lbl">${lbl}h</text>`;
-  });
+    const num = mk('span');
+    num.style.cssText = 'min-width:28px;text-align:right;color:var(--text);font-weight:700;font-size:11.5px;font-variant-numeric:tabular-nums';
+    num.textContent = counts[i] || '—';
+    row.appendChild(num);
 
-  for(let d=0; d<7; d++){
-    const y = labelH + d * (cellH + cellGap);
-    svg += `<text x="${labelW-6}" y="${y + cellH/2 + 4}" text-anchor="end" class="hm-axis-lbl">${dayLabels[d]}</text>`;
-
-    for(let h=0; h<HOUR_BUCKETS; h++){
-      const x = labelW + h * (cellW + cellGap);
-      const count = grid[d][h];
-      let opacity = 0.04;
-      let fillColor = 'var(--text3)';
-      if(count > 0){
-        const intensity = count / maxCount;
-        opacity = 0.15 + intensity * 0.78;
-        const acc = correctGrid[d][h] / Math.max(count, 1);
-        if(count >= 2 && acc >= 0.7){ fillColor = 'rgb(73,197,137)'; }
-        else if(count >= 2 && acc < 0.5){ fillColor = 'rgb(232,76,76)'; }
-        else { fillColor = 'rgb(128,66,250)'; }
-      }
-      const tooltip = count > 0
-        ? `${dayLabels[d]} ${hourLabels[h]}h: ${count} ${count===1?'evento':'eventos'}${count >= 2 ? ` · ${Math.round(correctGrid[d][h]/count*100)}%` : ''}`
-        : '';
-      svg += `<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="2" fill="${fillColor}" fill-opacity="${opacity.toFixed(2)}"${tooltip ? `><title>${tooltip}</title></rect>` : '/>'}`;
-    }
+    list.appendChild(row);
   }
-  svg += `</svg>`;
-
-  const chartBody = mk('div','chart-body');
-  chartBody.innerHTML = svg;
-  card.appendChild(chartBody);
-
-  // V15: Frase dica REMOVIDA daqui — foi extraída pra `buildHeatmapTip()` que é
-  // renderizada NO FLUXO do dashboard, ENTRE os 4 cards de número e o mapa.
-  // Jean pediu: "A frase dica logo acima do mapa de produtividade e abaixo dos 4 cards".
+  card.appendChild(list);
 
   return card;
 }
 
+
 // V15: Tip do heatmap — mostra padrão útil de produtividade (dia/horário em que
 // você rende mais). Renderizada entre os summary numbers e o heatmap no painel.
 // Retorna null se ainda não há dados suficientes pra gerar insight relevante.
+// V15.2: Card de acesso rápido SEMPRE VISÍVEL no painel. Substitui o FAB flutuante.
+// Jean pediu: "quero que esteja sempre à mostra na aba painel e demais abas que fizer
+// sentido, retire a busca por texto desse acesso rápido". Sem ícone toggle, sem busca.
+function buildQuickAccessCard(){
+  if(!isAuthed()) return null;
+
+  const dueSrsCount = (DATA.srs.cards||[]).filter(c=>(c.nextReview||0)<=Date.now() && c.active!==false).length;
+  const errorsCount = (DATA.errors||[]).filter(e=>!e.hasCard).length;
+
+  const actions = [
+    {icon:'⚡', label:'Praticar questões', desc:'Treino com IA', view:'practice'},
+    {icon:'🎴', label:'Revisar flashcards', desc:dueSrsCount > 0 ? `${dueSrsCount} pendentes` : 'Repetição espaçada', badge:dueSrsCount, view:'srs'},
+    {icon:'🍅', label:'Pomodoro', desc:'Timer de foco', view:'pomodoro'},
+    {icon:'🎯', label:'Calibrar', desc:'Adapta dificuldade', view:'calibration'},
+    {icon:'📜', label:'Erros recentes', desc:errorsCount > 0 ? `${errorsCount} sem flashcard` : 'Pontos fracos', badge:errorsCount, view:'history'}
+  ];
+
+  const card = mk('div','quick-access-card');
+  card.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:.625rem;margin-bottom:1.25rem';
+
+  actions.forEach(a => {
+    const btn = mk('button');
+    btn.type = 'button';
+    btn.style.cssText = 'display:flex;align-items:center;gap:.625rem;padding:.75rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s;position:relative';
+    btn.addEventListener('mouseenter', ()=>{
+      btn.style.borderColor = 'var(--gralia-purple)';
+      btn.style.background = 'var(--surface2)';
+      btn.style.transform = 'translateY(-1px)';
+    });
+    btn.addEventListener('mouseleave', ()=>{
+      btn.style.borderColor = 'var(--border)';
+      btn.style.background = 'var(--surface)';
+      btn.style.transform = 'none';
+    });
+
+    const ico = mk('span');
+    ico.style.cssText = 'font-size:20px;line-height:1;flex-shrink:0';
+    ico.textContent = a.icon;
+    btn.appendChild(ico);
+
+    const body = mk('div');
+    body.style.cssText = 'flex:1;min-width:0';
+    const lbl = mk('div');
+    lbl.style.cssText = 'font-size:12.5px;font-weight:600;color:var(--text);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+    lbl.textContent = a.label;
+    body.appendChild(lbl);
+    const dsc = mk('div');
+    dsc.style.cssText = 'font-size:10.5px;color:var(--text3);line-height:1.3;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+    dsc.textContent = a.desc;
+    body.appendChild(dsc);
+    btn.appendChild(body);
+
+    if(a.badge && a.badge > 0){
+      const b = mk('span');
+      b.style.cssText = 'background:var(--gralia-purple);color:#fff;border-radius:999px;font-size:10px;font-weight:700;padding:2px 6px;min-width:18px;text-align:center;flex-shrink:0';
+      b.textContent = a.badge > 99 ? '99+' : a.badge;
+      btn.appendChild(b);
+    }
+
+    btn.addEventListener('click', ()=>{
+      ST.view = a.view;
+      render();
+    });
+    card.appendChild(btn);
+  });
+
+  return card;
+}
+
 function buildHeatmapTip(){
   // Coleta dados últimos 30 dias (mesma lógica do heatmap)
   const now = Date.now();
