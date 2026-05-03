@@ -5302,7 +5302,10 @@ async function publishSource(sourceData, opts){
     summary: sanitizeContentForSharing(sourceData.summary || '') || null
   };
   const tags = normalizeTagsList(opts.tags);
-  const { data, error } = await supa.from('shared_resources').insert({
+  // V14: content_fingerprint permite dedup do catálogo (busca por hash do texto bruto).
+  // Outras fontes com mesmo conteúdo bruto (mesma apostila) acham essa entrada
+  // e pulam a IA, economizando custos.
+  const insertObj = {
     owner_id: AUTH.user.id,
     resource_type: 'fonte',
     title: sanitizeContentForSharing(title),
@@ -5312,7 +5315,11 @@ async function publishSource(sourceData, opts){
     payload,
     question_count: 0,
     is_public: true
-  }).select().single();
+  };
+  if(opts.contentFingerprint){
+    insertObj.content_fingerprint = opts.contentFingerprint;
+  }
+  const { data, error } = await supa.from('shared_resources').insert(insertObj).select().single();
   if(error) throw new Error(error.message);
   return data;
 }
@@ -15479,6 +15486,31 @@ function renderSourceAdd(wrap){
     cTa.addEventListener('input',e=>{ST.srcInput.content=e.target.value;});
     reviewCard.appendChild(cLbl);reviewCard.appendChild(cTa);
 
+    // V14 final3: checkbox pra compartilhar com a comunidade (opt-in).
+    // Reduz custo coletivo de IA: depois de organizado, futuros usuários com mesmo PDF
+    // não precisam reprocessar. Default LIGADO se a IA processou (não veio do catálogo).
+    const fromCommunity = !!(r && r.fromCommunity);
+    let shareWithCommunity = !fromCommunity; // default ligado se processou via IA
+    if(!fromCommunity){
+      const shareWrap = mk('div');
+      shareWrap.style.cssText = 'margin:.875rem 0 .25rem;padding:.625rem .75rem;background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.18);border-radius:6px;display:flex;align-items:flex-start;gap:.5rem;cursor:pointer';
+      const shareCb = mk('input');shareCb.type='checkbox';shareCb.checked=true;shareCb.style.cssText='margin-top:3px;cursor:pointer';
+      const shareTxt = mk('div');
+      shareTxt.style.cssText = 'font-size:12.5px;line-height:1.45;flex:1';
+      shareTxt.innerHTML = `<b>📚 Compartilhar com a comunidade</b><br><span style="color:var(--text2);font-size:11.5px">Permite que outros usuários encontrem essa fonte na página Descobrir e reutilizem sem custo de IA. Reduz consumo coletivo. Anônimo.</span>`;
+      shareCb.addEventListener('change',e=>{shareWithCommunity = e.target.checked;});
+      shareWrap.addEventListener('click',e=>{
+        if(e.target !== shareCb){ shareCb.checked = !shareCb.checked; shareWithCommunity = shareCb.checked; }
+      });
+      shareWrap.appendChild(shareCb);shareWrap.appendChild(shareTxt);
+      reviewCard.appendChild(shareWrap);
+    } else {
+      const fromComMsg = mk('div');
+      fromComMsg.style.cssText = 'margin:.875rem 0 .25rem;padding:.625rem .75rem;background:rgba(70,180,90,.08);border:1px solid rgba(70,180,90,.25);border-radius:6px;font-size:12.5px;line-height:1.45';
+      fromComMsg.innerHTML = '✓ <b>Reutilizado da comunidade</b> — sem custo de IA. Outros usuários já organizaram esse material.';
+      reviewCard.appendChild(fromComMsg);
+    }
+
     const btnRow = mk('div','flex');btnRow.style.cssText='gap:8px;margin-top:1rem;flex-wrap:wrap';
     const confirmBtn = mkBtn('✓ Salvar fonte','btn btn-p');
     confirmBtn.addEventListener('click',()=>{
@@ -15527,10 +15559,6 @@ function renderSourceAdd(wrap){
       }
 
       // V14 final: Re-indexação automática com IA — em background, não bloqueia.
-      // Jean pediu: "se a importação fizesse a re-indexação automática seria melhor"
-      // Roda 1.5s depois pra dar tempo do save persistir e da UI atualizar.
-      // Usa o conteúdo JÁ ORGANIZADO (markdown) que dá índice de melhor qualidade
-      // do que o detectTOCHeuristic na extração crua do PDF.
       if(newSrc.content && newSrc.content.length > 1500){
         setTimeout(()=>{
           regenerateTocWithAI(newSrc).then(newToc=>{
@@ -15541,7 +15569,6 @@ function renderSourceAdd(wrap){
             }
           }).catch(err=>{
             console.warn('[auto-reindex] falhou (silencioso):', err.message);
-            // Fallback: usa heurística local se IA falhar
             try{
               const fallback = detectTOCHeuristic(newSrc.content);
               if(fallback && fallback.length >= 3 && (!newSrc.toc || newSrc.toc.length === 0)){
@@ -15551,6 +15578,36 @@ function renderSourceAdd(wrap){
             }catch(_){}
           });
         }, 1500);
+      }
+
+      // V14 final3: Publica no catálogo comunitário se usuário consentiu (opt-in).
+      // Roda em background pra não bloquear. Inclui o fingerprint pra dedup futura.
+      // Reduz custo coletivo de IA: futuras importações do mesmo PDF não pagam IA.
+      if(shareWithCommunity && !fromCommunity && newSrc.content && newSrc.content.length > 200){
+        setTimeout(async ()=>{
+          try{
+            // Calcula fingerprint do texto BRUTO original (não do organized)
+            // pra dedup correto.
+            const rawForFp = (ST.srcImportState && ST.srcImportState.rawText) || newSrc.content;
+            const fp = contentFingerprint(rawForFp);
+            const published = await publishSource(newSrc, {
+              title: newSrc.name,
+              description: '',
+              discipline: newSrc.disciplineId
+                ? (DATA.disciplines.find(d=>d.id===newSrc.disciplineId)?.name || '')
+                : '',
+              tags: newSrc.topics || [],
+              contentFingerprint: fp
+            });
+            if(published){
+              console.log('[auto-publish] ✓ publicado no catálogo:', published.id);
+              newSrc.publishedResourceId = published.id;
+              save();
+            }
+          }catch(e){
+            console.warn('[auto-publish] falhou (silencioso):', e.message);
+          }
+        }, 3000);
       }
 
       render();
@@ -15663,6 +15720,8 @@ function renderSourceAdd(wrap){
         charsPerPage: result.charsPerPage,
         wasScanned: result.isScanned
       };
+      // V14 final3: guarda o texto bruto pra calcular fingerprint na hora de publicar
+      ST.srcImportState.rawText = result.text;
       // V5 Fase B: Detecta TOC automaticamente (heurística — grátis e instantânea)
       // Só faz se texto tem tamanho razoável pra ter estrutura
       if(result.text.length > 1000){
@@ -17574,6 +17633,55 @@ function simpleHash(str){
     h = h & 0xFFFFFFFF; // 32-bit
   }
   return Math.abs(h);
+}
+
+// V14: Fingerprint robusto pra busca no catálogo comunitário.
+// Normaliza o texto (remove espaços, pontuação, números de página, lowercase)
+// pra que PDFs ligeiramente diferentes mas com mesmo conteúdo dêem mesmo hash.
+// Usa apenas os primeiros 8000 chars relevantes pra ficar rápido.
+function contentFingerprint(rawText){
+  if(!rawText) return null;
+  let normalized = String(rawText)
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // remove acentos
+    .replace(/[^a-z0-9]/g, '')                          // só letras/números
+    .slice(0, 8000);                                     // primeiros 8k chars
+  if(normalized.length < 200) return null; // texto muito curto
+  return simpleHash(normalized).toString(36);
+}
+
+// V14: Busca no catálogo comunitário por fingerprint do conteúdo
+// Retorna null se não achou, ou o resource pré-organizado se achou.
+async function lookupCommunityByFingerprint(rawText){
+  if(!supa) return null;
+  const fp = contentFingerprint(rawText);
+  if(!fp) return null;
+  console.log('[community] buscando fingerprint:', fp);
+  try{
+    // Busca em shared_resources pelo content_fingerprint
+    const { data, error } = await supa
+      .from('shared_resources')
+      .select('id, title, payload, discipline, tags, created_at')
+      .eq('resource_type', 'fonte')
+      .eq('is_public', true)
+      .eq('content_fingerprint', fp)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if(error){
+      console.warn('[community] erro ao buscar:', error.message);
+      return null;
+    }
+    if(data){
+      console.log('[community] HIT! Recurso encontrado:', data.title);
+      return data;
+    }
+    console.log('[community] miss — não achou no catálogo');
+    return null;
+  }catch(e){
+    console.warn('[community] exception:', e.message);
+    return null;
+  }
 }
 // Returns short list of recent AI question enunciados for a method (for prompt seeding)
 function recentAIQuestionsFor(method,limit){
@@ -25908,19 +26016,34 @@ function sanitizePdfText(rawText){
   // Versão alternativa: tópico + tabs/espaços + número
   text = text.replace(/^[A-ZÁÂÃÀÄÉÊÍÎÓÔÕÚÜÇa-záâãàäéêíîóôõúüç][^.\n]{2,80}\s{4,}\d{1,3}\s*$/gm, '');
 
-  // V14: detecta e REMOVE gabaritos. Aparecem juntos no fim de provas/listas.
-  // Não têm valor pedagógico isolados — só números e letras.
+  // V14 final2: detecta e REMOVE blocos GABARITO. O exemplo real de Jean mostrou
+  // padrão "N. CORRETA / N. ERRADA / N. LETRA X" em múltiplas colunas (saída do PDF
+  // em ordem confusa). Estratégia agressiva: detecta o início "GABARITO" e remove
+  // tudo até onde >= 90% das linhas seguem o padrão de gabarito.
   //
-  // Padrão A: linha com >= 3 ocorrências de "n + sep + letra" — ex: "1-C 2-E 3-C 4-A"
+  // Padrão A: linhas com 2+ ocorrências de "n. CORRETA|ERRADA|LETRA X" — comum em multi-colunas
+  // Ex: "43. CORRETA 86. ERRADA" ou "1. LETRA B 44. CORRETA 87. ERRADA"
+  text = text.replace(/^(?:\s*\d{1,3}\.\s*(?:CORRETA|ERRADA|LETRA\s+[A-E]|[A-E])(?:\s+|$)){2,}.*$/gim, '');
+
+  // Padrão B: linhas isoladas de gabarito "N. CORRETA", "N. ERRADA", "N. LETRA X"
+  // Aplicado se 4+ aparecerem em sequência (com separadores de até 2 quebras de linha)
+  text = text.replace(/(?:^\s*\d{1,3}\.\s*(?:CORRETA|ERRADA|LETRA\s+[A-E]|[A-Eae])\s*$\n?){4,}/gim, '');
+
+  // Padrão C: bloco GABARITO/RESPOSTAS — captura o cabeçalho e remove até o próximo título
+  // ou até EOF. Aumentei pra 8000 chars (gabaritos podem ser grandes).
+  text = text.replace(/^[\s#\-—•]*(?:GABARITO|RESPOSTAS?(?:\s+(?:DOS|DAS)\s+(?:EXERC[ÍI]CIOS|QUEST[ÕO]ES))?)[\s:.\-]*$[\s\S]{0,10000}?(?=^#{1,4}\s|\Z)/gim, '');
+
+  // Padrão D: linha numérica curta isolada (provavelmente número de página remanescente)
+  // Aplicado só pra números de 1-3 dígitos sozinhos numa linha
+  text = text.replace(/^\s*\d{1,3}\s*$/gm, '');
+
+  // Padrão E: linha com >= 3 ocorrências de "n + sep + letra" (1-C 2-E 3-A)
   text = text.replace(/^(?:\s*\d{1,3}[\s\.\-\)\:]+[A-EceCE](?:[\s,;]+|$)){3,}.*$/gm, '');
-  // Padrão B: bloco GABARITO ... (ex: "GABARITO\n1. C\n2. E\n3. A...")
-  // Captura "GABARITO" (com possíveis prefixos como "—" ou "##") até a próxima
-  // seção (linha que começa com letra maiúscula seguida de mais conteúdo, ou ##)
-  text = text.replace(/^[\s#\-—•]*GABARITO[\s:.\-]*$[\s\S]{0,5000}?(?=^##|^[A-ZÁÉÍÓÚ][a-záéíóú]{3,}|\Z)/gim, '');
-  // Padrão C: linhas isoladas de gabarito do tipo "Q1: C", "Questão 1 - C", "1) Letra C"
-  // Aplicado quando aparecem 5+ em sequência (1 ou 2 isoladas é normal)
+
+  // Padrão F: linhas isoladas curtas "Q1: C" / "Questão 1 - C" / "1) Letra C" (5+ em sequência)
   text = text.replace(/(?:^\s*(?:Q(?:uestão)?[\s\.]?)?\d{1,3}[\s\)\.\-:]+(?:[Ll]etra\s+)?[A-Eae]\s*$\n?){5,}/gm, '');
-  // Padrão D: "Resposta: X" ou "Gabarito: X" repetindo várias vezes seguidas
+
+  // Padrão G: "Resposta: X" / "Gabarito: X" repetidos
   text = text.replace(/(?:^\s*(?:Resposta|Gabarito|GAB|Resp)[\s\.:]+[A-Eae]\s*$\n?){3,}/gm, '');
 
   // V14: detecta e REMOVE listas de questões soltas (questões sem teoria associada).
@@ -26256,6 +26379,32 @@ async function smartOrganizeContent(rawText, opts){
   console.log('[smartOrganize] V14 FINAL — paralelo + chunks grandes');
   console.log('[smartOrganize] texto bruto:', rawText.length, 'chars');
 
+  // V14 final3: ANTES de gastar IA, busca no catálogo comunitário.
+  // Se algum usuário já organizou esse mesmo PDF, reutilizamos — custo ZERO de IA.
+  // Decisão de Jean: "dar mais confiança a materiais já tratados e disponibilizar"
+  onProgress({phase: 'community', current: 0, total: 0, label: 'Buscando no catálogo comunitário...'});
+  try{
+    const cached = await lookupCommunityByFingerprint(rawText);
+    if(cached && cached.payload){
+      console.log('[smartOrganize] ✓ usando versão da comunidade:', cached.title);
+      onProgress({phase: 'done', current: 1, total: 1, label: '✓ Encontrado no catálogo comunitário!'});
+      const p = cached.payload;
+      return {
+        suggestedName: p.source_name || cached.title || null,
+        disciplineName: cached.discipline || null,
+        materialType: p.source_type || 'livro',
+        contentType: p.content_type || 'teoria',
+        detectedDate: null,
+        topics: cached.tags || [],
+        organized: p.content || rawText,
+        fromCommunity: true,
+        communityResourceId: cached.id
+      };
+    }
+  }catch(e){
+    console.warn('[smartOrganize] community lookup falhou (silencioso, segue pra IA):', e.message);
+  }
+
   // ETAPA 1: metadados (rápido, output curto)
   onProgress({phase: 'metadata', current: 0, total: 0, label: 'Identificando disciplina e metadados...'});
   const t0 = performance.now();
@@ -26396,6 +26545,12 @@ function cleanupOrganizedMarkdown(md){
   if(!md) return md;
   let text = md;
 
+  // V14 final2: regex melhorado pro padrão "N. CORRETA / N. ERRADA / N. LETRA X"
+  // Padrão multi-coluna (várias ocorrências na mesma linha)
+  text = text.replace(/^(?:\s*\d{1,3}\.\s*(?:CORRETA|ERRADA|LETRA\s+[A-E]|[A-E])(?:\s+|$)){2,}.*$/gim, '');
+  // Padrão linha-única em sequência (4+)
+  text = text.replace(/(?:^\s*\d{1,3}\.\s*(?:CORRETA|ERRADA|LETRA\s+[A-E]|[A-Eae])\s*$\n?){4,}/gim, '');
+
   // 1. Remove blocos GABARITO inteiros (com ## opcional, até próximo ## ou fim)
   text = text.replace(/^#+\s*GABARITO[\s\S]*?(?=^#+|\Z)/gim, '');
   text = text.replace(/^#+\s*RESPOSTAS?\s*$[\s\S]*?(?=^#+|\Z)/gim, '');
@@ -26416,7 +26571,10 @@ function cleanupOrganizedMarkdown(md){
   // 6. Remove "GABARITO: 1-C 2-E 3-A 4-D" inline
   text = text.replace(/^(?:GABARITO|RESPOSTAS?)[\s:.\-]+(?:\d{1,3}[\-\.\):\s]+[A-Eae][\s,;]*){3,}.*$/gim, '');
 
-  // 7. Colapsa múltiplas linhas vazias resultantes das remoções
+  // 7. Remove números soltos que sobraram (página remanescente)
+  text = text.replace(/^\s*\d{1,3}\s*$/gm, '');
+
+  // 8. Colapsa múltiplas linhas vazias resultantes das remoções
   text = text.replace(/\n[ \t]*\n[ \t]*\n+/g, '\n\n');
 
   return text.trim();
