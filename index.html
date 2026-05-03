@@ -15515,11 +15515,8 @@ function renderSourceAdd(wrap){
         const disc = DATA.disciplines.find(d=>d.id===newSrc.disciplineId);
         if(disc && !disc.active){ disc.active = true; }
       }
-      // V14: Ativa a flag is_active da própria fonte (item 41) — pra evitar
-      // fontes "fantasma" que existem mas não são usadas. Antes só dependia
-      // da disciplina estar ativa.
+      // V14: Ativa a flag is_active da própria fonte
       newSrc.active = true;
-      // V14: Limpa preload de questões pra forçar re-busca usando a fonte recém-importada
       try{ if(DATA.preloadedQuestions) DATA.preloadedQuestions = {}; }catch(_){}
       save();
       ST.srcInput={name:'',type:'relatorio',contentType:'misto',content:'',disciplineId:ST.srcInput.disciplineId};
@@ -15528,6 +15525,34 @@ function renderSourceAdd(wrap){
       if(typeof preloadQuestionForSource === 'function'){
         preloadQuestionForSource(newSrc).catch(()=>{});
       }
+
+      // V14 final: Re-indexação automática com IA — em background, não bloqueia.
+      // Jean pediu: "se a importação fizesse a re-indexação automática seria melhor"
+      // Roda 1.5s depois pra dar tempo do save persistir e da UI atualizar.
+      // Usa o conteúdo JÁ ORGANIZADO (markdown) que dá índice de melhor qualidade
+      // do que o detectTOCHeuristic na extração crua do PDF.
+      if(newSrc.content && newSrc.content.length > 1500){
+        setTimeout(()=>{
+          regenerateTocWithAI(newSrc).then(newToc=>{
+            if(newToc && newToc.length > 0){
+              newSrc.toc = newToc;
+              save();
+              showToast(`✓ Índice criado: ${newToc.length} entradas`, 3500);
+            }
+          }).catch(err=>{
+            console.warn('[auto-reindex] falhou (silencioso):', err.message);
+            // Fallback: usa heurística local se IA falhar
+            try{
+              const fallback = detectTOCHeuristic(newSrc.content);
+              if(fallback && fallback.length >= 3 && (!newSrc.toc || newSrc.toc.length === 0)){
+                newSrc.toc = fallback;
+                save();
+              }
+            }catch(_){}
+          });
+        }, 1500);
+      }
+
       render();
     });
     btnRow.appendChild(confirmBtn);
@@ -16682,31 +16707,11 @@ function showSourceTOCModal(src){
 
   // V13: Botão pra regenerar índice via IA — útil quando TOC veio mal estruturada
   // (ex: capítulos sem hierarquia, seções perdidas, títulos com lixo de PDF).
-  const aiBtn = mkBtn('🪄 Regenerar índice com IA','btn btn-sm');
-  aiBtn.style.cssText = 'margin-top:.875rem';
-  aiBtn.title = 'A IA relê o conteúdo e cria estrutura de capítulos/seções/subseções limpa';
-  aiBtn.addEventListener('click', async()=>{
-    if(!confirm('Regenerar o índice usando IA? Isso substitui o índice atual. Útil quando o índice ficou bagunçado ou faltam seções.')) return;
-    aiBtn.disabled = true;aiBtn.textContent = 'Regenerando...';
-    try{
-      const newToc = await regenerateTocWithAI(src);
-      if(newToc && newToc.length > 0){
-        src.toc = newToc;
-        save();
-        showToast(`✓ Índice atualizado: ${newToc.length} entradas`);
-        closeModal();
-        // Reabre com novo índice
-        setTimeout(()=>showSourceTOCModal(src), 100);
-      } else {
-        alert('A IA não conseguiu gerar índice estruturado pra esta fonte.');
-        aiBtn.disabled = false;aiBtn.textContent = '🪄 Regenerar índice com IA';
-      }
-    }catch(e){
-      alert('Erro: ' + (e.message || e));
-      aiBtn.disabled = false;aiBtn.textContent = '🪄 Regenerar índice com IA';
-    }
-  });
-  m.appendChild(aiBtn);
+  // V14 final: o botão "Regenerar índice com IA" foi REMOVIDO porque agora a
+  // re-indexação acontece AUTOMATICAMENTE durante a importação (Jean: "se nem
+  // tivesse essa opção como botão e a própria importação fizesse isso seria melhor").
+  // Caso usuário queira refazer manualmente, ainda pode clicar "Re-indexar" no card
+  // (heurística local, instantânea, sem custo de IA).
 
   showModal(m);
   setTimeout(()=>searchInp.focus(), 50);
@@ -26258,11 +26263,13 @@ async function smartOrganizeContent(rawText, opts){
   console.log('[smartOrganize] metadados extraídos em', Math.round(performance.now()-t0), 'ms:', metadata);
 
   // ETAPA 2: organização do conteúdo
-  // CHUNK_SIZE 35k: cabe ~10.5k tokens entrada -> ~8k saída (markdown organizado é ~75% do input).
-  // Output max_tokens 8192 = ~30k chars de saída -> cabe folgado.
-  const CHUNK_SIZE = 35000;
-  // PARALLEL_BATCH: 8 chamadas concorrentes — Anthropic API aguenta tranquilamente.
-  const PARALLEL_BATCH = 8;
+  // CHUNK_SIZE 22k: cabe ~6.5k tokens entrada -> ~5k saída em prosa = cabe folgado em 8192.
+  // Reduzido de 35k → 22k pq chunks de 35k truncavam em max_tokens (perdia conteúdo).
+  // Output max_tokens 8192 = ~25k chars de saída -> sobra com 22k de entrada.
+  const CHUNK_SIZE = 22000;
+  // PARALLEL_BATCH: 6 chamadas concorrentes — Anthropic API aguenta. Aumentei chunks
+  // menores compensa (mais chamadas paralelas), mantém a velocidade.
+  const PARALLEL_BATCH = 6;
 
   let organized;
   if(rawText.length <= CHUNK_SIZE){
@@ -26365,6 +26372,10 @@ async function smartOrganizeContent(rawText, opts){
     organized = results.filter(r => r && r.length > 0).join('\n\n');
   }
 
+  // V14: PÓS-PROCESSAMENTO — limpa gabaritos remanescentes que a IA não removeu
+  // (gabaritos no fim de seções continuam aparecendo apesar do prompt)
+  organized = cleanupOrganizedMarkdown(organized);
+
   console.log('[smartOrganize] TEMPO TOTAL:', Math.round(performance.now()-t0), 'ms');
   console.log('[smartOrganize] organized final:', organized.length, 'chars');
 
@@ -26377,6 +26388,38 @@ async function smartOrganizeContent(rawText, opts){
     topics: metadata.topics || [],
     organized: organized
   };
+}
+
+// V14: Pós-processamento do markdown depois da IA — limpeza adicional de gabaritos
+// e ruído que escapou do prompt da IA. Roda no resultado final, antes de devolver.
+function cleanupOrganizedMarkdown(md){
+  if(!md) return md;
+  let text = md;
+
+  // 1. Remove blocos GABARITO inteiros (com ## opcional, até próximo ## ou fim)
+  text = text.replace(/^#+\s*GABARITO[\s\S]*?(?=^#+|\Z)/gim, '');
+  text = text.replace(/^#+\s*RESPOSTAS?\s*$[\s\S]*?(?=^#+|\Z)/gim, '');
+  text = text.replace(/^#+\s*RESPOSTAS\s+(?:DOS|DAS)\s+EXERC[ÍI]CIOS[\s\S]*?(?=^#+|\Z)/gim, '');
+
+  // 2. Remove linhas isoladas com só "n) Letra X" (3+ em sequência)
+  text = text.replace(/(?:^\s*\d{1,3}[\)\.\-]\s*[A-Eae](?:[\s,;]+|$)\s*\n?){3,}/gm, '');
+
+  // 3. Remove blocos numéricos consecutivos: "1: C\n2: E\n3: A" (5+ linhas)
+  text = text.replace(/(?:^\s*\d{1,3}[\s\):.\-]+(?:[Ll]etra\s+)?[A-Eae]\s*$\n){5,}/gm, '');
+
+  // 4. Remove listas de respostas com vírgulas: "1-C, 2-E, 3-A, 4-D, 5-B"
+  text = text.replace(/^(?:\s*\d{1,3}[\-\.\):\s]+[A-Eae][\s,;]*){4,}.*$/gm, '');
+
+  // 5. Remove "Resposta: X" repetidos (3+ em sequência)
+  text = text.replace(/(?:^\s*\*?\*?(?:Resposta|Gabarito|GAB|Resp)[\s\.:]+[A-Eae]\s*\*?\*?\s*$\n?){3,}/gim, '');
+
+  // 6. Remove "GABARITO: 1-C 2-E 3-A 4-D" inline
+  text = text.replace(/^(?:GABARITO|RESPOSTAS?)[\s:.\-]+(?:\d{1,3}[\-\.\):\s]+[A-Eae][\s,;]*){3,}.*$/gim, '');
+
+  // 7. Colapsa múltiplas linhas vazias resultantes das remoções
+  text = text.replace(/\n[ \t]*\n[ \t]*\n+/g, '\n\n');
+
+  return text.trim();
 }
 
 // CHAMADA 1: extrai SÓ os metadados. Output curto, NUNCA trunca.
@@ -26513,6 +26556,7 @@ b) REMOVA com agressividade:
    - URLs, hashtags, telefones, e-mails
    - Numeração de página solta no meio do texto
    - Sumário/índice se aparecer no começo (linhas tipo "Capítulo 1 ........... 5")
+   - GABARITOS isolados — listas com "1-C 2-E 3-A", "Resposta: X", blocos "GABARITO:" sem questões correspondentes próximas. Se não há questão correspondente próxima, descarte o gabarito.
 
 c) ORGANIZE em seções com títulos: ## Título da Seção
    Use **negrito** com moderação para termos-chave.
@@ -26531,10 +26575,30 @@ SAÍDA: APENAS o markdown organizado. SEM JSON. SEM \`\`\`. SEM comentários ant
     free_action: 'organize_import'
   };
   console.log(`[callOrganizeAI] chunk ${chunkNum}/${totalChunks}, input:`, textChunk.length, 'chars');
-  const r = await apiGenerate(body);
-  if(!r.ok){
-    const errText = await r.text().catch(()=>'');
-    throw new Error('organize-api-' + r.status + ': ' + errText.slice(0, 200));
+
+  // V14 fix: Retry com backoff em caso de 429 (rate limit da Anthropic).
+  // Erro 429 acontece quando muitas chamadas grandes em pouco tempo. Esperar e tentar
+  // de novo geralmente resolve. Backoff exponencial: 5s, 15s, 30s.
+  let r, lastErr;
+  const RETRY_DELAYS = [5000, 15000, 30000];
+  for(let attempt = 0; attempt < 1 + RETRY_DELAYS.length; attempt++){
+    if(attempt > 0){
+      const delay = RETRY_DELAYS[attempt-1];
+      console.warn(`[callOrganizeAI] chunk ${chunkNum} retry ${attempt} após ${delay}ms (último erro: ${lastErr})`);
+      await new Promise(res => setTimeout(res, delay));
+    }
+    r = await apiGenerate(body);
+    if(r.ok) break;
+    const errText = await r.clone().text().catch(()=>'');
+    lastErr = `${r.status}: ${errText.slice(0,150)}`;
+    // Só faz retry em 429 (rate limit) ou 503 (service unavailable temporário)
+    if(r.status !== 429 && r.status !== 503){
+      throw new Error('organize-api-' + r.status + ': ' + errText.slice(0, 200));
+    }
+    // Se já fez todas as tentativas, joga o erro
+    if(attempt === RETRY_DELAYS.length){
+      throw new Error('organize-api-rate-limit (após retries): ' + lastErr);
+    }
   }
   const d = await r.json();
   if(d.usage){
