@@ -15430,6 +15430,17 @@ function renderSourceAdd(wrap){
     fInp.addEventListener('input',e=>{ST.srcInput.name=e.target.value;});
     reviewCard.appendChild(fLbl);reviewCard.appendChild(fInp);
 
+    // V14 fix: Tipo de Material — Jean reportou que "sumia". Faltava no review.
+    const tLbl = mk('label');tLbl.textContent='Tipo de material';tLbl.style.marginTop='.75rem';
+    const tSel = mk('select');
+    Object.entries(SRC_TYPES).forEach(([k,v])=>{
+      const o = mk('option');o.value=k;o.textContent=v.icon+' '+v.label;
+      if(ST.srcInput.type===k)o.selected=true;
+      tSel.appendChild(o);
+    });
+    tSel.addEventListener('change',e=>{ST.srcInput.type=e.target.value;});
+    reviewCard.appendChild(tLbl);reviewCard.appendChild(tSel);
+
     const dLbl = mk('label');dLbl.textContent='Disciplina';dLbl.style.marginTop='.75rem';
     const dSel = mk('select');
     DATA.disciplines.forEach(d=>{
@@ -15449,6 +15460,18 @@ function renderSourceAdd(wrap){
     });
     ctSel.addEventListener('change',e=>{ST.srcInput.contentType=e.target.value;});
     reviewCard.appendChild(ctLbl);reviewCard.appendChild(ctSel);
+
+    // V14 fix: Data do Material — Jean reportou que "sumia". Faltava no review.
+    const mdLbl = mk('label');mdLbl.textContent='Data do material (ano ou ano/mês)';mdLbl.style.marginTop='.75rem';
+    const mdInp = mk('input');mdInp.type='month';
+    if(ST.srcInput.materialDate)mdInp.value=ST.srcInput.materialDate;
+    mdInp.addEventListener('change',e=>{ST.srcInput.materialDate=e.target.value;});
+    mdInp.addEventListener('mousedown',e=>{
+      if(typeof mdInp.showPicker==='function'){
+        try{ mdInp.showPicker(); e.preventDefault(); }catch(_){}
+      }
+    });
+    reviewCard.appendChild(mdLbl);reviewCard.appendChild(mdInp);
 
     const cLbl = mk('label');cLbl.textContent='Conteúdo organizado (edite se precisar)';cLbl.style.marginTop='.75rem';
     const cTa = mk('textarea');cTa.rows=14;cTa.style.fontFamily='ui-monospace,monospace';cTa.style.fontSize='12.5px';
@@ -15651,8 +15674,24 @@ function renderSourceAdd(wrap){
               classify: true,
               onProgress: (p)=>{
                 ST.srcImportState.organizeProgress = p;
+                // Atualiza status, barra e ETA sem re-render full
                 const statusEl = document.getElementById('ai-organize-status');
                 if(statusEl) statusEl.textContent = p.label;
+                const barEl = document.getElementById('ai-organize-bar');
+                if(barEl && p.total > 0){
+                  const pct = Math.round((p.current / p.total) * 100);
+                  barEl.style.width = pct + '%';
+                }
+                const etaEl = document.getElementById('ai-organize-eta');
+                if(etaEl){
+                  if(p.etaSeconds && p.etaSeconds > 0){
+                    etaEl.textContent = `≈ ${formatEtaSeconds(p.etaSeconds)} restante`;
+                  } else if(p.current >= p.total && p.total > 0){
+                    etaEl.textContent = 'finalizando…';
+                  } else {
+                    etaEl.textContent = 'calculando tempo restante…';
+                  }
+                }
               }
             }),
             new Promise((_, rej) => setTimeout(()=>rej(new Error('timeout 480s')), 480000))
@@ -15731,8 +15770,17 @@ function renderSourceAdd(wrap){
 
           // 5. TIPO DE CONTEÚDO
           if(aiRes.contentType && CONTENT_TYPES[aiRes.contentType]){
-            ST.srcInput.contentType = aiRes.contentType;
-            console.log('[import] tipo de conteúdo:', aiRes.contentType);
+            // V14 fix: se IA disse "misto" mas o material é livro/apostila/aula
+            // (texto didático longo), forçar pra "teoria". Apostila normalmente é
+            // teoria + alguns exercícios = essência é teoria.
+            const materialIsTextbook = ['livro','apostila','aula','slides'].includes(ST.srcInput.type);
+            if(aiRes.contentType === 'misto' && materialIsTextbook){
+              ST.srcInput.contentType = 'teoria';
+              console.log('[import] IA retornou "misto" mas material é didático → forçado pra "teoria"');
+            } else {
+              ST.srcInput.contentType = aiRes.contentType;
+              console.log('[import] tipo de conteúdo:', aiRes.contentType);
+            }
           } else {
             // V14 final: se IA não escolheu, default 'teoria' (PDFs costumam ser teoria)
             ST.srcInput.contentType = 'teoria';
@@ -16063,6 +16111,7 @@ function renderSourceAdd(wrap){
 
   if(is.organizing){
     // V14 redesign: card visual claro pra indicar IA organizando (etapa 2)
+    // Inclui barra de progresso + ETA dinâmico + status atualizável
     const orgCard = mk('div');
     orgCard.style.cssText = 'padding:1.75rem 1.5rem;background:linear-gradient(135deg,rgba(128,66,250,.06),var(--surface));border:1px solid rgba(128,66,250,.20);border-left:3px solid var(--gralia-purple);border-radius:10px;margin:1rem 0;text-align:center';
     const ico = mk('div');
@@ -16073,17 +16122,42 @@ function renderSourceAdd(wrap){
     ttl.style.cssText = 'margin:0 0 .375rem;font-size:15px;font-weight:700';
     ttl.textContent = 'IA organizando o conteúdo...';
     orgCard.appendChild(ttl);
-    // Status dinâmico atualizado pelo onProgress
+
+    // Status principal — atualizado pelo onProgress
     const statusEl = mk('p','txt2');
     statusEl.id = 'ai-organize-status';
     statusEl.style.cssText = 'margin:.5rem 0 0;font-size:13px;line-height:1.5;color:var(--gralia-purple);font-weight:600';
-    const initialStatus = is.organizeProgress ? is.organizeProgress.label : 'Identificando disciplina e metadados...';
+    const initialStatus = is.organizeProgress ? is.organizeProgress.label : 'Identificando disciplina, tipo, data e tópicos...';
     statusEl.textContent = initialStatus;
     orgCard.appendChild(statusEl);
+
+    // Barra de progresso (V14: feedback visual concreto)
+    const barWrap = mk('div');
+    barWrap.style.cssText = 'margin:.875rem auto 0;width:100%;max-width:340px;height:6px;background:rgba(128,66,250,.15);border-radius:6px;overflow:hidden';
+    const bar = mk('div');
+    bar.id = 'ai-organize-bar';
+    const initialPct = is.organizeProgress && is.organizeProgress.total > 0
+      ? Math.round((is.organizeProgress.current / is.organizeProgress.total) * 100)
+      : 0;
+    bar.style.cssText = `height:100%;width:${initialPct}%;background:linear-gradient(90deg,#8042fa,#a06aff);border-radius:6px;transition:width .4s ease`;
+    barWrap.appendChild(bar);
+    orgCard.appendChild(barWrap);
+
+    // ETA — tempo restante estimado
+    const etaEl = mk('p','txt3');
+    etaEl.id = 'ai-organize-eta';
+    etaEl.style.cssText = 'margin:.5rem 0 0;font-size:12px;line-height:1.4';
+    const initialEta = is.organizeProgress && is.organizeProgress.etaSeconds
+      ? `≈ ${formatEtaSeconds(is.organizeProgress.etaSeconds)} restante`
+      : 'calculando tempo restante…';
+    etaEl.textContent = initialEta;
+    orgCard.appendChild(etaEl);
+
     const sub = mk('p','txt3');
     sub.style.cssText = 'margin:.625rem 0 0;font-size:11.5px;line-height:1.5';
-    sub.innerHTML = 'PDFs grandes processam em paralelo. Em geral leva de 30 segundos a 2 minutos.';
+    sub.innerHTML = 'Processamento em paralelo (8 partes simultâneas). Não feche essa aba.';
     orgCard.appendChild(sub);
+
     const stepLbl = mk('p','txt3');
     stepLbl.style.cssText = 'margin:.625rem 0 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px';
     stepLbl.textContent = '⏳ Etapa 2 de 2';
@@ -25685,14 +25759,53 @@ async function extractPdfTextRich(file, onProgress){
     if(onProgress) onProgress(i, total);
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    const items = content.items.map(it=>({str:it.str, y:Math.round(it.transform[5])}));
+    // V14 fix2: usa altura da fonte (transform[3] = scaleY) como referência relativa.
+    // Threshold absoluto 1.5 falhava em fontes pequenas/grandes.
+    // Agora: gap > 25% da altura da fonte = espaço entre palavras.
+    const items = content.items.map(it=>({
+      str: it.str,
+      x: it.transform[4],
+      y: Math.round(it.transform[5]),
+      w: it.width || 0,
+      h: it.height || it.transform[3] || 10  // altura da fonte
+    }));
     const lines = {};
     items.forEach(it=>{
       if(!lines[it.y]) lines[it.y]=[];
-      lines[it.y].push(it.str);
+      lines[it.y].push(it);
     });
     const sortedY = Object.keys(lines).map(Number).sort((a,b)=>b-a);
-    const pageText = sortedY.map(y=>lines[y].join(' ')).join('\n');
+    const pageText = sortedY.map(y=>{
+      const lineItems = lines[y].slice().sort((a,b)=>a.x-b.x);
+      let lineText = '';
+      for(let k=0;k<lineItems.length;k++){
+        const cur = lineItems[k];
+        if(k===0){
+          lineText = cur.str;
+          continue;
+        }
+        const prev = lineItems[k-1];
+        const gap = cur.x - (prev.x + prev.w);
+        const prevEndsWithSpace = /\s$/.test(prev.str);
+        const curStartsWithSpace = /^\s/.test(cur.str);
+
+        // Threshold relativo: 25% da altura da fonte
+        const threshold = Math.max(0.5, (cur.h || prev.h || 10) * 0.25);
+
+        if(prevEndsWithSpace || curStartsWithSpace){
+          // Já tem espaço explícito: só concatena
+          lineText += cur.str;
+        } else if(gap > threshold){
+          // Gap significativo: espaço entre palavras
+          lineText += ' ' + cur.str;
+        } else {
+          // Itens colados ou com gap mínimo: parte da mesma palavra
+          // (NÃO adiciona espaço — esse era o bug de "aplic abilidade")
+          lineText += cur.str;
+        }
+      }
+      return lineText;
+    }).join('\n');
     pages.push(pageText);
   }
   const text = pages.join('\n\n--- página ---\n\n');
@@ -25780,6 +25893,36 @@ function sanitizePdfText(rawText){
   if(!rawText) return rawText;
   let text = rawText;
 
+  // V14 final: PRIMEIRO remove blocos grandes de baixo valor (mais rápido)
+  // antes de aplicar regex pesados. Reduz texto que vai pra IA → mais rápido.
+
+  // V14: detecta e REMOVE sumário (linhas tipo "Tópico ........... 5")
+  // Esses blocos são longos no início e não têm valor pedagógico.
+  // Padrão: linhas com >= 5 pontos seguidos + número no final.
+  text = text.replace(/^.{3,80}\.{5,}\s*\d+\s*$/gm, '');
+  // Versão alternativa: tópico + tabs/espaços + número
+  text = text.replace(/^[A-ZÁÂÃÀÄÉÊÍÎÓÔÕÚÜÇa-záâãàäéêíîóôõúüç][^.\n]{2,80}\s{4,}\d{1,3}\s*$/gm, '');
+
+  // V14: detecta e REMOVE gabaritos. Aparecem juntos no fim de provas/listas.
+  // Não têm valor pedagógico isolados — só números e letras.
+  //
+  // Padrão A: linha com >= 3 ocorrências de "n + sep + letra" — ex: "1-C 2-E 3-C 4-A"
+  text = text.replace(/^(?:\s*\d{1,3}[\s\.\-\)\:]+[A-EceCE](?:[\s,;]+|$)){3,}.*$/gm, '');
+  // Padrão B: bloco GABARITO ... (ex: "GABARITO\n1. C\n2. E\n3. A...")
+  // Captura "GABARITO" (com possíveis prefixos como "—" ou "##") até a próxima
+  // seção (linha que começa com letra maiúscula seguida de mais conteúdo, ou ##)
+  text = text.replace(/^[\s#\-—•]*GABARITO[\s:.\-]*$[\s\S]{0,5000}?(?=^##|^[A-ZÁÉÍÓÚ][a-záéíóú]{3,}|\Z)/gim, '');
+  // Padrão C: linhas isoladas de gabarito do tipo "Q1: C", "Questão 1 - C", "1) Letra C"
+  // Aplicado quando aparecem 5+ em sequência (1 ou 2 isoladas é normal)
+  text = text.replace(/(?:^\s*(?:Q(?:uestão)?[\s\.]?)?\d{1,3}[\s\)\.\-:]+(?:[Ll]etra\s+)?[A-Eae]\s*$\n?){5,}/gm, '');
+  // Padrão D: "Resposta: X" ou "Gabarito: X" repetindo várias vezes seguidas
+  text = text.replace(/(?:^\s*(?:Resposta|Gabarito|GAB|Resp)[\s\.:]+[A-Eae]\s*$\n?){3,}/gm, '');
+
+  // V14: detecta e REMOVE listas de questões soltas (questões sem teoria associada).
+  // Heurística: bloco "Questão 1" / "Q.1" seguido de várias alternativas e gabarito,
+  // múltiplas vezes em sequência. Esses blocos vão pra outro fluxo (banco de questões).
+  // (não tão agressivo aqui — IA vai lidar)
+
   // 1. URLs (http://, https://, www.)
   text = text.replace(/\b(?:https?:\/\/|www\.)[\w\-._~:\/?#\[\]@!$&'()*+,;=%]+/gi, '[link removido]');
 
@@ -25797,7 +25940,6 @@ function sanitizePdfText(rawText){
   text = text.replace(/\b(Prof(?:essor[a]?|ª|\.)?)\s+([A-ZÁÂÃÀÄÉÊÈËÍÎÌÏÓÔÕÒÖÚÛÙÜÇÑ][a-záâãàäéêèëíîìïóôõòöúûùüçñ]+(?:\s+(?:de|da|do|dos|das)?\s*[A-ZÁÂÃÀÄÉÊÈËÍÎÌÏÓÔÕÒÖÚÛÙÜÇÑ][a-záâãàäéêèëíîìïóôõòöúûùüçñ]+){0,2})/g, '[professor]');
 
   // V14 final: nomes de cursinhos e plataformas conhecidas — remove em qualquer contexto
-  // (Jean reportou que apostilas vinham com "Estratégia Concursos" e "Gran Cursos" no texto)
   const COURSE_NAMES = [
     'Estratégia Concursos','Gran Cursos','Gran Cursos Online','Direção Concursos','Direção Concursos Online',
     'AlfaCon','Damásio','Damásio Educacional','CERS','CERS Concursos','Ouse Saber',
@@ -25808,7 +25950,6 @@ function sanitizePdfText(rawText){
     'Eu Vou Passar','Folha Dirigida','EBEJI','Curso Mege','Mege','Ênfase'
   ];
   COURSE_NAMES.forEach(name=>{
-    // Remove em qualquer caixa, com possível ® ™ © em volta
     const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     text = text.replace(new RegExp(`[®™©]?\\s*${escaped}\\s*[®™©]?`, 'gi'), '');
   });
@@ -25825,18 +25966,22 @@ function sanitizePdfText(rawText){
   text = text.replace(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2}\b/g, '[CNPJ removido]');
 
   // V14 final: padrões comuns de rodapé/cabeçalho de cursinho
-  // "Página X de Y", "Material exclusivo", "Aluno: ..."
   text = text.replace(/^\s*P[áa]gina\s+\d+\s+de\s+\d+\s*$/gim, '');
   text = text.replace(/^\s*(?:Material\s+exclusivo|Apostila\s+exclusiva|Acesso\s+restrito|Reprodução\s+proibida).{0,120}$/gim, '');
   text = text.replace(/^\s*Aluno:\s*.{0,80}$/gim, '');
-  // Saudações típicas que poluem início de aula
   text = text.replace(/^\s*(?:Ol[áa]\s+pessoal[!.,]?|Bom\s+dia,?\s+galera[!.,]?|E\s+a[ií],?\s+pessoal[!.,]?|Vamos\s+l[áa][!.,]?|Vamos\s+ao\s+que\s+interessa[!.,]?).{0,80}$/gim, '');
 
   // 9. Limpa linhas que ficaram só com placeholders + espaços
   text = text.replace(/^[\s\[\]a-záê]*remoção[\s\[\]]*$/gim, '');
 
+  // V14: remove marcadores de página "--- página ---" que adicionamos durante extract
+  text = text.replace(/\n\s*--- página ---\s*\n/g, '\n\n');
+
   // 10. Colapsa quebras de linha excessivas que possam ter sido criadas
   text = text.replace(/\n{4,}/g, '\n\n\n');
+
+  // V14: remove linhas vazias múltiplas resultantes das remoções acima
+  text = text.replace(/\n[ \t]*\n[ \t]*\n+/g, '\n\n');
 
   return text.trim();
 }
@@ -25846,6 +25991,17 @@ function formatFileSize(bytes){
   if(bytes < 1024) return bytes + ' B';
   if(bytes < 1024*1024) return (bytes/1024).toFixed(0) + ' KB';
   return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+
+// V14: formata segundos restantes em algo legível ("≈ 1 min 30s restante")
+function formatEtaSeconds(sec){
+  if(!sec || sec < 0) return 'pouco tempo';
+  if(sec < 5) return 'poucos segundos';
+  if(sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  if(s < 10) return `${m} min`;
+  return `${m} min ${s}s`;
 }
 
 // ============================================================================
@@ -26102,17 +26258,16 @@ async function smartOrganizeContent(rawText, opts){
   console.log('[smartOrganize] metadados extraídos em', Math.round(performance.now()-t0), 'ms:', metadata);
 
   // ETAPA 2: organização do conteúdo
-  // CHUNK_SIZE 30k: cabe ~9k tokens entrada -> ~6.5k saída (markdown organizado é ~75% do input).
+  // CHUNK_SIZE 35k: cabe ~10.5k tokens entrada -> ~8k saída (markdown organizado é ~75% do input).
   // Output max_tokens 8192 = ~30k chars de saída -> cabe folgado.
-  const CHUNK_SIZE = 30000;
-  // PARALLEL_BATCH: 5 chamadas concorrentes. Anthropic API tolera bem.
-  // Tradeoff: muito alto pode dar 429 rate limit. 5 é seguro.
-  const PARALLEL_BATCH = 5;
+  const CHUNK_SIZE = 35000;
+  // PARALLEL_BATCH: 8 chamadas concorrentes — Anthropic API aguenta tranquilamente.
+  const PARALLEL_BATCH = 8;
 
   let organized;
   if(rawText.length <= CHUNK_SIZE){
     console.log('[smartOrganize] texto cabe em 1 chunk');
-    onProgress({phase: 'organize', current: 1, total: 1, label: 'Organizando conteúdo...'});
+    onProgress({phase: 'organize', current: 1, total: 1, label: 'Organizando conteúdo...', etaSeconds: 30});
     const tc = performance.now();
     organized = await callOrganizeAI(rawText, 1, 1);
     console.log('[smartOrganize] chunk único em', Math.round(performance.now()-tc), 'ms');
@@ -26126,51 +26281,88 @@ async function smartOrganizeContent(rawText, opts){
     }
     console.log('[smartOrganize] modo PARALELO:', chunks.length, 'chunks em batches de', PARALLEL_BATCH);
 
-    // Pre-aloca array de resultados
+    // V14: Skip de chunks que parecem ser só lixo (gabaritos remanescentes, anexos)
+    // Heurística: chunk com menos de 30% de letras maiúsculas+minúsculas vs total
+    // (muito número/símbolo) provavelmente é gabarito/tabela e não vale chamar IA.
+    const isLowValueChunk = (txt)=>{
+      if(!txt || txt.length < 200) return true;
+      const letters = (txt.match(/[a-záâãàéêíóôõúüç]/gi) || []).length;
+      const ratio = letters / txt.length;
+      return ratio < 0.45; // chunk com <45% letras = provavelmente lixo
+    };
+
+    // Pre-aloca array de resultados e marca chunks pulados
     const results = new Array(chunks.length);
+    const chunksToProcess = [];
+    chunks.forEach((c, i) => {
+      if(isLowValueChunk(c)){
+        console.log(`[smartOrganize] chunk ${i+1} pulado (baixo valor: ${c.length} chars)`);
+        results[i] = ''; // descarta
+      } else {
+        chunksToProcess.push(i);
+      }
+    });
+    console.log(`[smartOrganize] processando ${chunksToProcess.length}/${chunks.length} chunks (pulados ${chunks.length - chunksToProcess.length})`);
+
+    // Estima ETA: 1º chunk tipicamente leva ~25s, paralelismo de 8 → tempo total = ceil(N/8) × 30s
+    const totalToProcess = chunksToProcess.length;
+    const estimatedBatches = Math.ceil(totalToProcess / PARALLEL_BATCH);
+    let estimatedTotalSec = estimatedBatches * 35; // estimativa inicial
     let completedCount = 0;
-    onProgress({phase: 'organize', current: 0, total: chunks.length, label: `Organizando ${chunks.length} partes em paralelo...`});
+    const tStart = performance.now();
+    onProgress({
+      phase: 'organize',
+      current: 0,
+      total: totalToProcess,
+      label: `Organizando ${totalToProcess} partes em paralelo...`,
+      etaSeconds: estimatedTotalSec
+    });
 
     // Processa em batches paralelos
-    for(let batchStart = 0; batchStart < chunks.length; batchStart += PARALLEL_BATCH){
-      const batchEnd = Math.min(batchStart + PARALLEL_BATCH, chunks.length);
-      const batchSize = batchEnd - batchStart;
-      console.log(`[smartOrganize] batch ${Math.floor(batchStart/PARALLEL_BATCH)+1}: chunks ${batchStart+1}-${batchEnd} (${batchSize} em paralelo)`);
+    for(let batchStart = 0; batchStart < chunksToProcess.length; batchStart += PARALLEL_BATCH){
+      const batchEnd = Math.min(batchStart + PARALLEL_BATCH, chunksToProcess.length);
+      const batchIndices = chunksToProcess.slice(batchStart, batchEnd);
+      console.log(`[smartOrganize] batch ${Math.floor(batchStart/PARALLEL_BATCH)+1}/${estimatedBatches}: ${batchIndices.length} chamadas`);
       const tBatch = performance.now();
 
-      const promises = [];
-      for(let i = batchStart; i < batchEnd; i++){
-        promises.push(
-          callOrganizeAI(chunks[i], i+1, chunks.length)
-            .then(part => {
-              results[i] = (part && part.length > 50) ? part : chunks[i];
-              completedCount++;
-              onProgress({
-                phase: 'organize',
-                current: completedCount,
-                total: chunks.length,
-                label: `Organizando ${completedCount}/${chunks.length} partes...`
-              });
-              console.log(`[smartOrganize] chunk ${i+1} OK (${results[i].length} chars)`);
-            })
-            .catch(err => {
-              console.error(`[smartOrganize] chunk ${i+1} FALHOU:`, err.message);
-              results[i] = chunks[i]; // fallback: usa texto cru pra não perder
-              completedCount++;
-              onProgress({
-                phase: 'organize',
-                current: completedCount,
-                total: chunks.length,
-                label: `Organizando ${completedCount}/${chunks.length} partes...`
-              });
-            })
-        );
-      }
+      const promises = batchIndices.map(i =>
+        callOrganizeAI(chunks[i], i+1, chunks.length)
+          .then(part => {
+            results[i] = (part && part.length > 50) ? part : chunks[i];
+            completedCount++;
+            // Recalcula ETA com base no tempo real do 1º batch
+            const elapsedSec = (performance.now() - tStart) / 1000;
+            const ratePerSec = completedCount / elapsedSec;
+            const remaining = totalToProcess - completedCount;
+            const etaSec = ratePerSec > 0 ? Math.round(remaining / ratePerSec) : 0;
+            onProgress({
+              phase: 'organize',
+              current: completedCount,
+              total: totalToProcess,
+              label: `Parte ${completedCount} de ${totalToProcess} organizada`,
+              etaSeconds: etaSec
+            });
+            console.log(`[smartOrganize] chunk ${i+1} OK (${results[i].length} chars) ETA ${etaSec}s`);
+          })
+          .catch(err => {
+            console.error(`[smartOrganize] chunk ${i+1} FALHOU:`, err.message);
+            results[i] = chunks[i];
+            completedCount++;
+            onProgress({
+              phase: 'organize',
+              current: completedCount,
+              total: totalToProcess,
+              label: `Parte ${completedCount} de ${totalToProcess} organizada`,
+              etaSeconds: 0
+            });
+          })
+      );
       await Promise.all(promises);
       console.log(`[smartOrganize] batch concluído em`, Math.round(performance.now()-tBatch), 'ms');
     }
 
-    organized = results.join('\n\n');
+    // Junta tudo, ignorando chunks vazios (pulados)
+    organized = results.filter(r => r && r.length > 0).join('\n\n');
   }
 
   console.log('[smartOrganize] TEMPO TOTAL:', Math.round(performance.now()-t0), 'ms');
@@ -26215,14 +26407,16 @@ REGRAS:
    - "caderno": lista de questões
    - "outro": último recurso
 
-4. contentType (escolha 1): ${contentKeys.join(' | ')} ou "misto"
-   - "teoria": conceitos, definições
-   - "exercicios": lista de questões
-   - "lei_seca": texto literal de lei
-   - "jurisprudencia": súmulas, julgados
-   - "doutrina": discussão acadêmica
-   - "resumo": síntese muito condensada
-   - "mapa_mental": estrutura esquemática
+4. contentType (escolha 1, NUNCA "misto" se houver opção mais específica): ${contentKeys.join(' | ')}
+   PRIORIDADE — escolha a primeira que encaixar:
+   - "teoria": material didático com conceitos e explicações (DEFAULT pra livros/apostilas)
+   - "lei_seca": texto literal de lei, decretos, código
+   - "jurisprudencia": súmulas, julgados, teses
+   - "doutrina": discussão acadêmica jurídica de autores
+   - "exercicios": lista de questões SEM teoria
+   - "resumo": síntese super condensada (raro)
+   - "mapa_mental": estrutura esquemática (raro)
+   ⚠ Use "misto" SOMENTE se realmente houver mistura significativa de teoria + exercícios + lei. Apostila com explicação + algumas questões = "teoria".
 
 5. detectedDate: se mencionar ano/edição (ex: "atualizado 2024", "rev. 2023"), retorne YYYY-MM. Se só ano, YYYY-01. Se nada, null.
 
