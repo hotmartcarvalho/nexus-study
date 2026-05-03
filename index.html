@@ -1098,26 +1098,30 @@ html.focus-mode .pomo-float{display:none}
 .discover-empty p{margin:0;font-size:13px;color:var(--text3)}
 
 /* Card de recurso na descoberta */
-.resource-card{padding:1rem 1.125rem;transition:border-color .2s}
-.resource-card:hover{border-color:rgba(128,66,250,.3)}
+/* V15.7+: Cards de recurso polidos — visual mais próximo do "resumo aprofundado".
+   Gradiente sutil no header em hover, espaçamento mais generoso, transição suave. */
+.resource-card{padding:1.125rem 1.25rem;transition:all .2s ease;background:var(--surface);border:1px solid var(--border);border-radius:12px;cursor:pointer;position:relative}
+.resource-card:hover{border-color:rgba(128,66,250,.4);transform:translateY(-1px);box-shadow:0 4px 14px rgba(128,66,250,.06),0 1px 3px rgba(0,0,0,.04)}
+.resource-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--gralia-purple),rgba(128,66,250,.3));border-radius:12px 0 0 12px;opacity:0;transition:opacity .2s}
+.resource-card:hover::before{opacity:1}
 .rc-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:.5rem}
-.rc-title{font-size:15.5px;font-weight:700;letter-spacing:-.2px;margin:0;line-height:1.3;color:var(--text)}
-.rc-type-icon{margin-right:6px}
+.rc-title{font-size:15.5px;font-weight:800;letter-spacing:-.02em;margin:0;line-height:1.3;color:var(--text)}
+.rc-type-icon{margin-right:8px;font-size:18px}
 .rc-meta{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--text3);margin-bottom:.625rem;flex-wrap:wrap}
-.rc-author{display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;padding:0;cursor:pointer;font-family:inherit;color:var(--text2);font-size:12px}
+.rc-author{display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;padding:0;cursor:pointer;font-family:inherit;color:var(--text2);font-size:12px;transition:color .15s}
 .rc-author:hover{color:var(--gralia-purple)}
-.rca-avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;letter-spacing:-.3px}
+.rca-avatar{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:#fff;letter-spacing:-.3px}
 .rca-name{font-weight:600}
 .rca-username{color:var(--text3);font-size:11px}
 .rc-date{margin-left:auto;color:var(--text3)}
-.rc-desc{font-size:13px;color:var(--text2);line-height:1.5;margin:.25rem 0 .625rem}
+.rc-desc{font-size:13px;color:var(--text2);line-height:1.55;margin:.375rem 0 .75rem}
 .rc-stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:.75rem}
-.rc-stat{font-size:11.5px;padding:3px 9px;background:var(--surface2);border-radius:999px;color:var(--text2)}
+.rc-stat{font-size:11.5px;padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:999px;color:var(--text2);font-weight:500}
 .rc-stat b{color:var(--text);font-weight:700}
-.rc-stat.useful-good{background:rgba(73,197,137,.12);color:var(--accent-text)}
-.rc-stat.useful-mid{background:rgba(232,164,60,.12);color:var(--amber-text)}
+.rc-stat.useful-good{background:rgba(73,197,137,.10);border-color:rgba(73,197,137,.25);color:var(--accent-text)}
+.rc-stat.useful-mid{background:rgba(232,164,60,.10);border-color:rgba(232,164,60,.25);color:var(--amber-text)}
 .rc-stat.useful-low{background:var(--surface2);color:var(--text3)}
-.rc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rc-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:.25rem}
 .rc-mine-badge{font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(128,66,250,.12);color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.3px}
 
 /* Estrelas modal */
@@ -1501,6 +1505,42 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .chart-heatmap text{font-family:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif}
 .chart-heatmap rect{cursor:pointer;transition:fill-opacity .15s}
 .chart-heatmap rect:hover{stroke:var(--text);stroke-width:1.5;fill-opacity:1!important}
+/* V15.7: Markdown rendering — usa cores do brand (#8042fa) pro negrito,
+   callouts com faixa lateral, headers hierárquicos. Mesma estética
+   do "resumo aprofundado" pra que fontes Notion fiquem com visual rico. */
+.md-render{line-height:1.65;color:var(--text);font-size:14px}
+.md-render .md-h1{font-size:22px;font-weight:800;margin:1.5rem 0 .75rem;letter-spacing:-.02em;color:var(--text);border-bottom:2px solid var(--gralia-purple);padding-bottom:.4rem}
+.md-render .md-h2{font-size:18px;font-weight:700;margin:1.25rem 0 .625rem;letter-spacing:-.01em;color:var(--text);border-bottom:1px solid var(--border);padding-bottom:.25rem}
+.md-render .md-h3{font-size:15.5px;font-weight:700;margin:1rem 0 .5rem;color:var(--text)}
+.md-render .md-h4{font-size:14px;font-weight:700;margin:.875rem 0 .375rem;color:var(--text2);text-transform:uppercase;letter-spacing:.3px}
+.md-render .md-p{margin:.625rem 0;color:var(--text)}
+.md-render .md-bold{color:rgb(45,138,79);font-weight:700}
+[data-theme="dark"] .md-render .md-bold,
+.dark .md-render .md-bold{color:rgb(73,197,137)}
+.md-render em{font-style:italic;color:var(--text)}
+.md-render del{color:var(--text3);text-decoration:line-through}
+.md-render .md-ul,.md-render .md-ol{margin:.5rem 0 .75rem;padding-left:1.75rem}
+.md-render .md-ul li,.md-render .md-ol li{margin:.25rem 0;line-height:1.55}
+.md-render .md-ul{list-style-type:disc}
+.md-render .md-ol{list-style-type:decimal}
+.md-render .md-callout{margin:.75rem 0;padding:.75rem 1rem;background:linear-gradient(135deg,rgba(128,66,250,.06),rgba(128,66,250,.02));border:1px solid rgba(128,66,250,.20);border-left:3px solid var(--gralia-purple);border-radius:8px;color:var(--text);font-style:normal}
+.md-render .md-callout p:first-child{margin-top:0}
+.md-render .md-callout p:last-child{margin-bottom:0}
+.md-render .md-hr{margin:1.25rem 0;border:none;border-top:1px solid var(--border)}
+.md-render .md-link{color:var(--gralia-purple);text-decoration:underline;text-underline-offset:2px}
+.md-render .md-link:hover{text-decoration:none}
+.md-render .md-task{margin:.25rem 0;padding-left:.25rem;display:flex;align-items:flex-start;gap:.375rem}
+.md-render .md-task-mark{flex-shrink:0;font-size:14px;line-height:1.45;color:var(--gralia-purple)}
+.md-render .md-task-done{color:var(--text3)}
+.md-render .md-task-done .md-task-mark{color:rgb(73,197,137)}
+.md-render pre{margin:.75rem 0}
+.md-render code{font-size:.92em}
+.md-render table,.md-render .md-table{width:100%;border-collapse:collapse;margin:.875rem 0;font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.md-render th,.md-render td{padding:.625rem .875rem;border-bottom:1px solid var(--border);text-align:left;line-height:1.45}
+.md-render th{background:var(--surface2);font-weight:700;color:var(--text);border-bottom:2px solid var(--gralia-purple);font-size:12.5px}
+.md-render td{color:var(--text2)}
+.md-render tr:last-child td{border-bottom:none}
+
 .chart-insight{margin:1rem 0 0;padding:.75rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:12.5px;color:var(--text2);line-height:1.55}
 .chart-insight b{color:var(--text);font-weight:700}
 .chart-insight-neutral{color:var(--text3)}
@@ -10679,11 +10719,14 @@ function showFocusPickerModal(allSources){
       if(!Array.isArray(toc)) return [];
       return toc.filter(sec => {
         if(!sec || !sec.title) return false;
-        if(sec.title.length < 5) return false;
+        // V15.7: markdown aceita títulos curtos (>=2 chars), outros >=5
+        const minTitleLen = sec.isMarkdown ? 2 : 5;
+        if(sec.title.length < minTitleLen) return false;
         if(typeof isLikelyMetadataLine === 'function' && isLikelyMetadataLine(sec.title)) return false;
-        // Tamanho da seção: precisa ter pelo menos 200 chars de conteúdo
+        // Tamanho da seção: markdown >=50 chars, outros >=200
         const len = (sec.endChar || (content||'').length) - (sec.startChar || 0);
-        if(len < 200) return false;
+        const minLen = sec.isMarkdown ? 50 : 200;
+        if(len < minLen) return false;
         return true;
       });
     }
@@ -16272,11 +16315,15 @@ function renderSourceList(wrap){
       origin.innerHTML = `📥 Importado de <button class="link-btn" onclick="navigateToProfile('${escapeHTML(src.importedFromUser)}')">@${escapeHTML(src.importedFromUser)}</button>`;
       info.appendChild(origin);
     }
+    // V15.7+: Botão "📖 Ver" abre visualização rica da fonte (markdown renderizado, etc).
+    const viewSrc = mkBtn('📖','icon-btn');
+    viewSrc.title = 'Ver fonte completa';
+    viewSrc.addEventListener('click', ()=>showSourceReaderModal(src));
     const edit = mkBtn('✏️','icon-btn');
     edit.addEventListener('click',()=>showEditSourceModal(src));
     const del = mkBtn('×','icon-btn del');
     del.addEventListener('click',()=>{if(confirm('Remover "'+src.name+'"?')){DATA.sources=DATA.sources.filter(x=>x.id!==src.id);save();render();}});
-    actions.appendChild(edit);actions.appendChild(del);
+    actions.appendChild(viewSrc);actions.appendChild(edit);actions.appendChild(del);
     item.appendChild(ic);item.appendChild(info);item.appendChild(actions);
     list.appendChild(item);
   });
@@ -16855,11 +16902,36 @@ function renderSourceAdd(wrap){
     const cHelp = mk('p','txt3');cHelp.style.cssText='margin:.125rem 0 .375rem;font-size:11.5px;line-height:1.4';
     cHelp.textContent='Cole o texto da sua aula, lei, apostila ou anotação. Quanto mais limpo o conteúdo, melhor.';
     addCard.appendChild(cHelp);
+
+    // V15.7: Hint de markdown — Notion users
+    const mdHintAdd = mk('div');
+    mdHintAdd.style.cssText = 'font-size:11px;color:var(--text3);margin:0 0 .375rem;line-height:1.45;padding:.5rem .75rem;background:var(--surface2);border-left:2px solid var(--gralia-purple);border-radius:6px';
+    mdHintAdd.innerHTML = '💡 <b style="color:var(--text2)">Dica:</b> Você pode colar texto do Notion ou usar markdown — <code style="background:var(--surface);padding:1px 4px;border-radius:3px">## Título</code>, <code style="background:var(--surface);padding:1px 4px;border-radius:3px">**negrito**</code>, <code style="background:var(--surface);padding:1px 4px;border-radius:3px">- lista</code>, <code style="background:var(--surface);padding:1px 4px;border-radius:3px">&gt; citação</code>. Vai ficar bonito quando visualizar a fonte depois.';
+    addCard.appendChild(mdHintAdd);
+
     const ta = mk('textarea');ta.rows=10;
     ta.placeholder='Cole aqui o conteúdo da sua fonte de estudo...';
     ta.value=ST.srcInput.content;
     ta.addEventListener('input',e=>{ST.srcInput.content=e.target.value;if(saveBtn)saveBtn.disabled=!canSave();});
     addCard.appendChild(ta);
+
+    // V15.7: Botão de preview formatado abaixo do textarea
+    const previewRow = mk('div');
+    previewRow.style.cssText = 'margin-top:.5rem;text-align:right';
+    const previewBtnAdd = mk('button');
+    previewBtnAdd.type = 'button';
+    previewBtnAdd.style.cssText = 'background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:11.5px;cursor:pointer;color:var(--text2);font-family:inherit';
+    previewBtnAdd.textContent = '👁 Visualizar formatado';
+    previewBtnAdd.addEventListener('click', ()=>{
+      const txt = ta.value || '';
+      if(!txt.trim()){
+        alert('Cole o conteúdo primeiro.');
+        return;
+      }
+      showMarkdownPreviewModal(txt, ST.srcInput.name || 'Nova fonte');
+    });
+    previewRow.appendChild(previewBtnAdd);
+    addCard.appendChild(previewRow);
 
     saveBtn = mkBtn('Adicionar fonte →','btn btn-p');saveBtn.style.marginTop='.875rem';
     saveBtn.disabled = !canSave();
@@ -17349,12 +17421,19 @@ function showSourceSectionModal(src, entry){
     if(c) c.addEventListener('click', closeModal);
   }, 0);
 
-  // Trecho do texto
-  const textBox = mk('div','source-section-text');
-  // Limita preview a 5000 chars no modal — pra textos enormes
-  const truncated = text.length > 5000 ? text.slice(0, 5000) + '\n\n[... trecho continua ...]' : text;
-  textBox.textContent = truncated;
-  m.appendChild(textBox);
+  // V15.7: Se o trecho parece markdown (do Notion ou similar), renderiza
+  // com estilo. Senão usa textContent simples.
+  const truncated = text.length > 8000 ? text.slice(0, 8000) + '\n\n[... trecho continua ...]' : text;
+  if(typeof looksLikeMarkdown === 'function' && looksLikeMarkdown(truncated)){
+    const textBox = mk('div','source-section-text md-render');
+    textBox.style.cssText = 'padding:1rem 1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:1rem;max-height:60vh;overflow-y:auto';
+    textBox.innerHTML = renderMarkdown(truncated);
+    m.appendChild(textBox);
+  } else {
+    const textBox = mk('div','source-section-text');
+    textBox.textContent = truncated;
+    m.appendChild(textBox);
+  }
 
   // Footer: ações
   const actions = mk('div','source-section-actions');
@@ -17415,7 +17494,35 @@ function showEditSourceModal(src){
 
   const lblC = mk('label');lblC.textContent='Conteúdo';lblC.style.marginTop='.75rem';
   const ta = mk('textarea');ta.rows=10;ta.value=src.content;
-  m.appendChild(lblC);m.appendChild(ta);
+
+  // V15.7: Botão de preview markdown — visualiza como ficaria renderizado
+  // (pra material do Notion, etc).
+  const lblRow = mk('div');
+  lblRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-top:.75rem';
+  lblRow.appendChild(lblC);
+  lblC.style.marginTop = '0';
+  const previewBtn = mk('button');
+  previewBtn.type = 'button';
+  previewBtn.style.cssText = 'background:transparent;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;color:var(--text2);font-family:inherit';
+  previewBtn.textContent = '👁 Visualizar formatado';
+  previewBtn.addEventListener('click', ()=>{
+    const txt = ta.value || '';
+    if(!txt.trim()){
+      alert('Cole o conteúdo primeiro.');
+      return;
+    }
+    showMarkdownPreviewModal(txt, src.name);
+  });
+  lblRow.appendChild(previewBtn);
+  m.appendChild(lblRow);
+
+  // V15.7: Hint de markdown — Notion users
+  const mdHint = mk('div');
+  mdHint.style.cssText = 'font-size:11px;color:var(--text3);margin:.25rem 0 .375rem;line-height:1.45';
+  mdHint.innerHTML = '💡 Cole texto do Notion ou use markdown: <code style="background:var(--surface2);padding:1px 4px;border-radius:3px">## Título</code>, <code style="background:var(--surface2);padding:1px 4px;border-radius:3px">**negrito**</code>, <code style="background:var(--surface2);padding:1px 4px;border-radius:3px">- lista</code>, <code style="background:var(--surface2);padding:1px 4px;border-radius:3px">&gt; citação</code>';
+  m.appendChild(mdHint);
+
+  m.appendChild(ta);
 
   // V5 Fase B: Seção de indexação (TOC)
   const tocSection = mk('div','source-edit-toc');
@@ -19019,6 +19126,376 @@ function errStatus(err){
 }
 // Highlight keyword in question text (safe HTML escape)
 function escapeHTML(s){return (s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+// V15.7: Renderizador de markdown leve. Não usa lib externa pra manter o single-file.
+// Suporta: # ## ### #### headers, **negrito**, *itálico*, ~~tachado~~, `code`,
+// > callouts, listas (- ou *) numeradas (1.), separadores (---), checkboxes,
+// e quebras de linha. Negrito vira VERDE (cor do brand) — ajuda concurseiro
+// destacar palavras-chave do conteúdo. Emojis preservados naturalmente.
+function renderMarkdown(text){
+  if(!text) return '';
+
+  // Helper: escape HTML mas preservar marcadores depois
+  let s = String(text);
+
+  // Code blocks ``` (preservar antes de tudo)
+  const codeBlocks = [];
+  s = s.replace(/```([\s\S]*?)```/g, (m, code) => {
+    codeBlocks.push(code);
+    return `\u0000CODEBLOCK${codeBlocks.length-1}\u0000`;
+  });
+
+  // Inline code (preservar pra escapar depois)
+  const inlineCodes = [];
+  s = s.replace(/`([^`\n]+)`/g, (m, code) => {
+    inlineCodes.push(code);
+    return `\u0000INLINECODE${inlineCodes.length-1}\u0000`;
+  });
+
+  // Escape HTML do resto
+  s = escapeHTML(s);
+
+  // Restaura code blocks (já escapados internamente)
+  s = s.replace(/\u0000CODEBLOCK(\d+)\u0000/g, (m, idx) => {
+    return `<pre style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.75rem 1rem;font-size:12.5px;overflow-x:auto;line-height:1.5;font-family:monospace"><code>${escapeHTML(codeBlocks[parseInt(idx)])}</code></pre>`;
+  });
+
+  // Inline code
+  s = s.replace(/\u0000INLINECODE(\d+)\u0000/g, (m, idx) => {
+    return `<code style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:.92em;font-family:monospace">${escapeHTML(inlineCodes[parseInt(idx)])}</code>`;
+  });
+
+  // Headers (h1 ao h4) — processar em ordem reversa pra #### não bater com #
+  s = s.replace(/^####\s+(.+)$/gm, '<h4 class="md-h4">$1</h4>');
+  s = s.replace(/^###\s+(.+)$/gm, '<h3 class="md-h3">$1</h3>');
+  s = s.replace(/^##\s+(.+)$/gm, '<h2 class="md-h2">$1</h2>');
+  s = s.replace(/^#\s+(.+)$/gm, '<h1 class="md-h1">$1</h1>');
+
+  // Separadores ---
+  s = s.replace(/^[\s]*---[\s]*$/gm, '<hr class="md-hr">');
+
+  // Negrito **texto** ou __texto__ → VERDE (brand color)
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong class="md-bold">$1</strong>');
+  s = s.replace(/__([^_\n]+)__/g, '<strong class="md-bold">$1</strong>');
+
+  // Itálico *texto* (depois de negrito pra não conflitar)
+  s = s.replace(/(?<![*\w])\*([^*\n]+)\*(?![*\w])/g, '<em>$1</em>');
+  s = s.replace(/(?<![_\w])_([^_\n]+)_(?![_\w])/g, '<em>$1</em>');
+
+  // Tachado ~~texto~~
+  s = s.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
+
+  // Checkboxes - [ ] ou - [x]
+  s = s.replace(/^\s*[-*]\s+\[\s\]\s+(.+)$/gm, '<div class="md-task md-task-undone"><span class="md-task-mark">☐</span> $1</div>');
+  s = s.replace(/^\s*[-*]\s+\[x\]\s+(.+)$/gim, '<div class="md-task md-task-done"><span class="md-task-mark">☑</span> $1</div>');
+
+  // Lista bullets (- ou *) — agrupa em <ul>
+  s = s.replace(/(^\s*[-*]\s+.+\n?)+/gm, (m) => {
+    const items = m.trim().split(/\n/).map(line => {
+      const itemMatch = line.match(/^\s*[-*]\s+(.+)$/);
+      return itemMatch ? `<li>${itemMatch[1]}</li>` : line;
+    }).join('');
+    return `<ul class="md-ul">${items}</ul>`;
+  });
+
+  // Lista numerada
+  s = s.replace(/(^\s*\d+\.\s+.+\n?)+/gm, (m) => {
+    const items = m.trim().split(/\n/).map(line => {
+      const itemMatch = line.match(/^\s*\d+\.\s+(.+)$/);
+      return itemMatch ? `<li>${itemMatch[1]}</li>` : line;
+    }).join('');
+    return `<ol class="md-ol">${items}</ol>`;
+  });
+
+  // Callouts > (suporta múltiplas linhas com >)
+  s = s.replace(/(^&gt;\s*.+(\n&gt;\s*.+)*)/gm, (m) => {
+    const cleaned = m.split('\n').map(line => line.replace(/^&gt;\s*/, '')).join('\n');
+    return `<blockquote class="md-callout">${cleaned}</blockquote>`;
+  });
+
+  // Links [texto](url)
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" class="md-link">$1</a>');
+
+  // V15.7+: Tabelas markdown — formato:
+  //   | col1 | col2 | col3 |
+  //   |------|------|------|
+  //   | val  | val  | val  |
+  // Detecta blocos de 2+ linhas que comecem com | e tenham separador ---|---
+  s = s.replace(/^(\|.+\|)\n(\|[\s\-:|]+\|)\n((?:\|.+\|\n?)+)/gm, (match, headerRow, sepRow, bodyRows) => {
+    const parseRow = (row) => row.replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+    const headers = parseRow(headerRow);
+    const aligns = parseRow(sepRow).map(s => {
+      if(/^:-+:$/.test(s)) return 'center';
+      if(/^-+:$/.test(s)) return 'right';
+      return 'left';
+    });
+    const bodyLines = bodyRows.trim().split('\n').map(parseRow);
+    const ths = headers.map((h, i) => `<th style="text-align:${aligns[i]||'left'}">${h}</th>`).join('');
+    const trs = bodyLines.map(cells =>
+      '<tr>' + cells.map((c, i) => `<td style="text-align:${aligns[i]||'left'}">${c}</td>`).join('') + '</tr>'
+    ).join('');
+    return `<table class="md-table"><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+  });
+
+  // Quebras de parágrafo: 2+ \n viram <br><br> mas dentro de <h*>, <ul>, etc não
+  // Estratégia: dividir em blocos por dupla quebra e envolver em <p> os blocos sem tag
+  // V15.7 fix: garante \n\n antes/depois de elementos block pra que o parser separe certo
+  s = s.replace(/(<\/(?:h[1-6]|ul|ol|blockquote|pre|hr|div|table)>)/g, '$1\n\n');
+  s = s.replace(/(<(?:h[1-6]|ul|ol|blockquote|pre|hr|div\s+class="md-task|table))/g, '\n\n$1');
+
+  const blocks = s.split(/\n{2,}/);
+  s = blocks.map(b => {
+    const t = b.trim();
+    if(!t) return '';
+    // Já é um bloco HTML?
+    if(/^<(h[1-6]|ul|ol|blockquote|pre|hr|table|div\s+class="md-task)/.test(t)) return t;
+    return `<p class="md-p">${t.replace(/\n/g, '<br>')}</p>`;
+  }).join('\n');
+
+  return s;
+}
+
+// Detecta se um texto é predominantemente markdown.
+// Critério: tem pelo menos 1 header (#) OU 3+ marcações (negrito, listas, callouts).
+function looksLikeMarkdown(text){
+  if(!text || text.length < 50) return false;
+  const sample = text.slice(0, 5000);
+  if(/^#{1,6}\s+\S/m.test(sample)) return true;
+  let signals = 0;
+  if(/\*\*[^*\n]{2,}\*\*/.test(sample)) signals++;
+  if(/^[\s]*[-*]\s+\S/m.test(sample)) signals++;
+  if(/^[\s]*\d+\.\s+\S/m.test(sample)) signals++;
+  if(/^>\s+\S/m.test(sample)) signals++;
+  if(/`[^`\n]+`/.test(sample)) signals++;
+  return signals >= 3;
+}
+
+// V15.7+: Modal de leitura rica da fonte. Substitui o "ver trecho" simples
+// por uma experiência tipo "resumo aprofundado": header com metadados, sidebar
+// com índice navegável (se tiver TOC), corpo principal com markdown renderizado.
+function showSourceReaderModal(src){
+  if(!src){ alert('Fonte não encontrada'); return; }
+  const m = mk('div');
+  m.style.cssText = 'max-width:960px;width:100%;max-height:90vh;display:flex;flex-direction:column;background:var(--surface);border-radius:14px;overflow:hidden';
+
+  const isMarkdown = looksLikeMarkdown(src.content || '');
+  const disc = getDiscipline(src.disciplineId);
+  const cleanedToc = (function(){
+    if(!Array.isArray(src.toc)) return [];
+    return src.toc.filter(sec => {
+      if(!sec || !sec.title) return false;
+      const minTitleLen = sec.isMarkdown ? 2 : 5;
+      if(sec.title.length < minTitleLen) return false;
+      if(typeof isLikelyMetadataLine === 'function' && isLikelyMetadataLine(sec.title)) return false;
+      const len = (sec.endChar || (src.content||'').length) - (sec.startChar || 0);
+      const minLen = sec.isMarkdown ? 50 : 200;
+      return len >= minLen;
+    });
+  })();
+
+  // Header rico com gradiente sutil
+  const header = mk('div');
+  header.style.cssText = 'padding:1.25rem 1.5rem;background:linear-gradient(135deg,rgba(128,66,250,.06),rgba(128,66,250,.02));border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-shrink:0';
+
+  const headLeft = mk('div');
+  headLeft.style.cssText = 'flex:1;min-width:0';
+
+  // Eyebrow: disciplina + tipo + data
+  const eyebrow = mk('div');
+  eyebrow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-bottom:6px';
+  if(disc){
+    const d = mk('span');
+    d.style.color = 'var(--gralia-purple)';
+    d.textContent = disc.name;
+    eyebrow.appendChild(d);
+  }
+  if(src.contentType && CONTENT_TYPES[src.contentType]){
+    const sep = mk('span'); sep.textContent = '·'; sep.style.opacity = '.5';
+    eyebrow.appendChild(sep);
+    const t = mk('span');
+    t.textContent = CONTENT_TYPES[src.contentType].label;
+    eyebrow.appendChild(t);
+  }
+  if(src.createdAt){
+    const sep = mk('span'); sep.textContent = '·'; sep.style.opacity = '.5';
+    eyebrow.appendChild(sep);
+    const dt = new Date(src.createdAt);
+    const pad = n => String(n).padStart(2,'0');
+    const d = mk('span');
+    d.textContent = `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}/${dt.getFullYear()}`;
+    eyebrow.appendChild(d);
+  }
+  headLeft.appendChild(eyebrow);
+
+  // Title
+  const title = mk('h1');
+  title.style.cssText = 'margin:0 0 .375rem;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.25;color:var(--text)';
+  title.textContent = src.name || 'Fonte sem nome';
+  headLeft.appendChild(title);
+
+  // Stats: tamanho + seções + import origem
+  const stats = mk('div');
+  stats.style.cssText = 'display:flex;gap:.875rem;flex-wrap:wrap;font-size:12px;color:var(--text2);margin-top:6px';
+  const charCount = (src.content||'').length;
+  const sizeText = charCount > 1000 ? Math.round(charCount/1000).toLocaleString('pt-BR') + 'k chars' : charCount + ' chars';
+  stats.innerHTML += `<span>📏 ${sizeText}</span>`;
+  if(cleanedToc.length > 0){
+    stats.innerHTML += `<span>📑 ${cleanedToc.length} ${cleanedToc.length===1?'seção':'seções'}</span>`;
+  }
+  if(isMarkdown){
+    stats.innerHTML += `<span style="color:var(--gralia-purple);font-weight:600">📝 Markdown</span>`;
+  }
+  if(src.importedFromUser){
+    stats.innerHTML += `<span>📥 De @${escapeHTML(src.importedFromUser)}</span>`;
+  }
+  headLeft.appendChild(stats);
+
+  header.appendChild(headLeft);
+
+  // Botões do header
+  const headBtns = mk('div');
+  headBtns.style.cssText = 'display:flex;gap:6px;flex-shrink:0';
+  const editBtnH = mk('button');
+  editBtnH.type = 'button';
+  editBtnH.style.cssText = 'padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text2)';
+  editBtnH.textContent = '✏️ Editar';
+  editBtnH.addEventListener('click', ()=>{
+    closeModal();
+    setTimeout(()=>showEditSourceModal(src), 50);
+  });
+  headBtns.appendChild(editBtnH);
+  const closeBtnH = mk('button');
+  closeBtnH.type = 'button';
+  closeBtnH.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:18px;cursor:pointer;font-family:inherit;color:var(--text2);line-height:1;display:flex;align-items:center;justify-content:center';
+  closeBtnH.textContent = '×';
+  closeBtnH.addEventListener('click', closeModal);
+  headBtns.appendChild(closeBtnH);
+  header.appendChild(headBtns);
+
+  m.appendChild(header);
+
+  // Body: layout 2 colunas se tem TOC, 1 coluna se não
+  const body = mk('div');
+  body.style.cssText = 'flex:1;display:flex;overflow:hidden;min-height:0';
+
+  // Sidebar com TOC (se tiver)
+  if(cleanedToc.length >= 2){
+    const sidebar = mk('div');
+    sidebar.style.cssText = 'width:240px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface2);padding:.875rem .625rem';
+    const sidebarTitle = mk('div');
+    sidebarTitle.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:0 .5rem .5rem;border-bottom:1px solid var(--border);margin-bottom:.5rem';
+    sidebarTitle.textContent = 'Índice';
+    sidebar.appendChild(sidebarTitle);
+
+    cleanedToc.forEach(sec => {
+      const item = mk('button');
+      item.type = 'button';
+      const indent = (sec.level || 1) - 1;
+      item.style.cssText = `display:block;width:100%;text-align:left;padding:5px ${10 + indent * 12}px 5px ${10 + indent * 12}px;background:transparent;border:none;border-radius:5px;cursor:pointer;font-size:12px;line-height:1.35;color:var(--text2);font-family:inherit;margin:1px 0;transition:background .12s`;
+      item.textContent = sec.title;
+      item.addEventListener('mouseenter', ()=>{ item.style.background = 'var(--surface)'; item.style.color = 'var(--text)'; });
+      item.addEventListener('mouseleave', ()=>{ item.style.background = 'transparent'; item.style.color = 'var(--text2)'; });
+      item.addEventListener('click', ()=>{
+        const target = body.querySelector(`[data-sec-id="${sec.id}"]`);
+        if(target){
+          target.scrollIntoView({behavior: 'smooth', block: 'start'});
+          // highlight breve
+          target.style.transition = 'background .3s';
+          target.style.background = 'rgba(128,66,250,.12)';
+          setTimeout(()=>{ target.style.background = ''; }, 1000);
+        }
+      });
+      sidebar.appendChild(item);
+    });
+    body.appendChild(sidebar);
+  }
+
+  // Corpo do conteúdo
+  const content = mk('div');
+  content.style.cssText = 'flex:1;overflow-y:auto;padding:1.5rem 2rem';
+
+  // Se tem TOC, divide o conteúdo em seções com data-sec-id pra navegação
+  if(cleanedToc.length >= 2 && src.content){
+    cleanedToc.forEach((sec, idx) => {
+      const start = sec.startChar || 0;
+      const end = sec.endChar || src.content.length;
+      const secText = src.content.slice(start, end);
+
+      const secWrap = mk('div');
+      secWrap.setAttribute('data-sec-id', sec.id);
+      secWrap.style.cssText = 'margin-bottom:1.5rem;border-radius:8px;padding:.5rem .75rem .75rem;margin-left:-.75rem;margin-right:-.75rem';
+
+      if(isMarkdown){
+        const renderBox = mk('div', 'md-render');
+        renderBox.innerHTML = renderMarkdown(secText);
+        secWrap.appendChild(renderBox);
+      } else {
+        const renderBox = mk('div');
+        renderBox.style.cssText = 'white-space:pre-wrap;font-size:13.5px;line-height:1.65;color:var(--text)';
+        renderBox.textContent = secText;
+        secWrap.appendChild(renderBox);
+      }
+      content.appendChild(secWrap);
+    });
+  } else {
+    // Sem TOC: renderiza tudo
+    if(isMarkdown){
+      const renderBox = mk('div', 'md-render');
+      renderBox.innerHTML = renderMarkdown(src.content || '');
+      content.appendChild(renderBox);
+    } else {
+      const renderBox = mk('div');
+      renderBox.style.cssText = 'white-space:pre-wrap;font-size:13.5px;line-height:1.65;color:var(--text)';
+      renderBox.textContent = src.content || '(fonte vazia)';
+      content.appendChild(renderBox);
+    }
+  }
+
+  body.appendChild(content);
+  m.appendChild(body);
+
+  showModal(m);
+}
+
+// V15.7: Modal de preview de markdown — abre numa janela showing como o
+// conteúdo vai ficar renderizado. Usado a partir do form de edição da fonte
+// (botão "👁 Visualizar formatado") e do form de Adicionar fonte.
+function showMarkdownPreviewModal(text, sourceName){
+  const m = mk('div');
+  m.style.cssText = 'max-width:840px;width:100%;max-height:88vh;display:flex;flex-direction:column';
+
+  const head = mk('div','source-toc-head');
+  const isMarkdown = looksLikeMarkdown(text);
+  head.innerHTML = `
+    <div class="sth-icon">${isMarkdown ? '📝' : '📄'}</div>
+    <div class="sth-info">
+      <h2>${isMarkdown ? 'Pré-visualização (markdown)' : 'Pré-visualização'}</h2>
+      <p>${escapeHTML(sourceName || 'Conteúdo')} · ${text.length.toLocaleString('pt-BR')} caracteres${isMarkdown ? ' · negrito em verde, callouts em roxo' : ''}</p>
+    </div>
+    <button type="button" class="sth-close" id="md-prev-close">×</button>
+  `;
+  m.appendChild(head);
+  setTimeout(()=>{
+    const c = head.querySelector('#md-prev-close');
+    if(c) c.addEventListener('click', closeModal);
+  }, 0);
+
+  const previewBox = mk('div', isMarkdown ? 'md-render' : '');
+  previewBox.style.cssText = 'flex:1;overflow-y:auto;padding:1.25rem 1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin:0 1rem 1rem;min-height:300px';
+  if(isMarkdown){
+    previewBox.innerHTML = renderMarkdown(text);
+  } else {
+    previewBox.style.whiteSpace = 'pre-wrap';
+    previewBox.style.fontFamily = 'inherit';
+    previewBox.style.fontSize = '13.5px';
+    previewBox.style.lineHeight = '1.6';
+    previewBox.textContent = text;
+  }
+  m.appendChild(previewBox);
+
+  showModal(m);
+}
+
 function highlightKeyword(text,keyword){
   if(!keyword||!text)return escapeHTML(text);
   const kw = keyword.trim();
@@ -26636,7 +27113,30 @@ function formatFileSize(bytes){
 
 // Padrões comuns de cabeçalhos em material didático brasileiro
 const TOC_PATTERNS = [
-  // Nível 1 (mais alto): CAPÍTULO N, PARTE N, UNIDADE N, TÍTULO N (em qualquer caixa)
+  // V15.7: Markdown headers (Notion exporta com esse formato).
+  // # → H1 (capítulo), ## → H2 (seção), ### → H3 (subseção)
+  // Aceita emoji opcional logo após o # (ex: "## 🎯 Tópico").
+  {
+    regex: /^\s*#\s+(.+?)\s*$/m,
+    level: 1,
+    type: 'md_h1'
+  },
+  {
+    regex: /^\s*##\s+(.+?)\s*$/m,
+    level: 2,
+    type: 'md_h2'
+  },
+  {
+    regex: /^\s*###\s+(.+?)\s*$/m,
+    level: 3,
+    type: 'md_h3'
+  },
+  {
+    regex: /^\s*####\s+(.+?)\s*$/m,
+    level: 4,
+    type: 'md_h4'
+  },
+  // Nível 1: CAPÍTULO N, PARTE N, UNIDADE N, TÍTULO N (em qualquer caixa)
   {
     regex: /^\s*(CAP[IÍ]TULO|PARTE|UNIDADE|T[IÍ]TULO|LIVRO)\s+([IVXLCDM]+|\d+|[A-Z])\s*[\-–:.]?\s*(.+?)?$/im,
     level: 1,
@@ -26720,8 +27220,11 @@ function detectTOCHeuristic(text){
         const fullTitle = (m[3] || m[2] || m[1] || '').trim().slice(0, 120);
         if(!fullTitle || fullTitle.length < 2) continue;
 
-        // V15.6: rejeita títulos curtos demais ou que parecem metadata
-        if(fullTitle.length < 5) continue;
+        // V15.7: para markdown headers (#, ##, ###) aceita títulos curtos (>=2 chars)
+        // pois "Acento", "Plural" etc são válidos. Para outros padrões, mantém >=5.
+        const isMarkdown = pat.type && pat.type.startsWith('md_');
+        const minLen = isMarkdown ? 2 : 5;
+        if(fullTitle.length < minLen) continue;
         if(isLikelyMetadataLine(fullTitle)) continue;
 
         if(seen.has(lineStart)) continue;
@@ -26734,7 +27237,8 @@ function detectTOCHeuristic(text){
           type: pat.type,
           startChar: lineStart,
           endChar: null,
-          rawLine: line.trim().slice(0, 150)
+          rawLine: line.trim().slice(0, 150),
+          isMarkdown
         });
         break;
       }
@@ -26751,11 +27255,13 @@ function detectTOCHeuristic(text){
     }
   });
 
-  // V15.6: Filtra seções com conteúdo MUITO curto (<200 chars). Geralmente são
-  // títulos de TOC capturados como seção mas que não têm corpo real abaixo.
+  // V15.7: Filtra seções com conteúdo curto. Para markdown deixa mínimo bem
+  // baixo (50 chars) pra preservar todas as seções. Para regex tradicional
+  // mantém 200 chars (evita capturas de TOC sem corpo real).
   const filtered = matches.filter(m => {
     const len = (m.endChar || text.length) - m.startChar;
-    return len >= 200;
+    const minSize = m.isMarkdown ? 50 : 200;
+    return len >= minSize;
   });
 
   // Se acharmos > 200 entradas, provavelmente captura ruim — reduz pelo nível
@@ -31470,10 +31976,18 @@ async function showResourcePreviewModal(item){
         previewContent.appendChild(more);
       }
     } else if(item.resource_type === 'fonte' && r.payload.content){
-      const text = String(r.payload.content).slice(0, 1200);
-      const txtEl = mk('div');txtEl.style.cssText='white-space:pre-wrap;font-size:12px;line-height:1.6';
-      txtEl.textContent = text + (r.payload.content.length > 1200 ? '...' : '');
-      previewContent.appendChild(txtEl);
+      const text = String(r.payload.content).slice(0, 1500);
+      // V15.7+: Renderiza markdown se aplicável
+      if(typeof looksLikeMarkdown === 'function' && looksLikeMarkdown(text)){
+        const renderEl = mk('div', 'md-render');
+        renderEl.style.fontSize = '12.5px';
+        renderEl.innerHTML = renderMarkdown(text + (r.payload.content.length > 1500 ? '\n\n*...continua...*' : ''));
+        previewContent.appendChild(renderEl);
+      } else {
+        const txtEl = mk('div');txtEl.style.cssText='white-space:pre-wrap;font-size:12px;line-height:1.6';
+        txtEl.textContent = text + (r.payload.content.length > 1500 ? '...' : '');
+        previewContent.appendChild(txtEl);
+      }
     } else if(item.resource_type === 'perfil_topico' && r.payload.content){
       const text = String(r.payload.content).slice(0, 1500);
       const txtEl = mk('div');txtEl.style.cssText='white-space:pre-wrap;font-size:12px;line-height:1.6';
