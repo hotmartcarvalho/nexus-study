@@ -5324,6 +5324,183 @@ async function publishSource(sourceData, opts){
   return data;
 }
 
+// V15: Admin marca uma fonte pública como validada (ou desfaz validação).
+// Atualiza shared_resources.moderation_status = 'approved' | 'pending'
+// e moderated_at + moderated_by pra auditoria.
+async function adminMarkResourceValidated(resourceId, validated){
+  if(!supa) throw new Error('Sem conexão Supabase');
+  if(!AUTH.user) throw new Error('Não autenticado');
+  if(typeof isAdminUser !== 'function' || !isAdminUser()){
+    throw new Error('Apenas admin pode validar');
+  }
+  const newStatus = validated === false ? 'pending' : 'approved';
+  const updateObj = {
+    moderation_status: newStatus,
+    moderated_at: validated === false ? null : new Date().toISOString(),
+    moderated_by: validated === false ? null : AUTH.user.id
+  };
+  const { data, error } = await supa
+    .from('shared_resources')
+    .update(updateObj)
+    .eq('id', resourceId)
+    .select()
+    .single();
+  if(error) throw new Error(error.message);
+  return data;
+}
+
+// V15: Admin edita conteúdo de uma fonte pública pra remover ruído antes de validar.
+// Atualiza shared_resources.payload.content + payload.source_name + title se necessário.
+async function adminUpdatePublicResource(resourceId, updates){
+  if(!supa) throw new Error('Sem conexão Supabase');
+  if(typeof isAdminUser !== 'function' || !isAdminUser()){
+    throw new Error('Apenas admin pode editar fontes públicas');
+  }
+  // Busca o recurso atual pra preservar campos não mexidos
+  const { data: current, error: e1 } = await supa
+    .from('shared_resources')
+    .select('*')
+    .eq('id', resourceId)
+    .single();
+  if(e1) throw new Error(e1.message);
+
+  const newPayload = { ...current.payload };
+  if(typeof updates.content === 'string') newPayload.content = updates.content;
+  if(typeof updates.source_name === 'string') newPayload.source_name = updates.source_name;
+
+  const updateObj = { payload: newPayload };
+  if(typeof updates.title === 'string') updateObj.title = updates.title;
+  if(typeof updates.discipline === 'string') updateObj.discipline = updates.discipline;
+  updateObj.last_admin_edit_at = new Date().toISOString();
+  updateObj.last_admin_edit_by = AUTH.user.id;
+
+  const { data, error } = await supa
+    .from('shared_resources')
+    .update(updateObj)
+    .eq('id', resourceId)
+    .select()
+    .single();
+  if(error) throw new Error(error.message);
+  return data;
+}
+
+// V15: Modal de edição de fonte pública (apenas admin). Permite editar título,
+// disciplina e conteúdo pra remover ruído antes de validar.
+function showAdminEditResourceModal(resource){
+  const m = mk('div');
+  m.style.cssText = 'max-width:760px;width:100%';
+
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-bottom:.875rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)';
+  const headIcon = mk('span');headIcon.style.cssText='font-size:22px';
+  headIcon.textContent = '🛠';
+  head.appendChild(headIcon);
+  const headTitle = mk('h2');headTitle.style.cssText='margin:0;font-size:18px;font-weight:700';
+  headTitle.textContent = 'Editar fonte pública (admin)';
+  head.appendChild(headTitle);
+  m.appendChild(head);
+
+  const intro = mk('p','txt2');
+  intro.style.cssText = 'margin:0 0 1rem;font-size:13px;line-height:1.55';
+  intro.textContent = 'Edite o conteúdo pra remover nomes de cursinhos, professores, marcas comerciais, gabaritos isolados ou qualquer ruído. Após salvar, marque como validada se estiver apta.';
+  m.appendChild(intro);
+
+  // Título
+  const lblT = mk('label');lblT.textContent='Título';
+  const inpT = mk('input');inpT.type='text';inpT.value = resource.title || '';
+  m.appendChild(lblT);m.appendChild(inpT);
+
+  // Disciplina
+  const lblD = mk('label');lblD.textContent='Disciplina';lblD.style.marginTop='.75rem';
+  const inpD = mk('input');inpD.type='text';inpD.value = resource.discipline || '';
+  inpD.placeholder='Ex: Direito Constitucional';
+  m.appendChild(lblD);m.appendChild(inpD);
+
+  // Nome interno da fonte (payload.source_name)
+  const lblN = mk('label');lblN.textContent='Nome interno da fonte';lblN.style.marginTop='.75rem';
+  const inpN = mk('input');inpN.type='text';
+  inpN.value = (resource.payload && resource.payload.source_name) || resource.title || '';
+  m.appendChild(lblN);m.appendChild(inpN);
+
+  // Conteúdo
+  const lblC = mk('label');lblC.textContent='Conteúdo';lblC.style.marginTop='.75rem';
+  const cHelp = mk('p','txt3');cHelp.style.cssText='margin:.125rem 0 .375rem;font-size:11.5px;line-height:1.4';
+  cHelp.textContent = `${(resource.payload?.content||'').length.toLocaleString('pt-BR')} caracteres atuais`;
+  m.appendChild(lblC);m.appendChild(cHelp);
+  const ta = mk('textarea');
+  ta.rows = 16;
+  ta.style.cssText = 'font-family:ui-monospace,monospace;font-size:12px;line-height:1.5';
+  ta.value = (resource.payload && resource.payload.content) || '';
+  m.appendChild(ta);
+
+  // Indicador de mudanças
+  const charCount = mk('p','txt3');
+  charCount.style.cssText = 'margin:.25rem 0 0;font-size:11.5px;text-align:right';
+  charCount.textContent = ta.value.length.toLocaleString('pt-BR') + ' caracteres';
+  ta.addEventListener('input', ()=>{
+    charCount.textContent = ta.value.length.toLocaleString('pt-BR') + ' caracteres';
+  });
+  m.appendChild(charCount);
+
+  // Botões
+  const btns = mk('div');
+  btns.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:1rem;padding-top:.75rem;border-top:1px solid var(--border)';
+
+  const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+  cancelBtn.addEventListener('click', closeModal);
+  btns.appendChild(cancelBtn);
+
+  const saveBtn = mkBtn('💾 Salvar edições','btn btn-sm');
+  saveBtn.addEventListener('click', async ()=>{
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Salvando...';
+    try{
+      await adminUpdatePublicResource(resource.id, {
+        title: inpT.value.trim() || resource.title,
+        discipline: inpD.value.trim() || resource.discipline,
+        source_name: inpN.value.trim() || resource.payload?.source_name,
+        content: ta.value
+      });
+      showToast('✓ Edições salvas', 3500);
+      closeModal();
+      if(typeof render === 'function') render();
+    }catch(e){
+      alert('Erro ao salvar: ' + (e.message||e));
+      saveBtn.disabled = false;
+      saveBtn.textContent = '💾 Salvar edições';
+    }
+  });
+  btns.appendChild(saveBtn);
+
+  // Salvar e validar de uma vez (atalho conveniente)
+  const saveValBtn = mkBtn('💾 Salvar + ✓ Validar','btn btn-sm btn-p');
+  saveValBtn.style.cssText = 'background:rgba(70,180,90,.92);color:#fff;border-color:#2d8a4f';
+  saveValBtn.addEventListener('click', async ()=>{
+    saveValBtn.disabled = true;
+    saveValBtn.textContent = 'Processando...';
+    try{
+      await adminUpdatePublicResource(resource.id, {
+        title: inpT.value.trim() || resource.title,
+        discipline: inpD.value.trim() || resource.discipline,
+        source_name: inpN.value.trim() || resource.payload?.source_name,
+        content: ta.value
+      });
+      await adminMarkResourceValidated(resource.id);
+      showToast('✓ Editada e validada', 4000);
+      closeModal();
+      if(typeof render === 'function') render();
+    }catch(e){
+      alert('Erro: ' + (e.message||e));
+      saveValBtn.disabled = false;
+      saveValBtn.textContent = '💾 Salvar + ✓ Validar';
+    }
+  });
+  btns.appendChild(saveValBtn);
+
+  m.appendChild(btns);
+  showModal(m);
+}
+
 // Publica um perfil de tópico como recurso público
 // profileData: {disciplineId, disciplineName, topic, profile (objeto completo do topicProfile)}
 async function publishTopicProfile(profileData, opts){
@@ -7287,6 +7464,9 @@ function canEditUsername(profile){
 const TRAP_TYPES = ['Termo Absoluto','Inversão de Conceito','Generalização Indevida','Omissão Essencial','Troca de Competência','Confusão de Nomenclatura'];
 const TRAP_COLORS = ['#D94B4A','#6C5CE7','#0F6E56','#B07316','#378ADD','#D4537E'];
 const SRC_TYPES = {
+  // V15: 'fonte' é o tipo único usado em todas as importações novas. Os outros
+  // existem só pra retrocompatibilidade com fontes antigas que tinham type específico.
+  fonte:{icon:'📚',label:'Fonte',bg:'var(--accent-light)',color:'var(--accent-text)'},
   livro:{icon:'📕',label:'Livro',bg:'var(--accent-light)',color:'var(--accent-text)'},
   aula:{icon:'🎓',label:'Aula',bg:'var(--blue-light)',color:'var(--blue-text)'},
   relatorio:{icon:'📄',label:'Relatório / PDF',bg:'var(--blue-light)',color:'var(--blue-text)'},
@@ -15073,22 +15253,9 @@ function renderSourceList(wrap){
   // Filtros por metadata (só aparecem se houver diversidade)
   if(DATA.sources.length>=3){
     const filterRow = mk('div','src-filters');
-    // Tipo de material
-    const typesUsed = [...new Set(DATA.sources.map(s=>s.type).filter(Boolean))];
-    if(typesUsed.length>1){
-      const cf = ST.srcFilterType||'all';
-      const sel1 = mk('select');sel1.style.cssText='font-size:12px;padding:4px 8px;max-width:180px';
-      const oAll1 = mk('option');oAll1.value='all';oAll1.textContent='Todos os tipos';
-      if(cf==='all')oAll1.selected=true;
-      sel1.appendChild(oAll1);
-      typesUsed.forEach(t=>{
-        const o = mk('option');o.value=t;o.textContent=(SRC_TYPES[t]?.icon||'')+' '+(SRC_TYPES[t]?.label||t);
-        if(cf===t)o.selected=true;
-        sel1.appendChild(o);
-      });
-      sel1.addEventListener('change',e=>{ST.srcFilterType=e.target.value;ST.srcPage=0;render();});
-      filterRow.appendChild(sel1);
-    }
+    // V15: filtro "Tipo de material" REMOVIDO. Só Tipo de conteúdo importa pra
+    // filtragem útil agora (teoria, lei seca, exercícios, etc).
+
     // Tipo de conteúdo
     const ctsUsed = [...new Set(DATA.sources.map(s=>s.contentType||'misto').filter(Boolean))];
     if(ctsUsed.length>1){
@@ -15109,10 +15276,9 @@ function renderSourceList(wrap){
   }
 
   const list = mk('div','src-list');
-  const srcFilterType = ST.srcFilterType||'all';
+  // V15: srcFilterType removido — só filtramos por contentType agora
   const srcFilterContent = ST.srcFilterContent||'all';
   const filteredSources = DATA.sources.filter(s=>{
-    if(srcFilterType!=='all' && s.type!==srcFilterType)return false;
     if(srcFilterContent!=='all' && (s.contentType||'misto')!==srcFilterContent)return false;
     return true;
   });
@@ -15186,12 +15352,21 @@ function renderSourceList(wrap){
       ctTag.title='Tipo de conteúdo';
       meta.appendChild(ctTag);
     }
-    // Data do material
-    if(src.materialDate){
+    // V15: Data de importação (createdAt) em vez de "data do material" (campo removido)
+    if(src.createdAt){
+      const dt = mk('span','src-meta-tag');
+      const dObj = new Date(src.createdAt);
+      const m = String(dObj.getMonth()+1).padStart(2,'0');
+      const y = dObj.getFullYear();
+      dt.textContent = '📅 '+m+'/'+y;
+      dt.title='Importada em';
+      meta.appendChild(dt);
+    } else if(src.materialDate){
+      // Fallback retrocompatível: fontes antigas que tinham materialDate
       const dt = mk('span','src-meta-tag');
       const [y,m] = src.materialDate.split('-');
       dt.textContent = '📅 '+(m?m+'/'+y:y);
-      dt.title='Data do material';
+      dt.title='Importada em';
       meta.appendChild(dt);
     }
     if(disc){
@@ -15372,287 +15547,61 @@ function renderSourceAdd(wrap){
   }
 
   // ---------- Stage 2: Review organized result (before save) ----------
-  if(is.mode==='review'&&is.organizedResult){
-    const r = is.organizedResult;
-    const reviewCard = mk('div','card');
-    const rh = mk('h3');rh.style.cssText='margin:0 0 .25rem';rh.textContent='✨ Conteúdo organizado';
-    reviewCard.appendChild(rh);
-    const rsub = mk('p','txt2');rsub.style.cssText='margin:0 0 .875rem;font-size:13px';
-    rsub.textContent='Revise os dados abaixo antes de salvar. Você pode editar tudo.';
-    reviewCard.appendChild(rsub);
-
-    // Topics found
-    if(r.topics&&r.topics.length>0){
-      const tLbl = mk('div','section-label');tLbl.textContent=`${r.topics.length} tópicos identificados`;tLbl.style.marginBottom='.375rem';
-      reviewCard.appendChild(tLbl);
-      const pills = mk('div');pills.style.cssText='display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.875rem';
-      r.topics.slice(0,15).forEach(t=>{
-        const p = mk('span','topic-tag');p.textContent=t;p.style.marginBottom='0';
-        pills.appendChild(p);
-      });
-      reviewCard.appendChild(pills);
-    }
-
-    // Classification — show if present
-    // V12: Mostra também badges de nome sugerido e data detectada (visualização clara do que IA inferiu)
-    if(r.classification || r.suggestedName || r.detectedDate){
-      const classRow = mk('div','flex');classRow.style.cssText='gap:8px;flex-wrap:wrap;margin-bottom:.875rem';
-      if(r.classification){
-        const c = r.classification;
-        if(c.disciplineId){
-          const disc = getDiscipline(c.disciplineId);
-          if(disc){
-            const dTag = mk('span','badge');dTag.style.cssText=`background:${disc.color}22;color:${disc.color}`;
-            dTag.innerHTML = `💡 Disciplina: <b>${disc.name}</b>`;
-            classRow.appendChild(dTag);
-          }
-        }
-        if(c.contentType&&CONTENT_TYPES[c.contentType]){
-          const ctTag = mk('span','badge b-info');
-          ctTag.innerHTML = `💡 Tipo: <b>${CONTENT_TYPES[c.contentType].label}</b>`;
-          classRow.appendChild(ctTag);
-        }
-      }
-      if(r.suggestedName){
-        const nTag = mk('span','badge b-info');
-        nTag.innerHTML = `💡 Nome sugerido: <b>${escapeHTML(r.suggestedName.slice(0,40))}${r.suggestedName.length>40?'...':''}</b>`;
-        classRow.appendChild(nTag);
-      }
-      if(r.detectedDate){
-        const dtTag = mk('span','badge b-info');
-        dtTag.innerHTML = `💡 Data detectada: <b>${r.detectedDate}</b>`;
-        classRow.appendChild(dtTag);
-      }
-      if(classRow.children.length>0){
-        const aiHint = mk('p','txt3');aiHint.style.cssText='font-size:11px;margin:0 0 6px;line-height:1.4';
-        aiHint.textContent = 'A IA sugeriu os campos abaixo. Você pode editar tudo antes de salvar.';
-        reviewCard.appendChild(aiHint);
-        reviewCard.appendChild(classRow);
-      }
-    }
-
-    // Editable fields
-    const fLbl = mk('label');fLbl.textContent='Nome da fonte';fLbl.style.marginTop='.5rem';
-    const fInp = mk('input');fInp.type='text';fInp.value=ST.srcInput.name||'';
-    fInp.addEventListener('input',e=>{ST.srcInput.name=e.target.value;});
-    reviewCard.appendChild(fLbl);reviewCard.appendChild(fInp);
-
-    // V14 fix: Tipo de Material — Jean reportou que "sumia". Faltava no review.
-    const tLbl = mk('label');tLbl.textContent='Tipo de material';tLbl.style.marginTop='.75rem';
-    const tSel = mk('select');
-    Object.entries(SRC_TYPES).forEach(([k,v])=>{
-      const o = mk('option');o.value=k;o.textContent=v.icon+' '+v.label;
-      if(ST.srcInput.type===k)o.selected=true;
-      tSel.appendChild(o);
-    });
-    tSel.addEventListener('change',e=>{ST.srcInput.type=e.target.value;});
-    reviewCard.appendChild(tLbl);reviewCard.appendChild(tSel);
-
-    const dLbl = mk('label');dLbl.textContent='Disciplina';dLbl.style.marginTop='.75rem';
-    const dSel = mk('select');
-    DATA.disciplines.forEach(d=>{
-      const o = mk('option');o.value=d.id;o.textContent=d.name;
-      if(ST.srcInput.disciplineId===d.id)o.selected=true;
-      dSel.appendChild(o);
-    });
-    dSel.addEventListener('change',e=>{ST.srcInput.disciplineId=e.target.value;});
-    reviewCard.appendChild(dLbl);reviewCard.appendChild(dSel);
-
-    const ctLbl = mk('label');ctLbl.textContent='Tipo de conteúdo';ctLbl.style.marginTop='.75rem';
-    const ctSel = mk('select');
-    Object.entries(CONTENT_TYPES).forEach(([k,v])=>{
-      const o = mk('option');o.value=k;o.textContent=v.label;
-      if((ST.srcInput.contentType||'misto')===k)o.selected=true;
-      ctSel.appendChild(o);
-    });
-    ctSel.addEventListener('change',e=>{ST.srcInput.contentType=e.target.value;});
-    reviewCard.appendChild(ctLbl);reviewCard.appendChild(ctSel);
-
-    // V14 fix: Data do Material — Jean reportou que "sumia". Faltava no review.
-    const mdLbl = mk('label');mdLbl.textContent='Data do material (ano ou ano/mês)';mdLbl.style.marginTop='.75rem';
-    const mdInp = mk('input');mdInp.type='month';
-    if(ST.srcInput.materialDate)mdInp.value=ST.srcInput.materialDate;
-    mdInp.addEventListener('change',e=>{ST.srcInput.materialDate=e.target.value;});
-    mdInp.addEventListener('mousedown',e=>{
-      if(typeof mdInp.showPicker==='function'){
-        try{ mdInp.showPicker(); e.preventDefault(); }catch(_){}
-      }
-    });
-    reviewCard.appendChild(mdLbl);reviewCard.appendChild(mdInp);
-
-    const cLbl = mk('label');cLbl.textContent='Conteúdo organizado (edite se precisar)';cLbl.style.marginTop='.75rem';
-    const cTa = mk('textarea');cTa.rows=14;cTa.style.fontFamily='ui-monospace,monospace';cTa.style.fontSize='12.5px';
-    cTa.value=ST.srcInput.content||r.organized||'';
-    cTa.addEventListener('input',e=>{ST.srcInput.content=e.target.value;});
-    reviewCard.appendChild(cLbl);reviewCard.appendChild(cTa);
-
-    // V14 final3: checkbox pra compartilhar com a comunidade (opt-in).
-    // Reduz custo coletivo de IA: depois de organizado, futuros usuários com mesmo PDF
-    // não precisam reprocessar. Default LIGADO se a IA processou (não veio do catálogo).
-    const fromCommunity = !!(r && r.fromCommunity);
-    let shareWithCommunity = !fromCommunity; // default ligado se processou via IA
-    if(!fromCommunity){
-      const shareWrap = mk('div');
-      shareWrap.style.cssText = 'margin:.875rem 0 .25rem;padding:.625rem .75rem;background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.18);border-radius:6px;display:flex;align-items:flex-start;gap:.5rem;cursor:pointer';
-      const shareCb = mk('input');shareCb.type='checkbox';shareCb.checked=true;shareCb.style.cssText='margin-top:3px;cursor:pointer';
-      const shareTxt = mk('div');
-      shareTxt.style.cssText = 'font-size:12.5px;line-height:1.45;flex:1';
-      shareTxt.innerHTML = `<b>📚 Compartilhar com a comunidade</b><br><span style="color:var(--text2);font-size:11.5px">Permite que outros usuários encontrem essa fonte na página Descobrir e reutilizem sem custo de IA. Reduz consumo coletivo. Anônimo.</span>`;
-      shareCb.addEventListener('change',e=>{shareWithCommunity = e.target.checked;});
-      shareWrap.addEventListener('click',e=>{
-        if(e.target !== shareCb){ shareCb.checked = !shareCb.checked; shareWithCommunity = shareCb.checked; }
-      });
-      shareWrap.appendChild(shareCb);shareWrap.appendChild(shareTxt);
-      reviewCard.appendChild(shareWrap);
-    } else {
-      const fromComMsg = mk('div');
-      fromComMsg.style.cssText = 'margin:.875rem 0 .25rem;padding:.625rem .75rem;background:rgba(70,180,90,.08);border:1px solid rgba(70,180,90,.25);border-radius:6px;font-size:12.5px;line-height:1.45';
-      fromComMsg.innerHTML = '✓ <b>Reutilizado da comunidade</b> — sem custo de IA. Outros usuários já organizaram esse material.';
-      reviewCard.appendChild(fromComMsg);
-    }
-
-    const btnRow = mk('div','flex');btnRow.style.cssText='gap:8px;margin-top:1rem;flex-wrap:wrap';
-    const confirmBtn = mkBtn('✓ Salvar fonte','btn btn-p');
-    confirmBtn.addEventListener('click',()=>{
-      const newSrc = {
-        id:Date.now()+''+Math.random(),
-        name:(ST.srcInput.name||'Nova fonte').trim(),
-        type:ST.srcInput.type||'relatorio',
-        contentType:ST.srcInput.contentType||'misto',
-        materialDate:ST.srcInput.materialDate||null,
-        disciplineId:ST.srcInput.disciplineId,
-        content:(ST.srcInput.content||r.organized||'').trim(),
-        topics:r.topics||[],
-        createdAt:Date.now(),
-        organized:true
-      };
-      // Anexa metadados de PDF se origem foi upload
-      if(ST.srcImportState && ST.srcImportState.pdfMeta){
-        newSrc.sourceFormat = 'pdf';
-        newSrc.pdfMeta = {
-          fileName: ST.srcImportState.pdfMeta.fileName,
-          pageCount: ST.srcImportState.pdfMeta.pageCount,
-          fileSize: ST.srcImportState.pdfMeta.fileSize,
-          title: ST.srcImportState.pdfMeta.title || null,
-          author: ST.srcImportState.pdfMeta.author || null
-        };
-        // V5 Fase B: salva TOC se foi detectado
-        if(ST.srcImportState.pdfMeta.toc && ST.srcImportState.pdfMeta.toc.length > 0){
-          newSrc.toc = ST.srcImportState.pdfMeta.toc;
-        }
-      }
-      DATA.sources.push(newSrc);
-      // V12 fix: garante que a disciplina da fonte fique ATIVA
-      if(newSrc.disciplineId){
-        const disc = DATA.disciplines.find(d=>d.id===newSrc.disciplineId);
-        if(disc && !disc.active){ disc.active = true; }
-      }
-      // V14: Ativa a flag is_active da própria fonte
-      newSrc.active = true;
-      try{ if(DATA.preloadedQuestions) DATA.preloadedQuestions = {}; }catch(_){}
-      save();
-      ST.srcInput={name:'',type:'relatorio',contentType:'misto',content:'',disciplineId:ST.srcInput.disciplineId};
-      ST.srcImportState = {mode:'saved',justSavedId:newSrc.id,organizing:false,pdfLoading:false,organizedResult:null,pdfMeta:null};
-      // V12: Pré-carrega 1 questão em background
-      if(typeof preloadQuestionForSource === 'function'){
-        preloadQuestionForSource(newSrc).catch(()=>{});
-      }
-
-      // V14 final: Re-indexação automática com IA — em background, não bloqueia.
-      if(newSrc.content && newSrc.content.length > 1500){
-        setTimeout(()=>{
-          regenerateTocWithAI(newSrc).then(newToc=>{
-            if(newToc && newToc.length > 0){
-              newSrc.toc = newToc;
-              save();
-              showToast(`✓ Índice criado: ${newToc.length} entradas`, 3500);
-            }
-          }).catch(err=>{
-            console.warn('[auto-reindex] falhou (silencioso):', err.message);
-            try{
-              const fallback = detectTOCHeuristic(newSrc.content);
-              if(fallback && fallback.length >= 3 && (!newSrc.toc || newSrc.toc.length === 0)){
-                newSrc.toc = fallback;
-                save();
-              }
-            }catch(_){}
-          });
-        }, 1500);
-      }
-
-      // V14 final3: Publica no catálogo comunitário se usuário consentiu (opt-in).
-      // Roda em background pra não bloquear. Inclui o fingerprint pra dedup futura.
-      // Reduz custo coletivo de IA: futuras importações do mesmo PDF não pagam IA.
-      if(shareWithCommunity && !fromCommunity && newSrc.content && newSrc.content.length > 200){
-        setTimeout(async ()=>{
-          try{
-            // Calcula fingerprint do texto BRUTO original (não do organized)
-            // pra dedup correto.
-            const rawForFp = (ST.srcImportState && ST.srcImportState.rawText) || newSrc.content;
-            const fp = contentFingerprint(rawForFp);
-            const published = await publishSource(newSrc, {
-              title: newSrc.name,
-              description: '',
-              discipline: newSrc.disciplineId
-                ? (DATA.disciplines.find(d=>d.id===newSrc.disciplineId)?.name || '')
-                : '',
-              tags: newSrc.topics || [],
-              contentFingerprint: fp
-            });
-            if(published){
-              console.log('[auto-publish] ✓ publicado no catálogo:', published.id);
-              newSrc.publishedResourceId = published.id;
-              save();
-            }
-          }catch(e){
-            console.warn('[auto-publish] falhou (silencioso):', e.message);
-          }
-        }, 3000);
-      }
-
-      render();
-    });
-    btnRow.appendChild(confirmBtn);
-    const cancel = mkBtn('Descartar','btn btn-sm');
-    cancel.addEventListener('click',()=>{
-      if(confirm('Descartar o conteúdo organizado?')){
-        ST.srcImportState = {mode:'form',organizing:false,pdfLoading:false,organizedResult:null};
-        render();
-      }
-    });
-    btnRow.appendChild(cancel);
-    reviewCard.appendChild(btnRow);
-    wrap.appendChild(reviewCard);
-    return wrap;
-  }
+  // V15: modo "review" REMOVIDO. Sem IA na importação, não há mais
+  // o que revisar separadamente — o usuário edita direto no form principal.
 
   // ---------- Stage 3: Main form ----------
   const addCard = mk('div','card');
+
+  // V15 premium: cabeçalho com hierarquia visual (título + subtítulo)
   const addH = mk('h3');
-  // V14 redesign: título muda de acordo com estado (Jean reportou que ficava
-  // estranho ver "Adicionar fonte" enquanto IA já estava processando).
-  if(is.pdfLoading || is.organizing){
-    addH.textContent = 'Processando sua fonte...';
+  addH.style.cssText = 'margin:0 0 .25rem;font-size:18px;font-weight:700;letter-spacing:-.01em';
+  if(is.pdfLoading){
+    addH.textContent = 'Lendo seu PDF...';
   } else {
     addH.textContent = 'Adicionar fonte';
   }
-  addH.style.marginBottom='.5rem';
   addCard.appendChild(addH);
 
-  // V14 redesign: helpBox SÓ aparece quando NÃO estiver carregando — assim o
-  // usuário não fica vendo "3 jeitos de adicionar" enquanto a IA já está fazendo.
-  if(!is.pdfLoading && !is.organizing){
-    // V12: Help mais didático — exemplos visuais e fluxo claro.
-    const helpBox = mk('div');helpBox.style.cssText='margin:0 0 1rem;padding:.75rem .875rem;background:var(--surface2);border-radius:8px;font-size:12.5px;line-height:1.55';
+  if(!is.pdfLoading){
+    const subTitle = mk('p','txt2');
+    subTitle.style.cssText = 'margin:0 0 1.125rem;font-size:13.5px;line-height:1.5';
+    subTitle.textContent = 'Adicione um material de estudo que você vai usar pra criar questões, flashcards e revisar conteúdo.';
+    addCard.appendChild(subTitle);
+
+    // V15 premium: helpBox redesenhado com 2 caminhos claros (PDF / Comunidade / Colar)
+    // Sem menção a IA — não usamos mais.
+    const helpBox = mk('div');
+    helpBox.style.cssText = 'margin:0 0 1.25rem;padding:1rem 1.125rem;background:linear-gradient(135deg,var(--surface2),var(--surface));border:1px solid var(--border);border-left:3px solid var(--gralia-purple);border-radius:10px;font-size:12.5px;line-height:1.55';
     helpBox.innerHTML = `
-      <div style="font-weight:700;margin-bottom:6px;color:var(--text)">3 jeitos de adicionar (escolha qualquer um):</div>
-      <div style="display:flex;flex-direction:column;gap:5px;color:var(--text2)">
-        <div>📄 <b>Subir PDF</b> — apostila, lei, manual. <b style="color:var(--accent-text)">A IA já limpa, estrutura e classifica automaticamente</b></div>
-        <div>📚 <b>Importar da comunidade</b> — fontes públicas que outros usuários publicaram</div>
-        <div>📝 <b>Colar texto</b> — depois clique em "Organizar com IA" se quiser limpar</div>
+      <div style="font-weight:700;margin-bottom:8px;color:var(--text);font-size:13px;display:flex;align-items:center;gap:6px">
+        <span>Você tem 3 caminhos:</span>
       </div>
-      <div style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--border);font-size:11.5px;color:var(--text3)">
-        <b>Dica:</b> A IA remove ruído (cabeçalhos, marcas d'água, "professor X"), detecta data e classifica disciplina automaticamente.
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:.625rem;align-items:flex-start">
+          <span style="font-size:18px;line-height:1.1;flex-shrink:0">📄</span>
+          <div style="flex:1">
+            <b style="color:var(--text)">Subir PDF</b>
+            <span style="color:var(--text2)"> — extrai o texto do arquivo e coloca aqui no formulário pra você revisar.</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:.625rem;align-items:flex-start">
+          <span style="font-size:18px;line-height:1.1;flex-shrink:0">📝</span>
+          <div style="flex:1">
+            <b style="color:var(--text)">Colar texto</b>
+            <span style="color:var(--text2)"> — copia de uma apostila digital, NotebookLM, transcrição de aula etc. e cola no campo conteúdo.</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:.625rem;align-items:flex-start">
+          <span style="font-size:18px;line-height:1.1;flex-shrink:0">🌐</span>
+          <div style="flex:1">
+            <b style="color:var(--text)">Importar da comunidade</b>
+            <span style="color:var(--text2)"> — escolha entre as fontes que outros usuários já compartilharam. Não duplica esforço.</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);font-size:11.5px;color:var(--text3);line-height:1.5">
+        Suas fontes ficam disponíveis para outros assinantes. Antes de aparecerem com selo de validação, passam por revisão.
       </div>`;
     addCard.appendChild(helpBox);
   }
@@ -15740,192 +15689,15 @@ function renderSourceAdd(wrap){
       const tocMsg = ST.srcImportState.pdfMeta.toc ? ` · ${ST.srcImportState.pdfMeta.toc.length} seções detectadas` : '';
       showToast('✓ PDF processado · ' + result.pageCount + ' páginas · ' + result.text.length.toLocaleString('pt-BR') + ' caracteres' + tocMsg);
 
-      // V14 redesign: AUTOMATICAMENTE roda IA pra organizar conteúdo após PDF
-      // e PREENCHER TODOS OS CAMPOS do form (nome, disciplina, tipo, conteúdo, data).
-      // Se a disciplina detectada não existir, CRIA UMA NOVA automaticamente.
-      // Usuário só revisa e salva.
-      if(result.text.length > 200){
-        ST.srcImportState.organizing = true;
-        render();
-        // Timeout de 180s — apostilas grandes processam em múltiplos chunks
-        let aiRes = null;
-        let aiFailed = false;
-        let aiErrMsg = null;
-        try{
-          console.log('[import] iniciando smartOrganizeContent. Texto bruto:', result.text.length, 'chars');
-          aiRes = await Promise.race([
-            smartOrganizeContent(result.text, {
-              classify: true,
-              onProgress: (p)=>{
-                ST.srcImportState.organizeProgress = p;
-                // Atualiza status, barra e ETA sem re-render full
-                const statusEl = document.getElementById('ai-organize-status');
-                if(statusEl) statusEl.textContent = p.label;
-                const barEl = document.getElementById('ai-organize-bar');
-                if(barEl && p.total > 0){
-                  const pct = Math.round((p.current / p.total) * 100);
-                  barEl.style.width = pct + '%';
-                }
-                const etaEl = document.getElementById('ai-organize-eta');
-                if(etaEl){
-                  if(p.etaSeconds && p.etaSeconds > 0){
-                    etaEl.textContent = `≈ ${formatEtaSeconds(p.etaSeconds)} restante`;
-                  } else if(p.current >= p.total && p.total > 0){
-                    etaEl.textContent = 'finalizando…';
-                  } else {
-                    etaEl.textContent = 'calculando tempo restante…';
-                  }
-                }
-              }
-            }),
-            new Promise((_, rej) => setTimeout(()=>rej(new Error('timeout 480s')), 480000))
-          ]);
-          console.log('[import] smartOrganizeContent retornou:', aiRes ? 'objeto' : 'null', aiRes);
-        }catch(aiErr){
-          aiFailed = true;
-          aiErrMsg = aiErr.message || String(aiErr);
-          console.error('[import] IA falhou:', aiErr);
-        }
-
-        if(aiRes && !aiFailed){
-          // 1. NOME DA FONTE (sempre — sobrescreve mesmo)
-          if(aiRes.suggestedName){
-            ST.srcInput.name = String(aiRes.suggestedName).slice(0, 80);
-            console.log('[import] nome preenchido:', ST.srcInput.name);
-          } else {
-            console.warn('[import] IA não retornou suggestedName');
-          }
-
-          // 2. CONTEÚDO ORGANIZADO
-          if(aiRes.organized && aiRes.organized.length > 100){
-            ST.srcInput.content = aiRes.organized;
-            console.log('[import] conteúdo organizado:', aiRes.organized.length, 'chars');
-          } else {
-            console.warn('[import] IA não retornou organized adequado, mantendo texto cru');
-            ST.srcInput.content = result.text;
-          }
-
-          // 3. DISCIPLINA — se não existe, CRIA uma nova
-          if(aiRes.disciplineName){
-            const detectedName = String(aiRes.disciplineName).trim();
-            const normalize = s => (s||'').toLowerCase()
-              .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
-            const detectedNorm = normalize(detectedName);
-            let existingDisc = (DATA.disciplines||[]).find(d =>
-              normalize(d.name) === detectedNorm
-            );
-            if(!existingDisc && detectedName.length >= 3){
-              const used = DATA.disciplines.map(d=>d.color);
-              const palette = (typeof DISC_COLORS !== 'undefined' && Array.isArray(DISC_COLORS))
-                ? DISC_COLORS
-                : ['#5b9bd5','#ed7d31','#70ad47','#ffc000','#7030a0','#c00000','#0070c0'];
-              const free = palette.find(c=>!used.includes(c)) || palette[DATA.disciplines.length%palette.length];
-              existingDisc = {
-                id: 'disc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
-                name: detectedName,
-                color: free,
-                active: true,
-                createdAt: Date.now(),
-                autoCreated: true
-              };
-              DATA.disciplines.push(existingDisc);
-              showToast(`+ Disciplina criada: ${detectedName}`, 4500);
-              console.log('[import] disciplina nova criada:', detectedName);
-            } else if(existingDisc){
-              console.log('[import] disciplina existente usada:', existingDisc.name);
-            }
-            if(existingDisc){
-              if(!existingDisc.active) existingDisc.active = true;
-              ST.srcInput.disciplineId = existingDisc.id;
-            }
-          } else {
-            console.warn('[import] IA não retornou disciplineName');
-          }
-
-          // 4. TIPO DE MATERIAL (livro, apostila, aula, etc)
-          if(aiRes.materialType && SRC_TYPES[aiRes.materialType]){
-            ST.srcInput.type = aiRes.materialType;
-            console.log('[import] tipo de material:', aiRes.materialType);
-          } else {
-            // V14 final: se IA não escolheu, default 'livro' (texto longo didático)
-            ST.srcInput.type = 'livro';
-            console.warn('[import] IA não retornou materialType válido, usando "livro"');
-          }
-
-          // 5. TIPO DE CONTEÚDO
-          if(aiRes.contentType && CONTENT_TYPES[aiRes.contentType]){
-            // V14 fix: se IA disse "misto" mas o material é livro/apostila/aula
-            // (texto didático longo), forçar pra "teoria". Apostila normalmente é
-            // teoria + alguns exercícios = essência é teoria.
-            const materialIsTextbook = ['livro','apostila','aula','slides'].includes(ST.srcInput.type);
-            if(aiRes.contentType === 'misto' && materialIsTextbook){
-              ST.srcInput.contentType = 'teoria';
-              console.log('[import] IA retornou "misto" mas material é didático → forçado pra "teoria"');
-            } else {
-              ST.srcInput.contentType = aiRes.contentType;
-              console.log('[import] tipo de conteúdo:', aiRes.contentType);
-            }
-          } else {
-            // V14 final: se IA não escolheu, default 'teoria' (PDFs costumam ser teoria)
-            ST.srcInput.contentType = 'teoria';
-            console.warn('[import] IA não retornou contentType válido, usando "teoria"');
-          }
-
-          // 6. DATA DO MATERIAL — IA detectou ou data atual
-          if(aiRes.detectedDate){
-            const dm = String(aiRes.detectedDate).match(/^(\d{4})-(\d{2})/);
-            if(dm){
-              ST.srcInput.materialDate = `${dm[1]}-${dm[2]}`;
-              console.log('[import] data detectada:', ST.srcInput.materialDate);
-            }
-          }
-          if(!ST.srcInput.materialDate){
-            // V14 final (Jean pediu): se não detectou, usa mês/ano ATUAL
-            const now = new Date();
-            const yyyy = now.getFullYear();
-            const mm = String(now.getMonth()+1).padStart(2,'0');
-            ST.srcInput.materialDate = `${yyyy}-${mm}`;
-            console.log('[import] data padrão (mês atual):', ST.srcInput.materialDate);
-          }
-
-          save();
-        } else {
-          // IA falhou COMPLETAMENTE — mostra erro VISÍVEL e usa defaults inteligentes
-          console.error('[import] IA falhou ou retornou null. Usando defaults.');
-          // Mantém o texto cru no conteúdo (usuário precisa editar manualmente)
-          ST.srcInput.content = result.text;
-          // Default: livro + teoria + data atual
-          ST.srcInput.type = 'livro';
-          ST.srcInput.contentType = 'teoria';
-          if(!ST.srcInput.materialDate){
-            const now = new Date();
-            ST.srcInput.materialDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-          }
-          // Mostra erro claro pro usuário com instrução
-          const errDetail = aiErrMsg ? '\n\nDetalhe técnico: ' + aiErrMsg : '';
-          alert('⚠ A IA não conseguiu organizar o conteúdo automaticamente.\n\nO texto cru do PDF foi colocado no campo "Conteúdo". Os outros campos foram preenchidos com valores padrão.\n\nVocê pode:\n1. Editar manualmente os campos\n2. Ou cancelar e tentar de novo (a IA pode estar instável)' + errDetail);
-          save();
-        }
-
-        // SEMPRE termina o estado organizing e vai pra review
-        ST.srcImportState = {
-          mode: 'review',
-          organizing: false,
-          pdfLoading: false,
-          organizedResult: aiRes,
-          pdfMeta: ST.srcImportState.pdfMeta
-        };
-      } else {
-        // Texto curto — não tenta organizar, vai direto pro review
-        ST.srcImportState = {
-          mode: 'review',
-          organizing: false,
-          pdfLoading: false,
-          organizedResult: null,
-          pdfMeta: ST.srcImportState.pdfMeta
-        };
+      // V15: Sem IA. Apenas extrai o texto e preenche o campo conteúdo.
+      // Usuário revisa, edita o que quiser, escolhe nome/disciplina/tipo de conteúdo manualmente.
+      ST.srcInput.content = result.text;
+      // Sugere nome a partir do nome do arquivo (sem extensão e limpo)
+      if(!ST.srcInput.name && result.fileName){
+        const base = result.fileName.replace(/\.pdf$/i, '').replace(/[_-]+/g, ' ').trim();
+        if(base.length >= 3) ST.srcInput.name = base.slice(0, 80);
       }
-
+      save();
       render();
     }catch(err){
       ST.srcImportState.pdfLoading = false;
@@ -16022,74 +15794,35 @@ function renderSourceAdd(wrap){
   if(is.pdfLoading) pdfLbl.classList.add('loading');
   quickRow.appendChild(pdfLbl);
 
-  // V14: Botão "Organizar com IA" agora aparece SÓ se o usuário já tem texto colado manualmente.
-  // Pra PDF, IA roda automaticamente após extração — não precisa de clique.
-  // Antes: aparecia sempre, e usuário precisava clicar manualmente. Agora: só pra texto colado.
-  const hasContent = (ST.srcInput.content||'').trim().length>100;
-  const hasPdfLoaded = ST.srcImportState.pdfMeta && ST.srcImportState.pdfMeta.fileName;
-  // Só mostra botão se houver texto E NÃO foi PDF (PDF organiza sozinho)
-  if(hasContent && !hasPdfLoaded){
-    const smartBtn = mk('button','smart-import-btn');
-    smartBtn.innerHTML = '<span class="sib-icon">✨</span><span class="sib-body"><b>Organizar texto colado com IA</b><span>Limpa, estrutura e classifica em 1 clique (grátis)</span></span>';
-    smartBtn.addEventListener('click',async()=>{
-      ST.srcImportState.organizing = true;render();
-      try{
-        const res = await smartOrganizeContent(ST.srcInput.content,{classify:true});
-        if(res.classification){
-          if(res.classification.disciplineId&&DATA.disciplines.find(d=>d.id===res.classification.disciplineId)){
-            ST.srcInput.disciplineId = res.classification.disciplineId;
-          }
-          if(res.classification.contentType&&CONTENT_TYPES[res.classification.contentType]){
-            ST.srcInput.contentType = res.classification.contentType;
-          }
-        }
-        if(res.suggestedName && (!ST.srcInput.name || ST.srcInput.name.trim() === '')){
-          ST.srcInput.name = String(res.suggestedName).slice(0,80);
-        }
-        if(res.detectedDate && !ST.srcInput.materialDate){
-          const dateMatch = String(res.detectedDate).match(/^(\d{4})-(\d{2})/);
-          if(dateMatch){
-            ST.srcInput.materialDate = `${dateMatch[1]}-${dateMatch[2]}`;
-          }
-        }
-        ST.srcInput.content = res.organized||ST.srcInput.content;
-        ST.srcImportState = {mode:'review',organizing:false,pdfLoading:false,organizedResult:res};
-        render();
-      }catch(err){
-        ST.srcImportState.organizing = false;
-        alert('Erro ao organizar: '+(err.message||err));
-        render();
-      }
-    });
-    quickRow.appendChild(smartBtn);
-  }
-  // V14 redesign: quickRow (upload PDF + organize) só aparece se NÃO estiver carregando
-  if(!is.pdfLoading && !is.organizing){
+  // V15: Botão "Organizar com IA" REMOVIDO. Importação não usa mais IA — só extração
+  // de texto. Usuário cola/edita manualmente.
+
+  // V14 redesign: quickRow (upload PDF) só aparece se NÃO estiver carregando
+  if(!is.pdfLoading){
     addCard.appendChild(quickRow);
   }
 
-  // V14 redesign: card grande e claro durante carregamento de PDF (Jean reportou
-  // que ficava confuso com indicador pequeno + form vazio à mostra).
+  // V15 premium: card durante leitura do PDF. Sem "Etapa 1 de 2" (não há mais etapa 2 = IA)
   if(is.pdfLoading){
     const stateCard = mk('div');
     stateCard.style.cssText = 'padding:1.75rem 1.5rem;background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface));border:1px solid rgba(128,66,250,.18);border-left:3px solid var(--gralia-purple);border-radius:10px;margin:1rem 0;text-align:center';
     const ico = mk('div');
-    ico.style.cssText = 'font-size:32px;line-height:1;margin-bottom:.5rem';
+    ico.style.cssText = 'font-size:32px;line-height:1;margin-bottom:.5rem;animation:pulse-soft 1.6s ease-in-out infinite';
     ico.textContent = '📄';
     stateCard.appendChild(ico);
     const ttl = mk('h3');
     ttl.style.cssText = 'margin:0 0 .375rem;font-size:15px;font-weight:700';
-    ttl.textContent = 'Lendo o PDF...';
+    ttl.textContent = 'Lendo seu PDF...';
     stateCard.appendChild(ttl);
     const sub = mk('p','txt2');
     sub.id = 'pdf-progress-txt';
     sub.style.cssText = 'margin:0;font-size:12.5px';
-    sub.textContent = is.pdfProgress&&is.pdfProgress.total>0 ? `Página ${is.pdfProgress.current} de ${is.pdfProgress.total}` : 'Carregando bibliotecas de PDF...';
+    sub.textContent = is.pdfProgress&&is.pdfProgress.total>0 ? `Página ${is.pdfProgress.current} de ${is.pdfProgress.total}` : 'Carregando bibliotecas de leitura...';
     stateCard.appendChild(sub);
-    const stepLbl = mk('p','txt3');
-    stepLbl.style.cssText = 'margin:.625rem 0 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px';
-    stepLbl.textContent = '⏳ Etapa 1 de 2';
-    stateCard.appendChild(stepLbl);
+    const hint = mk('p','txt3');
+    hint.style.cssText = 'margin:.625rem 0 0;font-size:11.5px;line-height:1.5;color:var(--text3)';
+    hint.textContent = 'O texto vai ser extraído e colocado no campo Conteúdo. Você poderá editar antes de salvar.';
+    stateCard.appendChild(hint);
     addCard.appendChild(stateCard);
   }
 
@@ -16193,95 +15926,25 @@ function renderSourceAdd(wrap){
     },0);
   }
 
-  if(is.organizing){
-    // V14 redesign: card visual claro pra indicar IA organizando (etapa 2)
-    // Inclui barra de progresso + ETA dinâmico + status atualizável
-    const orgCard = mk('div');
-    orgCard.style.cssText = 'padding:1.75rem 1.5rem;background:linear-gradient(135deg,rgba(128,66,250,.06),var(--surface));border:1px solid rgba(128,66,250,.20);border-left:3px solid var(--gralia-purple);border-radius:10px;margin:1rem 0;text-align:center';
-    const ico = mk('div');
-    ico.style.cssText = 'font-size:32px;line-height:1;margin-bottom:.5rem;animation:pulse-soft 1.6s ease-in-out infinite';
-    ico.textContent = '✨';
-    orgCard.appendChild(ico);
-    const ttl = mk('h3');
-    ttl.style.cssText = 'margin:0 0 .375rem;font-size:15px;font-weight:700';
-    ttl.textContent = 'IA organizando o conteúdo...';
-    orgCard.appendChild(ttl);
+  // V15: card "IA organizando" REMOVIDO (sem IA na importação)
 
-    // Status principal — atualizado pelo onProgress
-    const statusEl = mk('p','txt2');
-    statusEl.id = 'ai-organize-status';
-    statusEl.style.cssText = 'margin:.5rem 0 0;font-size:13px;line-height:1.5;color:var(--gralia-purple);font-weight:600';
-    const initialStatus = is.organizeProgress ? is.organizeProgress.label : 'Identificando disciplina, tipo, data e tópicos...';
-    statusEl.textContent = initialStatus;
-    orgCard.appendChild(statusEl);
-
-    // Barra de progresso (V14: feedback visual concreto)
-    const barWrap = mk('div');
-    barWrap.style.cssText = 'margin:.875rem auto 0;width:100%;max-width:340px;height:6px;background:rgba(128,66,250,.15);border-radius:6px;overflow:hidden';
-    const bar = mk('div');
-    bar.id = 'ai-organize-bar';
-    const initialPct = is.organizeProgress && is.organizeProgress.total > 0
-      ? Math.round((is.organizeProgress.current / is.organizeProgress.total) * 100)
-      : 0;
-    bar.style.cssText = `height:100%;width:${initialPct}%;background:linear-gradient(90deg,#8042fa,#a06aff);border-radius:6px;transition:width .4s ease`;
-    barWrap.appendChild(bar);
-    orgCard.appendChild(barWrap);
-
-    // ETA — tempo restante estimado
-    const etaEl = mk('p','txt3');
-    etaEl.id = 'ai-organize-eta';
-    etaEl.style.cssText = 'margin:.5rem 0 0;font-size:12px;line-height:1.4';
-    const initialEta = is.organizeProgress && is.organizeProgress.etaSeconds
-      ? `≈ ${formatEtaSeconds(is.organizeProgress.etaSeconds)} restante`
-      : 'calculando tempo restante…';
-    etaEl.textContent = initialEta;
-    orgCard.appendChild(etaEl);
-
-    const sub = mk('p','txt3');
-    sub.style.cssText = 'margin:.625rem 0 0;font-size:11.5px;line-height:1.5';
-    sub.innerHTML = 'Processamento em paralelo (8 partes simultâneas). Não feche essa aba.';
-    orgCard.appendChild(sub);
-
-    const stepLbl = mk('p','txt3');
-    stepLbl.style.cssText = 'margin:.625rem 0 0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px';
-    stepLbl.textContent = '⏳ Etapa 2 de 2';
-    orgCard.appendChild(stepLbl);
-    addCard.appendChild(orgCard);
-  }
-
-  // V14 redesign: SE estiver carregando PDF ou IA organizando, ESCONDE TODOS os campos
-  // do form (Jean reportou várias vezes: campos vazios não podem ficar à mostra
-  // enquanto a IA vai preenchê-los). Volta a aparecer JÁ PREENCHIDO depois.
-  // Único caso: também pulamos o form se o estado é 'review' (já tratado acima com `return wrap`),
-  // mas como "review" já retornou no início, aqui consideramos só pdfLoading ou organizing.
-  // Quando ambos são false: form aparece, podendo estar preenchido ou em branco.
-  // Variável saveBtn é referenciada nos handlers de input — declaramos antes pra evitar TDZ.
   let saveBtn;
   const canSave = () => ST.srcInput.name.trim()&&ST.srcInput.content.trim().length>20;
 
-  if(!is.pdfLoading && !is.organizing){
-    // Form fields
-    const row1 = mk('div','grid g2');row1.style.cssText='margin-top:1rem;margin-bottom:.75rem';
-    const col1 = mk('div');
+  if(!is.pdfLoading){
+    // V15: Form simplificado. Sem "Tipo de material" (era redundante com Tipo de Conteúdo)
+    // e sem "Data do material" (data é sempre a de importação, automática).
+
+    // Nome da fonte — em linha cheia (não mais grid 2 colunas)
     const lblN = mk('label');lblN.textContent='Nome da fonte';
-    const inpN = mk('input');inpN.type='text';inpN.placeholder='Ex: Áudio - Contrainteligência';
+    lblN.style.marginTop='1rem';
+    const inpN = mk('input');inpN.type='text';
+    inpN.placeholder='Ex: Lei 8.112 - Artigos sobre licenças';
     inpN.value=ST.srcInput.name;
     inpN.addEventListener('input',e=>{ST.srcInput.name=e.target.value;if(saveBtn)saveBtn.disabled=!canSave();});
-    col1.appendChild(lblN);col1.appendChild(inpN);
-    const col2 = mk('div');
-    const lblT = mk('label');lblT.textContent='Tipo de material';
-    const sel = mk('select');
-    Object.entries(SRC_TYPES).forEach(([k,v])=>{
-      const o = mk('option');o.value=k;o.textContent=v.icon+' '+v.label;
-      if(ST.srcInput.type===k)o.selected=true;
-      sel.appendChild(o);
-    });
-    sel.addEventListener('change',e=>{ST.srcInput.type=e.target.value;});
-    col2.appendChild(lblT);col2.appendChild(sel);
-    row1.appendChild(col1);row1.appendChild(col2);
-    addCard.appendChild(row1);
+    addCard.appendChild(lblN);addCard.appendChild(inpN);
 
-    const lblD = mk('label');lblD.textContent='Disciplina';
+    const lblD = mk('label');lblD.textContent='Disciplina';lblD.style.marginTop='.75rem';
     const selD = mk('select');
     DATA.disciplines.forEach(d=>{
       const o = mk('option');o.value=d.id;o.textContent=d.name;
@@ -16291,7 +15954,7 @@ function renderSourceAdd(wrap){
     selD.addEventListener('change',e=>{ST.srcInput.disciplineId=e.target.value;});
     addCard.appendChild(lblD);addCard.appendChild(selD);
 
-    const lblCT = mk('label');lblCT.textContent='Tipo de conteúdo (ajusta o estilo das questões geradas)';lblCT.style.marginTop='.75rem';
+    const lblCT = mk('label');lblCT.textContent='Tipo de conteúdo';lblCT.style.marginTop='.75rem';
     const selCT = mk('select');
     Object.entries(CONTENT_TYPES).forEach(([k,v])=>{
       const o = mk('option');o.value=k;o.textContent=v.label+' — '+v.desc;
@@ -16301,27 +15964,15 @@ function renderSourceAdd(wrap){
     selCT.addEventListener('change',e=>{ST.srcInput.contentType=e.target.value;});
     addCard.appendChild(lblCT);addCard.appendChild(selCT);
 
-    // Data do material — ajuda a identificar material desatualizado
-    const lblDate = mk('label');lblDate.textContent='Data do material (ano ou ano/mês — opcional)';lblDate.style.marginTop='.75rem';
-    const inpDate = mk('input');inpDate.type='month';
-    if(ST.srcInput.materialDate)inpDate.value=ST.srcInput.materialDate;
-    inpDate.addEventListener('change',e=>{ST.srcInput.materialDate=e.target.value;});
-    // V14: Click em qualquer lugar do input abre o picker (não só no ícone)
-    inpDate.addEventListener('mousedown', e=>{
-      // Só intercepta se NÃO clicou no calendário-icon nativo (que já funciona)
-      // showPicker() é a API moderna pra forçar abertura do picker.
-      if(typeof inpDate.showPicker === 'function'){
-        try{ inpDate.showPicker(); e.preventDefault(); }catch(_){}
-      }
-    });
-    addCard.appendChild(lblDate);addCard.appendChild(inpDate);
-
     const lblC = mk('label');lblC.textContent='Conteúdo';lblC.style.marginTop='.75rem';
-    const ta = mk('textarea');ta.rows=8;
-    ta.placeholder='Cole aqui transcrição, relatório, resumo, slides, flashcards ou qualquer texto de estudo...';
+    const cHelp = mk('p','txt3');cHelp.style.cssText='margin:.125rem 0 .375rem;font-size:11.5px;line-height:1.4';
+    cHelp.textContent='Cole o texto da sua aula, lei, apostila ou anotação. Quanto mais limpo o conteúdo, melhor.';
+    addCard.appendChild(cHelp);
+    const ta = mk('textarea');ta.rows=10;
+    ta.placeholder='Cole aqui o conteúdo da sua fonte de estudo...';
     ta.value=ST.srcInput.content;
     ta.addEventListener('input',e=>{ST.srcInput.content=e.target.value;if(saveBtn)saveBtn.disabled=!canSave();});
-    addCard.appendChild(lblC);addCard.appendChild(ta);
+    addCard.appendChild(ta);
 
     saveBtn = mkBtn('Adicionar fonte →','btn btn-p');saveBtn.style.marginTop='.875rem';
     saveBtn.disabled = !canSave();
@@ -16329,12 +15980,14 @@ function renderSourceAdd(wrap){
       const newSrc = {
         id:Date.now()+''+Math.random(),
         name:ST.srcInput.name.trim(),
-        type:ST.srcInput.type,
+        // V15: type sempre 'fonte' — campo "Tipo de material" foi removido. Tipo de
+        // conteúdo é o que define como questões são geradas.
+        type:'fonte',
         contentType:ST.srcInput.contentType||'misto',
-        materialDate:ST.srcInput.materialDate||null,
         disciplineId:ST.srcInput.disciplineId,
         content:ST.srcInput.content.trim(),
         createdAt:Date.now()
+        // V15: materialDate REMOVIDO. A data do material é sempre createdAt (data de importação).
       };
       // Se origem foi PDF, anexa metadados pra mostrar depois
       if(ST.srcImportState && ST.srcImportState.pdfMeta){
@@ -16383,10 +16036,20 @@ function renderSourceAdd(wrap){
 
   wrap.appendChild(addCard);
 
-  // V14 redesign: tip "Como adicionar fontes" só aparece quando não está processando
-  if(!is.pdfLoading && !is.organizing){
-    const tip = mk('div','card');tip.style.marginTop='.75rem';
-    tip.innerHTML='<div class="section-label">💡 Como adicionar fontes</div><ul class="txt2" style="padding-left:1.25rem;line-height:1.8;"><li><b>PDF:</b> use o botão "Anexar PDF" — o texto é extraído automaticamente, sem nomes de professores ou links</li><li><b>Texto:</b> copie de qualquer lugar (apostila digital, NotebookLM, sites) e cole no campo de conteúdo</li><li><b>Áudio/Vídeo:</b> abra a transcrição (legenda) → copie → cole como "Áudio" ou "Vídeo"</li><li><b>Flashcards de outras plataformas:</b> exporte como texto → cole como "Flashcards"</li><li><b>Mais a fonte que se parece com a sua realidade de estudo</b>, melhor — a IA usa esse contexto pra fazer questões parecidas com o que cai na sua prova</li></ul>';
+  // V15 premium: tip lateral com dicas práticas. Sem menção a IA na importação.
+  if(!is.pdfLoading){
+    const tip = mk('div','card');
+    tip.style.cssText = 'margin-top:.75rem';
+    tip.innerHTML = `
+      <div class="section-label" style="display:flex;align-items:center;gap:6px">
+        <span>💡</span><span>Dicas pra ter melhor resultado</span>
+      </div>
+      <ul class="txt2" style="padding-left:1.25rem;line-height:1.75;font-size:13px;margin-bottom:0">
+        <li><b>Quanto mais limpo o conteúdo, melhor</b> — antes de salvar, edite no campo "Conteúdo" pra remover gabaritos no fim, nomes de professor, marcas d'água ou propaganda.</li>
+        <li><b>Nome descritivo</b> — use algo como "CF/88 — Direitos Fundamentais" em vez do nome do arquivo. Facilita encontrar depois.</li>
+        <li><b>Tipo de conteúdo importa</b> — define como as questões serão geradas (lei seca, teoria, jurisprudência etc).</li>
+        <li><b>Compartilhamento</b> — depois de salvar, sua fonte fica disponível pra outros assinantes. Após revisão, ganha selo de validação.</li>
+      </ul>`;
     wrap.appendChild(tip);
   }
   return wrap;
@@ -16776,64 +16439,8 @@ function showSourceTOCModal(src){
   setTimeout(()=>searchInp.focus(), 50);
 }
 
-// V13: Regenera índice (TOC) de uma fonte usando IA.
-// Usa primeiros 25k chars (suficiente pra entender estrutura sem custar caro).
-async function regenerateTocWithAI(src){
-  const sample = (src.content||'').slice(0, 25000);
-  if(sample.length < 200) throw new Error('Conteúdo muito curto');
+// V15: regenerateTocWithAI removida — sem IA, indexação usa só detectTOCHeuristic.
 
-  const sys = `Você analisa textos de estudo (apostilas, leis, livros) e identifica estrutura hierárquica de capítulos/seções/subseções.
-
-REGRAS:
-- Identifique apenas títulos REAIS (não confunda com listas, itens enumerados em parágrafos)
-- Hierarquia: level 0 = capítulo, level 1 = seção, level 2 = subseção
-- Pra cada entrada, indique startChar (índice no texto onde começa o conteúdo após o título)
-- Ignore: headers/footers de PDF, números de página, marca d'água, "Continua na próxima página"
-- Títulos curtos (max 80 chars). Limpe lixo (ex: "1.2.3 ___ Princípios" → "Princípios")
-
-SAÍDA — JSON puro, array:
-[
-  {"title":"Capítulo 1 — Princípios","level":0,"startChar":120},
-  {"title":"Legalidade","level":1,"startChar":380},
-  {"title":"Aplicação prática","level":2,"startChar":920},
-  ...
-]
-
-Se não conseguir identificar estrutura clara (texto sem títulos), retorne []`;
-
-  const body = {
-    model: DATA.config.model || 'claude-haiku-4-5-20251001',
-    max_tokens: 3000,
-    system: sys,
-    messages: [{role:'user', content: 'Identifique a estrutura desta fonte:\n\n' + sample}],
-    free_action: 'organize_import'
-  };
-  const r = await apiGenerate(body);
-  if(!r.ok){
-    const errText = await r.text().catch(()=>'');
-    throw new Error('api-' + r.status + ': ' + errText.slice(0,150));
-  }
-  const d = await r.json();
-  if(d.usage){
-    logUsage({
-      model:body.model,kind:'toc',action:'regenerate_toc',
-      input:d.usage.input_tokens||0,output:d.usage.output_tokens||0,
-      cacheRead:d.usage.cache_read_input_tokens||0,
-      cacheCreation:d.usage.cache_creation_input_tokens||0
-    });
-  }
-  const txt = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
-  const clean = txt.replace(/```json\n?|\n?```/g,'').trim();
-  const parsed = JSON.parse(clean);
-  if(!Array.isArray(parsed)) return [];
-
-  // Calcula endChar baseado no startChar do próximo
-  parsed.forEach((entry, i)=>{
-    entry.id = 'toc_' + i + '_' + Math.random().toString(36).slice(2,7);
-    entry.endChar = i < parsed.length - 1 ? parsed[i+1].startChar : (src.content||'').length;
-  });
-  return parsed;
-}
 
 // Modal pra ver o trecho completo de uma seção
 function showSourceSectionModal(src, entry){
@@ -16907,15 +16514,8 @@ function showEditSourceModal(src){
   });
   m.appendChild(lblD);m.appendChild(selD);
 
-  // Tipo de material
-  const lblT = mk('label');lblT.textContent='Tipo de material';lblT.style.marginTop='.75rem';
-  const selT = mk('select');
-  Object.entries(SRC_TYPES).forEach(([k,v])=>{
-    const o = mk('option');o.value=k;o.textContent=v.icon+' '+v.label;
-    if((src.type||'outro')===k)o.selected=true;
-    selT.appendChild(o);
-  });
-  m.appendChild(lblT);m.appendChild(selT);
+  // V15: campos "Tipo de material" e "Data do material" removidos do form de edição.
+  // Tipo de conteúdo já cobre a categorização. Data é sempre createdAt.
 
   const lblCT = mk('label');lblCT.textContent='Tipo de conteúdo';lblCT.style.marginTop='.75rem';
   const selCT = mk('select');
@@ -16925,12 +16525,6 @@ function showEditSourceModal(src){
     selCT.appendChild(o);
   });
   m.appendChild(lblCT);m.appendChild(selCT);
-
-  // Data do material
-  const lblDate = mk('label');lblDate.textContent='Data do material (ano/mês)';lblDate.style.marginTop='.75rem';
-  const inpDate = makeDateInputClickable(mk('input'));inpDate.type='month';
-  if(src.materialDate)inpDate.value=src.materialDate;
-  m.appendChild(lblDate);m.appendChild(inpDate);
 
   const lblC = mk('label');lblC.textContent='Conteúdo';lblC.style.marginTop='.75rem';
   const ta = mk('textarea');ta.rows=10;ta.value=src.content;
@@ -17018,9 +16612,10 @@ function showEditSourceModal(src){
   saveB.addEventListener('click',()=>{
     src.name=inpN.value.trim()||src.name;
     src.disciplineId=selD.value;
-    src.type=selT.value;
+    // V15: type sempre 'fonte' — campo "Tipo de material" foi removido
+    src.type='fonte';
     src.contentType=selCT.value;
-    src.materialDate=inpDate.value||null;
+    // V15: materialDate removido — fonte usa createdAt como data
     const newContent = ta.value.trim()||src.content;
     // Se conteúdo mudou substancialmente, re-indexa automaticamente se TOC existia
     if(newContent !== src.content && Array.isArray(src.toc) && src.toc.length > 0){
@@ -17650,39 +17245,8 @@ function contentFingerprint(rawText){
   return simpleHash(normalized).toString(36);
 }
 
-// V14: Busca no catálogo comunitário por fingerprint do conteúdo
-// Retorna null se não achou, ou o resource pré-organizado se achou.
-async function lookupCommunityByFingerprint(rawText){
-  if(!supa) return null;
-  const fp = contentFingerprint(rawText);
-  if(!fp) return null;
-  console.log('[community] buscando fingerprint:', fp);
-  try{
-    // Busca em shared_resources pelo content_fingerprint
-    const { data, error } = await supa
-      .from('shared_resources')
-      .select('id, title, payload, discipline, tags, created_at')
-      .eq('resource_type', 'fonte')
-      .eq('is_public', true)
-      .eq('content_fingerprint', fp)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if(error){
-      console.warn('[community] erro ao buscar:', error.message);
-      return null;
-    }
-    if(data){
-      console.log('[community] HIT! Recurso encontrado:', data.title);
-      return data;
-    }
-    console.log('[community] miss — não achou no catálogo');
-    return null;
-  }catch(e){
-    console.warn('[community] exception:', e.message);
-    return null;
-  }
-}
+// V15: lookupCommunityByFingerprint removida — sem IA, importação não busca mais
+// no catálogo automaticamente. Usuário escolhe importar da Comunidade via aba Descobrir.
 // Returns short list of recent AI question enunciados for a method (for prompt seeding)
 function recentAIQuestionsFor(method,limit){
   return (DATA.importedQuestions||[])
@@ -26121,17 +25685,6 @@ function formatFileSize(bytes){
   return (bytes/(1024*1024)).toFixed(1) + ' MB';
 }
 
-// V14: formata segundos restantes em algo legível ("≈ 1 min 30s restante")
-function formatEtaSeconds(sec){
-  if(!sec || sec < 0) return 'pouco tempo';
-  if(sec < 5) return 'poucos segundos';
-  if(sec < 60) return `${sec}s`;
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  if(s < 10) return `${m} min`;
-  return `${m} min ${s}s`;
-}
-
 // ============================================================================
 // V5 Fase B — INDEXAÇÃO INTELIGENTE DE FONTES
 // ============================================================================
@@ -26361,421 +25914,10 @@ function extractTOCSection(text, entry){
   return text.slice(entry.startChar, entry.endChar || text.length).trim();
 }
 
-// Ask AI to organize raw text into structured content with sections + summary.
-// Also infers discipline and content type if autoClassify is true.
-// NOTE: this does NOT use buildContent() (no content injection) — we send only
-// the text the user provided, to avoid double-content-injection.
-// V14 FINAL DEFINITIVO: arquitetura de DUAS chamadas separadas.
-// Causa raiz dos bugs anteriores: pedir metadados + conteúdo no mesmo JSON
-// fazia o output truncar em max_tokens (8192) com a string `organized` cortada,
-// JSON ficava inválido, perdíamos TUDO incluindo metadados.
-//
-// Solução: 2 chamadas independentes
-//   1. callMetadataAI(): pede só {nome, disciplina, tipo, data, tópicos} - output ~500 tokens, NUNCA trunca
-//   2. callOrganizeAI(chunk): pede só markdown organizado, sem JSON - pode chunkar texto longo
-async function smartOrganizeContent(rawText, opts){
-  opts = opts || {};
-  const onProgress = opts.onProgress || (()=>{});
-  console.log('[smartOrganize] V14 FINAL — paralelo + chunks grandes');
-  console.log('[smartOrganize] texto bruto:', rawText.length, 'chars');
-
-  // V14 final3: ANTES de gastar IA, busca no catálogo comunitário.
-  // Se algum usuário já organizou esse mesmo PDF, reutilizamos — custo ZERO de IA.
-  // Decisão de Jean: "dar mais confiança a materiais já tratados e disponibilizar"
-  onProgress({phase: 'community', current: 0, total: 0, label: 'Buscando no catálogo comunitário...'});
-  try{
-    const cached = await lookupCommunityByFingerprint(rawText);
-    if(cached && cached.payload){
-      console.log('[smartOrganize] ✓ usando versão da comunidade:', cached.title);
-      onProgress({phase: 'done', current: 1, total: 1, label: '✓ Encontrado no catálogo comunitário!'});
-      const p = cached.payload;
-      return {
-        suggestedName: p.source_name || cached.title || null,
-        disciplineName: cached.discipline || null,
-        materialType: p.source_type || 'livro',
-        contentType: p.content_type || 'teoria',
-        detectedDate: null,
-        topics: cached.tags || [],
-        organized: p.content || rawText,
-        fromCommunity: true,
-        communityResourceId: cached.id
-      };
-    }
-  }catch(e){
-    console.warn('[smartOrganize] community lookup falhou (silencioso, segue pra IA):', e.message);
-  }
-
-  // ETAPA 1: metadados (rápido, output curto)
-  onProgress({phase: 'metadata', current: 0, total: 0, label: 'Identificando disciplina e metadados...'});
-  const t0 = performance.now();
-  const metadata = await callMetadataAI(rawText);
-  console.log('[smartOrganize] metadados extraídos em', Math.round(performance.now()-t0), 'ms:', metadata);
-
-  // ETAPA 2: organização do conteúdo
-  // CHUNK_SIZE 22k: cabe ~6.5k tokens entrada -> ~5k saída em prosa = cabe folgado em 8192.
-  // Reduzido de 35k → 22k pq chunks de 35k truncavam em max_tokens (perdia conteúdo).
-  // Output max_tokens 8192 = ~25k chars de saída -> sobra com 22k de entrada.
-  const CHUNK_SIZE = 22000;
-  // PARALLEL_BATCH: 6 chamadas concorrentes — Anthropic API aguenta. Aumentei chunks
-  // menores compensa (mais chamadas paralelas), mantém a velocidade.
-  const PARALLEL_BATCH = 6;
-
-  let organized;
-  if(rawText.length <= CHUNK_SIZE){
-    console.log('[smartOrganize] texto cabe em 1 chunk');
-    onProgress({phase: 'organize', current: 1, total: 1, label: 'Organizando conteúdo...', etaSeconds: 30});
-    const tc = performance.now();
-    organized = await callOrganizeAI(rawText, 1, 1);
-    console.log('[smartOrganize] chunk único em', Math.round(performance.now()-tc), 'ms');
-  } else {
-    // Divide em chunks
-    const chunks = [];
-    let pos = 0;
-    while(pos < rawText.length){
-      chunks.push(rawText.slice(pos, pos + CHUNK_SIZE));
-      pos += CHUNK_SIZE;
-    }
-    console.log('[smartOrganize] modo PARALELO:', chunks.length, 'chunks em batches de', PARALLEL_BATCH);
-
-    // V14: Skip de chunks que parecem ser só lixo (gabaritos remanescentes, anexos)
-    // Heurística: chunk com menos de 30% de letras maiúsculas+minúsculas vs total
-    // (muito número/símbolo) provavelmente é gabarito/tabela e não vale chamar IA.
-    const isLowValueChunk = (txt)=>{
-      if(!txt || txt.length < 200) return true;
-      const letters = (txt.match(/[a-záâãàéêíóôõúüç]/gi) || []).length;
-      const ratio = letters / txt.length;
-      return ratio < 0.45; // chunk com <45% letras = provavelmente lixo
-    };
-
-    // Pre-aloca array de resultados e marca chunks pulados
-    const results = new Array(chunks.length);
-    const chunksToProcess = [];
-    chunks.forEach((c, i) => {
-      if(isLowValueChunk(c)){
-        console.log(`[smartOrganize] chunk ${i+1} pulado (baixo valor: ${c.length} chars)`);
-        results[i] = ''; // descarta
-      } else {
-        chunksToProcess.push(i);
-      }
-    });
-    console.log(`[smartOrganize] processando ${chunksToProcess.length}/${chunks.length} chunks (pulados ${chunks.length - chunksToProcess.length})`);
-
-    // Estima ETA: 1º chunk tipicamente leva ~25s, paralelismo de 8 → tempo total = ceil(N/8) × 30s
-    const totalToProcess = chunksToProcess.length;
-    const estimatedBatches = Math.ceil(totalToProcess / PARALLEL_BATCH);
-    let estimatedTotalSec = estimatedBatches * 35; // estimativa inicial
-    let completedCount = 0;
-    const tStart = performance.now();
-    onProgress({
-      phase: 'organize',
-      current: 0,
-      total: totalToProcess,
-      label: `Organizando ${totalToProcess} partes em paralelo...`,
-      etaSeconds: estimatedTotalSec
-    });
-
-    // Processa em batches paralelos
-    for(let batchStart = 0; batchStart < chunksToProcess.length; batchStart += PARALLEL_BATCH){
-      const batchEnd = Math.min(batchStart + PARALLEL_BATCH, chunksToProcess.length);
-      const batchIndices = chunksToProcess.slice(batchStart, batchEnd);
-      console.log(`[smartOrganize] batch ${Math.floor(batchStart/PARALLEL_BATCH)+1}/${estimatedBatches}: ${batchIndices.length} chamadas`);
-      const tBatch = performance.now();
-
-      const promises = batchIndices.map(i =>
-        callOrganizeAI(chunks[i], i+1, chunks.length)
-          .then(part => {
-            results[i] = (part && part.length > 50) ? part : chunks[i];
-            completedCount++;
-            // Recalcula ETA com base no tempo real do 1º batch
-            const elapsedSec = (performance.now() - tStart) / 1000;
-            const ratePerSec = completedCount / elapsedSec;
-            const remaining = totalToProcess - completedCount;
-            const etaSec = ratePerSec > 0 ? Math.round(remaining / ratePerSec) : 0;
-            onProgress({
-              phase: 'organize',
-              current: completedCount,
-              total: totalToProcess,
-              label: `Parte ${completedCount} de ${totalToProcess} organizada`,
-              etaSeconds: etaSec
-            });
-            console.log(`[smartOrganize] chunk ${i+1} OK (${results[i].length} chars) ETA ${etaSec}s`);
-          })
-          .catch(err => {
-            console.error(`[smartOrganize] chunk ${i+1} FALHOU:`, err.message);
-            results[i] = chunks[i];
-            completedCount++;
-            onProgress({
-              phase: 'organize',
-              current: completedCount,
-              total: totalToProcess,
-              label: `Parte ${completedCount} de ${totalToProcess} organizada`,
-              etaSeconds: 0
-            });
-          })
-      );
-      await Promise.all(promises);
-      console.log(`[smartOrganize] batch concluído em`, Math.round(performance.now()-tBatch), 'ms');
-    }
-
-    // Junta tudo, ignorando chunks vazios (pulados)
-    organized = results.filter(r => r && r.length > 0).join('\n\n');
-  }
-
-  // V14: PÓS-PROCESSAMENTO — limpa gabaritos remanescentes que a IA não removeu
-  // (gabaritos no fim de seções continuam aparecendo apesar do prompt)
-  organized = cleanupOrganizedMarkdown(organized);
-
-  console.log('[smartOrganize] TEMPO TOTAL:', Math.round(performance.now()-t0), 'ms');
-  console.log('[smartOrganize] organized final:', organized.length, 'chars');
-
-  return {
-    suggestedName: metadata.suggestedName || null,
-    disciplineName: metadata.disciplineName || null,
-    materialType: metadata.materialType || null,
-    contentType: metadata.contentType || null,
-    detectedDate: metadata.detectedDate || null,
-    topics: metadata.topics || [],
-    organized: organized
-  };
-}
-
-// V14: Pós-processamento do markdown depois da IA — limpeza adicional de gabaritos
-// e ruído que escapou do prompt da IA. Roda no resultado final, antes de devolver.
-function cleanupOrganizedMarkdown(md){
-  if(!md) return md;
-  let text = md;
-
-  // V14 final2: regex melhorado pro padrão "N. CORRETA / N. ERRADA / N. LETRA X"
-  // Padrão multi-coluna (várias ocorrências na mesma linha)
-  text = text.replace(/^(?:\s*\d{1,3}\.\s*(?:CORRETA|ERRADA|LETRA\s+[A-E]|[A-E])(?:\s+|$)){2,}.*$/gim, '');
-  // Padrão linha-única em sequência (4+)
-  text = text.replace(/(?:^\s*\d{1,3}\.\s*(?:CORRETA|ERRADA|LETRA\s+[A-E]|[A-Eae])\s*$\n?){4,}/gim, '');
-
-  // 1. Remove blocos GABARITO inteiros (com ## opcional, até próximo ## ou fim)
-  text = text.replace(/^#+\s*GABARITO[\s\S]*?(?=^#+|\Z)/gim, '');
-  text = text.replace(/^#+\s*RESPOSTAS?\s*$[\s\S]*?(?=^#+|\Z)/gim, '');
-  text = text.replace(/^#+\s*RESPOSTAS\s+(?:DOS|DAS)\s+EXERC[ÍI]CIOS[\s\S]*?(?=^#+|\Z)/gim, '');
-
-  // 2. Remove linhas isoladas com só "n) Letra X" (3+ em sequência)
-  text = text.replace(/(?:^\s*\d{1,3}[\)\.\-]\s*[A-Eae](?:[\s,;]+|$)\s*\n?){3,}/gm, '');
-
-  // 3. Remove blocos numéricos consecutivos: "1: C\n2: E\n3: A" (5+ linhas)
-  text = text.replace(/(?:^\s*\d{1,3}[\s\):.\-]+(?:[Ll]etra\s+)?[A-Eae]\s*$\n){5,}/gm, '');
-
-  // 4. Remove listas de respostas com vírgulas: "1-C, 2-E, 3-A, 4-D, 5-B"
-  text = text.replace(/^(?:\s*\d{1,3}[\-\.\):\s]+[A-Eae][\s,;]*){4,}.*$/gm, '');
-
-  // 5. Remove "Resposta: X" repetidos (3+ em sequência)
-  text = text.replace(/(?:^\s*\*?\*?(?:Resposta|Gabarito|GAB|Resp)[\s\.:]+[A-Eae]\s*\*?\*?\s*$\n?){3,}/gim, '');
-
-  // 6. Remove "GABARITO: 1-C 2-E 3-A 4-D" inline
-  text = text.replace(/^(?:GABARITO|RESPOSTAS?)[\s:.\-]+(?:\d{1,3}[\-\.\):\s]+[A-Eae][\s,;]*){3,}.*$/gim, '');
-
-  // 7. Remove números soltos que sobraram (página remanescente)
-  text = text.replace(/^\s*\d{1,3}\s*$/gm, '');
-
-  // 8. Colapsa múltiplas linhas vazias resultantes das remoções
-  text = text.replace(/\n[ \t]*\n[ \t]*\n+/g, '\n\n');
-
-  return text.trim();
-}
-
-// CHAMADA 1: extrai SÓ os metadados. Output curto, NUNCA trunca.
-async function callMetadataAI(rawText){
-  // Pega uma amostra do texto: começo + meio + fim — pra IA ter contexto sem precisar do PDF inteiro
-  const sample = rawText.length > 12000
-    ? rawText.slice(0, 4500) + '\n\n[...]\n\n' + rawText.slice(Math.floor(rawText.length/2), Math.floor(rawText.length/2) + 3000) + '\n\n[...]\n\n' + rawText.slice(-3000)
-    : rawText;
-
-  const discNames = DATA.disciplines.map(d => `"${d.name}"`).join(', ');
-  const materialKeys = Object.keys(SRC_TYPES);
-  const contentKeys = Object.keys(CONTENT_TYPES).filter(k => k !== 'misto');
-
-  const sys = `Você analisa um trecho de texto extraído de PDF e retorna metadados em JSON.
-
-REGRAS:
-
-1. suggestedName: nome curto (até 60 chars) descrevendo o ASSUNTO. NUNCA copie nome de arquivo. Exemplo: "Princípios Fundamentais da CF/88", "Lei 8.112 - Servidores Públicos".
-
-2. disciplineName: matéria REAL do conteúdo. Use formato com Maiúsculas Iniciais. Disciplinas existentes do usuário: ${discNames || '(nenhuma)'}. Se o conteúdo é sobre Constituição → "Direito Constitucional", MESMO se o usuário só tem outras disciplinas. NUNCA force a entrada em uma existente que não combina.
-
-3. materialType (escolha 1): ${materialKeys.join(' | ')}
-   - "livro": livro técnico, manual amplo
-   - "apostila": material didático de cursinho
-   - "aula": transcrição de videoaula
-   - "slides": apresentação
-   - "relatorio": PDF curto, ofício
-   - "caderno": lista de questões
-   - "outro": último recurso
-
-4. contentType (escolha 1, NUNCA "misto" se houver opção mais específica): ${contentKeys.join(' | ')}
-   PRIORIDADE — escolha a primeira que encaixar:
-   - "teoria": material didático com conceitos e explicações (DEFAULT pra livros/apostilas)
-   - "lei_seca": texto literal de lei, decretos, código
-   - "jurisprudencia": súmulas, julgados, teses
-   - "doutrina": discussão acadêmica jurídica de autores
-   - "exercicios": lista de questões SEM teoria
-   - "resumo": síntese super condensada (raro)
-   - "mapa_mental": estrutura esquemática (raro)
-   ⚠ Use "misto" SOMENTE se realmente houver mistura significativa de teoria + exercícios + lei. Apostila com explicação + algumas questões = "teoria".
-
-5. detectedDate: se mencionar ano/edição (ex: "atualizado 2024", "rev. 2023"), retorne YYYY-MM. Se só ano, YYYY-01. Se nada, null.
-
-6. topics: array com 5-15 títulos curtos dos principais temas do conteúdo.
-
-SAÍDA: JSON puro, sem \`\`\`. Comece com { e termine com }.
-
-{
-  "suggestedName": "...",
-  "disciplineName": "...",
-  "materialType": "...",
-  "contentType": "...",
-  "detectedDate": "YYYY-MM ou null",
-  "topics": ["...","..."]
-}`;
-
-  const body = {
-    model: DATA.config.model || 'claude-haiku-4-5-20251001',
-    max_tokens: 1500, // metadados sempre curtos
-    system: sys,
-    messages: [{role:'user', content:'Analise este trecho:\n\n' + sample}],
-    free_action: 'organize_import'
-  };
-  console.log('[callMetadataAI] enviando, sample:', sample.length, 'chars');
-  const r = await apiGenerate(body);
-  if(!r.ok){
-    const errText = await r.text().catch(()=>'');
-    throw new Error('metadata-api-' + r.status + ': ' + errText.slice(0, 200));
-  }
-  const d = await r.json();
-  if(d.usage){
-    logUsage({
-      model: body.model, kind: 'metadata', action: 'organize_source',
-      input: d.usage.input_tokens || 0, output: d.usage.output_tokens || 0,
-      cacheRead: d.usage.cache_read_input_tokens || 0,
-      cacheCreation: d.usage.cache_creation_input_tokens || 0
-    });
-  }
-  if(d.type === 'error' || d.error){
-    throw new Error('IA error: ' + JSON.stringify(d.error || d).slice(0, 200));
-  }
-  const txt = (d.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
-  console.log('[callMetadataAI] raw output:', txt.slice(0, 600));
-  console.log('[callMetadataAI] stop_reason:', d.stop_reason);
-
-  // Parse JSON robusto
-  let clean = txt.replace(/```json\n?|\n?```/g, '').trim();
-  try {
-    return JSON.parse(clean);
-  } catch (e) {
-    // Tenta extrair primeiro objeto { ... }
-    const match = clean.match(/\{[\s\S]*?\}(?=\s*$|\s*\n\s*$)/);
-    if(match){
-      try { return JSON.parse(match[0]); } catch(_){}
-    }
-    // Tenta achar { e o último } balanceado
-    const startIdx = clean.indexOf('{');
-    if(startIdx >= 0){
-      let depth = 0, lastValid = -1;
-      for(let i = startIdx; i < clean.length; i++){
-        if(clean[i] === '{') depth++;
-        else if(clean[i] === '}'){
-          depth--;
-          if(depth === 0){ lastValid = i; break; }
-        }
-      }
-      if(lastValid > 0){
-        try { return JSON.parse(clean.slice(startIdx, lastValid + 1)); } catch(_){}
-      }
-    }
-    console.error('[callMetadataAI] JSON parse falhou. Output:', txt);
-    throw new Error('Metadados em JSON inválido. Output: ' + clean.slice(0, 300));
-  }
-}
-
-// CHAMADA 2: organiza UM trecho de texto. Retorna markdown puro (sem JSON).
-async function callOrganizeAI(textChunk, chunkNum, totalChunks){
-  const isMulti = totalChunks > 1;
-  const partLabel = isMulti ? ` (parte ${chunkNum} de ${totalChunks})` : '';
-
-  const sys = `Você organiza texto bruto extraído de PDF em formato Markdown legível para estudo${partLabel}.
-
-REGRAS DE ORGANIZAÇÃO:
-
-a) NÃO RESUMA. NUNCA. Mantenha TODO o conteúdo técnico, exemplos, definições, casos, tabelas, numeração de artigos.
-   O usuário precisa do material COMPLETO para estudar — não de uma síntese.
-   Se o input tem 18000 chars, o output deve ter ao menos 14000 chars.
-
-b) REMOVA com agressividade:
-   - Nomes de cursinhos (Estratégia Concursos, Gran Cursos, Direção, AlfaCon, Damásio, CERS, Ouse Saber, Tec, QConcursos, Juspodivm, Saraiva, etc)
-   - Nomes de professores ("Prof. João Silva", "Profa Maria")
-   - Marcas d'água, "Página X de Y", "© 2024", "Material exclusivo"
-   - Saudações ("Olá pessoal", "Vamos lá!", "E aí galera")
-   - URLs, hashtags, telefones, e-mails
-   - Numeração de página solta no meio do texto
-   - Sumário/índice se aparecer no começo (linhas tipo "Capítulo 1 ........... 5")
-   - GABARITOS isolados — listas com "1-C 2-E 3-A", "Resposta: X", blocos "GABARITO:" sem questões correspondentes próximas. Se não há questão correspondente próxima, descarte o gabarito.
-
-c) ORGANIZE em seções com títulos: ## Título da Seção
-   Use **negrito** com moderação para termos-chave.
-   Mantenha listas e tabelas onde já são listas/tabelas.
-   Preserve numeração de artigos, leis, parágrafos, incisos.
-
-d) Texto corrido legível, com parágrafos. Não pode ficar tudo apertado.
-
-SAÍDA: APENAS o markdown organizado. SEM JSON. SEM \`\`\`. SEM comentários antes ou depois. Comece direto com ## Título.`;
-
-  const body = {
-    model: DATA.config.model || 'claude-haiku-4-5-20251001',
-    max_tokens: 8192,
-    system: sys,
-    messages: [{role:'user', content:'Organize este texto integralmente, sem resumir:\n\n' + textChunk}],
-    free_action: 'organize_import'
-  };
-  console.log(`[callOrganizeAI] chunk ${chunkNum}/${totalChunks}, input:`, textChunk.length, 'chars');
-
-  // V14 fix: Retry com backoff em caso de 429 (rate limit da Anthropic).
-  // Erro 429 acontece quando muitas chamadas grandes em pouco tempo. Esperar e tentar
-  // de novo geralmente resolve. Backoff exponencial: 5s, 15s, 30s.
-  let r, lastErr;
-  const RETRY_DELAYS = [5000, 15000, 30000];
-  for(let attempt = 0; attempt < 1 + RETRY_DELAYS.length; attempt++){
-    if(attempt > 0){
-      const delay = RETRY_DELAYS[attempt-1];
-      console.warn(`[callOrganizeAI] chunk ${chunkNum} retry ${attempt} após ${delay}ms (último erro: ${lastErr})`);
-      await new Promise(res => setTimeout(res, delay));
-    }
-    r = await apiGenerate(body);
-    if(r.ok) break;
-    const errText = await r.clone().text().catch(()=>'');
-    lastErr = `${r.status}: ${errText.slice(0,150)}`;
-    // Só faz retry em 429 (rate limit) ou 503 (service unavailable temporário)
-    if(r.status !== 429 && r.status !== 503){
-      throw new Error('organize-api-' + r.status + ': ' + errText.slice(0, 200));
-    }
-    // Se já fez todas as tentativas, joga o erro
-    if(attempt === RETRY_DELAYS.length){
-      throw new Error('organize-api-rate-limit (após retries): ' + lastErr);
-    }
-  }
-  const d = await r.json();
-  if(d.usage){
-    logUsage({
-      model: body.model, kind: 'organize', action: 'organize_source',
-      input: d.usage.input_tokens || 0, output: d.usage.output_tokens || 0,
-      cacheRead: d.usage.cache_read_input_tokens || 0,
-      cacheCreation: d.usage.cache_creation_input_tokens || 0
-    });
-  }
-  if(d.type === 'error' || d.error){
-    throw new Error('IA error: ' + JSON.stringify(d.error || d).slice(0, 200));
-  }
-  let txt = (d.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
-  console.log(`[callOrganizeAI] chunk ${chunkNum} stop_reason:`, d.stop_reason, 'output len:', txt.length);
-  // Remove qualquer wrapper de markdown que escape
-  txt = txt.replace(/^```(?:markdown|md)?\n?/, '').replace(/\n?```\s*$/, '').trim();
-  return txt;
-}
+// V15: As funções smartOrganizeContent, callMetadataAI, callOrganizeAI e
+// cleanupOrganizedMarkdown foram REMOVIDAS — importação não usa mais IA.
+// Decisão de Jean: economizar custo de API e crescer catálogo comunitário.
+// As fontes ficam públicas pra reuso direto de outros usuários.
 
 /* ====== MAPA DA MATÉRIA ====== */
 // Normalize a topic string for consistent grouping/lookup
@@ -30891,6 +30033,68 @@ function renderRecoCard(item){
   return card;
 }
 
+// V15: Pop-ups explicativos dos selos de validação. Inspirado no padrão da prática
+// de questões — usuário vê o selo, clica, entende o que significa.
+function showValidatedExplanation(){
+  const m = mk('div','modal-card');
+  m.style.cssText = 'max-width:480px';
+  m.innerHTML = `
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.875rem">
+      <span style="font-size:24px">✓</span>
+      <h3 style="margin:0;font-size:18px;font-weight:700">Fonte validada</h3>
+    </div>
+    <p class="txt2" style="font-size:13.5px;line-height:1.6;margin:0 0 .875rem">
+      Esta fonte passou por revisão de um moderador da plataforma. Foi verificada e ajustada para garantir qualidade do conteúdo de estudo.
+    </p>
+    <div style="padding:.75rem .875rem;background:rgba(70,180,90,.06);border:1px solid rgba(70,180,90,.18);border-radius:8px;margin-bottom:.875rem">
+      <div style="font-weight:700;font-size:12.5px;margin-bottom:.375rem;color:#2d8a4f">O que foi verificado:</div>
+      <ul class="txt2" style="margin:0;padding-left:1.125rem;font-size:12.5px;line-height:1.65">
+        <li>Remoção de nomes de cursinhos, professores e marcas comerciais</li>
+        <li>Remoção de dados pessoais, e-mails, telefones</li>
+        <li>Remoção de gabaritos isolados no final</li>
+        <li>Conteúdo limpo e adequado para estudo</li>
+      </ul>
+    </div>
+    <p class="txt3" style="font-size:11.5px;line-height:1.5;margin:0">
+      Você pode usar essa fonte com confiança nas suas questões e flashcards.
+    </p>`;
+  const closeBtn = mkBtn('Entendi','btn btn-p');
+  closeBtn.style.marginTop = '.875rem';
+  closeBtn.addEventListener('click', closeModal);
+  m.appendChild(closeBtn);
+  showModal(m);
+}
+
+function showPendingExplanation(){
+  const m = mk('div','modal-card');
+  m.style.cssText = 'max-width:480px';
+  m.innerHTML = `
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.875rem">
+      <span style="font-size:24px">⏳</span>
+      <h3 style="margin:0;font-size:18px;font-weight:700">Aguardando revisão</h3>
+    </div>
+    <p class="txt2" style="font-size:13.5px;line-height:1.6;margin:0 0 .875rem">
+      Esta fonte foi importada por um usuário e ainda não passou por revisão de moderador. Você pode importar e usar normalmente, mas o conteúdo pode ter algum ruído.
+    </p>
+    <div style="padding:.75rem .875rem;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.20);border-radius:8px;margin-bottom:.875rem">
+      <div style="font-weight:700;font-size:12.5px;margin-bottom:.375rem;color:var(--amber-text)">Possíveis ruídos:</div>
+      <ul class="txt2" style="margin:0;padding-left:1.125rem;font-size:12.5px;line-height:1.65">
+        <li>Nomes de cursinhos, professores ou marcas comerciais</li>
+        <li>Cabeçalhos e rodapés repetidos</li>
+        <li>Gabaritos isolados no final do documento</li>
+        <li>Numeração de páginas no meio do texto</li>
+      </ul>
+    </div>
+    <p class="txt3" style="font-size:11.5px;line-height:1.5;margin:0">
+      Após importar, você pode editar a fonte e remover qualquer ruído manualmente.
+    </p>`;
+  const closeBtn = mkBtn('Entendi','btn btn-p');
+  closeBtn.style.marginTop = '.875rem';
+  closeBtn.addEventListener('click', closeModal);
+  m.appendChild(closeBtn);
+  showModal(m);
+}
+
 function renderResourceCard(item){
   const card = mk('div','resource-card card');
   // Badge de tipo
@@ -30900,6 +30104,31 @@ function renderResourceCard(item){
   const titleEl = mk('h3','rc-title');
   titleEl.innerHTML = `<span class="rc-type-icon">${typeIcon}</span>${escapeHTML(item.title)}`;
   header.appendChild(titleEl);
+
+  // V15: selo "✓ Validada" se admin já revisou e aprovou (campo moderation_status)
+  // ou "⏳ Em revisão" se ainda não foi revisada. Click abre modal explicativo.
+  const isValidated = item.moderation_status === 'approved' || item.is_validated === true;
+  const badge = mk('span', isValidated ? 'rc-validated-badge' : 'rc-pending-badge');
+  if(isValidated){
+    badge.style.cssText = 'display:inline-flex;align-items:center;gap:3px;margin-left:.5rem;padding:2px 8px;background:rgba(70,180,90,.12);color:#2d8a4f;border:1px solid rgba(70,180,90,.32);border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.02em;cursor:pointer;vertical-align:middle';
+    badge.textContent = '✓ Validada';
+    badge.title = 'Clique pra entender o que isso significa';
+    badge.addEventListener('click', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      showValidatedExplanation();
+    });
+  } else {
+    badge.style.cssText = 'display:inline-flex;align-items:center;gap:3px;margin-left:.5rem;padding:2px 8px;background:rgba(245,158,11,.10);color:var(--amber-text);border:1px solid rgba(245,158,11,.30);border-radius:999px;font-size:10.5px;font-weight:600;letter-spacing:.02em;cursor:pointer;vertical-align:middle';
+    badge.textContent = '⏳ Em revisão';
+    badge.title = 'Clique pra entender o que isso significa';
+    badge.addEventListener('click', e => {
+      e.stopPropagation();
+      e.preventDefault();
+      showPendingExplanation();
+    });
+  }
+  titleEl.appendChild(badge);
   card.appendChild(header);
 
   // Autor + data
@@ -31118,6 +30347,64 @@ async function showResourcePreviewModal(item){
 
   const isMine = AUTH.user && AUTH.user.id === item.owner_id;
   const alreadyImp = wasResourceImported(item.id, item.resource_type);
+
+  // V15: Botões admin de moderação — só pra admin, em fontes ainda não validadas.
+  // Permite editar conteúdo bruto (remover ruído) e validar marcando como aprovada.
+  const isAdmin = typeof isAdminUser === 'function' && isAdminUser();
+  const isValidated = item.moderation_status === 'approved' || item.is_validated === true;
+  if(isAdmin && item.resource_type === 'fonte'){
+    if(!isValidated){
+      const editBtn = mkBtn('✏ Editar (admin)','btn btn-sm');
+      editBtn.title = 'Edite o conteúdo da fonte pública pra remover ruído antes de validar';
+      editBtn.addEventListener('click', async ()=>{
+        closeModal();
+        try{
+          const result = await fetchResourceFull(item.id);
+          if(result.error || !result.resource){
+            alert('Erro ao carregar fonte: ' + (result.error || 'sem dados'));
+            return;
+          }
+          showAdminEditResourceModal(result.resource);
+        }catch(e){
+          alert('Erro: ' + (e.message||e));
+        }
+      });
+      actionsRow.appendChild(editBtn);
+
+      const validateBtn = mkBtn('✓ Validar','btn btn-sm btn-p');
+      validateBtn.title = 'Marca como revisada e adiciona o selo "✓ Validada"';
+      validateBtn.style.cssText = 'background:rgba(70,180,90,.92);color:#fff;border-color:#2d8a4f';
+      validateBtn.addEventListener('click', async ()=>{
+        if(!confirm('Confirmar que esta fonte foi revisada e está apta? Vai aparecer com selo "✓ Validada" pra todos os usuários.')) return;
+        try{
+          await adminMarkResourceValidated(item.id);
+          showToast('✓ Fonte validada', 3500);
+          closeModal();
+          // Re-renderiza pra atualizar selo
+          if(typeof render === 'function') render();
+        }catch(e){
+          alert('Erro ao validar: ' + (e.message||e));
+        }
+      });
+      actionsRow.appendChild(validateBtn);
+    } else {
+      // Já validada — botão pra desfazer (admin)
+      const unvalidateBtn = mkBtn('↶ Desfazer validação','btn btn-sm');
+      unvalidateBtn.style.cssText = 'font-size:11.5px';
+      unvalidateBtn.addEventListener('click', async ()=>{
+        if(!confirm('Remover o selo de validação desta fonte?')) return;
+        try{
+          await adminMarkResourceValidated(item.id, false);
+          showToast('Validação desfeita', 3500);
+          closeModal();
+          if(typeof render === 'function') render();
+        }catch(e){
+          alert('Erro: ' + (e.message||e));
+        }
+      });
+      actionsRow.appendChild(unvalidateBtn);
+    }
+  }
 
   if(!isMine && item.resource_type !== 'edital'){
     const importBtn = mkBtn(alreadyImp ? '↻ Re-importar' : '📥 Importar pra minha conta', 'btn btn-sm btn-p');
