@@ -8842,20 +8842,72 @@ Aplique estilo geral de prova de concurso brasileiro. Mantenha rigor técnico, e
 
 function buildContent(){
   // V12: Se houver foco em seção específica de uma fonte (via TOC), usar só ela
-  if(ST.activeFocus && ST.activeFocus.sourceId && ST.activeFocus.sectionId){
-    const focused = (DATA.sources||[]).find(s => s.id === ST.activeFocus.sourceId);
-    if(focused && focused.toc){
-      const sec = focused.toc.find(t => t.id === ST.activeFocus.sectionId);
-      if(sec && focused.content){
-        // Extrai trecho da seção
-        const start = Math.max(0, sec.startChar || 0);
-        const end = Math.min(focused.content.length, sec.endChar || focused.content.length);
-        const sectionText = focused.content.slice(start, end);
-        if(sectionText && sectionText.trim().length > 50){
-          const disc = getDiscipline(focused.disciplineId);
-          const dLbl = disc ? ` (disciplina: ${disc.name})` : '';
-          return `[FOCO ESPECÍFICO — ${focused.name}${dLbl} → seção: ${sec.title}]\n\nGere questões EXCLUSIVAMENTE sobre o conteúdo abaixo, sem extrapolar pra outros temas:\n\n${sectionText}`;
+  // V15.5: Foco em seção(ões) específica(s). Estrutura nova:
+  //   ST.activeFocus.selections = [
+  //     {sourceId, sectionIds: ['s1','s2']},  // múltiplas seções de uma fonte
+  //     {sourceId, full: true}                  // fonte inteira (sem foco em TOC)
+  //   ]
+  // Retrocompatível com formato antigo {sourceId, sectionId} de chamadas externas.
+  // Quando há foco ativo, BYPASSA todo o resto do buildContent e retorna só o trecho focado.
+  if(ST.activeFocus){
+    let selections = ST.activeFocus.selections;
+
+    // Retrocompat: formato antigo {sourceId, sectionId} → 1 seleção
+    if(!selections && ST.activeFocus.sourceId && ST.activeFocus.sectionId){
+      selections = [{sourceId: ST.activeFocus.sourceId, sectionIds: [ST.activeFocus.sectionId]}];
+    }
+
+    if(Array.isArray(selections) && selections.length > 0){
+      const blocks = [];
+      selections.forEach(sel => {
+        const src = (DATA.sources||[]).find(s => s.id === sel.sourceId);
+        if(!src || !src.content) return;
+        const disc = getDiscipline(src.disciplineId);
+        const dLbl = disc ? ` (disciplina: ${disc.name})` : '';
+
+        if(sel.full){
+          // Fonte inteira (mesmo sem TOC)
+          blocks.push(`[FOCO — ${src.name}${dLbl} → fonte completa]\n${src.content}`);
+        } else if(Array.isArray(sel.sectionIds) && sel.sectionIds.length > 0 && Array.isArray(src.toc)){
+          // Múltiplas seções da mesma fonte
+          sel.sectionIds.forEach(sectionId => {
+            const sec = src.toc.find(t => t.id === sectionId);
+            if(!sec) return;
+            const start = Math.max(0, sec.startChar || 0);
+            const end = Math.min(src.content.length, sec.endChar || src.content.length);
+            const text = src.content.slice(start, end);
+            if(text && text.trim().length > 50){
+              blocks.push(`[FOCO — ${src.name}${dLbl} → seção: ${sec.title}]\n${text}`);
+            }
+          });
         }
+      });
+
+      if(blocks.length > 0){
+        // V15.5: Mesmo no modo foco, aplica truncagem se a seleção total exceder
+        // o limite de tokens. O modal mostra warning, mas se o usuário ignorar e
+        // mandar 100k tokens, evita estourar o rate limit. Pega o início + fim
+        // de cada bloco proporcionalmente.
+        const FOCUS_MAX_CHARS = 120000;
+        const joined = blocks.join('\n\n---\n\n');
+        let body;
+        if(joined.length <= FOCUS_MAX_CHARS){
+          body = joined;
+        } else {
+          // Trunca cada bloco proporcionalmente
+          const totalChars = blocks.reduce((a,b) => a + b.length, 0);
+          const ratio = FOCUS_MAX_CHARS / totalChars;
+          const truncated = blocks.map(b => {
+            const budget = Math.max(2000, Math.floor(b.length * ratio));
+            if(b.length <= budget) return b;
+            // Pega 60% do início + 40% do fim (geralmente importante mais o início)
+            const headSize = Math.floor(budget * 0.6);
+            const tailSize = budget - headSize;
+            return b.slice(0, headSize) + '\n\n[…trecho do meio cortado pra caber no limite…]\n\n' + b.slice(b.length - tailSize);
+          });
+          body = truncated.join('\n\n---\n\n');
+        }
+        return `[MODO FOCO ATIVO — gere questões EXCLUSIVAMENTE sobre o conteúdo abaixo, sem extrapolar pra outros temas]\n\n${body}`;
       }
     }
   }
@@ -8883,12 +8935,13 @@ function buildContent(){
     // V13: Mapa mental — material é esquemático, focar em RELAÇÕES e classificações
     directive = '\n\n--- DIRETRIZ DE ESTILO ---\nConteúdo é um MAPA MENTAL esquemático. Priorize: (a) testar RELAÇÕES entre conceitos (qual deriva de qual, qual é exceção a qual), (b) classificações e hierarquias mostradas nos ramos, (c) reconhecimento de PADRÕES estruturais. Não exija detalhes que o mapa não mostra explicitamente.\n';
   }
-  // V15 fix: Trunca pra caber no limite de tokens da Anthropic API.
-  // Limite real: 200k tokens. 1 token ≈ 3.5 chars em português. Ficamos com 600k chars
-  // de teto seguro pra deixar room pro system prompt + diretivas + resposta.
-  // Quando passa do limite, ROTACIONA a janela de leitura: cada chamada usa um
-  // trecho diferente da fonte (offset persistente), pra ao longo do tempo cobrir tudo.
-  const MAX_CONTENT_CHARS = 600000;
+  // V15.4 fix: Limite drasticamente reduzido pra caber no rate limit organizacional
+  // da Anthropic (50.000 tokens/minuto). Antes: 600k chars (~150k tokens) — saturava
+  // o minuto inteiro em UMA chamada, bloqueando próximas. Agora: 120k chars (~30k
+  // tokens), permitindo múltiplas chamadas/min e mantendo conteúdo útil pra IA.
+  // Janela rotativa cobre todo o material ao longo do tempo.
+  const MAX_CONTENT_CHARS = 120000;
+  const MIN_PER_SOURCE = 4000;
 
   const fullContent = srcs.map(s=>{
     const disc = getDiscipline(s.disciplineId);
@@ -8905,8 +8958,7 @@ function buildContent(){
   } else {
     // Conteúdo grande demais — pega janela rotativa.
     // Distribui o orçamento de chars entre as fontes proporcionalmente ao tamanho delas,
-    // mas com mínimo garantido (8k chars cada) pra evitar fontes pequenas serem zeradas.
-    const MIN_PER_SOURCE = 8000;
+    // mas com mínimo garantido (MIN_PER_SOURCE chars cada) pra evitar fontes pequenas serem zeradas.
     const headerSize = 200; // overhead estimado por fonte (label + delimitadores)
     const totalHeaderOverhead = srcs.length * headerSize + 100; // + diretivas
     const budgetForContents = MAX_CONTENT_CHARS - totalHeaderOverhead;
@@ -10302,52 +10354,164 @@ function setMethodModel(methodKey,model){
   }
   ST.methodModel[methodKey] = model;
 }
-// Returns a model picker element; onChange called with new model id
-// V12: Picker de "foco" — permite ao usuário restringir geração de questões
-// a uma seção específica de um PDF indexado. Só aparece se há fontes com TOC.
+// V15.5: Banner de foco ativo — sinalização visual permanente quando o usuário
+// configurou "Foco no conteúdo". Lembra que a IA está restringindo escopo, e dá
+// acesso rápido pra editar/limpar.
+function buildActiveFocusBanner(){
+  const af = ST.activeFocus || {};
+  const all = activeSources();
+  let count = 0;
+  let chars = 0;
+  const labels = [];
+
+  if(Array.isArray(af.selections) && af.selections.length > 0){
+    af.selections.forEach(sel => {
+      const src = all.find(s => s.id === sel.sourceId);
+      if(!src) return;
+      if(sel.full){
+        count += 1;
+        chars += (src.content||'').length;
+        labels.push(`${src.name} (completa)`);
+      } else if(Array.isArray(sel.sectionIds)){
+        sel.sectionIds.forEach(sid => {
+          const sec = (src.toc||[]).find(t => t.id === sid);
+          if(sec){
+            count += 1;
+            chars += Math.max(0, (sec.endChar||src.content?.length||0) - (sec.startChar||0));
+            labels.push(`${src.name} → ${sec.title}`);
+          }
+        });
+      }
+    });
+  } else if(af.sourceId && af.sectionId){
+    // Retrocompat
+    const src = all.find(s => s.id === af.sourceId);
+    if(src){
+      const sec = (src.toc||[]).find(t => t.id === af.sectionId);
+      if(sec){
+        count = 1;
+        chars = Math.max(0, (sec.endChar||src.content?.length||0) - (sec.startChar||0));
+        labels.push(`${src.name} → ${sec.title}`);
+      }
+    }
+  }
+
+  if(count === 0) return null;
+
+  const tokens = Math.round(chars / 3.5);
+  const banner = mk('div');
+  banner.style.cssText = 'display:flex;align-items:center;gap:.75rem;padding:.625rem .875rem;background:linear-gradient(135deg,rgba(128,66,250,.10),rgba(128,66,250,.04));border:1px solid rgba(128,66,250,.25);border-left:3px solid var(--gralia-purple);border-radius:8px;margin-bottom:.875rem;font-size:12.5px;cursor:pointer;transition:all .15s';
+  banner.addEventListener('mouseenter', () => {
+    banner.style.background = 'linear-gradient(135deg,rgba(128,66,250,.14),rgba(128,66,250,.06))';
+  });
+  banner.addEventListener('mouseleave', () => {
+    banner.style.background = 'linear-gradient(135deg,rgba(128,66,250,.10),rgba(128,66,250,.04))';
+  });
+  banner.addEventListener('click', () => showFocusPickerModal(activeSources()));
+
+  const ico = mk('span');
+  ico.style.cssText = 'font-size:18px;line-height:1;flex-shrink:0';
+  ico.textContent = '🎯';
+  banner.appendChild(ico);
+
+  const body = mk('div');
+  body.style.cssText = 'flex:1;min-width:0';
+  const headLine = mk('div');
+  headLine.style.cssText = 'font-size:11.5px;font-weight:700;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.4px;line-height:1.2';
+  headLine.textContent = 'Foco ativo';
+  body.appendChild(headLine);
+  const detail = mk('div');
+  detail.style.cssText = 'font-size:12.5px;color:var(--text);line-height:1.4;margin-top:1px';
+  // Se 1 só, mostra completo; se múltiplos, resume
+  if(count === 1){
+    detail.textContent = labels[0];
+  } else {
+    detail.textContent = `${count} trechos · ~${tokens.toLocaleString('pt-BR')} tokens`;
+  }
+  body.appendChild(detail);
+  banner.appendChild(body);
+
+  const editHint = mk('span');
+  editHint.style.cssText = 'font-size:11px;color:var(--text3);font-weight:600;flex-shrink:0';
+  editHint.textContent = 'Clique pra editar';
+  banner.appendChild(editHint);
+
+  return banner;
+}
+
+
+//   - múltiplas seções selecionadas (de uma ou várias fontes)
+//   - fontes sem TOC (oferece "fonte inteira" como opção)
+//   - busca por título
+//   - estimativa de tokens enviados pra IA
 function buildFocusPicker(){
-  // Lista fontes ativas que têm TOC válido
-  const sourcesWithToc = (DATA.sources||[]).filter(s =>
-    s.toc && Array.isArray(s.toc) && s.toc.length >= 2
-  );
-  if(sourcesWithToc.length === 0) return null;
+  // Inclui TODAS as fontes ativas (com ou sem TOC), não só as indexadas.
+  const all = activeSources();
+  if(all.length === 0) return null;
+
+  const sourcesWithToc = all.filter(s => s.toc && Array.isArray(s.toc) && s.toc.length >= 2);
+
+  // Não tem nada pra focar (nenhuma fonte com TOC e só 1 fonte total) → não mostra
+  if(sourcesWithToc.length === 0 && all.length <= 1) return null;
 
   const wrap = mk('div','focus-picker');
   const head = mk('div','focus-picker-head');
   const lbl = mk('span','focus-picker-lbl');
-  lbl.innerHTML = '🎯 Foco em seção <span style="font-weight:400;font-size:10.5px;color:var(--text3)">(opcional)</span>';
+  lbl.innerHTML = '🎯 Foco no conteúdo <span style="font-weight:400;font-size:10.5px;color:var(--text3)">(opcional)</span>';
   head.appendChild(lbl);
 
-  // Status atual
+  // Status atual + estimativa de tokens
   let currentLabel = 'Toda fonte ativa';
-  if(ST.activeFocus && ST.activeFocus.sourceId && ST.activeFocus.sectionId){
-    const s = sourcesWithToc.find(x => x.id === ST.activeFocus.sourceId);
-    if(s){
-      const sec = (s.toc||[]).find(t => t.id === ST.activeFocus.sectionId);
-      if(sec){
-        currentLabel = s.name + ' → ' + sec.title;
+  const af = ST.activeFocus || {};
+  let selCount = 0;
+  let totalChars = 0;
+  if(Array.isArray(af.selections) && af.selections.length > 0){
+    af.selections.forEach(sel => {
+      const src = all.find(s => s.id === sel.sourceId);
+      if(!src) return;
+      if(sel.full){
+        selCount += 1;
+        totalChars += (src.content||'').length;
+      } else if(Array.isArray(sel.sectionIds)){
+        sel.sectionIds.forEach(sid => {
+          const sec = (src.toc||[]).find(t => t.id === sid);
+          if(sec){
+            selCount += 1;
+            totalChars += Math.max(0, (sec.endChar||src.content?.length||0) - (sec.startChar||0));
+          }
+        });
       }
+    });
+    if(selCount > 0){
+      const tokens = Math.round(totalChars / 3.5);
+      currentLabel = `${selCount} ${selCount===1?'trecho':'trechos'} · ~${tokens.toLocaleString('pt-BR')} tokens`;
+    }
+  } else if(af.sourceId && af.sectionId){
+    // Retrocompat
+    const s = all.find(x => x.id === af.sourceId);
+    if(s){
+      const sec = (s.toc||[]).find(t => t.id === af.sectionId);
+      if(sec) currentLabel = s.name + ' → ' + sec.title;
     }
   }
+
   const status = mk('span','focus-picker-status');
   status.textContent = currentLabel;
   head.appendChild(status);
   wrap.appendChild(head);
 
-  // Botão pra abrir modal de seleção
   const btnRow = mk('div','focus-picker-btns');
   const pickBtn = mk('button','btn btn-sm');
   pickBtn.style.cssText = 'font-size:11.5px;padding:5px 10px';
-  pickBtn.textContent = ST.activeFocus?.sectionId ? 'Trocar seção' : 'Escolher seção';
-  pickBtn.addEventListener('click', ()=>showFocusPickerModal(sourcesWithToc));
+  pickBtn.textContent = (selCount > 0 || af.sectionId) ? 'Editar foco' : 'Escolher foco';
+  pickBtn.addEventListener('click', () => showFocusPickerModal(all));
   btnRow.appendChild(pickBtn);
-  if(ST.activeFocus?.sectionId){
+  if(selCount > 0 || af.sectionId){
     const clearBtn = mk('button','btn btn-sm');
     clearBtn.style.cssText = 'font-size:11.5px;padding:5px 10px';
     clearBtn.textContent = '✕ Limpar foco';
-    clearBtn.addEventListener('click', ()=>{
+    clearBtn.addEventListener('click', () => {
       ST.activeFocus = null;
-      // Limpa pré-carregadas pra não usar questão de foco antigo
       if(DATA.preloadedQuestions) DATA.preloadedQuestions = {};
       save();
       render();
@@ -10358,59 +10522,271 @@ function buildFocusPicker(){
   return wrap;
 }
 
-function showFocusPickerModal(sourcesWithToc){
-  const m = mk('div'); m.style.cssText = 'max-width:680px;max-height:80vh;overflow-y:auto';
+function showFocusPickerModal(allSources){
+  // Estado interno do modal: tracked = Map<sourceId, {full: bool, sectionIds: Set}>
+  const tracked = new Map();
+
+  // Pré-popula com seleções existentes
+  const af = ST.activeFocus || {};
+  if(Array.isArray(af.selections)){
+    af.selections.forEach(sel => {
+      if(!sel.sourceId) return;
+      tracked.set(sel.sourceId, {
+        full: !!sel.full,
+        sectionIds: new Set(Array.isArray(sel.sectionIds) ? sel.sectionIds : [])
+      });
+    });
+  } else if(af.sourceId && af.sectionId){
+    // Retrocompat
+    tracked.set(af.sourceId, {full: false, sectionIds: new Set([af.sectionId])});
+  }
+
+  const m = mk('div');
+  m.style.cssText = 'max-width:760px;width:100%;max-height:85vh;display:flex;flex-direction:column';
+
   const head = mk('div','source-toc-head');
   head.innerHTML = `
     <div class="sth-icon">🎯</div>
     <div class="sth-info">
-      <h2>Focar em seção específica</h2>
-      <p>A IA vai gerar questões usando APENAS o trecho escolhido</p>
+      <h2>Foco no conteúdo</h2>
+      <p>A IA gera questões usando APENAS o que você selecionar. Pode escolher múltiplas seções e múltiplas fontes.</p>
     </div>
     <button type="button" class="sth-close" id="fpm-close">×</button>
   `;
   m.appendChild(head);
-  setTimeout(()=>{
+  setTimeout(() => {
     const c = head.querySelector('#fpm-close');
     if(c) c.addEventListener('click', closeModal);
-  },0);
+  }, 0);
 
-  const tip = mk('div'); tip.style.cssText = 'padding:.75rem 1rem;background:rgba(128,66,250,.05);border:1px solid rgba(128,66,250,.18);border-radius:8px;font-size:12px;line-height:1.55;color:var(--text2);margin-bottom:.875rem';
-  tip.innerHTML = '<b>Como funciona:</b> escolha uma seção do índice de um PDF indexado. As próximas questões vão sair só desse trecho — útil pra praticar capítulos específicos antes da prova.';
-  m.appendChild(tip);
+  // Resumo de tokens estimados — atualiza ao vivo
+  const summary = mk('div');
+  summary.style.cssText = 'padding:.625rem .875rem;background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.18);border-radius:8px;margin:0 1rem .75rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;font-size:12px;flex-wrap:wrap';
+  m.appendChild(summary);
 
-  // Limpa preload se troca foco (próximas questões devem ser do novo escopo)
-  function applyFocus(sourceId, sectionId){
-    ST.activeFocus = {sourceId, sectionId};
+  // Busca
+  const searchRow = mk('div');
+  searchRow.style.cssText = 'padding:0 1rem .5rem';
+  const searchInput = mk('input');
+  searchInput.type = 'text';
+  searchInput.placeholder = '🔍 Buscar seção...';
+  searchInput.style.cssText = 'width:100%;padding:.5rem .75rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:12.5px;font-family:inherit;color:var(--text)';
+  searchRow.appendChild(searchInput);
+  m.appendChild(searchRow);
+
+  // Container scrollável das fontes/seções
+  const list = mk('div');
+  list.style.cssText = 'flex:1;overflow-y:auto;padding:0 1rem 1rem;min-height:300px';
+  m.appendChild(list);
+
+  // Footer com ações
+  const footer = mk('div');
+  footer.style.cssText = 'padding:.75rem 1rem;border-top:1px solid var(--border);display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap;background:var(--surface)';
+  const cancelBtn = mk('button','btn btn-sm');
+  cancelBtn.textContent = 'Cancelar';
+  cancelBtn.addEventListener('click', closeModal);
+  const clearAllBtn = mk('button','btn btn-sm');
+  clearAllBtn.textContent = '✕ Limpar tudo';
+  clearAllBtn.addEventListener('click', () => {
+    tracked.clear();
+    rerender();
+  });
+  const applyBtn = mk('button','btn btn-sm btn-p');
+  applyBtn.textContent = '✓ Aplicar foco';
+  applyBtn.addEventListener('click', () => {
+    const selections = [];
+    tracked.forEach((val, sourceId) => {
+      if(val.full){
+        selections.push({sourceId, full: true});
+      } else if(val.sectionIds.size > 0){
+        selections.push({sourceId, sectionIds: Array.from(val.sectionIds)});
+      }
+    });
+    if(selections.length === 0){
+      ST.activeFocus = null;
+    } else {
+      ST.activeFocus = {selections};
+    }
     if(DATA.preloadedQuestions) DATA.preloadedQuestions = {};
     save();
     closeModal();
     render();
+  });
+  footer.appendChild(cancelBtn);
+  footer.appendChild(clearAllBtn);
+  footer.appendChild(applyBtn);
+  m.appendChild(footer);
+
+  // Helpers
+  function calcStats(){
+    let count = 0;
+    let chars = 0;
+    tracked.forEach((val, sourceId) => {
+      const src = allSources.find(s => s.id === sourceId);
+      if(!src) return;
+      if(val.full){
+        count += 1;
+        chars += (src.content||'').length;
+      } else {
+        val.sectionIds.forEach(sid => {
+          const sec = (src.toc||[]).find(t => t.id === sid);
+          if(sec){
+            count += 1;
+            chars += Math.max(0, (sec.endChar||src.content?.length||0) - (sec.startChar||0));
+          }
+        });
+      }
+    });
+    return {count, chars, tokens: Math.round(chars / 3.5)};
   }
 
-  // Lista por fonte
-  sourcesWithToc.forEach(src => {
-    const block = mk('div','focus-src-block');
-    block.innerHTML = `<div class="focus-src-name">📚 <b>${escapeHTML(src.name)}</b> <span class="focus-src-meta">· ${(src.toc||[]).length} seções</span></div>`;
+  function renderSummary(){
+    const {count, chars, tokens} = calcStats();
+    const TOKEN_LIMIT = 30000;
+    let warnHTML = '';
+    if(count === 0){
+      warnHTML = '<span style="color:var(--text3)">Nada selecionado — IA usará todas as fontes ativas (com truncagem).</span>';
+    } else if(tokens > TOKEN_LIMIT){
+      warnHTML = `<span style="color:var(--red-text);font-weight:600">⚠ Seleção grande (${tokens.toLocaleString('pt-BR')} tokens). Será truncada — selecione menos pra IA usar tudo.</span>`;
+    } else if(tokens > TOKEN_LIMIT * 0.7){
+      warnHTML = `<span style="color:var(--amber-text);font-weight:600">Próximo do limite (${tokens.toLocaleString('pt-BR')} / ${TOKEN_LIMIT.toLocaleString('pt-BR')} tokens)</span>`;
+    } else {
+      warnHTML = `<span style="color:var(--accent);font-weight:600">✓ ${tokens.toLocaleString('pt-BR')} tokens — cabe folgado</span>`;
+    }
+    summary.innerHTML = `
+      <span><b>${count}</b> ${count===1?'trecho':'trechos'} · ~${chars.toLocaleString('pt-BR')} caracteres</span>
+      ${warnHTML}
+    `;
+  }
 
-    const tocList = mk('div','focus-toc-list');
-    (src.toc||[]).forEach(sec => {
-      const item = mk('button','focus-toc-item' + (ST.activeFocus?.sourceId===src.id && ST.activeFocus?.sectionId===sec.id ? ' on' : ''));
-      const indent = (sec.level || 1) - 1;
-      item.style.paddingLeft = (10 + indent * 16) + 'px';
-      const charsInSection = (sec.endChar || src.content?.length || 0) - (sec.startChar || 0);
-      const sizeHint = charsInSection > 1000 ? Math.round(charsInSection/1000) + 'k chars' : charsInSection + ' chars';
-      item.innerHTML = `
-        <span class="ftoc-title">${escapeHTML(sec.title)}</span>
-        <span class="ftoc-meta">${sizeHint}</span>
-      `;
-      item.addEventListener('click', ()=>applyFocus(src.id, sec.id));
-      tocList.appendChild(item);
+  function getOrCreateEntry(sourceId){
+    if(!tracked.has(sourceId)){
+      tracked.set(sourceId, {full: false, sectionIds: new Set()});
+    }
+    return tracked.get(sourceId);
+  }
+
+  function rerender(){
+    list.innerHTML = '';
+    const filter = (searchInput.value || '').trim().toLowerCase();
+
+    allSources.forEach(src => {
+      const hasToc = src.toc && Array.isArray(src.toc) && src.toc.length >= 2;
+      const entry = tracked.get(src.id);
+
+      // Aplica filtro
+      let visibleSections = src.toc || [];
+      const srcMatchesFilter = !filter || src.name.toLowerCase().includes(filter);
+      if(filter && !srcMatchesFilter){
+        if(hasToc){
+          visibleSections = visibleSections.filter(sec => sec.title.toLowerCase().includes(filter));
+          if(visibleSections.length === 0) return;
+        } else {
+          return; // sem TOC e nome não casa → pula
+        }
+      }
+
+      const block = mk('div');
+      block.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.75rem;margin-bottom:.625rem';
+
+      // Header da fonte: nome + checkbox "fonte inteira"
+      const blockHead = mk('div');
+      blockHead.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap';
+      const blockTitle = mk('div');
+      const totalSize = (src.content||'').length;
+      const sizeHint = totalSize > 1000 ? Math.round(totalSize/1000) + 'k chars' : totalSize + ' chars';
+      blockTitle.innerHTML = `<b style="font-size:13px;color:var(--text)">📚 ${escapeHTML(src.name)}</b>${hasToc ? ` <span style="font-size:11px;color:var(--text3)">· ${src.toc.length} seções · ${sizeHint}</span>` : ` <span style="font-size:11px;color:var(--text3)">· sem índice · ${sizeHint}</span>`}`;
+      blockHead.appendChild(blockTitle);
+
+      // Checkbox "fonte inteira"
+      const fullLabel = mk('label');
+      fullLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);cursor:pointer;user-select:none;flex-shrink:0';
+      const fullChk = mk('input');
+      fullChk.type = 'checkbox';
+      fullChk.checked = !!(entry && entry.full);
+      fullChk.style.cssText = 'cursor:pointer';
+      fullChk.addEventListener('change', () => {
+        const e = getOrCreateEntry(src.id);
+        e.full = fullChk.checked;
+        if(fullChk.checked){
+          e.sectionIds.clear();
+        }
+        if(!e.full && e.sectionIds.size === 0){
+          tracked.delete(src.id);
+        }
+        rerender();
+      });
+      fullLabel.appendChild(fullChk);
+      const fullText = mk('span');
+      fullText.textContent = 'Fonte inteira';
+      fullLabel.appendChild(fullText);
+      blockHead.appendChild(fullLabel);
+      block.appendChild(blockHead);
+
+      // Lista de seções
+      if(hasToc && !(entry && entry.full)){
+        const sectionList = mk('div','focus-toc-list');
+        sectionList.style.cssText = 'border-top:1px solid var(--border);padding-top:.5rem;margin-top:.5rem';
+        visibleSections.forEach(sec => {
+          const item = mk('label');
+          item.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:12px;line-height:1.35;transition:background .12s';
+          item.addEventListener('mouseenter', () => item.style.background = 'var(--surface2)');
+          item.addEventListener('mouseleave', () => item.style.background = 'transparent');
+
+          const indent = (sec.level || 1) - 1;
+          item.style.paddingLeft = (8 + indent * 16) + 'px';
+
+          const chk = mk('input');
+          chk.type = 'checkbox';
+          chk.checked = !!(entry && entry.sectionIds.has(sec.id));
+          chk.style.cssText = 'cursor:pointer;flex-shrink:0';
+          chk.addEventListener('change', () => {
+            const e = getOrCreateEntry(src.id);
+            if(chk.checked) e.sectionIds.add(sec.id);
+            else e.sectionIds.delete(sec.id);
+            if(e.sectionIds.size === 0 && !e.full) tracked.delete(src.id);
+            renderSummary();
+          });
+          item.appendChild(chk);
+
+          const titleSpan = mk('span');
+          titleSpan.style.cssText = 'flex:1;color:var(--text)';
+          titleSpan.textContent = sec.title;
+          item.appendChild(titleSpan);
+
+          const charsInSec = (sec.endChar || src.content?.length || 0) - (sec.startChar || 0);
+          const secSizeHint = charsInSec > 1000 ? Math.round(charsInSec/1000) + 'k' : charsInSec + '';
+          const meta = mk('span');
+          meta.style.cssText = 'font-size:10.5px;color:var(--text3);font-variant-numeric:tabular-nums;flex-shrink:0';
+          meta.textContent = secSizeHint;
+          item.appendChild(meta);
+
+          sectionList.appendChild(item);
+        });
+        block.appendChild(sectionList);
+      }
+
+      list.appendChild(block);
     });
-    block.appendChild(tocList);
-    m.appendChild(block);
+
+    if(list.children.length === 0){
+      const empty = mk('p');
+      empty.style.cssText = 'padding:2rem;text-align:center;color:var(--text3);font-size:12.5px';
+      empty.textContent = filter ? 'Nenhuma seção encontrada com esse termo.' : 'Nenhuma fonte ativa.';
+      list.appendChild(empty);
+    }
+
+    renderSummary();
+  }
+
+  // Debounced search
+  let searchT;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchT);
+    searchT = setTimeout(rerender, 150);
   });
 
+  rerender();
   showModal(m);
 }
 
@@ -17327,7 +17703,13 @@ function handleErr(e,container){
   else if(msg.includes('network'))text='⚠ Falha de rede. Verifique sua conexão e tente de novo.';
   else if(msg.includes('api-401')||msg.includes('api-403')){text='⚠ Chave API inválida ou sem crédito.';canRetry=false;}
   else if(msg.includes('api-404')){text='⚠ Modelo não encontrado. Vá em Config e selecione outro modelo.';canRetry=false;}
-  else if(msg.includes('api-429'))text='⚠ Limite de requisições atingido. Aguarde 30s e tente de novo.';
+  else if(msg.includes('api-429')){
+    if(/rate limit.*input tokens|tokens per minute|input tokens per minute/i.test(msg)){
+      text = '⚠ Sua fonte é grande demais e atingiu o limite de tokens da Anthropic (50 mil/min). Aguarde 1 minuto e tente de novo. Se acontecer com frequência, divida sua fonte em fontes menores.';
+    } else {
+      text = '⚠ Limite de requisições atingido. Aguarde 30s e tente de novo.';
+    }
+  }
   else if(msg.includes('api-5'))text='⚠ Servidor da IA fora do ar. Aguarde 30s e tente de novo.';
   else if(msg.includes('api-'))text='⚠ Erro da API: '+msg.replace('api-','').slice(0,200);
   else if(msg.includes('JSON')||msg.includes('parse'))text='⚠ A IA retornou resposta inválida. Tente novamente.';
@@ -23074,6 +23456,10 @@ function renderCalibration(){
   wrap.appendChild(headRow);
   wrap.appendChild(buildMethodInfoPanel('calibration'));
 
+  // V15.5: Banner de foco ativo
+  const focusBannerC = buildActiveFocusBanner();
+  if(focusBannerC) wrap.appendChild(focusBannerC);
+
   const c = s.calibration;
   if(c.certain.t>0||c.think.t>0||c.guess.t>0){
     const sr = mk('div','flex');sr.style.gap='8px';sr.style.marginBottom='.875rem';
@@ -23384,6 +23770,10 @@ function renderDrill(){
   if(fbD) headRow.appendChild(fbD);
   wrap.appendChild(headRow);
   wrap.appendChild(buildMethodInfoPanel('drill'));
+
+  // V15.5: Banner de foco ativo
+  const focusBannerD = buildActiveFocusBanner();
+  if(focusBannerD) wrap.appendChild(focusBannerD);
 
   if(ST.drillTarget===null&&!ST.drillQ){
     const lastB = buildLastGenBadge('drill','question');
@@ -23699,6 +24089,11 @@ function renderPractice(){
   wrap.appendChild(headRow);
   wrap.appendChild(buildMethodInfoPanel('practice'));
 
+  // V15.5: Banner de foco ativo — aparece sempre que há foco ativo, em qualquer
+  // estado (com ou sem questão). Clicável: abre o modal de foco pra editar.
+  const focusBanner = buildActiveFocusBanner();
+  if(focusBanner) wrap.appendChild(focusBanner);
+
   // Source toggle: AI or Imported
   if(!ST.practQ&&!ST.practLoading){
     const importedCount = (DATA.importedQuestions||[]).length;
@@ -23965,7 +24360,12 @@ async function practSubmit(answer){
       };
       save();
     }
-  }catch(e){ST.practAnswered=false;handleErr(e,container||document.body);}
+  }catch(e){
+    ST.practAnswered=false;
+    // V15.4 fix: practSubmit não recebe container (é callback de answerButtons).
+    // Usa a tela atual como fallback. Antes: ReferenceError: container is not defined.
+    handleErr(e, document.querySelector('.fade') || document.body);
+  }
   ST.practLoading=false;render();
 }
 function practNext(){
