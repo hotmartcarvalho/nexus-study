@@ -161,10 +161,13 @@ body.sidebar-collapsed .app-sidebar-section-label,
 body.sidebar-collapsed .app-sidebar-item-label,
 body.sidebar-collapsed .app-sidebar-badge,
 body.sidebar-collapsed .app-sidebar-search-btn span:not(:first-child),
-body.sidebar-collapsed .app-sidebar-brand span:not(.brand-bird){
+body.sidebar-collapsed .app-sidebar-brand{
   display:none !important;
 }
-body.sidebar-collapsed .app-sidebar-brand{padding:6px 10px 14px;justify-content:center}
+/* V15.9: Quando colapsada, sidebar fica só com ícones — brand inteiro some
+   (era cortado/espremido). Botão de toggle se reposiciona logo no topo. */
+body.sidebar-collapsed .app-sidebar{padding-top:48px}
+body.sidebar-collapsed .sidebar-collapse-toggle{top:12px}
 body.sidebar-collapsed .app-sidebar-section{padding:6px 6px 4px}
 body.sidebar-collapsed .app-sidebar-item{padding:.5rem 0;justify-content:center;margin:1px 4px}
 body.sidebar-collapsed .app-sidebar-search-btn{justify-content:center;padding:8px 0;margin:8px 6px}
@@ -175,42 +178,60 @@ body.sidebar-collapsed.has-sidebar .topbar{padding-left:64px}
 /* Toggle button */
 .sidebar-collapse-toggle{
   position:absolute;
-  top:14px;
-  right:8px;
-  width:24px;
-  height:24px;
-  border-radius:50%;
+  top:18px;
+  right:10px;
+  width:26px;
+  height:26px;
+  border-radius:8px;
   background:var(--surface2);
   border:1px solid var(--border);
   cursor:pointer;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:13px;
-  color:var(--text2);
+  font-size:11px;
+  color:var(--text3);
   z-index:10;
-  transition:all .15s;
+  transition:all .18s ease;
   font-family:inherit;
   padding:0;
   line-height:1;
 }
-.sidebar-collapse-toggle:hover{background:var(--gralia-purple);color:#fff;border-color:var(--gralia-purple)}
-/* V15: quando sidebar está colapsada, centraliza o botão */
+.sidebar-collapse-toggle::before{
+  content:'';
+  display:block;
+  width:6px;height:6px;
+  border-left:1.8px solid currentColor;
+  border-bottom:1.8px solid currentColor;
+  transform:rotate(45deg);
+  margin-right:-2px;
+  transition:transform .2s;
+}
+body.sidebar-collapsed .sidebar-collapse-toggle::before{
+  transform:rotate(-135deg);
+  margin-right:0;
+  margin-left:-2px;
+}
+.sidebar-collapse-toggle:hover{background:var(--gralia-purple);color:#fff;border-color:var(--gralia-purple);transform:scale(1.06)}
+body.sidebar-collapsed .sidebar-collapse-toggle:hover{transform:translateX(-50%) scale(1.06)}
 body.sidebar-collapsed .sidebar-collapse-toggle{right:auto;left:50%;transform:translateX(-50%)}
 
 .app-sidebar-brand{
-  padding:6px 18px 14px;
+  padding:14px 18px 16px;
   border-bottom:1px solid var(--border);
-  margin-bottom:8px;
+  margin-bottom:10px;
   display:flex;
   align-items:center;
-  gap:8px;
-  font-size:18px;
+  gap:10px;
+  font-size:20px;
   font-weight:800;
-  letter-spacing:-.5px;
+  letter-spacing:-.6px;
   color:var(--text);
   text-decoration:none;
+  position:relative;
 }
+.app-sidebar-brand .brand-bird{height:32px;width:auto;flex-shrink:0;margin-right:0;transition:height .2s}
+body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:28px}
 .app-sidebar-brand-emoji{font-size:22px;line-height:1}
 .app-sidebar-section{padding:10px 12px 4px}
 .app-sidebar-section-label{
@@ -330,7 +351,7 @@ body.srs-focus-mode #app{padding-left:0 !important}
 /* Coluna central: tabs alinhadas à ESQUERDA (começo do conteúdo). Padding igual .page pra alinhar perfeitamente. */
 .topbar-col-center{display:flex;align-items:center;gap:8px;min-width:0;justify-content:flex-start;padding:0 1.25rem;box-sizing:border-box}
 /* Coluna direita: info alinhada à ESQUERDA da coluna (após o conteúdo) */
-.topbar-col-right{display:flex;align-items:center;gap:10px;min-width:0;justify-content:flex-start}
+.topbar-col-right{display:flex;align-items:center;gap:8px;min-width:0;justify-content:flex-start}
 .brand{display:flex;align-items:center;gap:6px;white-space:nowrap;font-weight:700;letter-spacing:-.5px}
 .brand-interactive{cursor:pointer;position:relative;padding:4px 8px 4px 4px;margin-left:-4px;border-radius:8px;transition:background .15s}
 .brand-interactive:hover{background:rgba(128,66,250,.06)}
@@ -529,7 +550,7 @@ html.dark .countdown-pill.countdown-near{color:#e8c068}
 }
 
 /* Breadcrumb contextual — mostra trilha de navegação */
-.breadcrumb{display:flex;align-items:center;gap:6px;padding:10px 0 18px;font-size:12.5px;flex-wrap:wrap;animation:bc-in .25s ease}
+.breadcrumb-back{display:flex;align-items:center;gap:6px;padding:6px 0 12px;font-size:12.5px;flex-wrap:wrap;animation:bc-in .25s ease}
 @keyframes bc-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 .bc-back{background:var(--accent-light);color:var(--accent-text);border:1px solid var(--accent);border-radius:999px;padding:5px 12px 5px 10px;font-family:inherit;font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:5px;cursor:pointer;transition:all .15s}
 .bc-back:hover{background:var(--accent);color:#fff;transform:translateX(-2px)}
@@ -1542,6 +1563,41 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .md-render th{background:var(--surface2);font-weight:700;color:var(--text);border-bottom:2px solid var(--gralia-purple);font-size:12.5px}
 .md-render td{color:var(--text2)}
 .md-render tr:last-child td{border-bottom:none}
+
+/* V15.10: Breadcrumbs — trilha de navegação no topo de cada página */
+.breadcrumb{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  margin:0 0 1rem;padding:8px 0;
+  font-size:12.5px;line-height:1.4;
+  color:var(--text3);
+}
+.breadcrumb-link{
+  display:inline-flex;align-items:center;gap:5px;
+  background:transparent;border:none;
+  padding:3px 8px;border-radius:6px;
+  font-family:inherit;font-size:12.5px;font-weight:500;
+  color:var(--text2);cursor:pointer;
+  transition:all .12s;
+}
+.breadcrumb-link:hover{background:var(--surface2);color:var(--gralia-purple)}
+.breadcrumb-group{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 4px;
+  font-size:12.5px;font-weight:500;
+  color:var(--text3);
+}
+.breadcrumb-current{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 8px;
+  font-size:12.5px;font-weight:700;
+  color:var(--text);
+}
+.breadcrumb-sep{
+  color:var(--text3);opacity:.5;
+  user-select:none;font-weight:400;
+  margin:0 1px;
+}
+.breadcrumb .bc-icon{font-size:13px;line-height:1;flex-shrink:0}
 
 .chart-insight{margin:1rem 0 0;padding:.75rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:12.5px;color:var(--text2);line-height:1.55}
 .chart-insight b{color:var(--text);font-weight:700}
@@ -4259,18 +4315,49 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 .auth-loading p{margin-top:.75rem;font-size:13px}
 
 /* Sync indicator — small dot in topbar */
-.sync-dot{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);padding:4px 8px;border-radius:10px;background:var(--surface2);cursor:default}
-.sync-dot::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accent)}
+/* V15.10: Sync indicator — ponto minimalista (sem texto). Hover mostra status.
+   Antes: texto "Sincronizado" inline poluía a barra. */
+.sync-dot{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:10px;height:10px;border-radius:50%;
+  background:transparent;border:none;padding:0;
+  font-size:0;color:transparent;
+  cursor:default;position:relative;flex-shrink:0;
+}
+.sync-dot::before{
+  content:'';width:8px;height:8px;border-radius:50%;
+  background:rgba(73,197,137,.55);
+  box-shadow:0 0 0 0 rgba(73,197,137,.3);
+}
 .sync-dot.syncing::before{background:var(--amber);animation:pulse 1.2s ease-in-out infinite}
-.sync-dot.error::before{background:var(--red)}
+.sync-dot.error::before{background:var(--red);box-shadow:0 0 0 3px rgba(239,68,68,.18)}
+.sync-dot::after{
+  content:attr(data-tip);
+  position:absolute;top:calc(100% + 8px);right:-10px;
+  background:var(--surface);border:1px solid var(--border);border-radius:6px;
+  padding:4px 8px;font-size:11px;color:var(--text2);font-weight:500;
+  white-space:nowrap;opacity:0;visibility:hidden;transition:opacity .15s,visibility .15s;
+  pointer-events:none;z-index:300;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+.sync-dot:hover::after{opacity:1;visibility:visible}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* Credits chip — shows remaining API quota in topbar */
-.credits-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--accent-text);padding:4px 10px;border-radius:10px;background:var(--accent-light);border:1px solid var(--accent);cursor:default;transition:all .15s;white-space:nowrap;flex-shrink:0;line-height:1}
+.credits-chip{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600;color:var(--accent-text);padding:5px 11px;border-radius:999px;background:var(--accent-light);border:1px solid var(--accent);cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0;line-height:1}
+.credits-chip:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(73,197,137,.18)}
 .credits-chip::before{content:'⚡';font-size:10px;flex-shrink:0}
 .credits-chip.low{color:var(--amber);background:rgba(245,158,11,.12);border-color:var(--amber)}
 .credits-chip.empty{color:var(--red-text);background:var(--red-light);border-color:var(--red);animation:credit-pulse 2s ease-in-out infinite}
 @keyframes credit-pulse{0%,100%{opacity:1}50%{opacity:.65}}
+
+/* V15.10: Divisor sutil entre grupos de items na topbar direita */
+.topbar-divider{
+  width:1px;height:18px;
+  background:var(--border);
+  margin:0 4px;flex-shrink:0;
+  opacity:.6;
+}
 
 /* ====== WELCOME v2 — landing page enxuta e impactante ====== */
 /* ===== WELCOME V3 — identidade Gralia ===== */
@@ -8753,7 +8840,7 @@ const ST = {
   profileLoading:false,
   profileError:null,
   // Discover (Estágio 3 social)
-  discoverFilter:{type:'caderno', discipline:'', search:'', sort:'newest', tag:''},
+  discoverFilter:{type:'all', discipline:'', search:'', sort:'newest', tag:''},
   discoverItems:[],
   discoverLoading:false,
   discoverPage:0,
@@ -11427,12 +11514,11 @@ function showConfirmModal(config){
 function buildAppSidebar(){
   const sb = mk('aside','app-sidebar');
 
-  // V14: Botão pra recolher/expandir sidebar
+  // V15.9: Chevron desenhado em CSS pseudo-element (gira via .sidebar-collapsed)
   const toggleBtn = mk('button','sidebar-collapse-toggle');
   toggleBtn.type = 'button';
   toggleBtn.setAttribute('aria-label', 'Recolher menu');
   const isCollapsed = !!DATA.sidebarCollapsed;
-  toggleBtn.innerHTML = isCollapsed ? '›' : '‹';
   toggleBtn.title = isCollapsed ? 'Expandir menu' : 'Recolher menu';
   toggleBtn.addEventListener('click',()=>{
     DATA.sidebarCollapsed = !DATA.sidebarCollapsed;
@@ -11481,9 +11567,9 @@ function buildAppSidebar(){
       label:'Estudo',
       items:[
         {view:'dashboard', icon:'🏠', label:'Painel'},
-        {view:'sources', icon:'📂', label:'Fontes', desc:'Material que você importou'},
+        {view:'sources', icon:'📚', label:'Fontes', desc:'Material que você importou'},
         {view:'methods', icon:'⚡', label:'Métodos', desc:'Praticar e calibrar com IA'},
-        {view:'imported', icon:'📥', label:'Banco de questões'},
+        {view:'imported', icon:'📥', label:'Cadernos de prática', desc:'Importe questões, organize em cadernos e refaça'},
       ]
     },
     {
@@ -11499,16 +11585,16 @@ function buildAppSidebar(){
       items:[
         {view:'goals', icon:'🎯', label:'Metas'},
         {view:'schedule', icon:'📅', label:'Cronograma', desc:'Blocos de estudo, treino, sono'},
-        {view:'editals', icon:'📋', label:'Editais', desc:'IA analisa o PDF do edital'},
-        {view:'exams', icon:'✅', label:'Conferir provas', desc:'Provas que você já fez'},
+        {view:'editals', icon:'📋', label:'Análise de editais', desc:'IA analisa o PDF do edital'},
+        {view:'exams', icon:'✅', label:'Análise de provas', desc:'Registre e analise provas reais que você fez'},
         {view:'mapa', icon:'🗺️', label:'Mapa da matéria'},
       ]
     },
     {
       label:'Comunidade',
       items:[
-        {view:'discover', icon:'🔍', label:'Descobrir'},
-        {view:'feed', icon:'📡', label:'Da rede'},
+        {view:'discover', icon:'🌐', label:'Comunidade', desc:'Materiais públicos de outros assinantes'},
+        {view:'feed', icon:'📡', label:'Feed dos seguidos', desc:'Atividade de quem você segue'},
         {view:'legalUpdates', icon:'⚖️', label:'Atualizações legais', desc:'Leis e jurisprudência novas'},
         {view:'forest', icon:'🌲', label:'Pinhal'},
         {view:'groups', icon:'👥', label:'Grupos', desc:'Rankings de até 20 pessoas'},
@@ -11643,10 +11729,17 @@ function render(){
     groupView:renderGroupView,
     schedule:renderSchedule
   };
-  // Contextual breadcrumb — shows where user came from
-  if(ST.navStack.length>0){
-    const bc = renderBreadcrumb();
-    if(bc)pg.appendChild(bc);
+  // V15.10: Sistema de breadcrumbs em duas camadas:
+  // 1. Hierárquico (sempre): Painel / Grupo / Página atual
+  // 2. Contextual (se veio de outra página via navStack): "← Voltar para X"
+  // Ambos só aparecem se NÃO estamos na dashboard/welcome.
+  if(ST.view && ST.view !== 'dashboard' && typeof renderHierBreadcrumb === 'function'){
+    const hbc = renderHierBreadcrumb(ST.view);
+    if(hbc) pg.appendChild(hbc);
+  }
+  if(ST.navStack && ST.navStack.length > 0){
+    const bbc = renderBackBreadcrumb();
+    if(bbc) pg.appendChild(bbc);
   }
   // Renderiza a view com proteção contra crashes — não deixa tela em branco mesmo se houver erro
   try{
@@ -11726,17 +11819,9 @@ function render(){
     }
   }
 
-  // V12: Botão flutuante "Modo foco" — agora maior, mais visível, com label no desktop
-  // (item 18: ícone de meditação 🧘 era pouco intuitivo, ficava escondido)
-  const focusBtn = mk('button','focus-toggle');
-  focusBtn.title = isFocusMode()?'Sair do modo foco (F)':'Modo foco — esconde tudo, fica só você e o estudo (F)';
-  if(isFocusMode()){
-    focusBtn.innerHTML = '<span class="ft-icon">✕</span><span class="ft-label">Sair</span>';
-  } else {
-    focusBtn.innerHTML = '<span class="ft-icon">🎯</span><span class="ft-label">Foco</span>';
-  }
-  focusBtn.addEventListener('click',()=>{toggleFocusMode();render();});
-  APP.appendChild(focusBtn);
+  // V15.9: Botão flutuante "Modo foco" REMOVIDO. Cada método de prática
+  // (calibração, drill DNA, intercalação, etc) já tem seu próprio modo foco
+  // contextual, então o botão global virou redundante.
 
   // V12: Botão flutuante de admin (canto superior direito) — só pra admin
   // Antes era tab no menu, ficava grudado com Config + créditos
@@ -11900,7 +11985,11 @@ function showLegalModal(kind){
       <p>O Gralia gera questões, explicações e flashcards usando IA. Apesar dos filtros de qualidade, podem ocorrer erros. Você é responsável por verificar conteúdos críticos com fontes oficiais (livros, vídeo-aulas, jurisprudência atualizada). O Gralia não substitui estudo de teoria.</p>
 
       <h3 style="margin:1rem 0 .375rem;font-size:14px">4. Materiais que você adiciona</h3>
-      <p>Quando você adiciona uma fonte (PDF, texto, apostila), garante que tem direito de uso. Se publicar conteúdo na descoberta, autoriza outros usuários a verem. Você pode despublicar a qualquer momento.</p>
+      <p>Quando você adiciona uma fonte (PDF, texto, apostila), garante que tem direito de uso e que o conteúdo não viola direitos de terceiros (cursos pagos, autores, plataformas).</p>
+      <p><b>Política de compartilhamento (atualizada):</b> Toda fonte adicionada por você é automaticamente enviada para revisão de moderadores e, após aprovada, fica disponível para todos os assinantes do Gralia consultarem e importarem. Esse modelo torna o Gralia mais útil para todos — nenhum usuário precisa duplicar trabalho de digitalizar/transcrever materiais comuns.</p>
+      <p>Antes da liberação pública: a fonte fica visível só para você e moderadores. Os moderadores removem referências a cursos pagos, gabaritos e autores, garantindo que o conteúdo seja conhecimento técnico geral. Se sua fonte for rejeitada, ela continua disponível para o seu uso pessoal.</p>
+      <p>Você pode excluir sua fonte a qualquer momento. Após exclusão, moderadores são notificados para decidir se mantém ou remove a versão pública (se já tinha sido aprovada e usada por outros usuários).</p>
+      <p><b>Importante:</b> ao adicionar uma fonte, você concorda em compartilhá-la com a comunidade após revisão. Se quiser estudar com material confidencial ou privado, considere se ele realmente é apropriado para a plataforma.</p>
 
       <h3 style="margin:1rem 0 .375rem;font-size:14px">5. Créditos e pagamentos</h3>
       <p>Estamos em versão BETA. Créditos iniciais são grátis. Os 500 primeiros usuários terão desconto progressivo em assinaturas futuras (30% pra 1-100, 20% pra 101-300, 10% pra 301-500). Esse desconto é vitalício enquanto a conta estiver ativa.</p>
@@ -11922,7 +12011,7 @@ function showLegalModal(kind){
         <li><b>Cadastrais:</b> email, username, nome de exibição (opcional). Senha é criptografada.</li>
         <li><b>Uso:</b> questões respondidas, erros, flashcards, sessões de estudo. Servem pra você ver seu progresso.</li>
         <li><b>Login Google (opcional):</b> nome e foto do perfil Google, se você optar por logar com Google.</li>
-        <li><b>Conteúdo que você adiciona:</b> apostilas, fontes, anotações.</li>
+        <li><b>Conteúdo que você adiciona:</b> apostilas, fontes, anotações. Por política da plataforma, fontes adicionadas passam por revisão e ficam disponíveis para outros assinantes após aprovação (ver Termos de Uso, item 4). Apenas conteúdo técnico — referências a cursos pagos, autores e gabaritos são removidos pelos moderadores.</li>
       </ul>
 
       <h3 style="margin:1rem 0 .375rem;font-size:14px">Como usamos</h3>
@@ -13463,6 +13552,111 @@ function renderSetup(){
   return wrap;
 }
 
+/* V15.10: Sistema de breadcrumbs.
+   - VIEW_META mapeia cada view → {label, parent, group}
+   - buildBreadcrumb(view) retorna a cadeia [Painel > Grupo > View atual]
+   - renderBreadcrumb(view) cria o componente DOM
+   Inserido no topo de cada página renderizada (exceto dashboard, welcome). */
+const VIEW_META = {
+  // Estudar
+  sources:      {label:'Minhas fontes',         icon:'📚', group:'study'},
+  methods:      {label:'Métodos de estudo',     icon:'🎯', group:'study'},
+  practice:     {label:'Prática com IA',        icon:'⚡', group:'study', parent:'methods'},
+  calibration:  {label:'Calibrar confiança',    icon:'🎯', group:'study', parent:'methods'},
+  drill:        {label:'Drill DNA',             icon:'🧬', group:'study', parent:'methods'},
+  interleaving: {label:'Intercalação',          icon:'🔀', group:'study', parent:'methods'},
+  examiner:     {label:'Examinador',            icon:'🎓', group:'study', parent:'methods'},
+  elaborative:  {label:'Pergunta elaborativa',  icon:'💭', group:'study', parent:'methods'},
+  simulado:     {label:'Simulado Gralia',       icon:'⏰', group:'plan',  parent:'methods'},
+  imported:     {label:'Cadernos de prática',   icon:'📥', group:'study'},
+  // Revisar
+  srs:          {label:'Flashcards',            icon:'🎴', group:'review'},
+  history:      {label:'Histórico de erros',    icon:'📜', group:'review'},
+  review:       {label:'Revisão Turbo',         icon:'⚡', group:'review'},
+  pomodoro:     {label:'Pomodoro',              icon:'⏱',  group:'review'},
+  // Planejar
+  goals:        {label:'Metas',                 icon:'🎯', group:'plan'},
+  schedule:     {label:'Cronograma',            icon:'📅', group:'plan'},
+  editals:      {label:'Análise de editais',    icon:'📋', group:'plan'},
+  exams:        {label:'Análise de provas',     icon:'✅', group:'plan'},
+  mapa:         {label:'Mapa da matéria',       icon:'🗺️', group:'plan'},
+  // Comunidade
+  discover:     {label:'Comunidade',            icon:'🌐', group:'community'},
+  feed:         {label:'Feed dos seguidos',     icon:'📡', group:'community'},
+  legalUpdates: {label:'Atualizações',          icon:'⚖️', group:'community'},
+  forest:       {label:'Pinhal',                icon:'🌲', group:'community'},
+  groups:       {label:'Grupos',                icon:'👥', group:'community'},
+  profile:      {label:'Perfil',                icon:'👤', group:'community', parent:'discover'},
+  // Conta / outros
+  settings:     {label:'Conta',                 icon:'👤'},
+  about:        {label:'Sobre',                 icon:'🪶'},
+  admin:        {label:'Admin',                 icon:'🔧'},
+};
+
+const GROUP_LABELS = {
+  study:     {label:'Estudar',    icon:'📘'},
+  review:    {label:'Revisar',    icon:'🔄'},
+  plan:      {label:'Planejar',   icon:'🗺'},
+  community: {label:'Comunidade', icon:'🌐'},
+};
+
+function buildBreadcrumb(view){
+  const meta = VIEW_META[view];
+  if(!meta) return null;
+  const chain = [{view:'dashboard', label:'Painel', icon:'🏠'}];
+  // Se a view tem grupo, adiciona o grupo (sem view destino — só rotulado)
+  // EXCEÇÃO: pula o grupo se ele tem o mesmo nome da página atual (evita duplicação tipo "Comunidade / Comunidade")
+  if(meta.group && GROUP_LABELS[meta.group] && GROUP_LABELS[meta.group].label !== meta.label){
+    chain.push({view:null, label:GROUP_LABELS[meta.group].label, icon:GROUP_LABELS[meta.group].icon, isGroup:true});
+  }
+  // Se tem parent (sub-página), adiciona o parent como link
+  if(meta.parent && VIEW_META[meta.parent]){
+    chain.push({view:meta.parent, label:VIEW_META[meta.parent].label, icon:VIEW_META[meta.parent].icon});
+  }
+  // View atual (não-clicável)
+  chain.push({view:null, label:meta.label, icon:meta.icon, isCurrent:true});
+  return chain;
+}
+
+function renderHierBreadcrumb(view){
+  const chain = buildBreadcrumb(view);
+  // Não mostra breadcrumb pra dashboard ou welcome ou se não há chain
+  if(!chain || chain.length < 2) return null;
+
+  const wrap = mk('nav','breadcrumb');
+  wrap.setAttribute('aria-label', 'Trilha de navegação');
+
+  chain.forEach((item, idx) => {
+    const isLast = idx === chain.length - 1;
+
+    if(item.view && !item.isCurrent){
+      // Link clicável
+      const link = mk('button','breadcrumb-link');
+      link.type = 'button';
+      link.innerHTML = `<span class="bc-icon">${item.icon||''}</span><span>${item.label}</span>`;
+      link.addEventListener('click', ()=>{
+        ST.view = item.view;
+        render();
+      });
+      wrap.appendChild(link);
+    } else {
+      // Texto não-clicável (grupo ou current)
+      const span = mk('span', item.isCurrent ? 'breadcrumb-current' : 'breadcrumb-group');
+      span.innerHTML = `<span class="bc-icon">${item.icon||''}</span><span>${item.label}</span>`;
+      wrap.appendChild(span);
+    }
+
+    if(!isLast){
+      const sep = mk('span','breadcrumb-sep');
+      sep.textContent = '/';
+      sep.setAttribute('aria-hidden', 'true');
+      wrap.appendChild(sep);
+    }
+  });
+
+  return wrap;
+}
+
 /* TOPBAR */
 function renderTopbar(){
   const bar = mk('div','topbar');
@@ -13504,17 +13698,16 @@ function renderTopbar(){
   });
 
   // Estrutura: grupos + abas soltas
-  // V12: Reorganizado pra iniciante achar caminho natural
-  // - Estudar: fontes + métodos + banco (tudo que é prática direta)
-  // - Revisar: flashcards + erros + pomodoro + revisão turbo (fixação/recuperação)
-  // - Planejar: metas + editais + simulados + mapa (visão geral)
-  // - Comunidade: descobrir + pinhal (social/gamificação)
+  // V15.10: NAV_STRUCTURE sincronizado com sidebar — nomes refletem a "alma"
+  // de cada página (Cadernos de prática em vez de Banco, Análise em vez de
+  // Conferir/Síntese, Comunidade em vez de Descobrir, Feed dos seguidos em
+  // vez de Da rede).
   const NAV_STRUCTURE = [
     {type:'tab',view:'dashboard',label:'Painel',icon:'🏠'},
     {type:'group',key:'study',label:'Estudar',icon:'📘',children:[
       {view:'sources',label:'Minhas fontes',icon:'📚',desc:'Apostilas, PDFs e materiais de estudo'},
       {view:'methods',label:'Métodos de estudo',icon:'🎯',desc:'8 técnicas de prática adaptativa com IA'},
-      {view:'imported',label:'Banco de questões',icon:'📝',desc:'Questões importadas e suas estatísticas'}
+      {view:'imported',label:'Cadernos de prática',icon:'📥',desc:'Importe questões reais e organize cadernos'}
     ]},
     {type:'group',key:'review',label:'Revisar',icon:'🔄',children:[
       {view:'srs',label:'Flashcards',icon:'🎴',desc:'Revisão espaçada (SRS)'},
@@ -13525,14 +13718,14 @@ function renderTopbar(){
     {type:'group',key:'plan',label:'Planejar',icon:'🗺',children:[
       {view:'goals',label:'Metas',icon:'🎯',desc:'Metas mensais/semanais com fasamento'},
       {view:'schedule',label:'Cronograma',icon:'📅',desc:'Blocos de estudo, exercício e descanso'},
-      {view:'editals',label:'Síntese de editais',icon:'📋',desc:'IA lê o edital e organiza o que importa'},
-      {view:'exams',label:'Conferir provas',icon:'📝',desc:'Registre provas e analise por disciplina'},
+      {view:'editals',label:'Análise de editais',icon:'📋',desc:'IA lê o edital e organiza o que importa'},
+      {view:'exams',label:'Análise de provas',icon:'✅',desc:'Registre e analise provas reais que você fez'},
       {view:'simulado',label:'Simulado Gralia',icon:'⏰',desc:'Simulados cronometrados gerados pela IA'},
       {view:'mapa',label:'Mapa da matéria',icon:'🗺️',desc:'Visão integrada por tópico'}
     ]},
     {type:'group',key:'community',label:'Comunidade',icon:'🌐',children:[
-      {view:'discover',label:'Descobrir',icon:'🔍',desc:'Materiais públicos da comunidade'},
-      {view:'feed',label:'Da rede',icon:'📡',desc:'Atividade de quem você segue'},
+      {view:'discover',label:'Comunidade',icon:'🌐',desc:'Materiais públicos de outros assinantes'},
+      {view:'feed',label:'Feed dos seguidos',icon:'📡',desc:'Atividade de quem você segue'},
       {view:'legalUpdates',label:'Atualizações',icon:'⚖️',desc:'Novas leis, súmulas e jurisprudência relevantes'},
       {view:'forest',label:'Pinhal de Araucárias',icon:'🌲',desc:'Acompanhe seu progresso visualmente'},
       {view:'groups',label:'Grupos',icon:'👥',desc:'Rankings em grupos de até 20 pessoas'}
@@ -13730,47 +13923,55 @@ function renderTopbar(){
   colCenter.appendChild(tabs);
 
   const colRight = mk('div','topbar-col-right');
-  // Sync indicator — only when auth is active
+  // V15.10: layout premium da topbar direita —
+  // [créditos] · [sync ●] | [countdown pill] | [sino] [theme] [avatar]
+  // Antes: tudo grudado sem hierarquia. Agora: grupos separados por dividers.
   if(isAuthed()){
     // Credits chip — visible when quota is known
     if(QUOTA.remaining!==null){
       const chip = mk('span','credits-chip');
       chip.id='credits-chip';
       updateCreditsChip(chip);
-      // V12: Click no chip mostra popover explicando quanto rende cada ação.
-      // Antes só tinha title (tooltip nativo curto). Agora popover rico.
       chip.style.cursor = 'pointer';
       chip.addEventListener('click',()=>{
         try{ showCreditsBreakdownPopover(chip); }catch(e){console.warn(e);}
       });
       colRight.appendChild(chip);
     }
+    // Sync — só um ponto colorido, status no hover
     const sync = mk('span','sync-dot');
     sync.id='sync-indicator';
-    sync.textContent='Sincronizado';
+    sync.setAttribute('data-tip', 'Sincronizado');
     if(AUTH.syncing){
       sync.classList.add('syncing');
-      sync.textContent='Sincronizando...';
+      sync.setAttribute('data-tip', 'Sincronizando...');
     } else if(AUTH.syncError){
       sync.classList.add('error');
-      sync.textContent='Erro';
+      sync.setAttribute('data-tip', 'Erro de sincronização');
     } else if(AUTH.lastSyncAt && (Date.now() - AUTH.lastSyncAt) > 5000){
-      // V12 fix: se já passou tempo suficiente do último sync, começa escondido
-      // Antes ficava visível eternamente após cada re-render
       sync.classList.add('hidden');
     }
     colRight.appendChild(sync);
+
+    // Divisor entre grupo "status" (créditos+sync) e countdown
+    const div1 = mk('span','topbar-divider');
+    colRight.appendChild(div1);
   }
   colRight.appendChild(pill);
 
-  // V14: Sino de notificações — entre o pill de countdown e o theme switch.
-  // Só aparece pra usuários logados.
+  // Divisor entre countdown e ações (sino/theme/avatar)
+  if(isAuthed()){
+    const div2 = mk('span','topbar-divider');
+    colRight.appendChild(div2);
+  }
+
+  // V14: Sino de notificações
   if(isAuthed()){
     const bell = buildNotificationsBell();
     if(bell) colRight.appendChild(bell);
   }
 
-  // Theme switch — sol/lua estilizado (mesmo da welcome)
+  // Theme switch
   const currentTheme = localStorage.getItem('nexus_theme')||'light';
   const themeSwitch = mk('button','topbar-theme-switch'+(currentTheme==='dark'?' dark':''));
   themeSwitch.type='button';
@@ -13783,7 +13984,7 @@ function renderTopbar(){
   themeSwitch.addEventListener('click',()=>{toggleTheme();render();});
   colRight.appendChild(themeSwitch);
 
-  // V14: Avatar com iniciais do usuário — clique abre dropdown com link pra Conta
+  // V14: Avatar com iniciais
   if(isAuthed()){
     const avatar = buildUserAvatarMenu();
     if(avatar) colRight.appendChild(avatar);
@@ -15338,10 +15539,14 @@ function buildQuickAccessCard(){
   const errorsCount = (DATA.errors||[]).filter(e=>!e.hasCard).length;
 
   const actions = [
-    {icon:'⚡', label:'Praticar questões', desc:'Treino com IA', view:'practice'},
+    {icon:'⚡', label:'Prática com IA', desc:'Questões geradas das fontes', view:'practice'},
+    {icon:'📥', label:'Prática histórica', desc:'Questões importadas reais', view:'imported'},
+    {icon:'📋', label:'Criar caderno', desc:'Selecione questões e pratique', view:'imported'},
+    {icon:'🧬', label:'Drill DNA', desc:'Treino em sequência rápida', view:'drill'},
+    {icon:'🔀', label:'Intercalação', desc:'Mistura disciplinas', view:'interleaving'},
+    {icon:'📊', label:'Simulado Gralia', desc:'Prova completa cronometrada', view:'simulado'},
     {icon:'🎴', label:'Revisar flashcards', desc:dueSrsCount > 0 ? `${dueSrsCount} pendentes` : 'Repetição espaçada', badge:dueSrsCount, view:'srs'},
-    {icon:'🍅', label:'Pomodoro', desc:'Timer de foco', view:'pomodoro'},
-    {icon:'🎯', label:'Calibrar', desc:'Adapta dificuldade', view:'calibration'},
+    {icon:'🎯', label:'Calibrar confiança', desc:'Mede acurácia × certeza', view:'calibration'},
     {icon:'📜', label:'Erros recentes', desc:errorsCount > 0 ? `${errorsCount} sem flashcard` : 'Pontos fracos', badge:errorsCount, view:'history'}
   ];
 
@@ -15450,7 +15655,7 @@ function buildHeatmapTip(){
 
 /* Activity timeline on dashboard — mostra eventos recentes de forma visual e navegável.
    Reúne: erros, flashcards criados, sessões de pomodoro, questões importadas. */
-// V12 — Seção combinada do painel: agrupa Linha do tempo + Disciplinas + Da rede em abas
+// V12 — Seção combinada do painel: agrupa Linha do tempo + Disciplinas + Feed em abas
 // Reduz poluição visual: 1 card com abas em vez de 3 cards empilhados.
 // Só aparece se há conteúdo em pelo menos uma aba.
 function buildAccompanyingSection(){
@@ -15515,7 +15720,7 @@ function buildAccompanyingSection(){
   const tabDefs = [];
   if(hasTimeline) tabDefs.push({key:'timeline', label:'Linha do tempo', icon:'🕐'});
   if(hasDisciplines) tabDefs.push({key:'disciplines', label:'Disciplinas', icon:'📊'});
-  if(canHaveFeed) tabDefs.push({key:'feed', label:'Da rede', icon:'📡'});
+  if(canHaveFeed) tabDefs.push({key:'feed', label:'Feed dos seguidos', icon:'📡'});
 
   // Se só tem 1 aba, não mostra a barra de tabs (vai direto pro conteúdo)
   if(tabDefs.length > 1){
@@ -15706,7 +15911,7 @@ function buildActivityTimeline(){
         tone:'info',
         // V12 fix: era 'questão' + 'es' = 'questãoes' (typo). Correto: 'questão' (1) ou 'questões' (>1).
         title: n + ' ' + (n===1 ? 'questão importada' : 'questões importadas'),
-        subject:'Banco de Questões',
+        subject:'Cadernos de prática',
         detail:'Importadas do TEC, prontas pra praticar',
         disc:getDiscipline(g.discId)
       });
@@ -16163,14 +16368,47 @@ function renderSourceList(wrap){
       sel2.addEventListener('change',e=>{ST.srcFilterContent=e.target.value;ST.srcPage=0;render();});
       filterRow.appendChild(sel2);
     }
+
+    // V15.9: Filtro origem (todas / criadas / importadas)
+    const hasImported = DATA.sources.some(s => s.importedFromUser || s.importedFromResource);
+    if(hasImported){
+      const curOrigin = ST.srcFilterOrigin || 'all';
+      const selOrigin = mk('select');selOrigin.style.cssText='font-size:12px;padding:4px 8px;max-width:180px';
+      [
+        {v:'all', l:'Todas'},
+        {v:'mine', l:'Criadas por mim'},
+        {v:'imported', l:'Importadas'}
+      ].forEach(opt => {
+        const o = mk('option');o.value=opt.v;o.textContent=opt.l;
+        if(curOrigin===opt.v)o.selected=true;
+        selOrigin.appendChild(o);
+      });
+      selOrigin.addEventListener('change',e=>{ST.srcFilterOrigin=e.target.value;ST.srcPage=0;render();});
+      filterRow.appendChild(selOrigin);
+    }
+
+    // V15.9: Toggle agrupar por disciplina
+    if(DATA.disciplines.length >= 2){
+      const groupBtn = mk('button');
+      groupBtn.type='button';
+      const isGrouped = !!ST.srcGroupByDiscipline;
+      groupBtn.style.cssText = `font-size:12px;padding:4px 10px;border:1px solid ${isGrouped?'var(--gralia-purple)':'var(--border)'};background:${isGrouped?'var(--gralia-purple)':'var(--surface2)'};color:${isGrouped?'#fff':'var(--text2)'};border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600`;
+      groupBtn.textContent = isGrouped ? '✓ Agrupado por disciplina' : '📑 Agrupar por disciplina';
+      groupBtn.addEventListener('click',()=>{ST.srcGroupByDiscipline=!ST.srcGroupByDiscipline;render();});
+      filterRow.appendChild(groupBtn);
+    }
+
     wrap.appendChild(filterRow);
   }
 
   const list = mk('div','src-list');
   // V15: srcFilterType removido — só filtramos por contentType agora
   const srcFilterContent = ST.srcFilterContent||'all';
+  const srcFilterOrigin = ST.srcFilterOrigin||'all';
   const filteredSources = DATA.sources.filter(s=>{
     if(srcFilterContent!=='all' && (s.contentType||'misto')!==srcFilterContent)return false;
+    if(srcFilterOrigin === 'mine' && (s.importedFromUser || s.importedFromResource)) return false;
+    if(srcFilterOrigin === 'imported' && !(s.importedFromUser || s.importedFromResource)) return false;
     return true;
   });
 
@@ -16189,7 +16427,54 @@ function renderSourceList(wrap){
     list.appendChild(pagInfo);
   }
 
-  sourcesToShow.forEach(src=>{
+  // V15.9: Agrupamento opcional por disciplina (com seções colapsáveis).
+  // Quando ativo, monta grupos. Quando desativo, lista plana.
+  if(ST.srcGroupByDiscipline){
+    if(!ST.srcCollapsed) ST.srcCollapsed = {};
+    const groups = new Map();
+    sourcesToShow.forEach(src => {
+      const disc = getDiscipline(src.disciplineId);
+      const key = disc ? disc.id : '_no_disc';
+      const label = disc ? disc.name : 'Sem disciplina';
+      const color = disc ? disc.color : 'var(--text3)';
+      if(!groups.has(key)) groups.set(key, {label, color, items: []});
+      groups.get(key).items.push(src);
+    });
+
+    groups.forEach((group, key) => {
+      const isCollapsed = !!ST.srcCollapsed[key];
+      const groupHead = mk('button');
+      groupHead.type = 'button';
+      groupHead.style.cssText = `display:flex;align-items:center;gap:.5rem;width:100%;padding:.625rem .875rem;background:var(--surface2);border:1px solid var(--border);border-left:3px solid ${group.color};border-radius:8px;margin:.625rem 0 .375rem;cursor:pointer;font-family:inherit;text-align:left;transition:background .15s`;
+      const chevron = mk('span');
+      chevron.style.cssText = `font-size:11px;color:var(--text3);transform:rotate(${isCollapsed?'0':'90'}deg);transition:transform .2s;display:inline-block;width:14px`;
+      chevron.textContent = '▶';
+      groupHead.appendChild(chevron);
+      const groupLbl = mk('span');
+      groupLbl.style.cssText = 'flex:1;font-size:13px;font-weight:700;color:var(--text)';
+      groupLbl.textContent = group.label;
+      groupHead.appendChild(groupLbl);
+      const groupCount = mk('span');
+      groupCount.style.cssText = 'font-size:11px;color:var(--text3);font-weight:600;background:var(--surface);padding:2px 8px;border-radius:999px';
+      groupCount.textContent = group.items.length + (group.items.length===1?' fonte':' fontes');
+      groupHead.appendChild(groupCount);
+      groupHead.addEventListener('click', ()=>{
+        ST.srcCollapsed[key] = !ST.srcCollapsed[key];
+        render();
+      });
+      list.appendChild(groupHead);
+
+      if(!isCollapsed){
+        renderSourceItems(group.items);
+      }
+    });
+  } else {
+    renderSourceItems(sourcesToShow);
+  }
+
+  // Função extraída pra ser reutilizada no agrupamento
+  function renderSourceItems(items){
+    items.forEach(src=>{
     const cfg = SRC_TYPES[src.type]||SRC_TYPES.outro;
     const ctCfg = CONTENT_TYPES[src.contentType||'misto']||CONTENT_TYPES.misto;
     const disc = getDiscipline(src.disciplineId);
@@ -16332,11 +16617,33 @@ function renderSourceList(wrap){
     const edit = mkBtn('✏️','icon-btn');
     edit.addEventListener('click',()=>showEditSourceModal(src));
     const del = mkBtn('×','icon-btn del');
-    del.addEventListener('click',()=>{if(confirm('Remover "'+src.name+'"?')){DATA.sources=DATA.sources.filter(x=>x.id!==src.id);save();render();}});
+    del.addEventListener('click', async ()=>{
+      if(!confirm('Remover "'+src.name+'"?')) return;
+      // V15.9: Se a fonte foi publicada na comunidade, marca como "deleted_by_owner"
+      // pra moderadores decidirem se mantém ou apaga do catálogo público.
+      if(supa && AUTH.user && src.lastPublishedAt){
+        try{
+          await supa.from('shared_resources')
+            .update({moderation_status: 'deleted_by_owner', moderated_at: null})
+            .eq('owner_id', AUTH.user.id)
+            .eq('title', src.name);
+          // Cria notificação pra admins
+          if(typeof createAdminNotification === 'function'){
+            createAdminNotification('source_deleted', `Usuário deletou fonte publicada: "${src.name}"`, {sourceName: src.name, ownerId: AUTH.user.id});
+          }
+        }catch(e){
+          console.warn('[delete] falha ao marcar fonte pública:', e.message);
+        }
+      }
+      DATA.sources = DATA.sources.filter(x=>x.id!==src.id);
+      save();
+      render();
+    });
     actions.appendChild(viewSrc);actions.appendChild(edit);actions.appendChild(del);
     item.appendChild(ic);item.appendChild(info);item.appendChild(actions);
     list.appendChild(item);
-  });
+    });
+  } // fim renderSourceItems
   if(filteredSources.length===0 && DATA.sources.length>0){
     list.appendChild(infoBox('Nenhuma fonte corresponde aos filtros aplicados.'));
   }
@@ -16456,60 +16763,56 @@ function renderSourceAdd(wrap){
   // ---------- Stage 3: Main form ----------
   const addCard = mk('div','card');
 
-  // V15 premium: cabeçalho com hierarquia visual (título + subtítulo)
-  const addH = mk('h3');
-  addH.style.cssText = 'margin:0 0 .25rem;font-size:18px;font-weight:700;letter-spacing:-.01em';
+  // V15.9: header redesenhado — bloco principal centralizado com hierarquia clara,
+  // 3 caminhos como cards visuais (não mais 3 linhas em texto), CTA da comunidade
+  // logo após. Antes: títulos desalinhados, helpBox texto plano, CTA solta.
+  const headerWrap = mk('div');
+  headerWrap.style.cssText = 'margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)';
+
+  const addH = mk('h2');
+  addH.style.cssText = 'margin:0 0 .375rem;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.25;color:var(--text)';
   if(is.pdfLoading){
-    addH.textContent = 'Lendo seu PDF...';
+    addH.textContent = '⏳ Lendo seu PDF...';
   } else {
-    addH.textContent = 'Adicionar fonte';
+    addH.innerHTML = '➕ <span>Adicionar fonte</span>';
   }
-  addCard.appendChild(addH);
+  headerWrap.appendChild(addH);
 
   if(!is.pdfLoading){
-    const subTitle = mk('p','txt2');
-    subTitle.style.cssText = 'margin:0 0 1.125rem;font-size:13.5px;line-height:1.5';
-    subTitle.textContent = 'Adicione um material de estudo que você vai usar pra criar questões, flashcards e revisar conteúdo.';
-    addCard.appendChild(subTitle);
+    const subTitle = mk('p');
+    subTitle.style.cssText = 'margin:0;font-size:13.5px;line-height:1.55;color:var(--text2);max-width:680px';
+    subTitle.textContent = 'Material de estudo (apostila, lei, anotações, transcrição) que a IA vai usar pra gerar questões, flashcards e revisões personalizadas.';
+    headerWrap.appendChild(subTitle);
+  }
+  addCard.appendChild(headerWrap);
 
-    // V15 premium: helpBox redesenhado com 2 caminhos claros (PDF / Comunidade / Colar)
-    // Sem menção a IA — não usamos mais.
-    const helpBox = mk('div');
-    helpBox.style.cssText = 'margin:0 0 1.25rem;padding:1rem 1.125rem;background:linear-gradient(135deg,var(--surface2),var(--surface));border:1px solid var(--border);border-left:3px solid var(--gralia-purple);border-radius:10px;font-size:12.5px;line-height:1.55';
-    helpBox.innerHTML = `
-      <div style="font-weight:700;margin-bottom:8px;color:var(--text);font-size:13px;display:flex;align-items:center;gap:6px">
-        <span>Você tem 3 caminhos:</span>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <div style="display:flex;gap:.625rem;align-items:flex-start">
-          <span style="font-size:18px;line-height:1.1;flex-shrink:0">📄</span>
-          <div style="flex:1">
-            <b style="color:var(--text)">Subir PDF</b>
-            <span style="color:var(--text2)"> — extrai o texto do arquivo e coloca aqui no formulário pra você revisar.</span>
-          </div>
-        </div>
-        <div style="display:flex;gap:.625rem;align-items:flex-start">
-          <span style="font-size:18px;line-height:1.1;flex-shrink:0">📝</span>
-          <div style="flex:1">
-            <b style="color:var(--text)">Colar texto</b>
-            <span style="color:var(--text2)"> — copia de uma apostila digital, NotebookLM, transcrição de aula etc. e cola no campo conteúdo.</span>
-          </div>
-        </div>
-        <div style="display:flex;gap:.625rem;align-items:flex-start">
-          <span style="font-size:18px;line-height:1.1;flex-shrink:0">🌐</span>
-          <div style="flex:1">
-            <b style="color:var(--text)">Importar da comunidade</b>
-            <span style="color:var(--text2)"> — escolha entre as fontes que outros usuários já compartilharam. Não duplica esforço.</span>
-          </div>
-        </div>
-      </div>
-      <div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);font-size:11.5px;color:var(--text3);line-height:1.5">
-        Suas fontes ficam disponíveis para outros assinantes. Antes de aparecerem com selo de validação, passam por revisão.
-      </div>`;
-    addCard.appendChild(helpBox);
+  if(!is.pdfLoading){
+    // V15.9: 3 caminhos como grid de cards (não mais texto em lista vertical)
+    const pathsTitle = mk('div');
+    pathsTitle.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.625rem';
+    pathsTitle.textContent = 'Como adicionar';
+    addCard.appendChild(pathsTitle);
 
-    // V15: CTA destacado pra Comunidade — caminho mais vantajoso (sem retrabalho).
-    // Aparece SEMPRE no topo do form, antes do upload de PDF, pra reforçar essa opção.
+    const pathsGrid = mk('div');
+    pathsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.75rem;margin-bottom:1.5rem';
+
+    [
+      {icon:'📄', title:'Subir PDF', desc:'Extrai o texto do arquivo automaticamente'},
+      {icon:'📝', title:'Colar texto', desc:'Notion, NotebookLM, apostila digital, transcrição'},
+      {icon:'🌐', title:'Da comunidade', desc:'Use materiais que outros já importaram'}
+    ].forEach(p => {
+      const card = mk('div');
+      card.style.cssText = 'padding:.875rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px';
+      card.innerHTML = `
+        <div style="font-size:22px;line-height:1;margin-bottom:.5rem">${p.icon}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">${p.title}</div>
+        <div style="font-size:11.5px;color:var(--text2);line-height:1.4">${p.desc}</div>
+      `;
+      pathsGrid.appendChild(card);
+    });
+    addCard.appendChild(pathsGrid);
+
+    // CTA da comunidade — agora destacado como recomendação principal
     const communityCTA = mk('button');
     communityCTA.type = 'button';
     communityCTA.style.cssText = 'display:flex;align-items:center;gap:.875rem;width:100%;padding:1rem 1.125rem;margin:0 0 1rem;background:linear-gradient(135deg,rgba(128,66,250,.08),rgba(128,66,250,.02));border:1px solid rgba(128,66,250,.25);border-radius:12px;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s';
@@ -16913,10 +17216,45 @@ function renderSourceAdd(wrap){
     cHelp.textContent='Cole o texto da sua aula, lei, apostila ou anotação. Quanto mais limpo o conteúdo, melhor.';
     addCard.appendChild(cHelp);
 
-    // V15.7: Hint de markdown — Notion users
+    // V15.9: Hint expandido com exemplos visuais de cada formatação.
+    // Mostra ANTES o markdown e DEPOIS como vai ficar formatado, lado a lado.
     const mdHintAdd = mk('div');
-    mdHintAdd.style.cssText = 'font-size:11px;color:var(--text3);margin:0 0 .375rem;line-height:1.45;padding:.5rem .75rem;background:var(--surface2);border-left:2px solid var(--gralia-purple);border-radius:6px';
-    mdHintAdd.innerHTML = '💡 <b style="color:var(--text2)">Dica:</b> Você pode colar texto do Notion ou usar markdown — <code style="background:var(--surface);padding:1px 4px;border-radius:3px">## Título</code>, <code style="background:var(--surface);padding:1px 4px;border-radius:3px">**negrito**</code>, <code style="background:var(--surface);padding:1px 4px;border-radius:3px">- lista</code>, <code style="background:var(--surface);padding:1px 4px;border-radius:3px">&gt; citação</code>. Vai ficar bonito quando visualizar a fonte depois.';
+    mdHintAdd.style.cssText = 'margin:0 0 .625rem;padding:.875rem 1rem;background:linear-gradient(135deg,rgba(128,66,250,.05),rgba(128,66,250,.01));border:1px solid rgba(128,66,250,.18);border-radius:10px';
+    mdHintAdd.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.625rem">
+        <span style="font-size:18px">💡</span>
+        <b style="font-size:13px;color:var(--text)">Como formatar o texto</b>
+        <span style="font-size:11px;color:var(--text3);font-weight:500">cole do Notion ou use markdown abaixo</span>
+      </div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12px;line-height:1.5">
+        <code style="background:var(--surface);padding:2px 8px;border:1px solid var(--border);border-radius:4px;font-family:monospace;color:var(--text2);white-space:nowrap"># Texto</code>
+        <span style="color:var(--text2)">→ <span style="font-size:18px;font-weight:800;color:var(--text);border-bottom:2px solid var(--gralia-purple);padding-bottom:1px">Título principal</span></span>
+
+        <code style="background:var(--surface);padding:2px 8px;border:1px solid var(--border);border-radius:4px;font-family:monospace;color:var(--text2);white-space:nowrap">## Texto</code>
+        <span style="color:var(--text2)">→ <span style="font-size:15px;font-weight:700;color:var(--text)">Subtítulo</span></span>
+
+        <code style="background:var(--surface);padding:2px 8px;border:1px solid var(--border);border-radius:4px;font-family:monospace;color:var(--text2);white-space:nowrap">### Texto</code>
+        <span style="color:var(--text2)">→ <span style="font-size:13.5px;font-weight:700;color:var(--text)">Tópico</span></span>
+
+        <code style="background:var(--surface);padding:2px 8px;border:1px solid var(--border);border-radius:4px;font-family:monospace;color:var(--text2);white-space:nowrap">**texto**</code>
+        <span style="color:var(--text2)">→ <span style="color:rgb(45,138,79);font-weight:700">palavra-chave em destaque</span></span>
+
+        <code style="background:var(--surface);padding:2px 8px;border:1px solid var(--border);border-radius:4px;font-family:monospace;color:var(--text2);white-space:nowrap">*texto*</code>
+        <span style="color:var(--text2)">→ <em>texto em itálico</em></span>
+
+        <code style="background:var(--surface);padding:2px 8px;border:1px solid var(--border);border-radius:4px;font-family:monospace;color:var(--text2);white-space:nowrap">- item</code>
+        <span style="color:var(--text2)">→ lista com bullets</span>
+
+        <code style="background:var(--surface);padding:2px 8px;border:1px solid var(--border);border-radius:4px;font-family:monospace;color:var(--text2);white-space:nowrap">&gt; texto</code>
+        <span style="color:var(--text2)">→ caixa de destaque (callout roxo)</span>
+
+        <code style="background:var(--surface);padding:2px 8px;border:1px solid var(--border);border-radius:4px;font-family:monospace;color:var(--text2);white-space:nowrap">| col | col |</code>
+        <span style="color:var(--text2)">→ tabelas (com <code style="font-size:.92em">|---|---|</code> abaixo do header)</span>
+      </div>
+      <div style="margin-top:.625rem;padding-top:.5rem;border-top:1px dashed rgba(128,66,250,.18);font-size:11.5px;color:var(--text3);line-height:1.5">
+        Use o botão <b style="color:var(--text2)">👁 Visualizar formatado</b> abaixo do campo pra ver como vai ficar.
+      </div>
+    `;
     addCard.appendChild(mdHintAdd);
 
     const ta = mk('textarea');ta.rows=10;
@@ -16996,7 +17334,28 @@ function renderSourceAdd(wrap){
       if(typeof preloadQuestionForSource === 'function'){
         preloadQuestionForSource(newSrc).catch(()=>{});
       }
-      showToast('✓ Fonte adicionada e ativa: '+newSrc.name, 4500);
+      // V15.9: Auto-publica em background como pendente de moderação.
+      // Toda fonte criada vira candidata pra comunidade. Ficará visível só
+      // pra moderadores até ser validada. Falha silenciosa.
+      if(typeof publishSource === 'function' && supa && AUTH.user && AUTH.profile && newSrc.content && newSrc.content.length >= 50){
+        setTimeout(()=>{
+          publishSource(newSrc, {
+            title: newSrc.name,
+            description: '',
+            discipline: newSrc.disciplineId ? (getDiscipline(newSrc.disciplineId)?.name || '') : '',
+            tags: []
+          }).then(result => {
+            try{
+              newSrc.lastPublishedAt = Date.now();
+              save();
+            }catch(_){}
+          }).catch(err => {
+            // Silenciosa — usuário não precisa saber se falhou
+            console.warn('[auto-publish] falhou:', err.message);
+          });
+        }, 1000);
+      }
+      showToast('✓ Fonte adicionada: '+newSrc.name, 4500);
       render();
     });
     addCard.appendChild(saveBtn);
@@ -19470,13 +19829,23 @@ function showSourceReaderModal(src){
   const body = mk('div');
   body.style.cssText = 'flex:1;display:flex;overflow:hidden;min-height:0';
 
-  // Sidebar com TOC (se tiver)
+  // V15.9: Sidebar com TOC começa OCULTA. Usuário decide se quer ver índice
+  // clicando no botão "📑 Índice" no topo do conteúdo. Antes ficava sempre
+  // aberta — Jean pediu pra fechar por padrão e oferecer toggle sutil.
+  let sidebar = null;
+  let isSidebarOpen = false;
   if(cleanedToc.length >= 2){
-    const sidebar = mk('div');
-    sidebar.style.cssText = 'width:240px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface2);padding:.875rem .625rem';
+    sidebar = mk('div');
+    sidebar.style.cssText = 'width:260px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface2);padding:.875rem .625rem;display:none';
     const sidebarTitle = mk('div');
-    sidebarTitle.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:0 .5rem .5rem;border-bottom:1px solid var(--border);margin-bottom:.5rem';
-    sidebarTitle.textContent = 'Índice';
+    sidebarTitle.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:0 .5rem .5rem;border-bottom:1px solid var(--border);margin-bottom:.5rem;display:flex;align-items:center;justify-content:space-between';
+    sidebarTitle.innerHTML = '<span>Índice</span>';
+    const closeSb = mk('button');
+    closeSb.type = 'button';
+    closeSb.style.cssText = 'background:transparent;border:none;color:var(--text3);font-size:14px;cursor:pointer;line-height:1;padding:0 4px';
+    closeSb.textContent = '×';
+    closeSb.title = 'Fechar índice';
+    sidebarTitle.appendChild(closeSb);
     sidebar.appendChild(sidebarTitle);
 
     cleanedToc.forEach(sec => {
@@ -19491,7 +19860,6 @@ function showSourceReaderModal(src){
         const target = body.querySelector(`[data-sec-id="${sec.id}"]`);
         if(target){
           target.scrollIntoView({behavior: 'smooth', block: 'start'});
-          // highlight breve
           target.style.transition = 'background .3s';
           target.style.background = 'rgba(128,66,250,.12)';
           setTimeout(()=>{ target.style.background = ''; }, 1000);
@@ -19499,15 +19867,73 @@ function showSourceReaderModal(src){
       });
       sidebar.appendChild(item);
     });
+
+    closeSb.addEventListener('click', ()=>{
+      sidebar.style.display = 'none';
+      isSidebarOpen = false;
+      if(toggleTocBtn) toggleTocBtn.style.display = 'inline-flex';
+    });
+
     body.appendChild(sidebar);
   }
 
   // Corpo do conteúdo
   const content = mk('div');
-  content.style.cssText = 'flex:1;overflow-y:auto;padding:1.5rem 2rem';
+  content.style.cssText = 'flex:1;overflow-y:auto;padding:1.5rem 2rem;position:relative';
+
+  // V15.9: Botão sutil "📑 Mostrar índice" no canto superior do conteúdo.
+  // Aparece se há TOC e a sidebar está fechada. Texto explicativo abaixo: "navegue pelas seções".
+  let toggleTocBtn = null;
+  if(cleanedToc.length >= 2){
+    toggleTocBtn = mk('button');
+    toggleTocBtn.type = 'button';
+    toggleTocBtn.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:linear-gradient(135deg,rgba(128,66,250,.08),rgba(128,66,250,.02));border:1px solid rgba(128,66,250,.22);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;color:var(--text2);margin-bottom:1rem;transition:all .15s';
+    toggleTocBtn.innerHTML = `<span style="font-size:14px">📑</span><span>Mostrar índice</span><span style="font-size:11px;color:var(--text3);font-weight:500">· navegue pelas ${cleanedToc.length} seções</span>`;
+    toggleTocBtn.addEventListener('mouseenter', ()=>{
+      toggleTocBtn.style.borderColor = 'var(--gralia-purple)';
+      toggleTocBtn.style.background = 'linear-gradient(135deg,rgba(128,66,250,.12),rgba(128,66,250,.04))';
+      toggleTocBtn.style.color = 'var(--text)';
+    });
+    toggleTocBtn.addEventListener('mouseleave', ()=>{
+      toggleTocBtn.style.borderColor = 'rgba(128,66,250,.22)';
+      toggleTocBtn.style.background = 'linear-gradient(135deg,rgba(128,66,250,.08),rgba(128,66,250,.02))';
+      toggleTocBtn.style.color = 'var(--text2)';
+    });
+    toggleTocBtn.addEventListener('click', ()=>{
+      if(sidebar){
+        sidebar.style.display = 'block';
+        isSidebarOpen = true;
+        toggleTocBtn.style.display = 'none';
+      }
+    });
+    content.appendChild(toggleTocBtn);
+  }
 
   // Se tem TOC, divide o conteúdo em seções com data-sec-id pra navegação
   if(cleanedToc.length >= 2 && src.content){
+    // V15.9: Preserva o conteúdo ANTES do primeiro item do TOC (geralmente
+    // contém o título principal H1 + intro). Antes esse trecho era descartado
+    // porque o slice começava em cleanedToc[0].startChar, pulando o título.
+    const firstStart = cleanedToc[0].startChar || 0;
+    if(firstStart > 0){
+      const preface = src.content.slice(0, firstStart).trim();
+      if(preface){
+        const prefaceWrap = mk('div');
+        prefaceWrap.style.cssText = 'margin-bottom:1.5rem';
+        if(isMarkdown){
+          const prefaceBox = mk('div', 'md-render');
+          prefaceBox.innerHTML = renderMarkdown(preface);
+          prefaceWrap.appendChild(prefaceBox);
+        } else {
+          const prefaceBox = mk('div');
+          prefaceBox.style.cssText = 'white-space:pre-wrap;font-size:13.5px;line-height:1.65;color:var(--text)';
+          prefaceBox.textContent = preface;
+          prefaceWrap.appendChild(prefaceBox);
+        }
+        content.appendChild(prefaceWrap);
+      }
+    }
+
     cleanedToc.forEach((sec, idx) => {
       const start = sec.startChar || 0;
       const end = sec.endChar || src.content.length;
@@ -21336,14 +21762,14 @@ function renderTurbo(){
 /* IMPORTED QUESTIONS — manual import without AI */
 function renderImported(){
   const wrap = mk('div','fade');
-  const h = mk('h1');h.textContent='📚 Banco de Questões';
+  const h = mk('h1');h.textContent='📥 Cadernos de prática';
   const sub = mk('p','txt2');sub.style.marginBottom='1rem';
-  sub.textContent='Suas questões — importadas (TEC Concursos ou texto avulso) ou geradas pela IA durante prática. Organize em cadernos temáticos.';
+  sub.textContent='Importe questões reais (TEC Concursos, texto colado) ou questões da IA, organize em cadernos temáticos e refaça pra fixar conteúdo.';
   wrap.appendChild(h);wrap.appendChild(sub);
 
   const sub2 = ST.importedSubview||'list';
   const st = mk('div','sub-tabs');
-  [['list','Banco'],['notebooks','Cadernos'],['import','+ Adicionar'],['practice','Praticar']].forEach(([v,lbl])=>{
+  [['list','Todas as questões'],['notebooks','Cadernos'],['import','+ Importar'],['practice','Praticar']].forEach(([v,lbl])=>{
     const t = mkBtn(lbl,'sub-tab'+(sub2===v?' on':''));
     t.addEventListener('click',()=>{
       ST.importedSubview=v;
@@ -21548,7 +21974,7 @@ function renderImportedList(wrap){
       const link = mk('button','entity-link');
       link.innerHTML = '<span class="el-icon">✗</span><span>Ver no histórico</span>';
       link.title='Abrir o erro registrado para esta questão';
-      link.addEventListener('click',()=>navigateToError(lastErr.id,{label:'Banco de questões'}));
+      link.addEventListener('click',()=>navigateToError(lastErr.id,{label:'Cadernos de prática'}));
       row.appendChild(link);
       it.appendChild(row);
     }
@@ -27880,11 +28306,11 @@ function clearNavStack(){
   delete ST.bankHighlightId;
   delete ST.sourceScrollTo;
 }
-// Render contextual breadcrumb with "back" chevron — shown when navStack has entries
-function renderBreadcrumb(){
+// Render contextual back-button — shown when navStack has entries (came from another page)
+function renderBackBreadcrumb(){
   // Defesa: se nav stack vazio, retorna null (não renderiza)
   if(!ST.navStack || ST.navStack.length===0)return null;
-  const wrap = mk('div','breadcrumb fade');
+  const wrap = mk('div','breadcrumb-back fade');
   // Most recent origin is the one to go back to
   const origin = ST.navStack[ST.navStack.length-1];
   if(!origin || !origin.label)return null;
@@ -27893,21 +28319,20 @@ function renderBreadcrumb(){
   backBtn.innerHTML = `<span class="bc-arrow">←</span><span class="bc-lbl">Voltar para <b>${escapeHTML(origin.label)}</b></span>`;
   backBtn.addEventListener('click',navigateBack);
   wrap.appendChild(backBtn);
-  // Current location indicator
-  const here = mk('span','bc-here');
-  here.innerHTML = `<span class="bc-sep">›</span><span>${escapeHTML(viewLabel(ST.view))}</span>`;
-  wrap.appendChild(here);
   return wrap;
 }
 // Get a human-readable label for a view key
 function viewLabel(view){
+  // V15.10: usa VIEW_META se existir, senão fallback nos nomes velhos
+  if(typeof VIEW_META === 'object' && VIEW_META[view]) return VIEW_META[view].label;
   const labels = {
-    dashboard:'Painel', sources:'Fontes', methods:'Métodos', imported:'Banco',
+    dashboard:'Painel', sources:'Fontes', methods:'Métodos', imported:'Cadernos de prática',
     srs:'Flashcards', mapa:'Mapa', pomodoro:'Pomodoro', settings:'Conta',
     history:'Histórico', practice:'Questões', simulado:'Simulado',
     calibration:'Calibração', drill:'Drill', examiner:'Examinador',
     elaborative:'Elaboração', interleaving:'Interleaving', usage:'Uso da IA',
-    review:'Revisão', turbo:'Revisão Turbo', revgen:'Gerador de Revisão', goals:'Metas', userProfile:'Perfil', discover:'Descobrir', feed:'Feed'
+    review:'Revisão', turbo:'Revisão Turbo', revgen:'Gerador de Revisão',
+    goals:'Metas', userProfile:'Perfil', discover:'Comunidade', feed:'Feed dos seguidos'
   };
   return labels[view]||view;
 }
@@ -30443,7 +30868,7 @@ function renderFeed(){
     return wrap;
   }
   const head = mk('div');head.style.cssText='display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:1rem';
-  const ttl = mk('h1','page-h1');ttl.style.margin='0';ttl.innerHTML = '📡 Da rede <span class="page-h1-tag">marcos das pessoas que você segue</span>';
+  const ttl = mk('h1','page-h1');ttl.style.margin='0';ttl.innerHTML = '📡 Feed dos seguidos <span class="page-h1-tag">marcos das pessoas que você segue</span>';
   head.appendChild(ttl);
   const discoverBtn = mkBtn('🌐 Descobrir pessoas','btn btn-sm');
   discoverBtn.addEventListener('click',()=>{
@@ -30820,11 +31245,12 @@ function renderUserProfile(){
 async function loadUserPublicMaterials(userId, username, container, displayName){
   if(!supa){ container.innerHTML = '<div class="up-mat-empty">Supabase não configurado</div>'; return; }
   try{
-    // V14 fix: incluir TODAS as colunas necessárias pra abrir o preview (owner_id, payload, tags, etc)
-    // Antes só selecionava id/title/etc → click no item caía no fallback de "recurso indisponível"
+    // V15.9 fix: remove total_uses/useful_pct/rated_count do SELECT — essas
+    // não são colunas reais da tabela, são calculadas nas RPCs. Antes dava
+    // "column shared_resources.total_uses does not exist" no perfil público.
     const {data: resources, error} = await supa
       .from('shared_resources')
-      .select('id, owner_id, title, resource_type, description, created_at, question_count, discipline, topic, payload, tags, total_uses, useful_pct, rated_count, is_public')
+      .select('id, owner_id, title, resource_type, description, created_at, question_count, discipline, topic, payload, tags, is_public')
       .eq('owner_id', userId)
       .eq('is_public', true)
       .order('created_at', {ascending:false})
@@ -31044,10 +31470,10 @@ function renderDiscover(){
     typeRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap';
     const typeOpts = [
       {key:'all', icon:'🌐', label:'Todos'},
-      {key:'caderno', icon:'📝', label:'Cadernos'},
-      {key:'fonte', icon:'📚', label:'Fontes'},
-      {key:'perfil_topico', icon:'🧠', label:'Perfis de tópico'},
-      {key:'edital', icon:'📋', label:'Editais'}
+      {key:'fonte', icon:'📚', label:'Fontes de estudo'},
+      {key:'caderno', icon:'📝', label:'Cadernos de questões'},
+      {key:'perfil_topico', icon:'🧠', label:'Resumos de tópicos'},
+      {key:'edital', icon:'📋', label:'Análises de editais'}
     ];
     typeOpts.forEach(opt=>{
       const isOn = curType === opt.key;
@@ -31118,6 +31544,46 @@ function renderDiscover(){
       });
       contentBlock.appendChild(contentRow);
       filterCard.appendChild(contentBlock);
+    }
+
+    // V15.9: Filtro de disciplina — usa as disciplinas locais do usuário
+    // como dropdown. Muito útil pra encontrar materiais específicos.
+    if(DATA.disciplines && DATA.disciplines.length > 0){
+      const discBlock = mk('div');
+      const discLbl = mk('div');
+      discLbl.style.cssText='font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px';
+      discLbl.textContent = 'Disciplina';
+      discBlock.appendChild(discLbl);
+      const discRow = mk('div');
+      discRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap;align-items:center';
+      // Botão "Todas"
+      const allBtn = mk('button');
+      allBtn.type = 'button';
+      const allIsOn = !ST.discoverFilter.discipline;
+      allBtn.style.cssText = `padding:5px 11px;border-radius:999px;border:1px solid ${allIsOn?'var(--gralia-purple)':'var(--border)'};background:${allIsOn?'var(--gralia-purple)':'var(--surface2)'};color:${allIsOn?'#fff':'var(--text2)'};font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s`;
+      allBtn.textContent = '🌐 Todas';
+      allBtn.addEventListener('click', ()=>{
+        ST.discoverFilter.discipline = '';
+        ST.discoverItems = []; ST.discoverPage = 0; ST.discoverHasMore = true;
+        render();
+      });
+      discRow.appendChild(allBtn);
+      // Lista de disciplinas
+      DATA.disciplines.forEach(d => {
+        const isOn = ST.discoverFilter.discipline === d.name;
+        const b = mk('button');
+        b.type = 'button';
+        b.style.cssText = `padding:5px 11px;border-radius:999px;border:1px solid ${isOn?d.color:'var(--border)'};background:${isOn?d.color:'var(--surface2)'};color:${isOn?'#fff':'var(--text2)'};font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s`;
+        b.textContent = d.name;
+        b.addEventListener('click', ()=>{
+          ST.discoverFilter.discipline = isOn ? '' : d.name;
+          ST.discoverItems = []; ST.discoverPage = 0; ST.discoverHasMore = true;
+          render();
+        });
+        discRow.appendChild(b);
+      });
+      discBlock.appendChild(discRow);
+      filterCard.appendChild(discBlock);
     }
 
     // V15: Linha 3 — filtro por status de validação (admin vê tudo, comum prefere validadas)
@@ -31242,9 +31708,10 @@ function renderDiscover(){
     wrap.appendChild(tagChip);
   }
 
-  // Seção de Recomendações (Estágio 10) — só na primeira página, sem filtros ativos, e tipo cadernos
+  // V15.9: Mostra recomendações quando filtro é 'all' ou 'caderno' (não só 'caderno')
   const noFiltersActive = !ST.discoverFilter.search && !ST.discoverFilter.tag && !ST.discoverFilter.discipline;
-  if(AUTH.profile && noFiltersActive && ST.discoverFilter.type === 'caderno' && ST.discoverPage === 0){
+  const allowedTypesForReco = ['all', 'caderno', 'fonte'];
+  if(AUTH.profile && noFiltersActive && allowedTypesForReco.includes(ST.discoverFilter.type) && ST.discoverPage === 0){
     const recoWrap = mk('div','discover-reco-wrap');
     wrap.appendChild(recoWrap);
     renderRecommendations(recoWrap);
@@ -32223,7 +32690,7 @@ async function showMyPublishedModal(){
     return;
   }
   if(!result.items || result.items.length === 0){
-    body.innerHTML = '<div class="txt3" style="padding:.875rem 0;font-size:13px">Você ainda não publicou nenhum material. Vá em <b>Banco de Questões</b>, abra um caderno e clique em "Publicar".</div>';
+    body.innerHTML = '<div class="txt3" style="padding:.875rem 0;font-size:13px">Você ainda não publicou nenhum material. Vá em <b>Cadernos de prática</b>, abra um caderno e clique em "Publicar".</div>';
     return;
   }
   result.items.forEach(it=>{
@@ -44814,7 +45281,7 @@ function renderSimuladoSetup(){
       <div style="font-size:36px;margin-bottom:.5rem">📋</div>
       <h3 style="margin:0 0 .5rem;font-size:16px">Pool de questões insuficiente</h3>
       <p class="txt2" style="margin:0 0 1rem;font-size:13px;line-height:1.55">Você tem <b>${totalPool}</b> questões importadas. Pra fazer simulado precisa de pelo menos 5. Importe questões do TEC primeiro.</p>
-      <button class="btn btn-p btn-sm" id="sim-go-imp">Ir para Banco de Questões</button>
+      <button class="btn btn-p btn-sm" id="sim-go-imp">Ir para Cadernos de prática</button>
     `;
     wrap.appendChild(empty);
     setTimeout(()=>{
@@ -46512,16 +46979,16 @@ function showCommandPalette(){
       {label:'Flashcards (SRS)', icon:'🎴', kind:'Revisar', keywords:'revisar cards anki', action:()=>{ST.view='srs';render();}},
       {label:'Histórico de erros', icon:'📜', kind:'Revisar', keywords:'erros revisar', action:()=>{ST.view='history';render();}},
       {label:'Pomodoro', icon:'⏱', kind:'Revisar', keywords:'timer foco', action:()=>{ST.view='pomodoro';render();}},
-      {label:'Banco de questões importadas', icon:'📋', kind:'Estudar', keywords:'importadas tec banco', action:()=>{ST.view='imported';render();}},
+      {label:'Cadernos de prática', icon:'📥', kind:'Estudar', keywords:'importadas tec banco caderno questoes historicas', action:()=>{ST.view='imported';render();}},
       // Planejar
       {label:'Metas', icon:'🎯', kind:'Planejar', keywords:'objetivos diaria semanal mensal', action:()=>{ST.view='goals';render();}},
       {label:'Cronograma', icon:'📅', kind:'Planejar', keywords:'cronograma rotina horario blocos planejamento', action:()=>{ST.view='schedule';render();}},
-      {label:'Síntese de editais', icon:'📋', kind:'Planejar', keywords:'edital prova', action:()=>{ST.view='editals';render();}},
-      {label:'Conferir provas', icon:'📝', kind:'Planejar', keywords:'provas exames simulados', action:()=>{ST.view='exams';render();}},
+      {label:'Análise de editais', icon:'📋', kind:'Planejar', keywords:'edital prova analise', action:()=>{ST.view='editals';render();}},
+      {label:'Análise de provas', icon:'✅', kind:'Planejar', keywords:'provas exames simulados conferir analise', action:()=>{ST.view='exams';render();}},
       {label:'Mapa da matéria', icon:'🗺️', kind:'Planejar', keywords:'mapa visao topicos', action:()=>{ST.view='mapa';render();}},
       // Comunidade
-      {label:'Descobrir', icon:'🔍', kind:'Comunidade', keywords:'comunidade publico cadernos', action:()=>{ST.view='discover';render();}},
-      {label:'Da rede', icon:'📡', kind:'Comunidade', keywords:'feed atividade', action:()=>{ST.view='feed';render();}},
+      {label:'Comunidade', icon:'🌐', kind:'Comunidade', keywords:'descobrir comunidade publico cadernos materiais', action:()=>{ST.view='discover';render();}},
+      {label:'Feed dos seguidos', icon:'📡', kind:'Comunidade', keywords:'feed atividade rede pessoas seguidos', action:()=>{ST.view='feed';render();}},
       {label:'Atualizações jurídicas', icon:'⚖️', kind:'Comunidade', keywords:'leis jurisprudencia stf stj', action:()=>{ST.view='legalUpdates';render();}},
       {label:'Pinhal de Araucárias', icon:'🌲', kind:'Comunidade', keywords:'forest gamification', action:()=>{ST.view='forest';render();}},
       {label:'Grupos de estudo', icon:'👥', kind:'Comunidade', keywords:'grupo grupos ranking competir membros amigos', action:()=>{ST.view='groups';render();}},
