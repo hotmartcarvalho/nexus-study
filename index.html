@@ -142,16 +142,16 @@ body.mobile-nav-open .shortcuts-floating-btn{display:none !important}
    V14: Pode ser recolhida (60px) via toggle pra ganhar espaço de leitura. */
 .app-sidebar{
   position:fixed;
-  top:0;
+  top:56px; /* V15.10: começa abaixo da topbar — antes top:0 fazia sidebar passar atrás da topbar */
   left:0;
   bottom:0;
   width:264px;
   background:var(--surface);
   border-right:1px solid var(--border);
-  z-index:201;
+  z-index:199; /* abaixo da topbar (200) */
   display:none; /* default hidden — só ativa em desktop */
   flex-direction:column;
-  padding:12px 0;
+  padding:14px 0 12px;
   overflow-y:auto;
   overflow-x:hidden;
   transition:width .22s ease;
@@ -160,12 +160,10 @@ body.sidebar-collapsed .app-sidebar{width:64px}
 body.sidebar-collapsed .app-sidebar-section-label,
 body.sidebar-collapsed .app-sidebar-item-label,
 body.sidebar-collapsed .app-sidebar-badge,
-body.sidebar-collapsed .app-sidebar-search-btn span:not(:first-child),
-body.sidebar-collapsed .app-sidebar-brand{
+body.sidebar-collapsed .app-sidebar-search-btn span:not(:first-child){
   display:none !important;
 }
-/* V15.9: Quando colapsada, sidebar fica só com ícones — brand inteiro some
-   (era cortado/espremido). Botão de toggle se reposiciona logo no topo. */
+/* V15.10: Quando colapsada, sidebar fica só com ícones — botão de toggle no topo. */
 body.sidebar-collapsed .app-sidebar{padding-top:48px}
 body.sidebar-collapsed .sidebar-collapse-toggle{top:12px}
 body.sidebar-collapsed .app-sidebar-section{padding:6px 6px 4px}
@@ -173,7 +171,6 @@ body.sidebar-collapsed .app-sidebar-item{padding:.5rem 0;justify-content:center;
 body.sidebar-collapsed .app-sidebar-search-btn{justify-content:center;padding:8px 0;margin:8px 6px}
 body.sidebar-collapsed .app-sidebar-search-btn span:first-child{font-size:14px}
 body.sidebar-collapsed.has-sidebar #app{padding-left:64px}
-body.sidebar-collapsed.has-sidebar .topbar{padding-left:64px}
 
 /* Toggle button */
 .sidebar-collapse-toggle{
@@ -320,16 +317,26 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:28px}
 @media(min-width:1100px){
   body.has-sidebar .app-sidebar{display:flex}
   body.has-sidebar #app{padding-left:264px}
-  body.has-sidebar .topbar{padding-left:264px}
-  /* Esconde colunas left e center da topbar quando sidebar ativa */
-  body.has-sidebar .topbar-col-left,
+  /* V15.10: Topbar fica largura total (não recua com sidebar). Brand aparece
+     SEMPRE na topbar, do lado esquerdo, ocupando o espaço sobre a sidebar.
+     Sidebar fica abaixo (top:56px). Tabs centrais ficam ocultas (a sidebar substitui). */
+  body.has-sidebar .topbar{padding-left:0}
   body.has-sidebar .topbar-col-center{display:none}
-  /* Topbar vira só direita: avatar, sino, créditos, dias, theme switch */
-  body.has-sidebar .topbar-inner{
-    grid-template-columns:1fr;
-    padding:0 1.5rem;
+  /* Brand fica visível na esquerda da topbar e alinhada à largura da sidebar */
+  body.has-sidebar .topbar-col-left{
+    display:flex;
+    width:264px;
+    flex-shrink:0;
+    justify-content:center;
+    padding:0 16px;
+    box-sizing:border-box;
   }
-  body.has-sidebar .topbar-col-right{justify-content:flex-end}
+  body.has-sidebar.sidebar-collapsed .topbar-col-left{width:64px;padding:0 8px}
+  body.has-sidebar .topbar-inner{
+    padding:0 1.5rem 0 0;
+    max-width:none;
+  }
+  body.has-sidebar .topbar-col-right{justify-content:flex-end;margin-left:auto}
 }
 
 /* Em modo foco e srs-focus, esconde sidebar */
@@ -341,8 +348,7 @@ body.srs-focus-mode #app{padding-left:0 !important}
 
 .topbar-inner{
   max-width:1200px;width:100%;margin:0 auto;padding:0 1.25rem;height:100%;
-  display:grid;
-  grid-template-columns:1fr 740px 1fr;
+  display:flex;
   align-items:center;
   gap:1rem;
 }
@@ -469,16 +475,19 @@ html.dark .countdown-pill.countdown-near{color:#e8c068}
 .sync-dot.error{opacity:1 !important;max-width:none !important}
 
 /* Theme switch elegante (sol/lua) — usado no topbar e na welcome */
-.topbar-theme-switch{position:relative;width:60px;height:28px;border-radius:999px;border:1px solid var(--border);background:linear-gradient(90deg,#fef3c7 0%,#fde68a 100%);padding:0;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;transition:background .25s ease,border-color .15s;flex-shrink:0}
+/* V15.10: Theme switch refeito mais discreto e da mesma altura dos outros ícones (34px).
+   Antes: 60x28 destoava dos botões 34x34. */
+.topbar-theme-switch{position:relative;width:54px;height:34px;border-radius:10px;border:1px solid var(--border);background:linear-gradient(90deg,#fff7e6 0%,#fef3c7 100%);padding:0 4px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;transition:background .25s ease,border-color .15s, transform .15s;flex-shrink:0;box-sizing:border-box}
 .topbar-theme-switch.dark{background:linear-gradient(90deg,#1e1b4b 0%,#312e81 100%);border-color:#4338ca}
-.topbar-theme-switch:hover{border-color:var(--gralia-purple)}
-.topbar-theme-switch .tts-icon{font-size:10px;line-height:1;width:18px;text-align:center;z-index:2;pointer-events:none}
+.topbar-theme-switch:hover{border-color:var(--gralia-purple);transform:translateY(-1px)}
+.topbar-theme-switch .tts-icon{font-size:11px;line-height:1;width:18px;text-align:center;z-index:2;pointer-events:none;color:#92400e}
+.topbar-theme-switch.dark .tts-icon{color:#c7d2fe}
 .topbar-theme-switch .tts-icon-sun{padding-left:5px;opacity:1;transition:opacity .25s}
 .topbar-theme-switch .tts-icon-moon{padding-right:5px;opacity:.4;transition:opacity .25s}
 .topbar-theme-switch.dark .tts-icon-sun{opacity:.4}
 .topbar-theme-switch.dark .tts-icon-moon{opacity:1}
-.topbar-theme-switch .tts-thumb{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.18);transition:transform .25s cubic-bezier(.4,0,.2,1);z-index:1}
-.topbar-theme-switch.dark .tts-thumb{transform:translateX(32px);background:#fef3c7}
+.topbar-theme-switch .tts-thumb{position:absolute;top:4px;left:4px;width:26px;height:26px;border-radius:8px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.15);transition:transform .25s cubic-bezier(.4,0,.2,1);z-index:1}
+.topbar-theme-switch.dark .tts-thumb{transform:translateX(22px);background:#a78bfa}
 
 /* ===== Mobile/Tablet responsive: slide-out menu (1000px é onde o menu desktop começa a sobrepor) ===== */
 @media (max-width:1000px){
@@ -3934,7 +3943,7 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 }
 
 /* V12: Botão flutuante "Fale conosco" — visual neutro/sóbrio */
-.feedback-floating-btn{position:fixed;bottom:20px;right:140px;z-index:500;height:46px;padding:0 16px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;font-family:inherit;box-shadow:0 4px 14px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.06);transition:all .2s cubic-bezier(.34,1.4,.64,1);cursor:pointer}
+.feedback-floating-btn{position:fixed;bottom:20px;right:80px;z-index:500;height:42px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;font-family:inherit;box-shadow:0 4px 14px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.06);transition:all .2s cubic-bezier(.34,1.4,.64,1);cursor:pointer}
 .feedback-floating-btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.08);border-color:var(--text3);color:var(--text)}
 .feedback-floating-btn:active{transform:translateY(0) scale(.96)}
 .ffb-icon{font-size:16px;line-height:1}
@@ -3964,7 +3973,12 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 
 /* V12: Botão de atalhos no rodapé — sempre visível pra usuário descobrir.
    Posicionado à esquerda dos outros botões (foco/feedback) com ESPAÇO suficiente pra não colidir. */
-.shortcuts-floating-btn{position:fixed;bottom:20px;right:310px;z-index:500;width:46px;height:46px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;font-family:inherit;box-shadow:0 4px 14px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.06);transition:all .2s cubic-bezier(.34,1.4,.64,1);cursor:pointer}
+/* V15.10: Esconde botões flutuantes (feedback/shortcuts) quando pomodoro está
+   ativo ou pausado. Antes colidiam visualmente com o card flutuante do pomo. */
+body.pomo-active .feedback-floating-btn,
+body.pomo-active .shortcuts-floating-btn{display:none !important}
+
+.shortcuts-floating-btn{position:fixed;bottom:20px;right:20px;z-index:500;width:42px;height:42px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;font-family:inherit;box-shadow:0 4px 14px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.06);transition:all .2s cubic-bezier(.34,1.4,.64,1);cursor:pointer}
 .shortcuts-floating-btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.08);border-color:var(--text3);color:var(--text)}
 @media (max-width:600px){
   /* Em mobile, feedback vira só ícone (right:74), foco em right:14, então atalho em ~140 */
@@ -4352,12 +4366,175 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 @keyframes credit-pulse{0%,100%{opacity:1}50%{opacity:.65}}
 
 /* V15.10: Divisor sutil entre grupos de items na topbar direita */
+/* V15.10: Divisor sutil entre grupos de items na topbar direita (réingressado) */
 .topbar-divider{
   width:1px;height:18px;
   background:var(--border);
   margin:0 4px;flex-shrink:0;
   opacity:.6;
 }
+
+/* V15.10: Links institucionais "Sobre" / "Como usar" no topbar.
+   Discretos, sem ícone, com tooltip rico no hover. Transmitem seriedade. */
+.topbar-inst-links{
+  display:flex;align-items:center;gap:14px;
+  flex-shrink:0;
+  margin-left:8px;
+}
+.topbar-inst-link{
+  position:relative;
+  background:transparent;border:none;
+  padding:6px 4px;
+  font-family:inherit;font-size:12.5px;font-weight:600;
+  color:var(--text2);cursor:pointer;
+  letter-spacing:.1px;
+  transition:color .15s;
+}
+.topbar-inst-link::after{
+  content:'';position:absolute;left:4px;right:4px;bottom:2px;
+  height:1.5px;background:var(--gralia-purple);
+  transform:scaleX(0);transform-origin:left;
+  transition:transform .2s ease;
+}
+.topbar-inst-link:hover{color:var(--gralia-purple)}
+.topbar-inst-link:hover::after{transform:scaleX(1)}
+.topbar-inst-link .til-tip{
+  position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%) translateY(-4px);
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:8px 12px;
+  font-size:11.5px;font-weight:500;color:var(--text2);
+  white-space:nowrap;
+  box-shadow:0 4px 14px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.06);
+  opacity:0;visibility:hidden;transition:opacity .18s,visibility .18s,transform .18s;
+  pointer-events:none;
+  z-index:1000;
+  letter-spacing:0;
+}
+.topbar-inst-link:hover .til-tip{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+@media(max-width:1099px){
+  .topbar-inst-links{display:none} /* Em mobile esconde — fica no menu hambúrguer */
+}
+
+/* V15.10: Botão flutuante FAQ no topo direito (logo abaixo da topbar).
+   Pequeno, discreto, círculo com "?". Hover anima e mostra cor brand. */
+.faq-floating-btn{
+  position:fixed;top:72px;right:20px;
+  width:34px;height:34px;border-radius:50%;
+  background:var(--surface);
+  border:1px solid var(--border);
+  box-shadow:0 2px 8px rgba(0,0,0,.06);
+  color:var(--text2);
+  font-family:inherit;font-weight:700;font-size:15px;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  z-index:180;
+  transition:all .18s ease;
+}
+.faq-floating-btn:hover{
+  border-color:var(--gralia-purple);
+  color:var(--gralia-purple);
+  transform:scale(1.08);
+  box-shadow:0 4px 14px rgba(128,66,250,.18);
+}
+body.pomo-active .faq-floating-btn{display:none !important}
+
+/* Popover do FAQ — abre ao clicar no botão */
+.faq-popover{
+  position:fixed;top:114px;right:20px;
+  width:380px;max-width:calc(100vw - 40px);max-height:70vh;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  box-shadow:0 14px 40px rgba(0,0,0,.14),0 4px 12px rgba(0,0,0,.06);
+  z-index:850;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  animation:faqPop .18s cubic-bezier(.25,.4,.25,1.1);
+  transform-origin:top right;
+}
+@keyframes faqPop{
+  from{opacity:0;transform:translateY(-6px) scale(.97)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.faq-popover-head{
+  padding:14px 16px 10px;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.faq-popover-title{
+  font-size:14px;font-weight:700;color:var(--text);
+  margin:0 0 4px;letter-spacing:-.01em;
+}
+.faq-popover-sub{
+  font-size:11.5px;color:var(--text3);margin:0;line-height:1.4;
+}
+.faq-popover-search{
+  width:100%;
+  padding:9px 12px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  font-family:inherit;font-size:12.5px;
+  color:var(--text);
+  outline:none;
+  margin-top:10px;
+  transition:border-color .15s;
+}
+.faq-popover-search:focus{border-color:var(--gralia-purple)}
+.faq-popover-body{
+  flex:1;
+  overflow-y:auto;
+  padding:8px 8px;
+}
+.faq-popover-cat-label{
+  font-size:10.5px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.5px;
+  padding:10px 10px 4px;
+  position:sticky;top:0;
+  background:var(--surface);
+}
+.faq-popover-item{
+  display:block;width:100%;
+  text-align:left;
+  background:transparent;
+  border:none;
+  padding:8px 10px;
+  border-radius:8px;
+  font-family:inherit;
+  cursor:pointer;
+  transition:background .12s;
+  margin:1px 0;
+}
+.faq-popover-item:hover{background:var(--surface2)}
+.faq-popover-item.expanded{background:var(--surface2)}
+.faq-popover-q{
+  font-size:12.5px;color:var(--text);
+  font-weight:600;
+  line-height:1.45;
+}
+.faq-popover-a{
+  display:none;
+  margin-top:6px;
+  font-size:11.5px;color:var(--text2);
+  line-height:1.55;
+  padding-top:6px;
+  border-top:1px solid var(--border);
+}
+.faq-popover-item.expanded .faq-popover-a{display:block}
+.faq-popover-empty{
+  padding:1.5rem 1rem;
+  text-align:center;
+  color:var(--text3);font-size:12px;
+}
+.faq-popover-foot{
+  padding:8px 12px;
+  border-top:1px solid var(--border);
+  font-size:11px;
+  color:var(--text3);
+  flex-shrink:0;
+}
+.faq-popover-foot a{color:var(--gralia-purple);text-decoration:none;font-weight:600}
+.faq-popover-foot a:hover{text-decoration:underline}
 
 /* ====== WELCOME v2 — landing page enxuta e impactante ====== */
 /* ===== WELCOME V3 — identidade Gralia ===== */
@@ -9503,10 +9680,10 @@ function buildUserAvatarMenu(){
   btn.type = 'button';
   btn.setAttribute('aria-label', 'Menu do usuário');
   const initials = getUserInitials();
-  btn.style.cssText = `width:34px;height:34px;border-radius:50%;border:2px solid var(--surface);background:${getUserAvatarGradient()};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-family:inherit;font-size:12px;font-weight:700;color:#fff;letter-spacing:.3px;transition:transform .15s, box-shadow .15s;flex-shrink:0;line-height:1;padding:0;box-shadow:0 1px 3px rgba(0,0,0,.10)`;
+  btn.style.cssText = `width:34px;height:34px;border-radius:50%;border:1.5px solid var(--surface);background:${getUserAvatarGradient()};cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-family:inherit;font-size:12px;font-weight:700;color:#fff;letter-spacing:.3px;transition:transform .15s, box-shadow .15s, border-color .15s;flex-shrink:0;line-height:1;padding:0;box-shadow:0 1px 3px rgba(0,0,0,.10)`;
   btn.textContent = initials;
-  btn.addEventListener('mouseenter', ()=>{btn.style.transform='scale(1.05)';btn.style.boxShadow='0 2px 6px rgba(128,66,250,.30)';});
-  btn.addEventListener('mouseleave', ()=>{btn.style.transform='scale(1)';btn.style.boxShadow='0 1px 3px rgba(0,0,0,.10)';});
+  btn.addEventListener('mouseenter', ()=>{btn.style.transform='translateY(-1px)';btn.style.boxShadow='0 2px 6px rgba(128,66,250,.30)';btn.style.borderColor='var(--gralia-purple)';});
+  btn.addEventListener('mouseleave', ()=>{btn.style.transform='translateY(0)';btn.style.boxShadow='0 1px 3px rgba(0,0,0,.10)';btn.style.borderColor='var(--surface)';});
   btn.addEventListener('click', e=>{
     e.stopPropagation();
     showUserAvatarMenu(btn);
@@ -9619,7 +9796,7 @@ function buildNotificationsBell(){
   btn.type = 'button';
   btn.setAttribute('aria-label', 'Notificações');
   btn.title = 'Notificações';
-  btn.style.cssText = 'background:transparent;border:none;width:34px;height:34px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:17px;color:var(--text2);transition:all .15s;flex-shrink:0;position:relative';
+  btn.style.cssText = 'background:transparent;border:1px solid transparent;width:34px;height:34px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:16px;color:var(--text2);transition:all .15s;flex-shrink:0;position:relative;font-family:inherit';
   btn.innerHTML = '<span style="position:relative">🔔</span>';
 
   // Badge
@@ -9636,8 +9813,8 @@ function buildNotificationsBell(){
     e.stopPropagation();
     showNotificationsDropdown(btn);
   });
-  btn.addEventListener('mouseenter', ()=>{btn.style.background='var(--surface2)';btn.style.color='var(--text)';});
-  btn.addEventListener('mouseleave', ()=>{btn.style.background='transparent';btn.style.color='var(--text2)';});
+  btn.addEventListener('mouseenter', ()=>{btn.style.background='var(--surface2)';btn.style.color='var(--text)';btn.style.borderColor='var(--border)';});
+  btn.addEventListener('mouseleave', ()=>{btn.style.background='transparent';btn.style.color='var(--text2)';btn.style.borderColor='transparent';});
 
   wrap.appendChild(btn);
   return wrap;
@@ -11539,13 +11716,10 @@ function buildAppSidebar(){
     document.body.classList.remove('sidebar-collapsed');
   }
 
-  // Brand — usa logo oficial do BRAND, com troca automática por tema
-  // V14: Logo aumentado de 28px → 40px (item: logo extremamente pequeno)
-  const brand = mk('div','app-sidebar-brand');
-  brand.innerHTML = `<img src="${BRAND.birdLogo}" alt="Gralia" class="brand-bird brand-bird-light"><img src="${BRAND.birdLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark"><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
-  brand.style.cursor = 'pointer';
-  brand.addEventListener('click',()=>{ST.view='dashboard';render();});
-  sb.appendChild(brand);
+  // V15.10: Brand REMOVIDO da sidebar — Jean pediu pra logo viver SÓ na topbar
+  // (não some quando recolhe a sidebar). Sidebar ganha um padding-top equivalente
+  // pra não ficar coladinha no topo da tela.
+  // (Antes a brand era duplicada: sidebar + topbar, e sumia ao recolher.)
 
   // V14: Buscar tudo (Cmd+K) — vem ANTES dos grupos pra ser primeira ação visível
   const searchBtn = mk('button','app-sidebar-search-btn');
@@ -11597,7 +11771,7 @@ function buildAppSidebar(){
         {view:'feed', icon:'📡', label:'Feed dos seguidos', desc:'Atividade de quem você segue'},
         {view:'legalUpdates', icon:'⚖️', label:'Atualizações legais', desc:'Leis e jurisprudência novas'},
         {view:'forest', icon:'🌲', label:'Pinhal'},
-        {view:'groups', icon:'👥', label:'Grupos', desc:'Rankings de até 20 pessoas'},
+        {view:'groups', icon:'👥', label:'Grupos', desc:'Rankings de até 25 pessoas'},
       ]
     }
   ];
@@ -11856,6 +12030,24 @@ function render(){
       try{ showShortcutsOverlay(); }catch(e){ console.warn(e); }
     });
     APP.appendChild(shortcutsBtn);
+  }
+
+  // V15.10: Botão flutuante FAQ — canto superior direito, abaixo da topbar.
+  // Discreto, com tooltip. Click abre popover com busca e categorias de FAQs.
+  // Some quando: pomodoro ativo, modo foco, ou já está na página de FAQ.
+  if(isAuthed() && !isFocusMode() && ST.view !== 'faq'){
+    const faqBtn = mk('button','faq-floating-btn');
+    faqBtn.type = 'button';
+    faqBtn.setAttribute('aria-label', 'Perguntas frequentes');
+    faqBtn.title = 'Tirar dúvidas — busca rápida no FAQ';
+    faqBtn.innerHTML = '<span style="font-size:13px">?</span>';
+    faqBtn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(typeof showFaqFloatPopover === 'function'){
+        showFaqFloatPopover(faqBtn);
+      }
+    });
+    APP.appendChild(faqBtn);
   }
 
   // Reset hidden state quando navega — pomo float reaparece se rodando
@@ -13728,7 +13920,7 @@ function renderTopbar(){
       {view:'feed',label:'Feed dos seguidos',icon:'📡',desc:'Atividade de quem você segue'},
       {view:'legalUpdates',label:'Atualizações',icon:'⚖️',desc:'Novas leis, súmulas e jurisprudência relevantes'},
       {view:'forest',label:'Pinhal de Araucárias',icon:'🌲',desc:'Acompanhe seu progresso visualmente'},
-      {view:'groups',label:'Grupos',icon:'👥',desc:'Rankings em grupos de até 20 pessoas'}
+      {view:'groups',label:'Grupos',icon:'👥',desc:'Rankings em grupos de até 25 pessoas'}
     ]},
     {type:'tab',view:'settings',label:'Conta',icon:'👤'}
   ];
@@ -13918,9 +14110,42 @@ function renderTopbar(){
   const colLeft = mk('div','topbar-col-left');
   colLeft.appendChild(brand);
 
+  // V15.10: Links institucionais discretos (Sobre / Como usar) ao lado direito
+  // do brand. Sem ícone, fonte 12.5px, hover com underline + cor brand.
+  // Renderiza no topbar-col-center quando sidebar inativa, ou num bloco próprio
+  // quando sidebar ativa (já que o center fica escondido).
+  function buildInstitutionalLinks(){
+    const wrap = mk('div','topbar-inst-links');
+    const items = [
+      {label:'Sobre o Gralia', desc:'História do projeto, missão e como surgiu', view:'about', tab:'sobre'},
+      {label:'Como usar', desc:'Tutorial visual de todos os recursos', view:'howToUse'},
+    ];
+    items.forEach(it => {
+      const a = mk('button','topbar-inst-link');
+      a.type = 'button';
+      a.textContent = it.label;
+      a.title = it.desc;
+      // Tooltip rico (em vez de title nativo)
+      const tip = mk('span','til-tip');
+      tip.textContent = it.desc;
+      a.appendChild(tip);
+      a.addEventListener('click', ()=>{
+        ST.view = it.view;
+        if(it.tab) ST.aboutTab = it.tab;
+        render();
+      });
+      wrap.appendChild(a);
+    });
+    return wrap;
+  }
+
   const colCenter = mk('div','topbar-col-center');
   colCenter.appendChild(hamb);
   colCenter.appendChild(tabs);
+
+  // V15.10: Container dos links institucionais — visível tanto em desktop
+  // (com sidebar) quanto em mobile (sem sidebar).
+  const instLinks = buildInstitutionalLinks();
 
   const colRight = mk('div','topbar-col-right');
   // V15.10: layout premium da topbar direita —
@@ -13996,6 +14221,8 @@ function renderTopbar(){
   }, 5000);
 
   inner.appendChild(colLeft);
+  // V15.10: links institucionais ao lado da brand
+  inner.appendChild(instLinks);
   inner.appendChild(colCenter);
   inner.appendChild(colRight);
   inner.appendChild(overlay);
@@ -14284,7 +14511,7 @@ const TUTORIAL_SLIDES = [
   {
     icon: '🌐',
     title: '7. Comunidade — descobrir e compartilhar',
-    body: 'Outros usuários publicam fontes, cadernos e perfis de tópico. Importe num clique. Forme grupos de até 20 pessoas com ranking de progresso. Sem mensagens — foco no estudo.',
+    body: 'Outros usuários publicam fontes, cadernos e perfis de tópico. Importe num clique. Forme grupos de até 25 pessoas com ranking de progresso. Sem mensagens — foco no estudo.',
     visual: 'community',
     cta: 'Próximo →'
   },
@@ -14707,7 +14934,7 @@ function renderTutorialVisual(kind){
         <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#10b981,#34d399);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">MS</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:12.5px;font-weight:700;color:var(--text);line-height:1.3">Grupo: PRF 2026</div>
-          <div style="font-size:11px;color:var(--text3);line-height:1.4">12/20 membros · Você está em <b>3º</b> no ranking semanal</div>
+          <div style="font-size:11px;color:var(--text3);line-height:1.4">12/25 membros · Você está em <b>3º</b> no ranking semanal</div>
         </div>
       </div>
     `;
@@ -14907,6 +15134,16 @@ function renderDashboard(){
     wrap.appendChild(sg);
   }
 
+  // V15.10: Card "Dica do dia" reposicionado — Jean pediu pra ficar logo após os
+  // 4 cards de stats e ANTES da frase explicativa do heatmap. Antes ficava no
+  // topo do dashboard (após o hero), agora aparece na primeira dobra junto dos
+  // dados de desempenho.
+  const tipCardInline = (typeof buildTipOfTheDayCard === 'function') ? buildTipOfTheDayCard() : null;
+  if(tipCardInline){
+    tipCardInline.style.margin = '1rem 0 0';
+    wrap.appendChild(tipCardInline);
+  }
+
   // V15: Tip do heatmap (frase dica) AGORA fica entre os 4 cards de número e o mapa.
   // Jean pediu explicitamente esse posicionamento — antes a tip aparecia DENTRO do mapa.
   const heatmapTip = buildHeatmapTip();
@@ -15007,10 +15244,9 @@ function renderDashboard(){
     setTimeout(()=>{const l=$('goConf');if(l)l.addEventListener('click',e=>{e.preventDefault();ST.view='settings';render();});},0);
   }
 
-  // V14: Dica do dia — primeiro card visível após dados da prova (item 24).
-  // Antes era 3º na ordem, agora é 1º depois do hero pra o usuário ler logo ao abrir o painel.
-  const tipCard = buildTipOfTheDayCard();
-  if(tipCard) wrap.appendChild(tipCard);
+  // V15.10: Card "Dica do dia" REMOVIDO daqui — Jean pediu pra mover pra dentro
+  // do bloco de stats (entre os 4 cards de número e o explainer do heatmap).
+  // Agora aparece em buildKpiCards/dashboard, não mais no topo.
 
   // V14: Card "Bloco atual" do cronograma — integração com o Pomodoro
   // Só aparece se o usuário tem cronograma ativo e há um bloco atual ou próximo
@@ -30297,14 +30533,25 @@ function renderPomoHistory(){
   return wrap;
 }
 function pomoStart(){
+  // V15.10: se o usuário trocou de configuração mas o secLeft é o valor antigo
+  // (ex: estado inicial 25min mas config = 50min), corrige antes de iniciar.
+  // Isso fixa o bug do círculo que avançava errado por usar phaseDur diferente do secLeft inicial.
+  const fullSec = currentPhaseDuration() * 60;
+  if(ST.pomoRun.secLeft <= 0 || ST.pomoRun.secLeft > fullSec){
+    ST.pomoRun.secLeft = fullSec;
+  }
+  // V15.10: snapshot do tempo total dessa sessão. O círculo de progresso usa
+  // este valor (e não currentPhaseDuration() que pode mudar se user editar
+  // config no meio). Mantém o círculo coerente com a sessão atual.
+  ST.pomoRun.phaseDurSec = fullSec;
   ST.pomoRun.running=true;
+  document.body.classList.add('pomo-active');
   if(ST.pomoRun.intervalId)clearInterval(ST.pomoRun.intervalId);
   ST.pomoRun.intervalId = setInterval(()=>{
     ST.pomoRun.secLeft-=1;
     if(ST.pomoRun.secLeft<=0){pomoBell();pomoNext(true);return;}
-    // Atualiza apenas display do timer, sem re-render global
     updatePomoTimerDisplay();
-    renderPomoFloat();  // atualiza widget flutuante a cada segundo
+    renderPomoFloat();
   },1000);
   render();
 }
@@ -30324,10 +30571,19 @@ function updatePomoTimerDisplay(){
 }
 function pomoPause(){
   ST.pomoRun.running=false;
+  // V15.10: NÃO remove pomo-active em pause — Jean disse que botões devem
+  // ficar ocultos enquanto pomo está "rodando ou pausado".
   if(ST.pomoRun.intervalId){clearInterval(ST.pomoRun.intervalId);ST.pomoRun.intervalId=null;}
   render();
 }
-function pomoReset(){pomoPause();ST.pomoRun.secLeft=currentPhaseDuration()*60;render();}
+function pomoReset(){
+  pomoPause();
+  ST.pomoRun.secLeft=currentPhaseDuration()*60;
+  // V15.10: snapshot atualizado no reset
+  ST.pomoRun.phaseDurSec = ST.pomoRun.secLeft;
+  document.body.classList.remove('pomo-active');
+  render();
+}
 
 // Widget flutuante do Pomodoro — visível em qualquer página enquanto rodando
 // (também aparece pausado se houver sessão em andamento mas não-zerada)
@@ -30337,7 +30593,9 @@ function renderPomoFloat(){
   const p = ST.pomoRun;
   if(!p)return;
   // Só mostra se: rodando OU pausado com tempo já consumido (sessão em andamento)
-  const phaseDur = currentPhaseDuration()*60;
+  // V15.10: usa snapshot phaseDurSec da sessão atual (não currentPhaseDuration
+   // que pode ter mudado se user editou config). Fallback pra config atual.
+  const phaseDur = (p.phaseDurSec && p.phaseDurSec > 0) ? p.phaseDurSec : (currentPhaseDuration()*60);
   const consumed = phaseDur - p.secLeft;
   const inProgress = p.running || (consumed>0 && p.secLeft<phaseDur);
   // Não mostra na própria página do Pomodoro (já tem o display lá)
@@ -30505,6 +30763,8 @@ function pomoNext(auto){
     p.phase='focus';
   }
   p.secLeft = currentPhaseDuration()*60;
+  // V15.10: atualiza snapshot ao mudar de fase
+  p.phaseDurSec = p.secLeft;
   if(auto&&DATA.config.notifications)pomoNotify(p.phase);
 
   // V14: Se a transição foi automática (não manual), inicia a próxima fase imediatamente.
@@ -31201,7 +31461,9 @@ function renderUserProfile(){
     }, 0);
 
     // V14: Pinhal de Araucárias do perfil (item 26).
-    // Mostra árvores públicas de progresso do usuário pra os outros visualizarem.
+    // V15.11: Agora usa a cena SVG completa (buildForestScene) em vez de
+    // grid de emojis. Mostra a paisagem do pinhal do usuário visitado —
+    // serve de motivação ("vou cuidar do meu pinhal pra ficar bonito assim").
     if(p.forest_data){
       try{
         const fdata = typeof p.forest_data === 'string' ? JSON.parse(p.forest_data) : p.forest_data;
@@ -31211,27 +31473,32 @@ function renderUserProfile(){
           forestSec.style.cssText = 'margin-top:1rem;padding:1.25rem 1.5rem';
           const fHead = mk('div');
           fHead.style.cssText = 'margin-bottom:1rem';
-          fHead.innerHTML = `<h3 style="margin:0 0 4px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px">🌲 <span>Pinhal de @${escapeHTML(p.username)}</span></h3><p class="txt2" style="margin:0;font-size:12.5px">${trees.length} árvore${trees.length===1?'':'s'} plantada${trees.length===1?'':'s'} pelos marcos de estudo</p>`;
+          // Stats por tipo
+          const ancients = trees.filter(t=>t.type==='ancient').length;
+          const matures = trees.filter(t=>t.type==='mature').length;
+          const youngs = trees.filter(t=>t.type==='young').length;
+          const seeds = trees.filter(t=>t.type==='seed').length;
+          let statParts = [];
+          if(ancients > 0) statParts.push(`${ancients} centenária${ancients>1?'s':''}`);
+          if(matures > 0) statParts.push(`${matures} adulta${matures>1?'s':''}`);
+          if(youngs > 0) statParts.push(`${youngs} jovem${youngs>1?'ns':''}`);
+          if(seeds > 0) statParts.push(`${seeds} muda${seeds>1?'s':''}`);
+          fHead.innerHTML = `
+            <h3 style="margin:0 0 4px;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px">🌲 <span>Pinhal de @${escapeHTML(p.username)}</span></h3>
+            <p class="txt2" style="margin:0;font-size:12.5px">
+              ${trees.length} árvore${trees.length===1?'':'s'} plantada${trees.length===1?'':'s'}${statParts.length > 0 ? ' · ' + statParts.join(' · ') : ''}
+            </p>
+          `;
           forestSec.appendChild(fHead);
 
-          // Mini-grid de árvores
-          const grid = mk('div');
-          grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(48px,1fr));gap:10px;justify-items:center';
-          const treeIcons = {ancient:'🌳', mature:'🌲', young:'🌿', seed:'🌱'};
-          trees.slice(0, 30).forEach(t=>{
-            const tree = mk('span');
-            tree.style.cssText = 'font-size:32px;line-height:1;cursor:default';
-            tree.title = t.name || (t.type === 'ancient' ? 'Centenária' : t.type === 'mature' ? 'Madura' : t.type === 'young' ? 'Jovem' : 'Semente');
-            tree.textContent = treeIcons[t.type] || '🌿';
-            grid.appendChild(tree);
-          });
-          if(trees.length > 30){
-            const more = mk('span');
-            more.style.cssText = 'font-size:12px;color:var(--text3);align-self:center;font-weight:600';
-            more.textContent = '+' + (trees.length - 30);
-            grid.appendChild(more);
+          // Cena SVG bonita do pinhal (mesma da página própria)
+          if(typeof buildForestScene === 'function'){
+            const sceneWrap = mk('div');
+            sceneWrap.style.cssText = 'border-radius:10px;overflow:hidden;border:1px solid var(--border)';
+            sceneWrap.appendChild(buildForestScene(trees));
+            forestSec.appendChild(sceneWrap);
           }
-          forestSec.appendChild(grid);
+
           wrap.appendChild(forestSec);
         }
       }catch(e){console.warn('[forest profile]', e);}
@@ -38266,6 +38533,233 @@ function renderAboutPage(){
   return wrap;
 }
 
+// V15.10: FAQs centralizados aqui pra serem usados tanto pela página completa
+// quanto pelo popover flutuante. Atualizado e expandido por Jean — inclui agora
+// dúvidas sobre Cadernos de prática, Comunidade, Mapa da matéria e Pinhal.
+function getFaqCategories(){
+  return [
+    {
+      title:'🚀 Começando',
+      items:[
+        {q:'Como começo a usar o Gralia?', a:'Adicione uma fonte de estudo (PDF de apostila, lei, edital ou texto colado) na aba "Fontes". A IA vai extrair tópicos. Depois é só ir pra "Calibração" ou "Métodos de estudo" e começar.'},
+        {q:'Preciso pagar pra testar?', a:'Não. Sua conta começa com 40 créditos grátis (válidos por 14 dias) pra testar tudo com IA. Recursos sem IA continuam grátis pra sempre: flashcards, simulado com questões importadas, mapa da matéria, pomodoro.'},
+        {q:'Funciona offline?', a:'Sim, parcialmente. Revisar flashcards já criados, fazer simulados e ver estatísticas funciona offline. IA, Comunidade e sincronização precisam de internet.'},
+        {q:'Posso colar texto do Notion / NotebookLM?', a:'Sim. Em "Fontes → Adicionar fonte → Colar texto". O Gralia entende markdown automaticamente: # vira título, ## subtítulo, **palavra** vira destaque verde, > vira caixa de citação, listas com - são reconhecidas. Veja o hint dentro do form.'}
+      ]
+    },
+    {
+      title:'📚 Fontes e materiais',
+      items:[
+        {q:'O que é uma "fonte"?', a:'Material de estudo (apostila, lei, anotação, transcrição) que a IA usa de contexto pra gerar questões, flashcards e revisões fiéis ao seu conteúdo. Pode ser PDF, texto colado ou importada da Comunidade.'},
+        {q:'Minha fonte fica privada?', a:'Não exatamente. Toda fonte adicionada vai automaticamente pra revisão de moderadores. Se aprovada, fica disponível na Comunidade pra outros assinantes. Esse modelo evita que cada um digitalize a mesma apostila — isso está descrito nos Termos item 4.'},
+        {q:'Posso publicar com meu nome de autor?', a:'Os moderadores removem referências a cursos pagos e nomes de autores antes de aprovar. Conteúdo público é técnico — sua autoria fica registrada como "@seu-username".'},
+        {q:'Como organizar fontes por disciplina?', a:'Em "Fontes" há toggle "📑 Agrupar por disciplina". Quando ativo, fontes ficam em seções colapsáveis com cor da disciplina. Filtros: importadas, criadas por mim, ou todas.'}
+      ]
+    },
+    {
+      title:'🤖 Como funciona a IA',
+      items:[
+        {q:'A IA copia ou inventa questões?', a:'Cria questões inéditas baseadas no seu material. Usa o conteúdo das fontes ativas como contexto. Não copia de bancos de questões. Verifica qualidade com base no estilo Cebraspe (banca mais comum em concursos federais).'},
+        {q:'A IA pode errar?', a:'Pode acontecer, especialmente em legislações muito recentes. Cada questão passa por 5 filtros automáticos antes de chegar (~15% são descartadas), e você reporta erro com 1 clique. Sempre confirme conceitos críticos com sua fonte oficial.'},
+        {q:'Quanto custam os créditos?', a:'Cada ação mostra o custo exato antes de rodar. Questão típica: 1-4 créditos. Flashcard: ~1 crédito. Síntese de edital: ~30 créditos. Análise do mentor: ~2 créditos.'},
+        {q:'Que modelos de IA são usados?', a:'Haiku 4.5 por padrão (rápido e bom). Plano Pro libera Sonnet 4.6 pra análises mais profundas (edital, plano de estudo, comparações).'}
+      ]
+    },
+    {
+      title:'📥 Cadernos de prática',
+      items:[
+        {q:'Qual a diferença entre "Prática com IA" e "Cadernos de prática"?', a:'Prática com IA gera questões na hora do seu material. Cadernos de prática são questões REAIS importadas (TEC Concursos, gabaritos colados) organizadas em cadernos temáticos. Cada uma serve um propósito diferente — combinadas dão treino completo.'},
+        {q:'Como criar um caderno?', a:'Vá em "Cadernos de prática → Cadernos → + Criar caderno". Selecione questões importadas e agrupe por tema, banca, ano. Depois pratique só esse subset quantas vezes quiser.'},
+        {q:'Posso publicar meus cadernos?', a:'Sim. Em qualquer caderno tem botão "🌐 Publicar" — outros assinantes podem importar e usar. Cadernos publicados aparecem em Comunidade.'}
+      ]
+    },
+    {
+      title:'🎓 Métodos de estudo',
+      items:[
+        {q:'Como funciona a Calibração de confiança?', a:'Antes de marcar C/E você indica "Sei", "Acho" ou "Chutei". O sistema mostra onde você tem "falsa segurança" — é o tipo de erro mais perigoso porque você nem suspeita que está errando.'},
+        {q:'O que é o Drill DNA?', a:'Cada erro é classificado em 6 tipos de armadilha (literalidade, exceção, palavra absoluta, etc). O Drill foca a IA em gerar questões só do tipo onde você mais erra, até a frequência cair.'},
+        {q:'Como funciona a Intercalação?', a:'Mistura disciplinas no mesmo bloco de prática (não estuda só Direito por 1h, alterna a cada 5 questões). Aprendizado é mais lento no curto prazo, mas memória é muito mais durável.'},
+        {q:'O que é o Simulado Gralia?', a:'Prova completa cronometrada gerada pela IA. Define disciplinas, número de questões, tempo. No fim, análise detalhada por matéria.'}
+      ]
+    },
+    {
+      title:'🎴 Flashcards e revisão',
+      items:[
+        {q:'Como funcionam os flashcards?', a:'Algoritmo SM-2 (mesmo do Anki). Você revela a resposta, classifica como Errei/Difícil/Bom/Fácil e o sistema agenda a próxima revisão. Cards podem nascer dos seus erros, gerados pela IA, ou criados manualmente.'},
+        {q:'Posso importar do Anki?', a:'Sim, em formato CSV ou JSON. Em "Flashcards → Importar". O sistema mantém histórico e datas de revisão.'},
+        {q:'O que é a Revisão Turbo?', a:'Modo de revisão rápida pra véspera de prova: cards adaptados em ciclos curtos com foco em recall. Diferente do SRS normal que espalha no tempo.'}
+      ]
+    },
+    {
+      title:'🌐 Comunidade e perfis',
+      items:[
+        {q:'O que tem na Comunidade?', a:'Materiais públicos compartilhados por outros assinantes: fontes, cadernos de prática, perfis de tópico, análises de editais. Filtre por disciplina, tipo, busca por texto.'},
+        {q:'Tem chat entre usuários?', a:'Não. O foco é estudo, não rede social. Você pode seguir outros concurseiros e ver o feed deles, mas não há mensagens privadas.'},
+        {q:'Como funciona o "Feed dos seguidos"?', a:'Mostra marcos das pessoas que você segue: quem publicou material novo, quem completou metas, milestones. Atualiza em tempo real.'},
+        {q:'O que é o Pinhal de Araucárias?', a:'Visualização do seu progresso no estudo: a cada disciplina dominada, uma araucária cresce no seu pinhal. Quando alguém visita seu perfil, vê seu pinhal — quanto mais consistente seu estudo, mais bonita a paisagem.'}
+      ]
+    },
+    {
+      title:'👥 Grupos de estudo',
+      items:[
+        {q:'Como criar um grupo?', a:'Em "Comunidade → Grupos → + Criar grupo". Defina nome e descrição. Você recebe um código de convite pra compartilhar. Limite: 25 pessoas por grupo.'},
+        {q:'Posso ter administradores no grupo?', a:'Sim. Como dono, você pode promover membros a admin. Admins podem expulsar outros membros e convidar novos. Se você sair ou excluir o grupo, o admin mais antigo vira o novo dono — o grupo continua.'},
+        {q:'O que admins podem fazer?', a:'Convidar membros novos, expulsar membros comuns, excluir o grupo se todos os admins concordarem. Não podem expulsar outros admins (só o dono pode rebaixar admin).'}
+      ]
+    },
+    {
+      title:'💳 Planos e pagamento',
+      items:[
+        {q:'Qual a diferença entre os planos?', a:'Estudante (R$ 19,90 / 250 créditos/mês) — uso moderado. Concurseiro (R$ 39,90 / 700 créditos/mês — recomendado) — estudo intenso. Pro (R$ 89,90 / 2000 créditos/mês + Sonnet 4.6 + edital ilimitado) — uso diário e profundo.'},
+        {q:'Os créditos não usados acumulam?', a:'Os créditos do PLANO resetam mensalmente. Os créditos de TOP-UP (avulsos) nunca expiram — somam ao saldo e ficam disponíveis indefinidamente.'},
+        {q:'Posso cancelar a qualquer momento?', a:'Sim. Sem fidelidade. Em "Conta → Assinatura" você cancela com 1 clique. Mantém acesso até o fim do período pago. Top-ups continuam seus pra sempre.'},
+        {q:'Tem desconto BETA?', a:'Sim. Os 100 primeiros assinantes pagantes ganham desconto progressivo no primeiro mês: 1º-30º (Pioneiro) 30% off · 31º-60º (Veterano) 20% off · 61º-100º (Beta) 10% off. Cada nível inclui selo permanente no perfil.'}
+      ]
+    },
+    {
+      title:'🔒 Privacidade e dados',
+      items:[
+        {q:'Meus dados ficam seguros?', a:'Sim. Tudo em servidor com criptografia (Supabase, infra AWS). Sua conta é privada por padrão. Em conformidade com a LGPD.'},
+        {q:'Posso baixar todos os meus dados?', a:'Sim. Conta → Dados → "Baixar todos os meus dados" (JSON completo).'},
+        {q:'Posso apagar minha conta?', a:'Sim, a qualquer momento, em Conta → Privacidade. Apagar é irreversível — todos os flashcards, fontes, histórico, conexões sociais somem.'},
+        {q:'Vocês treinam IA com meus dados?', a:'Não. Seu conteúdo é usado APENAS pra gerar respostas pra você. Não usamos pra treinar modelos.'}
+      ]
+    }
+  ];
+}
+
+// V15.10: Popover flutuante de FAQ — abre ao clicar no botão "?" do canto
+// superior direito. Tem busca por texto e lista expandível por categoria.
+let _faqPopoverOpen = false;
+function showFaqFloatPopover(anchor){
+  // Fecha se já está aberto
+  const existing = document.querySelector('.faq-popover');
+  if(existing){
+    existing.remove();
+    _faqPopoverOpen = false;
+    return;
+  }
+
+  const popover = mk('div','faq-popover');
+
+  // Header
+  const head = mk('div','faq-popover-head');
+  const title = mk('h3','faq-popover-title');
+  title.textContent = '💡 Tirar dúvidas';
+  head.appendChild(title);
+  const sub = mk('p','faq-popover-sub');
+  sub.textContent = 'Busque por palavra ou navegue pelas categorias';
+  head.appendChild(sub);
+  const search = mk('input','faq-popover-search');
+  search.type = 'text';
+  search.placeholder = 'Ex: créditos, flashcards, grupo...';
+  head.appendChild(search);
+  popover.appendChild(head);
+
+  // Body
+  const body = mk('div','faq-popover-body');
+  popover.appendChild(body);
+
+  // Foot
+  const foot = mk('div','faq-popover-foot');
+  foot.innerHTML = 'Não achou? <a href="#" id="faq-pop-full">Ver FAQ completo →</a>';
+  popover.appendChild(foot);
+
+  document.body.appendChild(popover);
+  _faqPopoverOpen = true;
+
+  // Render função (re-roda quando filtra)
+  function renderItems(filterText){
+    body.innerHTML = '';
+    const cats = getFaqCategories();
+    const q = (filterText||'').trim().toLowerCase();
+    let totalShown = 0;
+
+    cats.forEach(cat => {
+      // Filtra items dessa categoria
+      const matchedItems = cat.items.filter(it => {
+        if(!q) return true;
+        return it.q.toLowerCase().includes(q) || it.a.toLowerCase().includes(q);
+      });
+      if(matchedItems.length === 0) return;
+      totalShown += matchedItems.length;
+
+      const catLbl = mk('div','faq-popover-cat-label');
+      catLbl.textContent = cat.title;
+      body.appendChild(catLbl);
+
+      matchedItems.forEach(it => {
+        const item = mk('button','faq-popover-item');
+        item.type = 'button';
+        const qEl = mk('div','faq-popover-q');
+        qEl.textContent = it.q;
+        item.appendChild(qEl);
+        const aEl = mk('div','faq-popover-a');
+        aEl.textContent = it.a;
+        item.appendChild(aEl);
+        item.addEventListener('click', ()=>{
+          item.classList.toggle('expanded');
+        });
+        body.appendChild(item);
+      });
+    });
+
+    if(totalShown === 0){
+      const empty = mk('div','faq-popover-empty');
+      empty.innerHTML = `Nenhuma resposta com "<b>${escapeHTML(filterText)}</b>"<br><br>Tente outra palavra ou veja o FAQ completo.`;
+      body.appendChild(empty);
+    }
+  }
+
+  // Initial render
+  renderItems('');
+
+  // Search (debounced)
+  let searchTimer = null;
+  search.addEventListener('input', ()=>{
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(()=>renderItems(search.value), 120);
+  });
+
+  // Foco no input ao abrir
+  setTimeout(()=>search.focus(), 100);
+
+  // Click no "Ver FAQ completo" abre página
+  setTimeout(()=>{
+    const fullLink = document.getElementById('faq-pop-full');
+    if(fullLink){
+      fullLink.addEventListener('click', (e)=>{
+        e.preventDefault();
+        popover.remove();
+        _faqPopoverOpen = false;
+        ST.view = 'faq';
+        render();
+      });
+    }
+  }, 50);
+
+  // Click fora fecha
+  setTimeout(()=>{
+    const closeOnOutside = (ev)=>{
+      if(popover.contains(ev.target) || (anchor && anchor.contains(ev.target))) return;
+      popover.remove();
+      _faqPopoverOpen = false;
+      document.removeEventListener('click', closeOnOutside);
+    };
+    document.addEventListener('click', closeOnOutside);
+  }, 100);
+
+  // ESC fecha
+  const onEsc = (ev)=>{
+    if(ev.key === 'Escape'){
+      popover.remove();
+      _faqPopoverOpen = false;
+      document.removeEventListener('keydown', onEsc);
+    }
+  };
+  document.addEventListener('keydown', onEsc);
+}
+
 function renderFaqPage(){
   const wrap = mk('div','fade');
   wrap.style.cssText = 'max-width:760px;margin:0 auto';
@@ -38280,51 +38774,9 @@ function renderFaqPage(){
   `;
   wrap.appendChild(hero);
 
-  // FAQs organizadas por categoria
-  const categories = [
-    {
-      title:'🚀 Começando',
-      items:[
-        {q:'Como começo a usar o Gralia?', a:'Adicione uma fonte de estudo (PDF de apostila, lei, edital ou texto colado) na aba "Fontes". A IA vai extrair tópicos. Depois é só ir pra "Calibração" ou "Resolução de questões" e começar.'},
-        {q:'Preciso pagar pra testar?', a:'Não. Trial gratuito de 7 dias com créditos pra explorar tudo. Recursos como flashcards, importação de questões e simulado são gratuitos pra sempre — mesmo sem assinatura.'},
-        {q:'Funciona offline?', a:'Sim, parcialmente. Revisar flashcards já criados, fazer simulados e ver estatísticas funciona offline. IA, descobrir e sincronização precisam de internet.'}
-      ]
-    },
-    {
-      title:'🤖 Como funciona a IA',
-      items:[
-        {q:'A IA copia ou inventa questões?', a:'Cria questões inéditas baseadas no seu material. Usa o conteúdo das suas fontes ativas como contexto. Não copia de bancos de questões. Verificamos qualidade com base no estilo Cebraspe (banca mais usada em concursos federais).'},
-        {q:'Quanto custam os créditos?', a:'Cada ação mostra o custo exato antes de rodar. Uma questão típica custa entre 1 e 4 créditos (depende do modelo). Plano Estudante tem ~600 créditos/mês — suficiente pra ~150 questões geradas.'},
-        {q:'Que modelos de IA vocês usam?', a:'Haiku 4.5 por padrão (rápido e bom). Plano Pro libera Sonnet 4.6 pra análises mais profundas (edital, plano de estudo, comparações). A escolha está em "Opções avançadas" de cada método.'}
-      ]
-    },
-    {
-      title:'💳 Planos e pagamento',
-      items:[
-        {q:'Posso cancelar a qualquer momento?', a:'Sim. Sem fidelidade. Em "Conta → Assinatura" você cancela com 1 clique. Mantém acesso até o fim do período pago. Seus dados ficam preservados.'},
-        {q:'Quais formas de pagamento?', a:'Pix e cartão de crédito (recorrência mensal automática). Processamento via Mercado Pago.'},
-        {q:'Tem desconto pra estudante / desemprego?', a:'O plano "Estudante" (R$ 19,90/mês) já é a versão acessível. Cupons especiais aparecem em campanhas pontuais. Beta tester recebe desconto adicional permanente.'}
-      ]
-    },
-    {
-      title:'🔒 Privacidade e dados',
-      items:[
-        {q:'Meus dados ficam seguros?', a:'Sim. Tudo em servidor com criptografia (Supabase, infra AWS). Sua conta é privada por padrão. Em conformidade com a LGPD.'},
-        {q:'Posso baixar todos meus dados?', a:'Sim. Conta → Dados → "Baixar todos os meus dados" (JSON completo).'},
-        {q:'Posso apagar minha conta?', a:'Sim, a qualquer momento, em Conta → Privacidade. Apagar é irreversível — todos os flashcards, fontes, histórico, conexões sociais somem.'},
-        {q:'Vocês treinam IA com meus dados?', a:'Não. Seu conteúdo é usado APENAS pra gerar respostas pra você. Não usamos pra treinar modelos. Sua privacidade é prioridade.'}
-      ]
-    },
-    {
-      title:'🎓 Recursos avançados',
-      items:[
-        {q:'Como funciona o sistema de flashcards (SRS)?', a:'Algoritmo SM-2 (mesmo do Anki). Você revela a resposta, classifica como Errei/Difícil/Bom/Fácil e o sistema agenda automaticamente o melhor momento pra revisar. Cards podem nascer dos seus erros, gerados pela IA, ou criados manualmente.'},
-        {q:'O que é a "Calibração de confiança"?', a:'Antes de marcar C/E você indica se "Sei", "Acho" ou "Chutei". O sistema te mostra onde você tem "falsa segurança" — é o tipo de erro mais perigoso porque você nem suspeita que tá errando.'},
-        {q:'Como funciona o "Drill DNA"?', a:'Cada erro é classificado em 6 tipos de armadilha. O Drill foca a IA em gerar questões só do tipo onde você mais erra, até a frequência cair. É treino dirigido.'},
-        {q:'Posso compartilhar meus materiais?', a:'Sim. Em qualquer fonte, caderno ou perfil de tópico você tem opção "Publicar". Outras pessoas podem ver na "Descobrir" e importar pra os estudos delas.'}
-      ]
-    }
-  ];
+  // V15.10: usa getFaqCategories() centralizado (atualizado e expandido).
+  // Antes a lista era inline aqui — agora compartilha com o popover flutuante.
+  const categories = getFaqCategories();
 
   categories.forEach(cat=>{
     const section = mk('section');
@@ -38760,7 +39212,7 @@ function renderBancaTipsPage(){
 }
 
 // ===================================================================
-// V14: Sistema de grupos (item 49) — até 20 pessoas competindo em rankings.
+// V14: Sistema de grupos (item 49) — até 25 pessoas competindo em rankings.
 // Decisão de produto: SEM mensagens (só ranking de questões + flashcards).
 // ===================================================================
 
@@ -38792,6 +39244,7 @@ async function fetchMyGroups(){
       member_count: m.groups.member_count,
       created_at: m.groups.created_at,
       role: m.role,
+      myRole: m.role, // V15.10: alias usado em renderGroupView (compatível com nova policy de admin)
       joined_at: m.joined_at,
       isOwner: m.groups.owner_id === AUTH.user.id
     }));
@@ -38813,7 +39266,7 @@ function renderGroups(){
   h.innerHTML = '<span style="font-size:26px">👥</span><span>Grupos de estudo</span>';
   const sub = mk('p','txt2');
   sub.style.cssText = 'margin:0;font-size:13.5px;line-height:1.55;max-width:540px';
-  sub.textContent = 'Forme grupos de até 20 pessoas pra competir em rankings de questões resolvidas e flashcards revisados. Sem mensagens — foco no progresso de cada um.';
+  sub.textContent = 'Forme grupos de até 25 pessoas pra competir em rankings de questões resolvidas e flashcards revisados. Sem mensagens — foco no progresso de cada um.';
   head.appendChild(h);
   head.appendChild(sub);
   wrap.appendChild(head);
@@ -39059,7 +39512,7 @@ function renderGroupView(){
   headLeft.innerHTML = `
     <h1 style="margin:0 0 6px;font-size:22px;font-weight:800;letter-spacing:-.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       ${escapeHTML(group.name)}
-      ${group.isOwner ? '<span style="font-size:10px;font-weight:800;background:var(--gralia-purple);color:#fff;padding:3px 8px;border-radius:999px;letter-spacing:.4px">OWNER</span>' : ''}
+      ${group.isOwner ? '<span style="font-size:10px;font-weight:800;background:var(--gralia-purple);color:#fff;padding:3px 8px;border-radius:999px;letter-spacing:.4px">DONO</span>' : (group.myRole === 'admin' ? '<span style="font-size:10px;font-weight:800;background:#f59e0b;color:#fff;padding:3px 8px;border-radius:999px;letter-spacing:.4px">ADMIN</span>' : '')}
     </h1>
     ${group.description ? `<p class="txt2" style="margin:0;font-size:13px;line-height:1.55">${escapeHTML(group.description)}</p>` : ''}
   `;
@@ -39068,7 +39521,7 @@ function renderGroupView(){
   headRight.style.cssText = 'flex-shrink:0;text-align:right';
   headRight.innerHTML = `
     <div style="font-size:24px;font-weight:800;color:var(--text);letter-spacing:-.4px;line-height:1">${group.member_count}</div>
-    <div style="font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-top:2px">de 20 vagas</div>
+    <div style="font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-top:2px">de 25 vagas</div>
   `;
   headTop.appendChild(headRight);
   headCard.appendChild(headTop);
@@ -39093,25 +39546,40 @@ function renderGroupView(){
   // Ações
   const actsRow = mk('div');
   actsRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:.875rem';
-  const leaveBtn = mkBtn(group.isOwner ? '🗑️ Excluir grupo' : '✕ Sair do grupo','btn btn-sm');
+  // V15.10: Botão de sair / excluir.
+  // - Owner: confirma transferência/exclusão (RPC avisa o que vai acontecer)
+  // - Admin: rebaixa a member ao sair (auto-promoção do mais antigo se for último)
+  // - Member: só sai
+  const leaveBtn = mkBtn(group.isOwner ? '🗑️ Sair / Transferir' : '✕ Sair do grupo','btn btn-sm');
   leaveBtn.style.color = 'var(--red-text)';
   leaveBtn.style.borderColor = 'rgba(232,76,76,.30)';
+  leaveBtn.title = group.isOwner
+    ? 'Você é o dono. Ao sair, o admin mais antigo (ou membro mais antigo) vira o novo dono. O grupo continua existindo.'
+    : (group.myRole === 'admin' ? 'Você sai como admin. Se for o último admin, o membro mais antigo é promovido automaticamente.' : 'Sair do grupo. Você pode entrar de novo com o código de convite.');
   leaveBtn.addEventListener('click', async ()=>{
-    const msg = group.isOwner
-      ? `Excluir o grupo "${group.name}"? Todos os membros vão perder acesso. Não dá pra desfazer.`
-      : `Sair do grupo "${group.name}"?`;
+    let msg;
+    if(group.isOwner){
+      msg = `Sair do grupo "${group.name}"?\n\nComo você é o DONO, a propriedade vai ser transferida automaticamente pro admin mais antigo (ou pro membro mais antigo se não houver admin). O grupo continua existindo.`;
+    } else if(group.myRole === 'admin'){
+      msg = `Sair do grupo "${group.name}"?\n\nVocê é ADMIN. Se for o último admin, o membro mais antigo será promovido a admin automaticamente.`;
+    } else {
+      msg = `Sair do grupo "${group.name}"?`;
+    }
     if(!confirm(msg)) return;
     try{
-      const {error} = await supa.rpc('leave_group', {p_group_id: group.id});
+      const {error} = await supa.rpc('leave_group_safe', {p_group_id: group.id});
       if(error) throw error;
-      showToast(group.isOwner ? '✓ Grupo excluído' : '✓ Saiu do grupo');
+      showToast('✓ Você saiu do grupo');
       GROUPS.currentGroupId = null;
       ST.view = 'groups';
+      // Recarrega lista pra refletir mudanças
+      GROUPS.list = [];
+      fetchMyGroups().then(()=>render());
       render();
     }catch(e){alert('Erro: ' + (e.message||e));}
   });
-  // Edit (só owner)
-  if(group.isOwner){
+  // V15.10: Edit — owner OU admin pode editar (admin pode mudar nome/descrição)
+  if(group.isOwner || group.myRole === 'admin'){
     const editBtn = mkBtn('✏️ Editar','btn btn-sm');
     editBtn.addEventListener('click',()=>showEditGroupModal(group));
     actsRow.appendChild(editBtn);
@@ -39243,7 +39711,19 @@ function renderGroupMembers(parent, group){
 
   const head = mk('div');
   head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:10px';
-  head.innerHTML = `<h2 style="margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:6px"><span>👥</span><span>Membros</span><span style="font-size:11.5px;color:var(--text3);font-weight:600">(${group.member_count}/20)</span></h2>`;
+  head.innerHTML = `<h2 style="margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:6px"><span>👥</span><span>Membros</span><span style="font-size:11.5px;color:var(--text3);font-weight:600">(${group.member_count}/25)</span></h2>`;
+
+  // V15.10: Hint sobre admins (só aparece pra owner/admin)
+  if(group.isOwner || group.myRole === 'admin'){
+    const hint = mk('div');
+    hint.style.cssText = 'font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5';
+    if(group.isOwner){
+      hint.innerHTML = '👑 Você é o <b>dono</b>: pode promover membros a admin, rebaixar admins, e remover qualquer membro. Se sair, o admin mais antigo (ou membro mais antigo) vira o novo dono.';
+    } else {
+      hint.innerHTML = '⭐ Você é <b>admin</b>: pode remover membros comuns e convidar novos. Não pode remover outros admins ou o dono.';
+    }
+    head.appendChild(hint);
+  }
   card.appendChild(head);
 
   const list = mk('div');
@@ -39254,6 +39734,24 @@ function renderGroupMembers(parent, group){
   list.appendChild(loading);
   card.appendChild(list);
   parent.appendChild(card);
+
+  const myUserId = AUTH.user?.id;
+  const canAdminister = group.isOwner || group.myRole === 'admin';
+
+  // V15.10: ações administrativas — promover, rebaixar, expulsar
+  async function callAdminRPC(rpcName, params, successMsg){
+    try{
+      const {error} = await supa.rpc(rpcName, params);
+      if(error) throw error;
+      showToast('✓ ' + successMsg);
+      // Recarrega members + group counts
+      GROUPS.list = [];
+      await fetchMyGroups();
+      render();
+    }catch(e){
+      alert('Erro: ' + (e.message || e));
+    }
+  }
 
   // Busca membros + profiles
   supa.from('group_members')
@@ -39269,8 +39767,10 @@ function renderGroupMembers(parent, group){
       (data||[]).forEach(m=>{
         const p = m.profiles || {};
         const isOwner = m.role === 'owner';
-        const isMe = m.user_id === AUTH.user?.id;
-        // Avatar gradient determinístico
+        const isAdmin = m.role === 'admin';
+        const isMe = m.user_id === myUserId;
+
+        // Avatar
         const seed = (p.username || p.display_name || '?').toLowerCase();
         let hash = 0;
         for(let i=0;i<seed.length;i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
@@ -39278,34 +39778,90 @@ function renderGroupMembers(parent, group){
         const hue2 = (hue1 + 40) % 360;
         const initials = ((p.display_name || p.username || '?').slice(0,2)).toUpperCase();
         const row = mk('div');
-        row.style.cssText = `display:flex;align-items:center;gap:12px;padding:.625rem .875rem;border-radius:9px;background:${isMe?'rgba(128,66,250,.07)':'transparent'};border:1px solid ${isMe?'rgba(128,66,250,.20)':'var(--border)'}`;
+        row.style.cssText = `display:flex;align-items:center;gap:12px;padding:.625rem .875rem;border-radius:9px;background:${isMe?'rgba(128,66,250,.07)':'transparent'};border:1px solid ${isMe?'rgba(128,66,250,.20)':'var(--border)'};flex-wrap:wrap`;
         const avatar = mk('div');
         avatar.style.cssText = `width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,hsl(${hue1},70%,55%),hsl(${hue2},75%,65%));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;flex-shrink:0;letter-spacing:.3px`;
         avatar.textContent = initials;
         row.appendChild(avatar);
         const info = mk('div');
-        info.style.cssText = 'flex:1;min-width:0';
+        info.style.cssText = 'flex:1;min-width:160px';
+        // V15.10: badge de role mais clara — DONO / ADMIN / MEMBRO
+        const roleBadge = isOwner
+          ? '<span style="font-size:9px;font-weight:800;background:var(--gralia-purple);color:#fff;padding:1px 6px;border-radius:999px;letter-spacing:.4px">👑 DONO</span>'
+          : isAdmin
+            ? '<span style="font-size:9px;font-weight:800;background:#f59e0b;color:#fff;padding:1px 6px;border-radius:999px;letter-spacing:.4px">⭐ ADMIN</span>'
+            : '';
         info.innerHTML = `
           <div style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <span>${escapeHTML(p.display_name || p.username || 'Usuário')}</span>
-            ${isOwner ? '<span style="font-size:9px;font-weight:800;background:var(--gralia-purple);color:#fff;padding:1px 6px;border-radius:999px;letter-spacing:.4px">OWNER</span>' : ''}
+            ${roleBadge}
             ${isMe ? '<span style="font-size:9px;font-weight:800;background:rgba(128,66,250,.15);color:var(--gralia-purple);padding:1px 6px;border-radius:999px;letter-spacing:.4px">VOCÊ</span>' : ''}
           </div>
           ${p.username ? `<div style="font-size:11px;color:var(--text3);margin-top:1px">@${escapeHTML(p.username)}</div>` : ''}
         `;
         row.appendChild(info);
+
+        // Data de entrada
         const joinedDate = m.joined_at ? new Date(m.joined_at) : null;
         if(joinedDate){
           const dt = mk('span');
-          dt.style.cssText = 'font-size:10.5px;color:var(--text3);flex-shrink:0';
+          dt.style.cssText = 'font-size:10.5px;color:var(--text3);flex-shrink:0;margin-left:auto';
           const days = Math.round((Date.now() - joinedDate.getTime()) / 86400000);
           dt.textContent = days === 0 ? 'entrou hoje' : days === 1 ? 'entrou ontem' : `há ${days}d`;
           row.appendChild(dt);
         }
+
+        // V15.10: Ações administrativas (não pra mim mesmo, não pro dono)
+        if(canAdminister && !isMe && !isOwner){
+          const actions = mk('div');
+          actions.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin-left:auto';
+
+          // OWNER pode: promover membro→admin, rebaixar admin→membro, expulsar qualquer um
+          // ADMIN pode: expulsar membro comum (não outro admin)
+          if(group.isOwner){
+            if(isAdmin){
+              const demoteBtn = mkBtn('↓ Rebaixar','btn btn-sm');
+              demoteBtn.style.cssText = 'padding:3px 8px;font-size:10.5px';
+              demoteBtn.title = 'Rebaixar este admin a membro comum';
+              demoteBtn.addEventListener('click', ()=>{
+                if(!confirm(`Rebaixar @${p.username} a membro comum?`)) return;
+                callAdminRPC('demote_admin', {p_group_id: group.id, p_user_id: m.user_id}, 'Admin rebaixado');
+              });
+              actions.appendChild(demoteBtn);
+            } else {
+              const promoteBtn = mkBtn('👑 Promover','btn btn-sm');
+              promoteBtn.style.cssText = 'padding:3px 8px;font-size:10.5px;border-color:rgba(245,158,11,.4);color:#b97309';
+              promoteBtn.title = 'Promover este membro a admin';
+              promoteBtn.addEventListener('click', ()=>{
+                if(!confirm(`Promover @${p.username} a admin?\n\nEle/ela vai poder remover membros e convidar novos.`)) return;
+                callAdminRPC('promote_to_admin', {p_group_id: group.id, p_user_id: m.user_id}, 'Membro promovido a admin');
+              });
+              actions.appendChild(promoteBtn);
+            }
+          }
+
+          // Remover (kick) — owner sempre, admin só pra membros comuns
+          const canKick = group.isOwner || (group.myRole === 'admin' && !isAdmin);
+          if(canKick){
+            const kickBtn = mkBtn('× Remover','btn btn-sm');
+            kickBtn.style.cssText = 'padding:3px 8px;font-size:10.5px;color:var(--red-text);border-color:rgba(232,76,76,.30)';
+            kickBtn.title = 'Remover este membro do grupo';
+            kickBtn.addEventListener('click', ()=>{
+              if(!confirm(`Remover @${p.username} do grupo?`)) return;
+              callAdminRPC('kick_member', {p_group_id: group.id, p_user_id: m.user_id}, 'Membro removido');
+            });
+            actions.appendChild(kickBtn);
+          }
+
+          if(actions.children.length > 0){
+            row.appendChild(actions);
+          }
+        }
+
         list.appendChild(row);
       });
-      // Vagas restantes
-      const remaining = 20 - (group.member_count || 0);
+      // Vagas restantes (V15.10: limite 25)
+      const remaining = 25 - (group.member_count || 0);
       if(remaining > 0){
         const slot = mk('div');
         slot.style.cssText = 'padding:.625rem .875rem;border-radius:9px;border:1px dashed var(--border2);text-align:center;font-size:11.5px;color:var(--text3);background:var(--surface2);margin-top:4px';
@@ -40450,9 +41006,11 @@ function startPomodoroFromBlock(block){
 
   // Garante que ST.pomoRun existe
   if(!ST.pomoRun){
+    // V15.10: Lê de DATA.pomo.focusMin (chave correta), não de DATA.config.pomoFocus.
+    // Antes ignorava configuração do usuário e travava em 25min.
     ST.pomoRun = {
       phase: 'focus',
-      secLeft: (DATA.config?.pomoFocus || 60) * 60,
+      secLeft: ((DATA.pomo && DATA.pomo.focusMin) || 25) * 60,
       running: false,
       cycle: 0
     };
@@ -42293,12 +42851,14 @@ function buildForestScene(trees){
 
   // === DEFS — gradientes, filtros, padrões ===
   svg += `<defs>
-    <!-- Céu: do violeta profundo ao laranja-pessego do crepúsculo -->
+    <!-- V15.11: Céu mais natural pra paisagem de Mata de Araucárias —
+         tons frescos e nítidos do entardecer no planalto sul brasileiro
+         (altitude > 900m), com ar limpo e neblina baixa. -->
     <linearGradient id="forSky" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1e2548"/>
-      <stop offset="40%" stop-color="#3d3a5e"/>
-      <stop offset="75%" stop-color="#a96d6d"/>
-      <stop offset="100%" stop-color="#f0a878"/>
+      <stop offset="0%" stop-color="#162644"/>
+      <stop offset="35%" stop-color="#3d4670"/>
+      <stop offset="70%" stop-color="#a37777"/>
+      <stop offset="100%" stop-color="#e8a880"/>
     </linearGradient>
     <!-- Sol/lua suave -->
     <radialGradient id="forSun" cx="50%" cy="50%" r="50%">
@@ -42333,22 +42893,24 @@ function buildForestScene(trees){
       <stop offset="50%" stop-color="#c08a7a" stop-opacity="0.18"/>
       <stop offset="100%" stop-color="#d4a08c" stop-opacity="0"/>
     </linearGradient>
-    <!-- Cor das araucárias (4 tons por camada de profundidade) -->
+    <!-- V15.11: Cor das araucárias — verde-escuro intenso típico da Araucaria angustifolia.
+         Antes os tons puxavam pro azul-acinzentado. Agora: verde-musgo profundo
+         com camada que escurece em direção ao tronco. -->
     <linearGradient id="treeAncient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1d3528"/>
-      <stop offset="100%" stop-color="#0f2018"/>
+      <stop offset="0%" stop-color="#1a3a24"/>
+      <stop offset="100%" stop-color="#0c1f12"/>
     </linearGradient>
     <linearGradient id="treeMature" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#264636"/>
-      <stop offset="100%" stop-color="#15291f"/>
+      <stop offset="0%" stop-color="#234d31"/>
+      <stop offset="100%" stop-color="#11281a"/>
     </linearGradient>
     <linearGradient id="treeYoung" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#2e5644"/>
-      <stop offset="100%" stop-color="#1c3829"/>
+      <stop offset="0%" stop-color="#2c6040"/>
+      <stop offset="100%" stop-color="#173524"/>
     </linearGradient>
     <linearGradient id="treeSeed" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#3d6e54"/>
-      <stop offset="100%" stop-color="#264a37"/>
+      <stop offset="0%" stop-color="#3d7a4e"/>
+      <stop offset="100%" stop-color="#234e30"/>
     </linearGradient>
     <!-- Sombra suave para a gralha -->
     <filter id="birdShadow" x="-20%" y="-20%" width="140%" height="140%">
@@ -42412,70 +42974,182 @@ function buildForestScene(trees){
     L ${W} ${groundY + 6} L ${W} ${groundY + 16} L 0 ${groundY + 16} Z"
     fill="#d4a08c" opacity="0.10"/>`;
 
-  // === ARAUCÁRIAS — silhuetas mais realistas ===
-  // Araucária angustifolia tem formato característico: tronco reto, copa em "guarda-chuva"
-  // com galhos horizontais que formam coroa achatada no topo
-  // V12: Araucária mais realista — antes parecia "pinheiro de natal".
-  // Características reais da Araucaria angustifolia:
-  // - Tronco MUITO alto e fino, retilíneo
-  // - Copa concentrada no topo em formato de guarda-chuva invertido
-  // - Galhos horizontais ascendentes com folhagem nas pontas (não em toda extensão)
-  // - Silhueta característica: tronco longo + copa achatada compacta no topo
+  // === ARAUCÁRIAS — silhuetas botanicamente fiéis ===
+  // V15.11: Refeito com base nas características reais da Araucaria angustifolia:
+  //   - Tronco MUITO reto, longo, marrom-arroxeado/casca rugosa
+  //   - Copa em forma de TAÇA / CANDELABRO concentrada no topo
+  //   - Galhos VERTICILADOS (saem em anéis de 4-6 do mesmo nível, horizontalmente)
+  //   - Galhos primários horizontais com pontas levemente ascendentes
+  //   - Folhagem em TUFOS escuros nas extremidades (acículas)
+  //   - Pinhas globosas grandes no topo (só em adultas/centenárias)
+  //   - JOVEM: cônico-piramidal, galhos desde a base
+  //   - ADULTA: tronco perde galhos baixos, copa só no topo (silhueta de cálice)
   function drawAraucaria(cx, cy, scale, type){
-    const trunkW = 2.8 * scale;
-    const trunkH = 75 * scale; // Era 55 — agora mais alto pra silhueta correta
-    const top = cy - trunkH;
     const grad = type==='ancient' ? 'treeAncient' :
                  type==='mature' ? 'treeMature' :
                  type==='young' ? 'treeYoung' : 'treeSeed';
     let s = '';
 
-    // Tronco — retilíneo, fino, com leve textura
+    // ============ MUDA / SEED — formato cônico básico, ainda pequena ============
+    if(type === 'seed'){
+      const trunkH = 22 * scale;
+      const trunkW = 2.0 * scale;
+      const top = cy - trunkH;
+      // Tronco curto
+      s += `<path d="M ${cx - trunkW/2} ${cy} L ${cx - trunkW*0.35} ${top}
+            L ${cx + trunkW*0.35} ${top} L ${cx + trunkW/2} ${cy} Z"
+            fill="#3a2820" opacity="0.85"/>`;
+      // Forma triangular cheia (cônica) — galhos desde a base
+      s += `<path d="M ${cx} ${top - 2*scale}
+            L ${cx - 9*scale} ${cy + 0.5*scale}
+            L ${cx + 9*scale} ${cy + 0.5*scale} Z"
+            fill="url(#${grad})" opacity="0.92"/>`;
+      // Tufos de aciculas pra dar textura
+      for(let k=0; k<3; k++){
+        const ty = top + (k+1) * trunkH/4;
+        const tw = 4 + k*2;
+        s += `<ellipse cx="${cx - tw*scale}" cy="${ty}" rx="${1.2*scale}" ry="${2*scale}" fill="url(#${grad})" opacity="0.88"/>`;
+        s += `<ellipse cx="${cx + tw*scale}" cy="${ty}" rx="${1.2*scale}" ry="${2*scale}" fill="url(#${grad})" opacity="0.88"/>`;
+      }
+      return s;
+    }
+
+    // ============ JOVEM (young) — formato cônico-piramidal, galhos desde a base ============
+    if(type === 'young'){
+      const trunkH = 50 * scale;
+      const trunkW = 2.4 * scale;
+      const top = cy - trunkH;
+      // Tronco — marrom-arroxeado, levemente cônico
+      s += `<path d="M ${cx - trunkW/2} ${cy}
+            L ${cx - trunkW*0.30} ${top}
+            L ${cx + trunkW*0.30} ${top}
+            L ${cx + trunkW/2} ${cy} Z"
+            fill="#3d2a26" opacity="0.92"/>`;
+
+      // Galhos verticilados em 5 níveis, do base até o topo, copa cônica
+      const levels = 5;
+      for(let i=0; i<levels; i++){
+        const ratio = i / (levels - 1);  // 0 (base) a 1 (topo)
+        const lvlY = cy - 6*scale - (trunkH - 12*scale) * ratio;
+        // Galhos mais largos na base, menores no topo (cônico-piramidal)
+        const lvlW = (16 - ratio*9) * scale;
+
+        // Galho horizontal com leve ascensão na ponta
+        s += `<path d="M ${cx - lvlW} ${lvlY + 1*scale}
+              Q ${cx} ${lvlY - 0.6*scale}, ${cx + lvlW} ${lvlY + 1*scale}"
+              stroke="#3d2a26" stroke-width="${0.9*scale}" fill="none" opacity="0.7"/>`;
+
+        // Tufos de folhagem nas pontas (esquerda + meio + direita)
+        const tufCount = 3;
+        for(let k=0; k<=tufCount; k++){
+          const t = (k - tufCount/2) / (tufCount/2);
+          const tx = cx + t * lvlW * 0.95;
+          const ty = lvlY + 1*scale + Math.abs(t) * 0.8*scale;
+          s += `<ellipse cx="${tx}" cy="${ty + 2*scale}"
+                rx="${1.4*scale}" ry="${3.2*scale}"
+                fill="url(#${grad})" opacity="${0.92 - i*0.04}"/>`;
+        }
+      }
+      // Topo pontudo (jovem é cônico)
+      s += `<path d="M ${cx} ${top - 4*scale}
+            L ${cx - 3*scale} ${top + 4*scale}
+            L ${cx + 3*scale} ${top + 4*scale} Z"
+            fill="url(#${grad})" opacity="0.95"/>`;
+      return s;
+    }
+
+    // ============ ADULTA / CENTENÁRIA — formato de TAÇA / CANDELABRO ============
+    // Tronco MUITO reto e longo, sem galhos no terço/metade inferior, copa achatada no topo
+    const isAncient = (type === 'ancient');
+    const trunkH = isAncient ? 95 * scale : 75 * scale;
+    const trunkW = isAncient ? 4.0 * scale : 3.2 * scale;
+    const top = cy - trunkH;
+
+    // Tronco — retilíneo, marrom-arroxeado (casca rugosa), com leve afunilamento
     s += `<path d="M ${cx - trunkW/2} ${cy}
-      L ${cx - trunkW*0.35} ${top + trunkH*0.5}
-      L ${cx - trunkW*0.28} ${top}
-      L ${cx + trunkW*0.28} ${top}
-      L ${cx + trunkW*0.35} ${top + trunkH*0.5}
-      L ${cx + trunkW/2} ${cy} Z"
-      fill="url(#${grad})" opacity="0.95"/>`;
+          L ${cx - trunkW*0.40} ${top + trunkH*0.15}
+          L ${cx - trunkW*0.30} ${top}
+          L ${cx + trunkW*0.30} ${top}
+          L ${cx + trunkW*0.40} ${top + trunkH*0.15}
+          L ${cx + trunkW/2} ${cy} Z"
+          fill="#3a2620" opacity="0.93"/>`;
 
-    // Galhos só no terço superior (diferente do pinheiro de natal)
-    // Em araucárias reais, os galhos inferiores caem com a idade
-    const crownStart = top + trunkH*0.55;  // só começa galhos a partir de 55% pra cima
-    const layers = type==='ancient' ? 5 : type==='mature' ? 4 : type==='young' ? 3 : 2;
+    // Textura sutil do tronco — linhas verticais simulando casca rugosa
+    const barkLines = isAncient ? 4 : 3;
+    for(let b=0; b<barkLines; b++){
+      const bx = cx - trunkW*0.3 + (b * trunkW*0.6/(barkLines-1));
+      s += `<line x1="${bx}" y1="${top + trunkH*0.2}" x2="${bx}" y2="${cy - 2}"
+            stroke="#2a1a16" stroke-width="0.4" opacity="0.4"/>`;
+    }
 
-    for(let i=0; i<layers; i++){
-      const ratio = i / layers;
-      const layerY = crownStart - (i * 9 * scale);
-      // Galhos crescem em comprimento conforme sobe — copa em V invertido
-      const layerW = (8 + ratio*32) * scale;
-      const tipDrop = 6 * scale; // pontas pendem pra baixo
+    // === COPA EM TAÇA / CANDELABRO ===
+    // Galhos verticilados em 3-4 níveis, SÓ na metade superior do tronco
+    // Cada nível: galhos mais COMPRIDOS no meio, encurtam pra cima (forma de cálice/taça)
+    // Adulta: copa começa em ~55% da altura. Centenária: copa começa em ~65% (tronco mais "limpo")
+    const crownStartRatio = isAncient ? 0.62 : 0.52;
+    const crownStart = top + trunkH * (1 - crownStartRatio);
+    const crownLevels = isAncient ? 4 : 3;
 
-      // Galho central horizontal — duas linhas convergindo (galho ascendente leve)
-      s += `<path d="M ${cx - layerW} ${layerY + tipDrop*0.3}
-        Q ${cx - layerW*0.5} ${layerY - tipDrop*0.4}, ${cx} ${layerY - tipDrop*0.5}
-        Q ${cx + layerW*0.5} ${layerY - tipDrop*0.4}, ${cx + layerW} ${layerY + tipDrop*0.3}"
-        stroke="url(#${grad})" stroke-width="${1.2*scale}" fill="none" opacity="${0.92 - i*0.06}"/>`;
+    for(let i=0; i<crownLevels; i++){
+      const ratio = i / (crownLevels - 1);  // 0 (mais baixo) a 1 (mais alto)
+      const lvlY = crownStart - (i * trunkH * crownStartRatio / crownLevels);
 
-      // Pontas com folhagem em "tufos" nas extremidades (típico da araucária)
-      const tipCount = Math.max(2, Math.floor(layerW / (8*scale)));
-      for(let k=0; k<=tipCount; k++){
-        const t = (k - tipCount/2) / (tipCount/2 || 1); // -1 a 1
-        const tx = cx + t * layerW;
-        const ty = layerY + tipDrop*0.3 + Math.abs(t) * tipDrop * 0.6;
+      // FORMATO DE TAÇA: galhos do MEIO são os mais compridos.
+      // Em uma taça, a parte mais larga fica no meio. Mapeamento: 0,1 -> curto; 0,5 -> longo.
+      const tacaFactor = 1 - Math.abs(ratio - 0.5) * 1.6; // peak no meio
+      const lvlW = (18 + tacaFactor * 16) * scale;  // 18-34 px de raio
 
-        // Tufo de folhas no fim do galho — pequena elipse vertical
-        const tufW = 1.8 * scale;
-        const tufH = 4 * scale;
-        s += `<ellipse cx="${tx}" cy="${ty + tufH*0.5}" rx="${tufW}" ry="${tufH}" fill="url(#${grad})" opacity="${0.88 - i*0.05}"/>`;
+      // Galho com ponta ascendente (típico da araucária — galhos sobem nas pontas)
+      const liftAtTip = 5 * scale;
+      s += `<path d="M ${cx - lvlW} ${lvlY + 1*scale}
+            Q ${cx - lvlW*0.6} ${lvlY - liftAtTip*0.7}, ${cx - lvlW*0.3} ${lvlY - liftAtTip*0.3}
+            Q ${cx} ${lvlY + 1.5*scale}, ${cx + lvlW*0.3} ${lvlY - liftAtTip*0.3}
+            Q ${cx + lvlW*0.6} ${lvlY - liftAtTip*0.7}, ${cx + lvlW} ${lvlY + 1*scale}"
+            stroke="#3a2620" stroke-width="${1.2*scale}" fill="none" opacity="0.78"/>`;
+
+      // Tufos de folhagem nas pontas (acículas verde-escuras tipo "candelabro com chamas")
+      const tufCount = Math.max(3, Math.floor(lvlW / (5*scale)));
+      for(let k=0; k<=tufCount; k++){
+        const t = (k - tufCount/2) / (tufCount/2 || 1);
+        const tx = cx + t * lvlW * 0.95;
+        // Pontas levemente erguidas (especialmente nas extremidades)
+        const tipLift = Math.abs(t) * liftAtTip * 0.7;
+        const ty = lvlY - tipLift;
+        // Tufo: elipse vertical pequena (cluster de acículas)
+        s += `<ellipse cx="${tx}" cy="${ty + 1.5*scale}"
+              rx="${1.6*scale}" ry="${3.6*scale}"
+              fill="url(#${grad})" opacity="${0.94 - i*0.03}"/>`;
+        // Reforço pequeno por baixo pra dar densidade
+        s += `<ellipse cx="${tx}" cy="${ty + 4*scale}"
+              rx="${1.0*scale}" ry="${2.2*scale}"
+              fill="url(#${grad})" opacity="${0.78}"/>`;
       }
     }
 
-    // Topo da árvore — copa achatada característica (ponta arredondada, não pontiaguda)
-    const crownTopY = crownStart - layers*9*scale;
-    const crownTopW = 11 * scale;
-    s += `<ellipse cx="${cx}" cy="${crownTopY}" rx="${crownTopW}" ry="${4*scale}" fill="url(#${grad})" opacity="0.95"/>`;
-    s += `<ellipse cx="${cx}" cy="${crownTopY - 3*scale}" rx="${crownTopW*0.55}" ry="${2*scale}" fill="url(#${grad})" opacity="0.88"/>`;
+    // === COROA ACHATADA NO TOPO === (forma característica da adulta — "guarda-chuva")
+    const crownTopY = top + 2*scale;
+    const crownTopW = (isAncient ? 16 : 13) * scale;
+    s += `<ellipse cx="${cx}" cy="${crownTopY}" rx="${crownTopW}" ry="${4.2*scale}"
+          fill="url(#${grad})" opacity="0.95"/>`;
+    s += `<ellipse cx="${cx}" cy="${crownTopY - 2.5*scale}" rx="${crownTopW*0.7}" ry="${3*scale}"
+          fill="url(#${grad})" opacity="0.92"/>`;
+    s += `<ellipse cx="${cx}" cy="${crownTopY - 4.5*scale}" rx="${crownTopW*0.4}" ry="${2*scale}"
+          fill="url(#${grad})" opacity="0.85"/>`;
+
+    // === PINHAS NO TOPO === (só em adultas/centenárias — globosas e pesadas)
+    if(isAncient){
+      // 2-3 pinhas grandes, marrom-amareladas, no alto da copa
+      const pinhaCol = '#6b5028';
+      s += `<ellipse cx="${cx - 4*scale}" cy="${crownTopY - 1*scale}" rx="${2.4*scale}" ry="${3*scale}" fill="${pinhaCol}" opacity="0.85"/>`;
+      s += `<ellipse cx="${cx + 5*scale}" cy="${crownTopY - 0.5*scale}" rx="${2.6*scale}" ry="${3.4*scale}" fill="${pinhaCol}" opacity="0.85"/>`;
+      // Detalhe: textura escamosa das pinhas
+      s += `<line x1="${cx - 4*scale}" y1="${crownTopY - 3*scale}" x2="${cx - 4*scale}" y2="${crownTopY + 1*scale}" stroke="#3d2c14" stroke-width="0.4" opacity="0.6"/>`;
+      s += `<line x1="${cx + 5*scale}" y1="${crownTopY - 3.5*scale}" x2="${cx + 5*scale}" y2="${crownTopY + 1.5*scale}" stroke="#3d2c14" stroke-width="0.4" opacity="0.6"/>`;
+    } else if(type === 'mature'){
+      // Adulta jovem: pode ter 1 pinha pequena
+      const pinhaCol = '#6b5028';
+      s += `<ellipse cx="${cx + 3*scale}" cy="${crownTopY - 0.5*scale}" rx="${1.8*scale}" ry="${2.4*scale}" fill="${pinhaCol}" opacity="0.78"/>`;
+    }
 
     return s;
   }
