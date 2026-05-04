@@ -197,7 +197,9 @@ body.sidebar-collapsed .app-sidebar-search-btn{
   justify-content:center !important;
 }
 body.sidebar-collapsed .app-sidebar-search-btn span:first-child{font-size:14px}
-body.sidebar-collapsed.has-sidebar #app{padding-left:64px}
+/* V15.12.3: regra antiga "body.sidebar-collapsed.has-sidebar #app{padding-left:64px}"
+   removida — agora o padding vai na .page (não no #app), e a regra equivalente
+   pra estado colapsado está dentro do @media(min-width:1100px). */
 
 /* Toggle button */
 /* V15.12.1: top de 13 → 25px pra alinhar verticalmente com o centro do
@@ -348,7 +350,15 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:28px}
 /* Em telas grandes (≥1100px): mostra sidebar e empurra conteúdo */
 @media(min-width:1100px){
   body.has-sidebar .app-sidebar{display:flex}
-  body.has-sidebar #app{padding-left:264px}
+  /* V15.12.3: BUG FIX — antes "padding-left:264px" no #app empurrava
+     TUDO (incluindo a topbar) pra direita. Por isso o logo aparecia
+     DEPOIS da sidebar e havia um "quadrado vazio" entre o canto
+     superior esquerdo e o início da topbar. Agora a topbar fica em
+     width total (começa em x=0, com o logo no início) e só a .page
+     (conteúdo abaixo da topbar) recebe o padding pra deixar espaço
+     pra sidebar. */
+  body.has-sidebar #app .page{padding-left:264px}
+  body.has-sidebar.sidebar-collapsed #app .page{padding-left:64px}
   /* V15.10: Topbar fica largura total (não recua com sidebar). Brand aparece
      SEMPRE na topbar, do lado esquerdo, ocupando o espaço sobre a sidebar.
      Sidebar fica abaixo (top:56px). Tabs centrais ficam ocultas (a sidebar substitui). */
@@ -383,8 +393,10 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:28px}
 /* Em modo foco e srs-focus, esconde sidebar */
 body.method-focus-mode .app-sidebar,
 body.srs-focus-mode .app-sidebar{display:none !important}
-body.method-focus-mode #app,
-body.srs-focus-mode #app{padding-left:0 !important}
+/* V15.12.3: como o padding agora vai na .page (não no #app), o reset
+   pra modo foco também tem que ir nela. */
+body.method-focus-mode #app .page,
+body.srs-focus-mode #app .page{padding-left:0 !important}
 
 
 .topbar-inner{
@@ -9169,7 +9181,11 @@ const ST = {
   profileLoading:false,
   profileError:null,
   // Discover (Estágio 3 social)
-  discoverFilter:{type:'all', discipline:'', search:'', sort:'newest', tag:''},
+  // V15.12.3: BUG FIX — type default era 'all' (string), o que era passado
+  // literalmente pro RPC search_public_resources como filtro inválido,
+  // retornando 0 items na primeira carga. Quando o user clicava em "Todos",
+  // o handler convertia pra null e funcionava. Default agora é null.
+  discoverFilter:{type:null, discipline:'', search:'', sort:'newest', tag:''},
   discoverItems:[],
   discoverLoading:false,
   discoverPage:0,
@@ -33168,37 +33184,49 @@ async function showResourcePreviewModal(item){
 
   // V15: Botões admin de moderação — só pra admin, em fontes ainda não validadas.
   // Permite editar conteúdo bruto (remover ruído) e validar marcando como aprovada.
+  // V15.12.3: ANTES o bloco era só pra resource_type === 'fonte'. Jean reportou
+  // que ao clicar num edital pendente como admin, não via opção de validar.
+  // Agora todos os tipos (fonte, caderno, perfil_topico, edital) têm Validar/
+  // Desfazer. O botão Editar (admin) continua só pra fontes — só nelas faz
+  // sentido limpar conteúdo bruto antes de validar.
   const isAdmin = typeof isAdminUser === 'function' && isAdminUser();
   const isValidated = item.moderation_status === 'approved' || item.is_validated === true;
-  if(isAdmin && item.resource_type === 'fonte'){
+  if(isAdmin){
     if(!isValidated){
-      const editBtn = mkBtn('✏ Editar (admin)','btn btn-sm');
-      editBtn.title = 'Edite o conteúdo da fonte pública pra remover ruído antes de validar';
-      editBtn.addEventListener('click', async ()=>{
-        closeModal();
-        try{
-          const result = await fetchResourceFull(item.id);
-          if(result.error || !result.resource){
-            alert('Erro ao carregar fonte: ' + (result.error || 'sem dados'));
-            return;
+      // Botão Editar (admin) — só pra fontes (limpar texto bruto)
+      if(item.resource_type === 'fonte'){
+        const editBtn = mkBtn('✏ Editar (admin)','btn btn-sm');
+        editBtn.title = 'Edite o conteúdo da fonte pública pra remover ruído antes de validar';
+        editBtn.addEventListener('click', async ()=>{
+          closeModal();
+          try{
+            const result = await fetchResourceFull(item.id);
+            if(result.error || !result.resource){
+              alert('Erro ao carregar fonte: ' + (result.error || 'sem dados'));
+              return;
+            }
+            showAdminEditResourceModal(result.resource);
+          }catch(e){
+            alert('Erro: ' + (e.message||e));
           }
-          showAdminEditResourceModal(result.resource);
-        }catch(e){
-          alert('Erro: ' + (e.message||e));
-        }
-      });
-      actionsRow.appendChild(editBtn);
+        });
+        actionsRow.appendChild(editBtn);
+      }
 
+      // Botão Validar — todos os tipos (fonte, caderno, perfil_topico, edital)
+      const typeLabel = item.resource_type === 'edital' ? 'análise de edital'
+                      : item.resource_type === 'caderno' ? 'caderno'
+                      : item.resource_type === 'perfil_topico' ? 'perfil de tópico'
+                      : 'fonte';
       const validateBtn = mkBtn('✓ Validar','btn btn-sm btn-p');
       validateBtn.title = 'Marca como revisada e adiciona o selo "✓ Validada"';
       validateBtn.style.cssText = 'background:rgba(70,180,90,.92);color:#fff;border-color:#2d8a4f';
       validateBtn.addEventListener('click', async ()=>{
-        if(!confirm('Confirmar que esta fonte foi revisada e está apta? Vai aparecer com selo "✓ Validada" pra todos os usuários.')) return;
+        if(!confirm(`Confirmar que esta ${typeLabel} foi revisada e está apta? Vai aparecer com selo "✓ Validada" pra todos os usuários.`)) return;
         try{
           await adminMarkResourceValidated(item.id);
-          showToast('✓ Fonte validada', 3500);
+          showToast('✓ ' + typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1) + ' validada', 3500);
           closeModal();
-          // Re-renderiza pra atualizar selo
           if(typeof render === 'function') render();
         }catch(e){
           alert('Erro ao validar: ' + (e.message||e));
@@ -33210,7 +33238,7 @@ async function showResourcePreviewModal(item){
       const unvalidateBtn = mkBtn('↶ Desfazer validação','btn btn-sm');
       unvalidateBtn.style.cssText = 'font-size:11.5px';
       unvalidateBtn.addEventListener('click', async ()=>{
-        if(!confirm('Remover o selo de validação desta fonte?')) return;
+        if(!confirm('Remover o selo de validação deste material?')) return;
         try{
           await adminMarkResourceValidated(item.id, false);
           showToast('Validação desfeita', 3500);
@@ -36451,6 +36479,37 @@ function renderEditals(){
   }
   wrap.appendChild(limitInfo);
 
+  // V15.12.3: Abas "Meus" (locais) e "Comunidade" (públicos de todos os
+  // usuários). Antes só tinha lista local. Jean pediu visão de TODOS os
+  // editais publicados, organizados por banca/cargo/data.
+  if(!ST.editalsTab) ST.editalsTab = 'mine';
+  const tabsRow = mk('div');
+  tabsRow.style.cssText = 'display:flex;gap:6px;margin:1.25rem 0 1rem;border-bottom:1px solid var(--border);padding-bottom:0';
+  const tabs = [
+    {key:'mine', label:'📁 Meus editais', count: (DATA.editals||[]).length},
+    {key:'community', label:'🌐 Da comunidade', count: null}
+  ];
+  tabs.forEach(t=>{
+    const tb = mk('button');
+    tb.type = 'button';
+    const isOn = ST.editalsTab === t.key;
+    tb.style.cssText = `padding:8px 14px;border:none;background:transparent;border-bottom:2px solid ${isOn?'var(--gralia-purple)':'transparent'};color:${isOn?'var(--gralia-purple)':'var(--text2)'};font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;margin-bottom:-1px;transition:color .12s,border-color .12s`;
+    tb.innerHTML = t.count !== null
+      ? `${t.label} <span style="font-size:11px;color:var(--text3);font-weight:500">(${t.count})</span>`
+      : t.label;
+    tb.addEventListener('click', ()=>{ ST.editalsTab = t.key; render(); });
+    tabsRow.appendChild(tb);
+  });
+  wrap.appendChild(tabsRow);
+
+  if(ST.editalsTab === 'community'){
+    renderEditalsCommunity(wrap);
+    return wrap;
+  }
+
+  // ========================
+  // Tab MEUS (lista local)
+  // ========================
   const editals = (DATA.editals||[]).slice().sort((a,b)=>b.createdAt - a.createdAt);
 
   if(editals.length === 0){
@@ -36483,6 +36542,207 @@ function renderEditals(){
   wrap.appendChild(list);
 
   return wrap;
+}
+
+// V15.12.3: Render da aba "Comunidade" — busca editais públicos do supabase,
+// agrupados por banca, com filtros por cargo e ordenação por data. Permite
+// ao admin validar ou abrir cada edital.
+function renderEditalsCommunity(parent){
+  if(!ST.editalsCommFilters) ST.editalsCommFilters = {banca:'all', cargo:'all', sort:'newest', search:''};
+  const f = ST.editalsCommFilters;
+
+  // Card de filtros
+  const filterCard = mk('div');
+  filterCard.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:.875rem 1rem;margin-bottom:1rem;display:flex;flex-direction:column;gap:.625rem';
+
+  // Linha 1: busca + sort
+  const row1 = mk('div');
+  row1.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
+  const searchIn = mk('input');
+  searchIn.type = 'search';
+  searchIn.placeholder = '🔍 Buscar por concurso, banca ou cargo...';
+  searchIn.value = f.search || '';
+  searchIn.style.cssText = 'flex:1;min-width:220px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12.5px;font-family:inherit';
+  searchIn.addEventListener('input', e => {
+    f.search = e.target.value;
+    if(searchIn._t) clearTimeout(searchIn._t);
+    searchIn._t = setTimeout(()=>render(), 250);
+  });
+  row1.appendChild(searchIn);
+
+  const sortSel = mk('select');
+  sortSel.style.cssText = 'padding:7px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12.5px;font-family:inherit';
+  [
+    {v:'newest', l:'📅 Mais recentes'},
+    {v:'oldest', l:'📅 Mais antigos'},
+    {v:'banca', l:'📌 Por banca'}
+  ].forEach(o=>{
+    const opt = document.createElement('option');
+    opt.value = o.v; opt.textContent = o.l;
+    if(f.sort === o.v) opt.selected = true;
+    sortSel.appendChild(opt);
+  });
+  sortSel.addEventListener('change', e => { f.sort = e.target.value; render(); });
+  row1.appendChild(sortSel);
+  filterCard.appendChild(row1);
+
+  // Loading state
+  const listWrap = mk('div');
+  listWrap.style.cssText = 'display:flex;flex-direction:column;gap:.875rem';
+  parent.appendChild(filterCard);
+  parent.appendChild(listWrap);
+
+  // Filtros adicionais (banca/cargo) populados após fetch
+  const extraFilters = mk('div');
+  extraFilters.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:4px';
+  filterCard.appendChild(extraFilters);
+
+  // Fetch async
+  listWrap.innerHTML = '<div class="txt3" style="padding:1.25rem;text-align:center;font-size:12.5px">Carregando editais da comunidade...</div>';
+
+  (async ()=>{
+    if(!supa){
+      listWrap.innerHTML = '<div class="card" style="padding:1rem;color:var(--red-text)">⚠️ Backend não disponível.</div>';
+      return;
+    }
+    try{
+      // Busca todos os editais públicos. Limita 100 por enquanto pra não pesar.
+      const {data, error} = await supa
+        .from('shared_resources')
+        .select('id, owner_id, title, description, payload, created_at, moderation_status, total_uses, owner_username')
+        .eq('resource_type', 'edital')
+        .eq('is_public', true)
+        .order('created_at', {ascending:false})
+        .limit(100);
+      if(error) throw error;
+      let items = data || [];
+
+      // Coleta opções únicas de banca/cargo dos payloads
+      const bancas = new Set(['all']);
+      const cargos = new Set(['all']);
+      items.forEach(it => {
+        const p = it.payload || {};
+        if(p.banca) bancas.add(p.banca);
+        const byCargo = (p.analysis && p.analysis.vacancies && p.analysis.vacancies.byCargo) || [];
+        byCargo.forEach(c => { if(c.cargo) cargos.add(c.cargo); });
+      });
+
+      // Renderiza chips de banca
+      extraFilters.innerHTML = '';
+      const bancaLbl = mk('span');
+      bancaLbl.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;align-self:center;margin-right:4px';
+      bancaLbl.textContent = 'Banca:';
+      extraFilters.appendChild(bancaLbl);
+      Array.from(bancas).sort((a,b)=>a==='all'?-1:b==='all'?1:a.localeCompare(b)).forEach(b=>{
+        const isOn = (f.banca||'all') === b;
+        const chip = mk('button');
+        chip.type = 'button';
+        chip.style.cssText = `padding:4px 10px;border-radius:999px;border:1px solid ${isOn?'var(--gralia-purple)':'var(--border)'};background:${isOn?'var(--gralia-purple)':'var(--surface2)'};color:${isOn?'#fff':'var(--text2)'};font-size:11px;font-weight:600;cursor:pointer;font-family:inherit`;
+        chip.textContent = b === 'all' ? 'Todas' : b;
+        chip.addEventListener('click', ()=>{ f.banca = b; render(); });
+        extraFilters.appendChild(chip);
+      });
+
+      // Filtra por banca
+      if(f.banca && f.banca !== 'all'){
+        items = items.filter(it => (it.payload && it.payload.banca) === f.banca);
+      }
+      // Filtra por busca textual
+      if(f.search){
+        const q = f.search.toLowerCase();
+        items = items.filter(it => {
+          const text = [it.title, it.description, (it.payload||{}).banca, (it.payload||{}).examName].filter(Boolean).join(' ').toLowerCase();
+          return text.includes(q);
+        });
+      }
+
+      // Ordena
+      if(f.sort === 'oldest'){
+        items.sort((a,b)=>new Date(a.created_at) - new Date(b.created_at));
+      } else if(f.sort === 'banca'){
+        items.sort((a,b)=>{
+          const ba = (a.payload||{}).banca || '';
+          const bb = (b.payload||{}).banca || '';
+          return ba.localeCompare(bb) || (new Date(b.created_at) - new Date(a.created_at));
+        });
+      } else {
+        items.sort((a,b)=>new Date(b.created_at) - new Date(a.created_at));
+      }
+
+      // Render
+      listWrap.innerHTML = '';
+      if(items.length === 0){
+        listWrap.innerHTML = `<div class="card" style="padding:1.5rem;text-align:center"><div style="font-size:32px;margin-bottom:8px">🌐</div><h3 style="margin:0 0 6px;font-size:14.5px">Nenhum edital encontrado</h3><p class="txt2" style="margin:0;font-size:12.5px">${f.search || (f.banca && f.banca !== 'all') ? 'Tente ajustar os filtros.' : 'Seja o primeiro a sintetizar um edital — ele aparece aqui pra todos os usuários verem.'}</p></div>`;
+        return;
+      }
+      items.forEach(it=>{
+        const card = renderCommunityEditalCard(it);
+        listWrap.appendChild(card);
+      });
+    }catch(e){
+      console.error('[editais comunidade] erro:', e);
+      listWrap.innerHTML = `<div class="card" style="padding:1rem;color:var(--red-text)">⚠️ Erro: ${escapeHTML(e.message||String(e))}</div>`;
+    }
+  })();
+}
+
+// V15.12.3: Card individual de edital da comunidade — visual igual ao
+// renderEditalCard local mas com info do autor e status de moderação.
+function renderCommunityEditalCard(item){
+  const card = mk('div','edital-card');
+  card.style.cursor = 'pointer';
+
+  const cHead = mk('div','ec-head');
+  const isValidated = item.moderation_status === 'approved';
+  const statusBadge = mk('span','ec-status');
+  if(isValidated){
+    statusBadge.classList.add('ready');
+    statusBadge.innerHTML = '✓ Validada';
+  } else {
+    statusBadge.classList.add('analyzing');
+    statusBadge.style.cssText = 'background:rgba(245,158,11,.10);color:var(--amber-text);border:1px solid rgba(245,158,11,.30)';
+    statusBadge.innerHTML = '⏳ Em revisão';
+  }
+  cHead.appendChild(statusBadge);
+  card.appendChild(cHead);
+
+  const title = mk('h3','ec-title');
+  title.textContent = item.title || 'Análise sem título';
+  card.appendChild(title);
+
+  const meta = mk('div','ec-meta');
+  const p = item.payload || {};
+  const parts = [];
+  if(p.banca) parts.push(`📌 ${escapeHTML(p.banca)}`);
+  if(p.year) parts.push(`📅 ${escapeHTML(String(p.year))}`);
+  if(item.owner_username) parts.push(`👤 @${escapeHTML(item.owner_username)}`);
+  parts.push(`🕒 ${formatRelativeDate(item.created_at)}`);
+  meta.innerHTML = parts.join(' · ');
+  card.appendChild(meta);
+
+  // Cargos (se houver)
+  const byCargo = (p.analysis && p.analysis.vacancies && p.analysis.vacancies.byCargo) || [];
+  if(byCargo.length > 0){
+    const cargosLine = mk('p','ec-preview');
+    cargosLine.style.cssText = 'font-size:12px;margin:6px 0 0';
+    const cargoNames = byCargo.slice(0, 3).map(c => escapeHTML(c.cargo || '')).filter(Boolean).join(', ');
+    cargosLine.innerHTML = `<b>Cargos:</b> ${cargoNames}${byCargo.length > 3 ? ` <span class="txt3">+${byCargo.length-3} outros</span>` : ''}`;
+    card.appendChild(cargosLine);
+  }
+
+  // Resumo executivo (preview)
+  if(p.analysis && p.analysis.executiveSummary){
+    const preview = mk('p','ec-preview');
+    preview.textContent = p.analysis.executiveSummary.slice(0, 180) + (p.analysis.executiveSummary.length > 180 ? '...' : '');
+    card.appendChild(preview);
+  }
+
+  // Click abre modal de visualização compartilhada
+  card.addEventListener('click', ()=>{
+    if(typeof showEditalSharedView === 'function') showEditalSharedView(item);
+  });
+
+  return card;
 }
 
 function renderEditalCard(edital){
@@ -37156,6 +37416,22 @@ function showCreateEditalModal(){
       recordEditalUsage();
       save();
       showToast('✓ Edital analisado com sucesso');
+
+      // V15.12.3: Auto-publica na comunidade (Descobrir) com status pendente
+      // de revisão. Jean pediu pra que toda análise de edital fique disponível
+      // pra outros usuários, igual aos outros materiais — admin valida depois.
+      // Só publica se: usuário autenticado E tem perfil público.
+      if(isAuthed() && AUTH.profile && AUTH.profile.username && supa){
+        try{
+          await publishEditalAsResource(edital);
+          showToast('🌐 Análise publicada na comunidade (em revisão)', 4000);
+        }catch(pubErr){
+          console.warn('[edital] falha ao auto-publicar:', pubErr);
+          // Não bloqueia o fluxo — análise já está pronta localmente.
+          // Usuário pode publicar manualmente depois pelo botão na view de detalhe.
+        }
+      }
+
       // Navega direto pro detalhe
       ST.editalViewId = edital.id;
       ST.view = 'editalView';
