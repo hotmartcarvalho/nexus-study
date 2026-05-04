@@ -185,9 +185,13 @@ body.sidebar-collapsed .app-sidebar-search-btn span:first-child{font-size:14px}
 body.sidebar-collapsed.has-sidebar #app{padding-left:64px}
 
 /* Toggle button */
+/* V15.12.1: top de 13 → 25px pra alinhar verticalmente com o centro do
+   botão "Buscar tudo". Cálculo: sidebar tem padding-top:14px, search-btn
+   tem margin-top:8px e altura ~28px → centro em y=14+8+14=36px. Toggle
+   24x24px → top desejado = 36-12 = ~25px. */
 .sidebar-collapse-toggle{
   position:absolute;
-  top:13px;
+  top:25px;
   right:10px;
   width:24px;
   height:24px;
@@ -339,9 +343,12 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:28px}
      Antes (V15.10) recolhia junto: 264 ↔ 64px — Jean pediu pra logo ficar
      SEMPRE no mesmo lugar, ancorado no canto superior esquerdo, separada
      por um divisor sutil. */
+  /* V15.12.1: largura igualada à sidebar expandida (264px) pra que o divisor
+     do bloco do logo coincida exatamente com a borda direita da sidebar.
+     Antes era 240px e gerava um gap visual de 24px. */
   body.has-sidebar .topbar-col-left{
     display:flex;
-    width:240px;
+    width:264px;
     flex-shrink:0;
     justify-content:center;
     align-items:center;
@@ -703,6 +710,11 @@ html.dark .countdown-pill.countdown-near{color:#e8c068}
 @media(min-width:1500px){
   .page{max-width:920px}
 }
+/* V15.12: Cronograma usa largura MAIOR — Jean apontou que a tabela
+   semanal (7 colunas) ficava apertada com a largura padrão da .page. */
+body[data-view="schedule"] .page{max-width:1180px}
+@media(min-width:1280px){body[data-view="schedule"] .page{max-width:1240px}}
+@media(min-width:1500px){body[data-view="schedule"] .page{max-width:1320px}}
 
 /* V14: Quick sidebar — barra lateral fixa no canto direito em desktop XL.
    Aparece apenas em ≥1400px com atalhos rápidos pros métodos mais usados.
@@ -3240,7 +3252,7 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 .icon-btn.del:hover{background:var(--red-light);color:var(--red-text)}
 
 /* Modal */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:center;justify-content:center;padding:1rem;animation:fd .15s ease}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99000;display:flex;align-items:center;justify-content:center;padding:1rem;animation:fd .15s ease}
 .modal-bg.locked{cursor:default}
 /* V12: Sombra do modal locked agora é neutra (preta sutil) — antes era roxa, ficava com aparência de gamificação */
 .modal-bg.locked .modal{box-shadow:0 12px 40px rgba(0,0,0,.22),0 4px 12px rgba(0,0,0,.14)}
@@ -3347,6 +3359,9 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 /* Compact summary grid */
 .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
 @media(max-width:540px){.summary-grid{grid-template-columns:repeat(2,1fr)}}
+/* V15.12: Quick-access-card — grid 3 col em desktop, quebra em mobile */
+@media(max-width:820px){.quick-access-card{grid-template-columns:repeat(2,1fr) !important}}
+@media(max-width:520px){.quick-access-card{grid-template-columns:1fr !important}}
 
 /* Quick access row — slim buttons */
 .quick-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
@@ -3942,6 +3957,11 @@ html.focus-mode .back-btn{opacity:.5}
 html.focus-mode .back-btn:hover{opacity:1}
 html.focus-mode .method-info{display:none}
 html.focus-mode .scard,html.focus-mode .dna-row,html.focus-mode .insight-card{display:none}
+/* V15.12: equivalente pro modo foco NOVO (body.method-focus-mode). Antes
+   coexistia com a barra de progresso colorida do focus bar (visualmente
+   confuso). Jean pediu pra escolher um ou outro: em modo foco, fica a
+   barra colorida superior; explicação colapsável só fora do modo foco. */
+body.method-focus-mode .method-info{display:none}
 
 /* Focus mode toggle button (always visible in bottom-right) */
 /* V12: Maior, mais visível, com label no desktop e ícone 🎯 (intuitivo) */
@@ -4456,10 +4476,12 @@ body.pomo-float-visible .faq-floating-btn{display:none !important}
 /* V15.12: padding-left de 24px em vez de margin-left de 20px — assim começam
    imediatamente após a borda direita do bloco do logo (que tem border-right),
    alinhados verticalmente com a borda da sidebar. */
+/* V15.12.1: padding-left reduzido pra 16px — o gap de 24px ficava grande
+   visualmente depois que a coluna do logo virou 264px (mesma largura da sidebar). */
 .topbar-inst-links{
   display:flex;align-items:center;gap:18px;
   flex-shrink:0;
-  padding-left:24px;
+  padding-left:16px;
 }
 .topbar-inst-link{
   position:relative;
@@ -10642,6 +10664,11 @@ async function callAPI(system, msgs, opts){
   // 2. Se chegou ao fim do texto sem fechar, fecha string aberta com " e
   //    fecha tantos } quanto o depth indica.
   // 3. Antes de fechar, remove vírgula trailing (se houver).
+  // V15.12: Também escapa newlines/tabs literais que ficaram dentro de strings
+  // (a IA às vezes gera "...texto com\nquebra de linha\nliteral..." que é JSON
+  // inválido — JSON.parse exige \n escapado como \\n). Antes do repair só
+  // fechava string e brace; agora reconstrói o conteúdo com \n / \r / \t
+  // escapados se estiverem dentro de uma string aberta.
   function tryRepairTruncatedJSON(raw){
     const start = raw.indexOf('{');
     if(start<0) return null;
@@ -10651,19 +10678,43 @@ async function callAPI(system, msgs, opts){
     const closeFence = s.indexOf('```');
     if(closeFence > 0) s = s.slice(0, closeFence);
 
+    // === V15.12: Reescreve `s` escapando whitespace literal dentro de strings ===
+    let rebuilt = '';
     let depth = 0, inStr = false, esc = false, lastCloseAt = -1;
     let inArray = 0;
     for(let i = 0; i < s.length; i++){
       const ch = s[i];
-      if(esc){esc = false; continue;}
-      if(ch === '\\'){esc = true; continue;}
-      if(ch === '"'){inStr = !inStr; continue;}
-      if(inStr) continue;
+      if(esc){
+        rebuilt += ch;
+        esc = false;
+        continue;
+      }
+      if(ch === '\\'){
+        rebuilt += ch;
+        esc = true;
+        continue;
+      }
+      if(ch === '"'){
+        rebuilt += ch;
+        inStr = !inStr;
+        continue;
+      }
+      if(inStr){
+        // Escapa whitespace literal que invalidaria o JSON
+        if(ch === '\n')      rebuilt += '\\n';
+        else if(ch === '\r') rebuilt += '\\r';
+        else if(ch === '\t') rebuilt += '\\t';
+        else                 rebuilt += ch;
+        continue;
+      }
+      // Fora de string: tracking de estrutura
+      rebuilt += ch;
       if(ch === '{') depth++;
-      else if(ch === '}'){depth--; if(depth === 0) lastCloseAt = i;}
+      else if(ch === '}'){depth--; if(depth === 0) lastCloseAt = rebuilt.length - 1;}
       else if(ch === '[') inArray++;
       else if(ch === ']') inArray--;
     }
+    s = rebuilt;
 
     // Se já tem JSON fechado válido, retorna até lá
     if(lastCloseAt > 0){
@@ -11944,12 +11995,21 @@ function render(){
   else _currentScreen = ST.view || 'dashboard';
 
   if(render._lastScreen !== _currentScreen){
+    const scrolledY = window.scrollY || window.pageYOffset || 0;
     render._lastScreen = _currentScreen;
-    // Pequeno timeout pra garantir que o conteúdo novo já foi renderizado
-    setTimeout(()=>{
-      try{ window.scrollTo({top:0, behavior:'auto'}); }catch(e){ window.scrollTo(0,0); }
-    }, 0);
+    // V15.12: NÃO scrolla pro topo se o usuário já tá lendo algo no meio
+    // (scrollY > 100). Antes qualquer mudança de _currentScreen jogava a
+    // tela pro topo mesmo em re-renders triviais — atrapalhava leitura.
+    // Só rola se for navegação inicial (topo) ou mudança REAL de view.
+    if(scrolledY < 100){
+      setTimeout(()=>{
+        try{ window.scrollTo({top:0, behavior:'auto'}); }catch(e){ window.scrollTo(0,0); }
+      }, 0);
+    }
   }
+  // V15.12: data-view no body permite CSS customizar layout por tela
+  // (ex.: cronograma usa largura maior pra tabela semanal não apertar).
+  document.body.setAttribute('data-view', ST.view || 'dashboard');
   APP.innerHTML='';
   // Loading state while we restore session on first boot
   if(AUTH.loading){
@@ -15201,22 +15261,35 @@ function renderDashboard(){
   }
   hero.appendChild(heroLeft);
 
-  // Hero right: today stats strip (focus time + questions + cards)
+  // Hero right: today stats strip
+  // V15.12: removidos cards "questões hoje" e "cards pendentes" do topo —
+  // Jean apontou redundância (info aparecia 2x). No lugar, uma mini Meta
+  // semanal compacta que substitui os dois cards. Foco time fica.
   const heroRight = mk('div','dash-hero-right');
-  if(todayFocusMin>0||s.total>0||dueSrs>0){
-    const stats = [];
-    if(todayFocusMin>0){
-      const h = Math.floor(todayFocusMin/60),m = todayFocusMin%60;
-      const val = h>0?`${h}h${m>0?' '+m+'m':''}`:`${m}min`;
-      stats.push({val,lbl:'hoje focado',icon:'⏱'});
-    }
-    if(s.total>0)stats.push({val:s.total,lbl:'questões hoje',icon:'📝'});
-    if(dueSrs>0)stats.push({val:dueSrs,lbl:'cards pendentes',icon:'🎴'});
-    stats.slice(0,3).forEach(st=>{
-      const cell = mk('div','dash-hero-stat');
-      cell.innerHTML = `<div class="dhs-val">${st.val}</div><div class="dhs-lbl">${st.icon} ${st.lbl}</div>`;
-      heroRight.appendChild(cell);
-    });
+  if(todayFocusMin>0){
+    const h = Math.floor(todayFocusMin/60),m = todayFocusMin%60;
+    const val = h>0?`${h}h${m>0?' '+m+'m':''}`:`${m}min`;
+    const cell = mk('div','dash-hero-stat');
+    cell.innerHTML = `<div class="dhs-val">${val}</div><div class="dhs-lbl">⏱ hoje focado</div>`;
+    heroRight.appendChild(cell);
+  }
+  // Mini-card de Meta — substitui "questões hoje" e "cards pendentes"
+  if(DATA.goals){
+    const g = DATA.goals;
+    if(maybeRenewGoalPeriod(g))save();
+    const view = goalDailyView(g);
+    const periodLbl = g.period === 'weekly' ? 'meta semanal' : 'meta mensal';
+    let goalEmoji = '⚖️';
+    if(view.status === 'ahead') goalEmoji = '🚀';
+    else if(view.status === 'behind') goalEmoji = '⏳';
+    const cell = mk('button','dash-hero-stat');
+    cell.type = 'button';
+    cell.style.cssText = 'cursor:pointer;border-color:rgba(128,66,250,.30);background:linear-gradient(135deg,rgba(128,66,250,.06),var(--surface));font-family:inherit;text-align:left';
+    const totalPct = Math.round(((view.pctQ||0) + (view.pctP||0))/2);
+    cell.innerHTML = `<div class="dhs-val">${goalEmoji} ${totalPct}%</div><div class="dhs-lbl">${periodLbl}</div>`;
+    cell.title = `Meta: ${view.doneQ}/${g.questionsTarget} questões · ${view.donePomos}/${g.pomosTarget} pomos`;
+    cell.addEventListener('click',()=>{ navigateTo('goals',{label:viewLabel(ST.view)}); });
+    heroRight.appendChild(cell);
   }
   hero.appendChild(heroRight);
   wrap.appendChild(hero);
@@ -15258,16 +15331,20 @@ function renderDashboard(){
     wrap.appendChild(tipCardInline);
   }
 
-  // V15: Tip do heatmap (frase dica) AGORA fica entre os 4 cards de número e o mapa.
-  // Jean pediu explicitamente esse posicionamento — antes a tip aparecia DENTRO do mapa.
-  const heatmapTip = buildHeatmapTip();
-  if(heatmapTip) wrap.appendChild(heatmapTip);
+  // V15.12: tip do heatmap movida pra DEPOIS do gráfico (Jean pediu).
+  // Antes ficava ANTES do gráfico com texto "o gráfico abaixo...". Agora
+  // fica DEPOIS, com texto "o gráfico acima..." (mudança feita em
+  // buildHeatmapTip).
 
   // V12: Gráfico de performance — heatmap por dia da semana × hora
   // Mostra quando você tá rendendo melhor (acertos / erros / tempo focado)
   // Insights interessantes: "você acerta mais à noite", "domingo é o dia mais produtivo", etc.
   const perfChart = buildPerformanceHeatmap();
   if(perfChart) wrap.appendChild(perfChart);
+
+  // V15.12: Tip do heatmap APÓS o gráfico
+  const heatmapTip = buildHeatmapTip();
+  if(heatmapTip) wrap.appendChild(heatmapTip);
 
   // ===== Mini-card de meta (resumo) =====
   if(DATA.goals){
@@ -15317,31 +15394,10 @@ function renderDashboard(){
     wrap.appendChild(goalEmpty);
   }
 
-  // ===== Streak contemplativo (sutil) =====
-  // V12: só mostra se houver pelo menos 2 dias ativos (não pra usuário que entrou hoje)
-  const streak = computeStreakStats();
-  if(streak.totalActiveDays >= 2){
-    const streakCard = mk('div','dash-streak-card');
-    let mainText, mainNum, secText;
-    if(streak.current>0){
-      mainText = streak.current===1 ? 'dia em sequência' : 'dias em sequência';
-      mainNum = streak.current;
-      secText = `Maior já alcançado: <b>${streak.longest}</b> · Estudou em <b>${streak.daysActiveLast30}/30</b> dias do último mês`;
-    } else {
-      // Sem streak ativo — não dramatiza, mostra histórico positivo
-      mainText = 'dias estudados nos últimos 30';
-      mainNum = streak.daysActiveLast30;
-      secText = streak.longest>1 ? `Maior sequência alcançada: <b>${streak.longest}</b> dias · Total acumulado: <b>${streak.totalActiveDays}</b>` : `Total acumulado: <b>${streak.totalActiveDays}</b> dias`;
-    }
-    streakCard.innerHTML = `
-      <div class="dsc-glyph">📚</div>
-      <div class="dsc-body">
-        <div class="dsc-main"><span class="dsc-num">${mainNum}</span> <span class="dsc-label">${mainText}</span></div>
-        <div class="dsc-sec">${secText}</div>
-      </div>
-    `;
-    wrap.appendChild(streakCard);
-  }
+  // ===== Streak contemplativo (REMOVIDO em V15.12) =====
+  // Jean pediu pra remover o card "X dias em sequência" — estava poluindo
+  // o painel e a info já aparece via Pinhal/Marcos. O cálculo de streak
+  // continua sendo usado em outros lugares (mentor IA, planta de árvores).
 
   // ===== Feed de marcos sociais — V12: agora dentro da seção "Acompanhar" =====
   // (Removido daqui — foi movido pra tabs em buildAccompanyingSection)
@@ -15888,22 +15944,32 @@ function buildQuickAccessCard(){
   const dueSrsCount = (DATA.srs.cards||[]).filter(c=>(c.nextReview||0)<=Date.now() && c.active!==false).length;
   const errorsCount = (DATA.errors||[]).filter(e=>!e.hasCard).length;
 
+  // V15.12: Reorganização das 3 fileiras (Jean pediu ordem específica):
+  //   Fileira 1: Prática com IA, Prática histórica, Criar caderno (mantida)
+  //   Fileira 2: Revisar flashcards, Erros recentes, Drill DNA
+  //   Fileira 3: Calibrar confiança, Intercalação, Simulado Gralia
+  // Drill DNA: descrição reformulada pra mencionar armadilhas (Jean pediu).
   const actions = [
+    // Fileira 1
     {icon:'⚡', label:'Prática com IA', desc:'Questões geradas das fontes', view:'practice'},
     {icon:'📥', label:'Prática histórica', desc:'Questões importadas reais', view:'imported'},
     {icon:'📋', label:'Criar caderno', desc:'Selecione questões e pratique', view:'imported'},
-    {icon:'🧬', label:'Drill DNA', desc:'Treino em sequência rápida', view:'drill'},
-    {icon:'🔀', label:'Intercalação', desc:'Mistura disciplinas', view:'interleaving'},
-    {icon:'📊', label:'Simulado Gralia', desc:'Prova completa cronometrada', view:'simulado'},
+    // Fileira 2
     {icon:'🎴', label:'Revisar flashcards', desc:dueSrsCount > 0 ? `${dueSrsCount} pendentes` : 'Repetição espaçada', badge:dueSrsCount, view:'srs'},
+    {icon:'📜', label:'Erros recentes', desc:errorsCount > 0 ? `${errorsCount} sem flashcard` : 'Pontos fracos', badge:errorsCount, view:'history'},
+    {icon:'🧬', label:'Drill DNA', desc:'Treino focado nas armadilhas que você cai mais', view:'drill'},
+    // Fileira 3
     {icon:'🎯', label:'Calibrar confiança', desc:'Mede acurácia × certeza', view:'calibration'},
-    {icon:'📜', label:'Erros recentes', desc:errorsCount > 0 ? `${errorsCount} sem flashcard` : 'Pontos fracos', badge:errorsCount, view:'history'}
+    {icon:'🔀', label:'Intercalação', desc:'Mistura disciplinas', view:'interleaving'},
+    {icon:'📊', label:'Simulado Gralia', desc:'Prova completa cronometrada', view:'simulado'}
   ];
 
-  // V15.3: minmax aumentado de 165px → 220px e gap aumentado pra cards respirarem.
-  // Texto não trunca mais — deixa quebrar em 2 linhas se preciso.
+  // V15.12: grid fixo de 3 colunas pra garantir a ordem por fileira.
+  // Antes era auto-fit que mudava a ordem visual conforme largura.
   const card = mk('div','quick-access-card');
-  card.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;margin-bottom:1.25rem';
+  card.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.25rem';
+  // Em mobile: 1 coluna empilhada (responde ao @media abaixo)
+  // Em telas estreitas (sub-820px), o CSS quebra pra 1 coluna.
 
   actions.forEach(a => {
     const btn = mk('button');
@@ -15998,7 +16064,7 @@ function buildHeatmapTip(){
   } else {
     tip.style.borderLeftColor = 'var(--border)';
     tip.style.color = 'var(--text3)';
-    tip.innerHTML = `💡 Conforme você acumula mais sessões, o gráfico abaixo vai mostrar em quais dias da semana você rende melhor. <b style="color:var(--text2)">Verde</b> = alta acurácia, <b style="color:var(--text2)">vermelho</b> = muitos erros, <b style="color:var(--text2)">roxo</b> = atividade neutra.`;
+    tip.innerHTML = `💡 Conforme você acumula mais sessões, o gráfico acima vai mostrar em quais dias da semana você rende melhor. <b style="color:var(--text2)">Verde</b> = alta acurácia, <b style="color:var(--text2)">vermelho</b> = muitos erros, <b style="color:var(--text2)">roxo</b> = atividade neutra.`;
   }
   return tip;
 }
@@ -16011,7 +16077,8 @@ function buildHeatmapTip(){
 function buildAccompanyingSection(){
   // === Coleta dados pra cada aba ===
   // 1. Linha do tempo: usa buildActivityTimeline pra detectar se tem eventos
-  // 2. Disciplinas: usa DATA.errors agrupados por discipline
+  // 2. Marcos do usuário (V15.12): substitui aba Disciplinas — Jean pediu
+  //    pra remover Disciplinas e mostrar marcos pessoais (FOREST_MILESTONES)
   // 3. Feed: depende de fetch async — opcional
 
   // Linha do tempo: detecta se tem ao menos 1 evento
@@ -16023,36 +16090,34 @@ function buildAccompanyingSection(){
   const hasSources = (DATA.sources||[]).some(s => s.createdAt && (now - s.createdAt) <= TWO_DAYS);
   const hasTimeline = hasErrors || hasCards || hasPomos || hasSources;
 
-  // Disciplinas: detecta se tem erros agrupáveis
-  const byD = {};
-  (DATA.disciplines||[]).forEach(d => byD[d.id] = {total:0, recent:0, score:0});
-  (DATA.errors||[]).forEach(e => {
-    if(e.disciplineId && byD[e.disciplineId]){
-      byD[e.disciplineId].total += 1;
-      byD[e.disciplineId].score += errorWeight(e);
-      if(now - (e.date||0) <= 24*60*60*1000) byD[e.disciplineId].recent += 1;
-    }
-  });
-  const discWithErr = (DATA.disciplines||[]).filter(d => byD[d.id].total > 0)
-    .sort((a,b) => byD[b.id].score - byD[a.id].score);
-  const hasDisciplines = discWithErr.length > 0;
+  // V15.12: Marcos do usuário — usa FOREST_MILESTONES (já existe no projeto).
+  // Aparece sempre se tem qualquer atividade básica (autenticado + qualquer dado).
+  const hasMilestones = isAuthed() && (
+    (DATA.session?.total||0) > 0 ||
+    (DATA.errors||[]).length > 0 ||
+    (DATA.sources||[]).length > 0 ||
+    ((DATA.srs?.cards)||[]).length > 0
+  );
 
   // Feed: depende de carregamento async, e usuário com atividade mínima
   const totalActivityForFeed = (DATA.session?.total||0) + (DATA.errors||[]).length + (DATA.sources||[]).length;
   const canHaveFeed = isAuthed() && AUTH.profile && totalActivityForFeed >= 5;
 
   // Se não tem nada em nenhuma aba, não renderiza a seção
-  if(!hasTimeline && !hasDisciplines && !canHaveFeed) return null;
+  if(!hasTimeline && !hasMilestones && !canHaveFeed) return null;
 
   // Decide qual aba mostrar inicialmente
   if(!ST.dashTabActive) ST.dashTabActive = 'timeline';
+  // V15.12: aba 'disciplines' antiga vira 'milestones'. Compatibilidade pra
+  // usuários que tinham 'disciplines' salvo no estado.
+  if(ST.dashTabActive === 'disciplines') ST.dashTabActive = 'milestones';
   // Se a aba salva não tem conteúdo, vai pra primeira que tem
   if(ST.dashTabActive === 'timeline' && !hasTimeline){
-    ST.dashTabActive = hasDisciplines ? 'disciplines' : 'feed';
-  } else if(ST.dashTabActive === 'disciplines' && !hasDisciplines){
+    ST.dashTabActive = hasMilestones ? 'milestones' : 'feed';
+  } else if(ST.dashTabActive === 'milestones' && !hasMilestones){
     ST.dashTabActive = hasTimeline ? 'timeline' : 'feed';
   } else if(ST.dashTabActive === 'feed' && !canHaveFeed){
-    ST.dashTabActive = hasTimeline ? 'timeline' : 'disciplines';
+    ST.dashTabActive = hasTimeline ? 'timeline' : 'milestones';
   }
 
   const card = mk('div','card dash-accompany');
@@ -16069,7 +16134,7 @@ function buildAccompanyingSection(){
   const tabs = mk('div','dasha-tabs');
   const tabDefs = [];
   if(hasTimeline) tabDefs.push({key:'timeline', label:'Linha do tempo', icon:'🕐'});
-  if(hasDisciplines) tabDefs.push({key:'disciplines', label:'Disciplinas', icon:'📊'});
+  if(hasMilestones) tabDefs.push({key:'milestones', label:'Marcos do usuário', icon:'🏆'});
   if(canHaveFeed) tabDefs.push({key:'feed', label:'Feed dos seguidos', icon:'📡'});
 
   // Se só tem 1 aba, não mostra a barra de tabs (vai direto pro conteúdo)
@@ -16099,42 +16164,63 @@ function buildAccompanyingSection(){
       tl.classList.add('dasha-content-timeline');
       body.appendChild(tl);
     }
-  } else if(ST.dashTabActive === 'disciplines' && hasDisciplines){
-    const maxScore = Math.max(...discWithErr.map(d => byD[d.id].score), 1);
-    const list = mk('div','dasha-disciplines-list');
-    discWithErr.slice(0, 5).forEach(d => {
-      const data = byD[d.id];
-      const row = mk('div','dna-row');
-      const lbl = mk('div','dna-lbl');
-      lbl.style.cssText = 'display:flex;align-items:center;gap:6px;justify-content:flex-end';
-      const nm = mk('span'); nm.textContent = d.name;
-      const dot = mk('span'); dot.style.cssText = `width:8px;height:8px;border-radius:50%;background:${d.color};flex-shrink:0`;
-      lbl.appendChild(nm); lbl.appendChild(dot);
-      const track = mk('div','dna-track');
-      const fill = mk('div','dna-fill');
-      fill.style.width = (data.score / maxScore * 100) + '%';
-      fill.style.background = d.color;
-      track.appendChild(fill);
-      const num = mk('div','dna-num'); num.style.minWidth = '70px';
-      num.innerHTML = data.recent > 0 ? `${data.total} <span style="color:var(--red)">(${data.recent} recentes)</span>` : String(data.total);
-      row.appendChild(lbl); row.appendChild(track); row.appendChild(num);
-      list.appendChild(row);
-    });
-    body.appendChild(list);
-    if(discWithErr.length > 5){
-      const more = mk('p','txt3');
-      more.style.cssText = 'margin:.625rem 0 0;text-align:right;font-size:11.5px';
-      more.innerHTML = `<a href="#" id="dashaMapLink">Ver mapa completo →</a>`;
-      body.appendChild(more);
-      setTimeout(() => {
-        const l = document.getElementById('dashaMapLink');
-        if(l) l.addEventListener('click', e => {e.preventDefault(); ST.view='mapa'; render();});
-      }, 0);
+  } else if(ST.dashTabActive === 'milestones' && hasMilestones){
+    // V15.12: Aba "Marcos do usuário" — mostra os FOREST_MILESTONES com
+    // status (alcançado / pendente). Reaproveita as definições já existentes.
+    const forest = DATA.forest || {lastCheckedMilestones:{}};
+    const list = mk('div','dasha-milestones-list');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:7px';
+
+    const reached = (typeof FOREST_MILESTONES !== 'undefined' ? FOREST_MILESTONES : [])
+      .filter(m => forest.lastCheckedMilestones && forest.lastCheckedMilestones[m.key]);
+    const pending = (typeof FOREST_MILESTONES !== 'undefined' ? FOREST_MILESTONES : [])
+      .filter(m => !forest.lastCheckedMilestones || !forest.lastCheckedMilestones[m.key])
+      .slice(0, 4);
+
+    if(reached.length === 0 && pending.length === 0){
+      const empty = mk('p','txt3');
+      empty.style.cssText = 'padding:.875rem 0;font-size:12.5px;text-align:center';
+      empty.textContent = 'Continue estudando — seus marcos aparecem aqui conforme atinge metas.';
+      body.appendChild(empty);
+    } else {
+      // Alcançados
+      if(reached.length > 0){
+        const lblReached = mk('div');
+        lblReached.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:2px 0 6px';
+        lblReached.textContent = `✓ Alcançados (${reached.length})`;
+        list.appendChild(lblReached);
+        reached.slice(-6).reverse().forEach(m=>{
+          const row = mk('div');
+          row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:7px 10px;background:rgba(45,138,79,.06);border:1px solid rgba(45,138,79,.18);border-radius:8px;font-size:12.5px';
+          row.innerHTML = `<span style="font-size:16px;line-height:1">${m.icon||'🏆'}</span><span style="flex:1;color:var(--text)">${escapeHTML(m.reason)}</span><span style="font-size:14px;color:var(--accent)">✓</span>`;
+          list.appendChild(row);
+        });
+      }
+      // Pendentes (próximos a alcançar)
+      if(pending.length > 0){
+        const lblPending = mk('div');
+        lblPending.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px';
+        lblPending.textContent = `Próximos (${pending.length})`;
+        list.appendChild(lblPending);
+        pending.forEach(m=>{
+          const row = mk('div');
+          row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:12.5px';
+          row.innerHTML = `<span style="font-size:16px;line-height:1;opacity:.55">${m.icon||'🎯'}</span><span style="flex:1;color:var(--text2)">${escapeHTML(m.reason)}</span>`;
+          list.appendChild(row);
+        });
+      }
     }
-    const hint = mk('p','txt3');
-    hint.style.cssText = 'margin:.5rem 0 0;font-size:10.5px;text-align:center';
-    hint.textContent = 'Erros mais recentes pesam mais no ranking';
-    body.appendChild(hint);
+    body.appendChild(list);
+
+    // Link pro Pinhal completo
+    const more = mk('p','txt3');
+    more.style.cssText = 'margin:.625rem 0 0;text-align:right;font-size:11.5px';
+    more.innerHTML = `<a href="#" id="dashaForestLink">Ver pinhal completo →</a>`;
+    body.appendChild(more);
+    setTimeout(() => {
+      const l = document.getElementById('dashaForestLink');
+      if(l) l.addEventListener('click', e => {e.preventDefault(); ST.view='forest'; render();});
+    }, 0);
   } else if(ST.dashTabActive === 'feed' && canHaveFeed){
     body.innerHTML = '<div class="txt3" style="font-size:12px;padding:.875rem 0;text-align:center">Carregando...</div>';
     fetchFeed(5, 0).then(result => {
@@ -25690,11 +25776,15 @@ async function practStart(container){
   }catch(e){handleErr(e,container);}
   ST.practLoading=false;render();
 }
-// V12: Histórico de questões praticadas das últimas 24h.
+// V12: Histórico de questões praticadas.
 // Permite usuário voltar pra questão anterior via atalho de teclado B,
-// mesmo após fechar a aba e reabrir. Limpo automaticamente em 24h.
-const RECENT_PRACTICE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
-const RECENT_PRACTICE_MAX = 50; // Limite máximo de itens
+// mesmo após fechar a aba e reabrir.
+// V15.12: TTL aumentado de 24h → 30 dias e MAX de 50 → 500 pra dar
+// suporte aos filtros de período (7d, 30d, Total) do modo foco. Antes
+// o filtro nunca tinha dados além das últimas 24h porque a fonte mesma
+// só guardava 24h.
+const RECENT_PRACTICE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
+const RECENT_PRACTICE_MAX = 500; // Limite máximo de itens
 
 function addToRecentPractice(entry){
   if(!entry || !entry.q) return;
@@ -26430,14 +26520,35 @@ function getMethodFocusScore(view, period){
     };
     const cutoff = cutoffs[period] || 0;
 
-    // Filtra questões praticadas no período
-    const practicedInPeriod = (DATA.recentPracticeQuestions || [])
+    // V15.12: BUG FIX — antes filtrava por q.correct (campo que não existe
+    // nos entries de DATA.recentPracticeQuestions). O resultado correto
+    // mora em entry.fb.ok ou pode ser inferido comparando answer vs gabarito.
+    // Também filtra por método ativo — Jean tá em Drill DNA → não faz sentido
+    // contabilizar questões de Calibração nesse placar.
+    function entryCorrect(e){
+      if(!e) return false;
+      if(e.fb && typeof e.fb.ok === 'boolean') return e.fb.ok;
+      // Fallback: compara answer com gabarito
+      if(e.q && e.answer){
+        const gab = (e.q.gabarito || '').toString().trim().toUpperCase();
+        const ans = (e.answer || '').toString().trim().toUpperCase();
+        if(gab && ans) return gab === ans;
+      }
+      return false;
+    }
+    function methodMatches(e){
+      // Modo livre: 'practice' agrega tudo se view não for específico
+      if(!view) return true;
+      // Cada view só conta entries do próprio método
+      return e.method === view;
+    }
+
+    const all = (DATA.recentPracticeQuestions || [])
       .filter(q => q.ts && q.ts >= cutoff);
-    const errorsInPeriod = (DATA.errors || [])
-      .filter(e => (e.date || e.ts) >= cutoff);
+    const practicedInPeriod = all.filter(methodMatches);
 
     const total = practicedInPeriod.length;
-    const correct = practicedInPeriod.filter(q => q.correct).length;
+    const correct = practicedInPeriod.filter(entryCorrect).length;
     const wrong = total - correct;
 
     return {
@@ -35467,6 +35578,11 @@ function renderAnswerInput(kind, value){
 // + adicionar) em vez de textarea de intervalos manuais. Mais fácil em mobile,
 // impossível errar formato. O total é calculado em tempo real e os intervalos
 // (1-N, N+1-M, ...) são gerados sequencialmente pelo cursor.
+// V15.12.1: BUG FIX — antes salvava em campo "subject" (string) com estrutura
+// {id, number, statement, alternatives, ...} que NÃO bate com a convenção do
+// resto do código (que lê q.disciplineId, q.numero, q.enunciado). Agora cria
+// na estrutura padrão usada por examAddBlankQuestion, então a matéria aparece
+// corretamente no select da coluna Disciplina.
 function showExamBulkAddModal(exam){
   const m = mk('div');
   m.style.cssText = 'max-width:600px;width:100%';
@@ -35478,7 +35594,7 @@ function showExamBulkAddModal(exam){
 
   const sub = mk('p','txt2');
   sub.style.cssText = 'margin:0 0 1.25rem;font-size:13px;line-height:1.55';
-  sub.textContent = 'Adicione uma linha por matéria com a quantidade de questões. As questões são criadas em sequência (1, 2, 3...) e atribuídas à matéria correspondente.';
+  sub.textContent = 'Adicione uma linha por matéria com a quantidade de questões. As questões são criadas em sequência (1, 2, 3...) e atribuídas à matéria correspondente, na ordem em que você listou.';
   m.appendChild(sub);
 
   // === Tipo das questões ===
@@ -35516,8 +35632,10 @@ function showExamBulkAddModal(exam){
   blocksLbl.textContent = 'Disciplinas e quantidade de questões';
   m.appendChild(blocksLbl);
 
-  // Estado: lista de blocos {subject, count}
-  const blocks = [{subject:'', count: 10}];
+  // V15.12.1: agora cada bloco guarda `disciplineId` (id real da disciplina
+  // do DATA.disciplines) — antes guardava só o nome em "subject" e nunca
+  // chegava no q.disciplineId que o renderer da tabela espera.
+  const blocks = [{disciplineId: '', count: 10}];
 
   const blocksWrap = mk('div');
   blocksWrap.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-bottom:.75rem';
@@ -35539,38 +35657,18 @@ function showExamBulkAddModal(exam){
       const row = mk('div');
       row.style.cssText = 'display:grid;grid-template-columns:1fr 110px 32px;gap:8px;align-items:center';
 
-      // Combobox de disciplinas — usa as disciplinas cadastradas no projeto + opção custom
+      // Combobox de disciplinas — value=id (NÃO nome)
       const sel = mk('select');
       sel.style.cssText = 'padding:.5rem .625rem;font-size:12.5px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-family:inherit;width:100%';
       const blank = mk('option');blank.value='';blank.textContent='— Selecione a matéria —';
       sel.appendChild(blank);
-      // Se a matéria já preenchida não está nas disciplines, ainda assim mostra
-      const knownNames = new Set();
       (DATA.disciplines||[]).forEach(d=>{
-        const opt = mk('option');opt.value=d.name;opt.textContent=d.name;
-        if(blk.subject === d.name) opt.selected = true;
+        const opt = mk('option');opt.value=d.id;opt.textContent=d.name;
+        if(blk.disciplineId === d.id) opt.selected = true;
         sel.appendChild(opt);
-        knownNames.add(d.name);
       });
-      if(blk.subject && !knownNames.has(blk.subject)){
-        const opt = mk('option');opt.value=blk.subject;opt.textContent=blk.subject+' (custom)';
-        opt.selected = true;
-        sel.appendChild(opt);
-      }
-      const customOpt = mk('option');customOpt.value='__custom__';customOpt.textContent='✏️ Outra (digitar)';
-      sel.appendChild(customOpt);
       sel.addEventListener('change',()=>{
-        if(sel.value === '__custom__'){
-          const v = prompt('Digite o nome da matéria:');
-          if(v && v.trim()){
-            blk.subject = v.trim();
-            renderBlocks();
-          } else {
-            sel.value = blk.subject || '';
-          }
-        } else {
-          blk.subject = sel.value;
-        }
+        blk.disciplineId = sel.value || '';
       });
       row.appendChild(sel);
 
@@ -35612,7 +35710,7 @@ function showExamBulkAddModal(exam){
   addRow.addEventListener('mouseenter',()=>{addRow.style.borderColor='var(--gralia-purple)';addRow.style.color='var(--gralia-purple)';addRow.style.background='rgba(128,66,250,.04)';});
   addRow.addEventListener('mouseleave',()=>{addRow.style.borderColor='var(--border)';addRow.style.color='var(--text3)';addRow.style.background='transparent';});
   addRow.addEventListener('click',()=>{
-    blocks.push({subject:'', count: 10});
+    blocks.push({disciplineId: '', count: 10});
     renderBlocks();
     updateTotal();
   });
@@ -35639,41 +35737,49 @@ function showExamBulkAddModal(exam){
     }
 
     // Constrói intervalos sequenciais a partir dos blocks (cursor)
+    // — segue a ORDEM em que o usuário listou as matérias.
     const intervals = [];
     let cursor = 1;
     validBlocks.forEach(blk=>{
       const cnt = parseInt(blk.count,10);
-      const subj = (blk.subject||'').trim();
-      intervals.push({start: cursor, end: cursor + cnt - 1, subject: subj});
+      intervals.push({
+        start: cursor,
+        end: cursor + cnt - 1,
+        disciplineId: blk.disciplineId || null
+      });
       cursor += cnt;
     });
 
-    // Cria questões em branco
+    // Cria questões em branco — usa a MESMA estrutura de examAddBlankQuestion
+    // (numero, disciplineId, topic, kind, enunciado, alternatives, myAnswer,
+    //  gabarito, gabaritoFinal, timeSpentSeconds, observation) pra que o
+    //  renderer da tabela leia a matéria corretamente.
     if(!exam.questions) exam.questions = [];
     const startNum = (exam.questions||[]).length + 1;
     for(let i = 0; i < total; i++){
       const qNum = i + 1;
       const interval = intervals.find(iv => qNum >= iv.start && qNum <= iv.end);
       const newQ = {
-        id: 'eq_' + Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2,5),
-        number: startNum + i,
+        numero: startNum + i,
+        disciplineId: interval ? (interval.disciplineId || null) : null,
+        topic: '',
         kind: selectedType,
-        statement: '',
-        gabarito: null,
-        userAnswer: null,
-        subject: interval ? interval.subject : ''
-      };
-      if(selectedType === 'MC'){
-        newQ.alternatives = [
+        enunciado: '',
+        alternatives: selectedType === 'MC' ? [
           {letter:'A', text:''},{letter:'B', text:''},{letter:'C', text:''},
           {letter:'D', text:''},{letter:'E', text:''}
-        ];
-      }
+        ] : [],
+        myAnswer: '',
+        gabarito: '',
+        gabaritoFinal: '',
+        timeSpentSeconds: 0,
+        observation: ''
+      };
       exam.questions.push(newQ);
     }
     save();
     closeModal();
-    const matCount = validBlocks.filter(b=>b.subject).length;
+    const matCount = validBlocks.filter(b=>b.disciplineId).length;
     showToast(`✓ ${total} ${total===1?'questão adicionada':'questões adicionadas'}${matCount > 0 ? ` em ${matCount} matéria${matCount===1?'':'s'}` : ''}`);
     render();
   });
@@ -39877,6 +39983,36 @@ function renderGroupView(){
     editBtn.addEventListener('click',()=>showEditGroupModal(group));
     actsRow.appendChild(editBtn);
   }
+  // V15.12: botão "Excluir grupo" — APENAS dono pode chamar.
+  // Apaga o grupo todo (não confunde com "Sair / Transferir" que mantém
+  // o grupo vivo passando a propriedade pra outra pessoa).
+  if(group.isOwner){
+    const delBtn = mkBtn('🗑️ Excluir grupo','btn btn-sm');
+    delBtn.style.color = 'var(--red-text)';
+    delBtn.style.borderColor = 'rgba(232,76,76,.30)';
+    delBtn.title = 'Apaga o grupo permanentemente. Todos os membros perdem acesso. Não dá pra desfazer.';
+    delBtn.addEventListener('click', async ()=>{
+      const confirm1 = confirm(`⚠ Excluir o grupo "${group.name}" PERMANENTEMENTE?\n\nIsso vai remover todos os ${group.member_count||0} membros e apagar o grupo. NÃO DÁ PRA DESFAZER.\n\nSe quiser apenas sair e passar a propriedade pra outra pessoa, use "Sair / Transferir".`);
+      if(!confirm1) return;
+      // Confirmação dupla — digita o nome do grupo
+      const typed = prompt(`Pra confirmar, digite o nome exato do grupo:\n${group.name}`);
+      if(!typed || typed.trim() !== group.name){
+        if(typed !== null) alert('Nome não confere. Exclusão cancelada.');
+        return;
+      }
+      try{
+        const {error} = await supa.rpc('delete_group', {p_group_id: group.id});
+        if(error) throw error;
+        showToast('✓ Grupo excluído');
+        GROUPS.currentGroupId = null;
+        ST.view = 'groups';
+        GROUPS.list = [];
+        fetchMyGroups().then(()=>render());
+        render();
+      }catch(e){alert('Erro: ' + (e.message||e));}
+    });
+    actsRow.appendChild(delBtn);
+  }
   actsRow.appendChild(leaveBtn);
   headCard.appendChild(actsRow);
 
@@ -40047,16 +40183,38 @@ function renderGroupMembers(parent, group){
   }
 
   // Busca membros + profiles
-  supa.from('group_members')
-    .select('user_id, role, joined_at, profiles!inner(id, username, display_name)')
-    .eq('group_id', group.id)
-    .order('joined_at', {ascending: true})
-    .then(({data, error})=>{
-      list.innerHTML = '';
-      if(error){
-        list.innerHTML = `<div style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro: ${escapeHTML(error.message)}</div>`;
-        return;
+  // V15.12: 2 queries separadas em vez de profiles!inner — antes dava
+  // "Could not find a relationship between 'group_members' and 'profiles'
+  // in the schema cache" porque a FK ainda não estava declarada (resolvido
+  // via SQL gralia-v15.12-groups-fix-v2.sql). Pra defesa em profundidade,
+  // mantemos o JS robusto contra ausência da FK também.
+  (async ()=>{
+    list.innerHTML = '';
+    try {
+      const { data: members, error: memErr } = await supa
+        .from('group_members')
+        .select('user_id, role, joined_at')
+        .eq('group_id', group.id)
+        .order('joined_at', {ascending: true});
+      if(memErr) throw memErr;
+
+      const userIds = (members||[]).map(m=>m.user_id);
+      let profilesById = {};
+      if(userIds.length > 0){
+        const { data: profs, error: profErr } = await supa
+          .from('profiles')
+          .select('id, username, display_name')
+          .in('id', userIds);
+        if(profErr) throw profErr;
+        (profs||[]).forEach(p => { profilesById[p.id] = p; });
       }
+
+      const data = (members||[]).map(m => ({
+        ...m,
+        profiles: profilesById[m.user_id] || {}
+      }));
+      // Continua o fluxo original — variável "data" segue o mesmo formato
+      // de antes (cada item tem user_id, role, joined_at, profiles{...}).
       (data||[]).forEach(m=>{
         const p = m.profiles || {};
         const isOwner = m.role === 'owner';
@@ -40161,7 +40319,11 @@ function renderGroupMembers(parent, group){
         slot.innerHTML = `🪑 ${remaining} ${remaining === 1 ? 'vaga restante' : 'vagas restantes'} · compartilhe o código de convite`;
         list.appendChild(slot);
       }
-    });
+    } catch(err){
+      // V15.12: tratamento unificado de erro pro fluxo async
+      list.innerHTML = `<div style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro: ${escapeHTML(err.message||String(err))}</div>`;
+    }
+  })();
 }
 
 // V14: Compartilhar ranking — formata como texto pra colar em WhatsApp/redes
@@ -40459,22 +40621,29 @@ const SCHEDULE = {
 };
 
 // Templates pré-definidos (decisão de produto: Pré-edital + Reta final + Maratona)
+// V15.12: Templates revisados com:
+//  - desc: explicação de cada atividade (mostrada como tooltip / no card de
+//    atividade atual). Antes só "Rotina matinal" — agora explica o quê é.
+//  - pomo_focus_min / pomo_break_min: configuração de pomodoro embutida em
+//    blocos do tipo "study" (Jean tava preso a 60/10 hardcoded). Quando o
+//    usuário inicia o pomodoro a partir do cronograma, esses valores são
+//    aplicados automaticamente.
 const SCHEDULE_TEMPLATES = {
   pre_edital: {
     name: 'Pré-edital',
     desc: 'Estudo consistente sem prova marcada. Foco em manter constância.',
     icon: '📚',
     blocks: [
-      {day_pattern:'1-5', start_time:'07:00', end_time:'07:30', duration_min:30, activity:'Rotina matinal', type:'free'},
-      {day_pattern:'1-5', start_time:'07:30', end_time:'10:30', duration_min:180, activity:'Estudo (3 pomodoros 60min)', type:'study'},
-      {day_pattern:'1-5', start_time:'10:30', end_time:'12:00', duration_min:90, activity:'Tempo livre / pausa', type:'free'},
-      {day_pattern:'1-5', start_time:'12:00', end_time:'13:30', duration_min:90, activity:'Almoço + descanso', type:'meal'},
-      {day_pattern:'1-5', start_time:'13:30', end_time:'15:30', duration_min:120, activity:'Estudo (2 pomodoros)', type:'study'},
-      {day_pattern:'1-5', start_time:'15:30', end_time:'17:30', duration_min:120, activity:'Exercício físico', type:'exercise'},
-      {day_pattern:'1-5', start_time:'19:00', end_time:'21:00', duration_min:120, activity:'Revisão flashcards + erros', type:'study'},
-      {day_pattern:'1-5', start_time:'22:00', end_time:'07:00', duration_min:540, activity:'Sono regenerador', type:'sleep'},
-      {day_pattern:'6', start_time:'08:00', end_time:'12:00', duration_min:240, activity:'Estudo profundo (4h)', type:'study'},
-      {day_pattern:'0', start_time:'09:00', end_time:'11:00', duration_min:120, activity:'Revisão semanal', type:'study'}
+      {day_pattern:'1-5', start_time:'07:00', end_time:'07:30', duration_min:30,  activity:'Rotina matinal',                  type:'free',     desc:'Tempo após acordar pra tomar café da manhã, banho, e se preparar antes de começar os estudos.'},
+      {day_pattern:'1-5', start_time:'07:30', end_time:'10:30', duration_min:180, activity:'Estudo (3 pomos 60min)',          type:'study',    desc:'Bloco de estudo profundo: 3 ciclos de 60min de foco com 10min de pausa entre eles.', pomo_focus_min:60, pomo_break_min:10},
+      {day_pattern:'1-5', start_time:'10:30', end_time:'12:00', duration_min:90,  activity:'Tempo livre / pausa',             type:'free',     desc:'Pausa programada — caminhar, alongar, sair do material. Recarrega a atenção.'},
+      {day_pattern:'1-5', start_time:'12:00', end_time:'13:30', duration_min:90,  activity:'Almoço + descanso',               type:'meal',     desc:'Refeição principal e descanso. Evite estudar nesse horário — digestão pesa.'},
+      {day_pattern:'1-5', start_time:'13:30', end_time:'15:30', duration_min:120, activity:'Estudo (2 pomos 50min)',          type:'study',    desc:'Bloco da tarde: 2 ciclos de 50min com 10min de pausa. Ideal pra revisão / questões.', pomo_focus_min:50, pomo_break_min:10},
+      {day_pattern:'1-5', start_time:'15:30', end_time:'17:30', duration_min:120, activity:'Exercício físico',                type:'exercise', desc:'Caminhada, academia, esporte. Movimentação reduz cansaço mental e melhora o sono.'},
+      {day_pattern:'1-5', start_time:'19:00', end_time:'21:00', duration_min:120, activity:'Revisão flashcards + erros',     type:'study',    desc:'Bloco da noite: revisão espaçada (flashcards) e revisita aos erros recentes.', pomo_focus_min:25, pomo_break_min:5},
+      {day_pattern:'1-5', start_time:'22:00', end_time:'07:00', duration_min:540, activity:'Sono regenerador',                type:'sleep',    desc:'Mín. 8h de sono — consolidação da memória acontece aqui. Sem isso, estudar não cola.'},
+      {day_pattern:'6',   start_time:'08:00', end_time:'12:00', duration_min:240, activity:'Estudo profundo (4h)',           type:'study',    desc:'Sábado: 4h de estudo seguido com pausas curtas. Use pra matérias densas / leitura.', pomo_focus_min:50, pomo_break_min:10},
+      {day_pattern:'0',   start_time:'09:00', end_time:'11:00', duration_min:120, activity:'Revisão semanal',                type:'study',    desc:'Domingo de manhã: olhe o que foi estudado na semana e refaça questões erradas.', pomo_focus_min:50, pomo_break_min:10}
     ]
   },
   reta_final_30d: {
@@ -40482,14 +40651,14 @@ const SCHEDULE_TEMPLATES = {
     desc: 'Provas em até 30 dias. Foco intenso em revisão e simulados.',
     icon: '🎯',
     blocks: [
-      {day_pattern:'1-6', start_time:'07:00', end_time:'07:30', duration_min:30, activity:'Rotina matinal rápida', type:'free'},
-      {day_pattern:'1-6', start_time:'07:30', end_time:'11:30', duration_min:240, activity:'Estudo bloco 1 (4 pomodoros)', type:'study'},
-      {day_pattern:'1-6', start_time:'11:30', end_time:'13:00', duration_min:90, activity:'Almoço + breve pausa', type:'meal'},
-      {day_pattern:'1-6', start_time:'13:00', end_time:'17:00', duration_min:240, activity:'Simulado / Questões em massa', type:'study'},
-      {day_pattern:'1-6', start_time:'17:00', end_time:'18:00', duration_min:60, activity:'Exercício leve', type:'exercise'},
-      {day_pattern:'1-6', start_time:'19:00', end_time:'22:00', duration_min:180, activity:'Revisão de erros + flashcards', type:'study'},
-      {day_pattern:'1-6', start_time:'22:30', end_time:'07:00', duration_min:510, activity:'Sono', type:'sleep'},
-      {day_pattern:'0', start_time:'08:00', end_time:'12:00', duration_min:240, activity:'Simulado completo cronometrado', type:'study'}
+      {day_pattern:'1-6', start_time:'07:00', end_time:'07:30', duration_min:30,  activity:'Rotina matinal rápida',           type:'free',     desc:'Café da manhã rápido + banho. Reta final exige começar cedo.'},
+      {day_pattern:'1-6', start_time:'07:30', end_time:'11:30', duration_min:240, activity:'Estudo bloco 1 (4 pomos)',        type:'study',    desc:'Bloco da manhã: 4 ciclos de 50min — primário pra matérias prioritárias.', pomo_focus_min:50, pomo_break_min:10},
+      {day_pattern:'1-6', start_time:'11:30', end_time:'13:00', duration_min:90,  activity:'Almoço + breve pausa',            type:'meal',     desc:'Almoço leve. Reta final: nada que pese demais (digestão prejudica tarde).'},
+      {day_pattern:'1-6', start_time:'13:00', end_time:'17:00', duration_min:240, activity:'Simulado / Questões em massa',   type:'study',    desc:'Bloco principal de questões — simulados cronometrados ou volume alto de questões da banca.', pomo_focus_min:60, pomo_break_min:10},
+      {day_pattern:'1-6', start_time:'17:00', end_time:'18:00', duration_min:60,  activity:'Exercício leve',                  type:'exercise', desc:'Caminhada ou alongamento. Reta final = não exagerar e não machucar.'},
+      {day_pattern:'1-6', start_time:'19:00', end_time:'22:00', duration_min:180, activity:'Revisão de erros + flashcards',  type:'study',    desc:'Foco no que você ERROU. Reta final é hora de fechar buracos, não abrir novos.', pomo_focus_min:25, pomo_break_min:5},
+      {day_pattern:'1-6', start_time:'22:30', end_time:'07:00', duration_min:510, activity:'Sono',                            type:'sleep',    desc:'8h+ de sono. Reta final piora MUITO sem dormir bem.'},
+      {day_pattern:'0',   start_time:'08:00', end_time:'12:00', duration_min:240, activity:'Simulado completo cronometrado', type:'study',    desc:'Domingo de simulado: prova inteira no horário real. Treina cabeça, bexiga e ritmo.', pomo_focus_min:60, pomo_break_min:10}
     ]
   },
   maratona_90d: {
@@ -40497,24 +40666,24 @@ const SCHEDULE_TEMPLATES = {
     desc: 'Edital marcado pra 60-120 dias. Estudo equilibrado com cobertura completa.',
     icon: '🏃',
     blocks: [
-      {day_pattern:'1-3', start_time:'07:00', end_time:'07:50', duration_min:50, activity:'Rotina matinal', type:'free'},
-      {day_pattern:'1-3', start_time:'07:50', end_time:'11:20', duration_min:210, activity:'3 pomodoros (60min cada)', type:'study'},
-      {day_pattern:'1-3', start_time:'11:20', end_time:'11:45', duration_min:25, activity:'Tempo livre', type:'free'},
-      {day_pattern:'1-3', start_time:'11:45', end_time:'13:00', duration_min:75, activity:'Almoço + descanso', type:'meal'},
-      {day_pattern:'1-3', start_time:'13:00', end_time:'15:20', duration_min:140, activity:'2 pomodoros', type:'study'},
-      {day_pattern:'1-3', start_time:'15:20', end_time:'17:35', duration_min:135, activity:'Treino físico + banho', type:'exercise'},
-      {day_pattern:'1-3', start_time:'18:05', end_time:'19:15', duration_min:70, activity:'1 pomodoro', type:'study'},
-      {day_pattern:'1-3', start_time:'21:00', end_time:'22:00', duration_min:60, activity:'Leitura livro físico', type:'free'},
-      {day_pattern:'1-3', start_time:'22:00', end_time:'07:00', duration_min:540, activity:'Sono regenerador', type:'sleep'},
-      {day_pattern:'4-6', start_time:'07:00', end_time:'07:45', duration_min:45, activity:'Rotina matinal', type:'free'},
-      {day_pattern:'4-6', start_time:'07:45', end_time:'11:15', duration_min:210, activity:'3 pomodoros', type:'study'},
-      {day_pattern:'4-6', start_time:'11:40', end_time:'13:00', duration_min:80, activity:'Almoço + descanso', type:'meal'},
-      {day_pattern:'4-6', start_time:'13:00', end_time:'15:20', duration_min:140, activity:'2 pomodoros', type:'study'},
-      {day_pattern:'4-6', start_time:'15:20', end_time:'17:35', duration_min:135, activity:'Treino + banho', type:'exercise'},
-      {day_pattern:'4-6', start_time:'19:15', end_time:'20:00', duration_min:45, activity:'Última refeição', type:'meal'},
-      {day_pattern:'4-6', start_time:'22:00', end_time:'07:00', duration_min:540, activity:'Sono', type:'sleep'},
-      {day_pattern:'0', start_time:'07:00', end_time:'11:15', duration_min:255, activity:'3 pomodoros', type:'study'},
-      {day_pattern:'0', start_time:'13:00', end_time:'21:00', duration_min:480, activity:'Tempo livre (mantendo dieta)', type:'free'}
+      {day_pattern:'1-3', start_time:'07:00', end_time:'07:50', duration_min:50,  activity:'Rotina matinal',           type:'free',     desc:'Café da manhã + se arrumar. Mais espaço que na reta final.'},
+      {day_pattern:'1-3', start_time:'07:50', end_time:'11:20', duration_min:210, activity:'3 pomos (60min cada)',     type:'study',    desc:'Manhã pra matérias densas — direito, conhecimentos específicos.', pomo_focus_min:60, pomo_break_min:10},
+      {day_pattern:'1-3', start_time:'11:20', end_time:'11:45', duration_min:25,  activity:'Tempo livre',              type:'free',     desc:'Pausa curta antes do almoço — sair do material.'},
+      {day_pattern:'1-3', start_time:'11:45', end_time:'13:00', duration_min:75,  activity:'Almoço + descanso',        type:'meal',     desc:'Refeição completa + 20-30min de descanso real.'},
+      {day_pattern:'1-3', start_time:'13:00', end_time:'15:20', duration_min:140, activity:'2 pomos',                  type:'study',    desc:'Tarde: revisão de manhã + questões.', pomo_focus_min:60, pomo_break_min:10},
+      {day_pattern:'1-3', start_time:'15:20', end_time:'17:35', duration_min:135, activity:'Treino físico + banho',    type:'exercise', desc:'Bloco de movimento. Maratona = priorizar saúde física pra aguentar 90 dias.'},
+      {day_pattern:'1-3', start_time:'18:05', end_time:'19:15', duration_min:70,  activity:'1 pomo',                   type:'study',    desc:'Bloco rápido — flashcards ou questões soltas.', pomo_focus_min:50, pomo_break_min:10},
+      {day_pattern:'1-3', start_time:'21:00', end_time:'22:00', duration_min:60,  activity:'Leitura livro físico',     type:'free',     desc:'Leitura não-relacionada à prova. Preserva sanidade e ajuda dormir.'},
+      {day_pattern:'1-3', start_time:'22:00', end_time:'07:00', duration_min:540, activity:'Sono regenerador',         type:'sleep',    desc:'Maratona: 9h é melhor que 8 (recuperação a longo prazo).'},
+      {day_pattern:'4-6', start_time:'07:00', end_time:'07:45', duration_min:45,  activity:'Rotina matinal',           type:'free',     desc:'Manhã quinta/sexta/sábado.'},
+      {day_pattern:'4-6', start_time:'07:45', end_time:'11:15', duration_min:210, activity:'3 pomos',                  type:'study',    desc:'Manhã forte de estudo.', pomo_focus_min:60, pomo_break_min:10},
+      {day_pattern:'4-6', start_time:'11:40', end_time:'13:00', duration_min:80,  activity:'Almoço + descanso',        type:'meal',     desc:'Refeição + descanso.'},
+      {day_pattern:'4-6', start_time:'13:00', end_time:'15:20', duration_min:140, activity:'2 pomos',                  type:'study',    desc:'Tarde de estudo.', pomo_focus_min:60, pomo_break_min:10},
+      {day_pattern:'4-6', start_time:'15:20', end_time:'17:35', duration_min:135, activity:'Treino + banho',           type:'exercise', desc:'Movimento físico.'},
+      {day_pattern:'4-6', start_time:'19:15', end_time:'20:00', duration_min:45,  activity:'Última refeição',          type:'meal',     desc:'Janta leve.'},
+      {day_pattern:'4-6', start_time:'22:00', end_time:'07:00', duration_min:540, activity:'Sono',                     type:'sleep',    desc:'Sono de 9h.'},
+      {day_pattern:'0',   start_time:'07:00', end_time:'11:15', duration_min:255, activity:'3 pomos',                  type:'study',    desc:'Domingo de manhã: revisão semanal e simulado.', pomo_focus_min:60, pomo_break_min:10},
+      {day_pattern:'0',   start_time:'13:00', end_time:'21:00', duration_min:480, activity:'Tempo livre (mantendo dieta)', type:'free', desc:'Domingo à tarde: descanso real. Mantém disciplina pra 90 dias inteiros.'}
     ]
   }
 };
@@ -40636,6 +40805,42 @@ function renderScheduleSetup(parent){
     card.addEventListener('click', ()=>applyScheduleTemplate(key));
     tplGrid.appendChild(card);
   });
+
+  // V15.12: Card "Começar do zero" — Jean apontou que 3 templates não cobrem
+  // todas as rotinas. Cria um cronograma vazio e abre o editor pra customizar
+  // do zero com mais flexibilidade.
+  const blankCard = mk('button');
+  blankCard.type = 'button';
+  blankCard.style.cssText = 'text-align:left;background:var(--surface);border:1px dashed var(--border);border-radius:12px;padding:1rem 1.25rem;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;flex-direction:column;gap:6px';
+  blankCard.innerHTML = `
+    <div style="font-size:28px;line-height:1">✏️</div>
+    <h4 style="margin:.25rem 0 4px;font-size:14px;font-weight:700;color:var(--text)">Começar do zero</h4>
+    <p class="txt2" style="margin:0 0 .5rem;font-size:12px;line-height:1.5;flex:1">Cronograma vazio com 1 bloco inicial — você adiciona, edita e remove tudo manualmente. Use quando os templates não baterem com sua rotina.</p>
+    <span style="font-size:11px;color:var(--gralia-purple);font-weight:600">Criar e editar →</span>
+  `;
+  blankCard.addEventListener('mouseenter', ()=>{blankCard.style.borderColor='var(--gralia-purple)';blankCard.style.boxShadow='0 4px 12px rgba(128,66,250,.10)';});
+  blankCard.addEventListener('mouseleave', ()=>{blankCard.style.borderColor='var(--border)';blankCard.style.boxShadow='none';});
+  blankCard.addEventListener('click', async ()=>{
+    if(!confirm('Criar um cronograma vazio? Você poderá adicionar e configurar todos os blocos manualmente.')) return;
+    try{
+      const {data, error} = await supa.from('study_schedules').insert({
+        user_id: AUTH.user.id,
+        name: 'Meu cronograma',
+        template_used: null,
+        blocks: [
+          {day_pattern:'1-5', start_time:'08:00', end_time:'10:00', duration_min:120, activity:'Estudo', type:'study', desc:'Bloco inicial — edite ou adicione mais.', pomo_focus_min:50, pomo_break_min:10}
+        ],
+        is_active: true
+      }).select().single();
+      if(error) throw error;
+      SCHEDULE.data = data;
+      showToast('✓ Cronograma criado — agora customize seus blocos');
+      render();
+      // Abre editor automaticamente após pequeno delay pra render concluir
+      setTimeout(()=>{ if(SCHEDULE.data) showEditScheduleModal(SCHEDULE.data); }, 200);
+    }catch(e){alert('Erro: ' + (e.message||e));}
+  });
+  tplGrid.appendChild(blankCard);
   parent.appendChild(tplGrid);
 
   // IA
@@ -40817,14 +41022,10 @@ function renderActiveSchedule(parent, schedule){
     return;
   }
 
-  // V14: Card "Agora" — bloco atual + próximo (integração com Pomodoro)
+  // V15.12: Card "Agora" REPOSICIONADO — Jean pediu pra ficar acima da
+  // dica do dia e abaixo dos 4 cards de stats. Antes ficava no topo.
+  // Movido pra DEPOIS do statsCard mais abaixo.
   const ctx = getCurrentScheduleContext(blocks);
-  if(ctx.current || ctx.next){
-    const nowCard = renderCurrentBlockCard(ctx);
-    parent.appendChild(nowCard);
-    // Auto-refresh do card a cada 60s pra atualizar barra de progresso e transição entre blocos
-    setupScheduleAutoRefresh();
-  }
 
   // V14: Stats card — calcula totais por tipo
   const stats = computeScheduleStats(blocks);
@@ -40854,6 +41055,14 @@ function renderActiveSchedule(parent, schedule){
     ${stats.sleepHours < 35 ? '<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(232,76,76,.08);border-left:2px solid #ef4444;border-radius:0 6px 6px 0;font-size:11.5px;color:var(--text2)"><b style="color:#ef4444">⚠ Sono insuficiente</b> — menos de 5h/noite afeta consolidação de memória.</div>' : ''}
   `;
   parent.appendChild(statsCard);
+
+  // V15.12: Card "Agora" — bloco atual + próximo (depois do stats, antes da aderência)
+  if(ctx.current || ctx.next){
+    const nowCard = renderCurrentBlockCard(ctx);
+    parent.appendChild(nowCard);
+    // Auto-refresh do card a cada 60s pra atualizar barra de progresso e transição entre blocos
+    setupScheduleAutoRefresh();
+  }
 
   // V14: Card de Aderência — quanto do plano foi cumprido essa semana?
   const adherence = computeScheduleAdherence(blocks);
@@ -41063,6 +41272,15 @@ function renderCurrentBlockCard(ctx){
     head.appendChild(txt);
     card.appendChild(head);
 
+    // V15.12: Descrição da atividade (Jean pediu pra ficar claro o que é cada
+    // bloco — "Rotina matinal" não dizia muito sozinho).
+    if(current.desc){
+      const descP = mk('p');
+      descP.style.cssText = 'margin:.25rem 0 .25rem;font-size:12.5px;line-height:1.5;color:var(--text2);font-style:italic';
+      descP.textContent = current.desc;
+      card.appendChild(descP);
+    }
+
     // Progresso do bloco atual (em %)
     const now = new Date();
     const nowMin = now.getHours() * 60 + now.getMinutes();
@@ -41088,7 +41306,11 @@ function renderCurrentBlockCard(ctx){
     actsRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:.625rem';
 
     if(current.type === 'study'){
-      const pomBtn = mkBtn('▶ Iniciar Pomodoro deste bloco','btn btn-p btn-sm');
+      // V15.12: Mostra explicitamente a config de pomodoro do bloco
+      const pomFocus = current.pomo_focus_min || 50;
+      const pomBreak = current.pomo_break_min || 10;
+      const pomBtn = mkBtn(`▶ Iniciar Pomodoro · ${pomFocus}/${pomBreak}min`,'btn btn-p btn-sm');
+      pomBtn.title = `Foco ${pomFocus}min · pausa ${pomBreak}min — config personalizada deste bloco`;
       pomBtn.addEventListener('click',()=>startPomodoroFromBlock(current));
       actsRow.appendChild(pomBtn);
     } else if(current.type === 'exercise'){
@@ -41293,21 +41515,27 @@ function startPomodoroFromBlock(block){
     showToast('Apenas blocos de estudo podem iniciar pomodoro', 4500);
     return;
   }
-  // Define nome da sessão pomodoro
+  // V15.12: Aplica config de pomodoro DO BLOCO (pomo_focus_min, pomo_break_min)
+  // se definida — antes ignorava as customizações do cronograma e usava o
+  // global de DATA.pomo.focusMin pra TODOS os blocos. Agora cada bloco study
+  // pode ter seu próprio ritmo (60/10, 50/10, 25/5 ...).
   if(!DATA.pomo) DATA.pomo = {};
   DATA.pomo.currentName = block.activity || 'Estudo';
-
-  // Garante que ST.pomoRun existe
-  if(!ST.pomoRun){
-    // V15.10: Lê de DATA.pomo.focusMin (chave correta), não de DATA.config.pomoFocus.
-    // Antes ignorava configuração do usuário e travava em 25min.
-    ST.pomoRun = {
-      phase: 'focus',
-      secLeft: ((DATA.pomo && DATA.pomo.focusMin) || 25) * 60,
-      running: false,
-      cycle: 0
-    };
+  if(typeof block.pomo_focus_min === 'number' && block.pomo_focus_min > 0){
+    DATA.pomo.focusMin = block.pomo_focus_min;
   }
+  if(typeof block.pomo_break_min === 'number' && block.pomo_break_min > 0){
+    DATA.pomo.shortBreakMin = block.pomo_break_min;
+  }
+
+  // Reseta ST.pomoRun pra usar a nova config (não reaproveita timer parcial
+  // de outra config). Evita o usuário trocar de bloco e ficar com tempo errado.
+  ST.pomoRun = {
+    phase: 'focus',
+    secLeft: ((DATA.pomo && DATA.pomo.focusMin) || 25) * 60,
+    running: false,
+    cycle: 0
+  };
 
   // Vai pra página de pomodoro
   ST.view = 'pomodoro';
@@ -41317,7 +41545,9 @@ function startPomodoroFromBlock(block){
   setTimeout(()=>{
     if(typeof pomoStart === 'function' && ST.pomoRun && !ST.pomoRun.running){
       pomoStart();
-      showToast(`▶ Pomodoro iniciado: ${block.activity || 'Estudo'}`, 4000);
+      const focusMin = (DATA.pomo && DATA.pomo.focusMin) || 25;
+      const breakMin = (DATA.pomo && DATA.pomo.shortBreakMin) || 5;
+      showToast(`▶ ${block.activity || 'Estudo'} · ${focusMin}/${breakMin}min`, 4000);
     }
   }, 300);
 }
@@ -41337,6 +41567,7 @@ function renderScheduleTable(blocks){
       <th style="text-align:left;padding:.625rem .875rem;font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">Fim</th>
       <th style="text-align:left;padding:.625rem .875rem;font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">Duração</th>
       <th style="text-align:left;padding:.625rem .875rem;font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">Atividade</th>
+      <th style="text-align:left;padding:.625rem .875rem;font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px">Descrição</th>
     </tr>
   `;
   tableContent.appendChild(thead);
@@ -41347,21 +41578,29 @@ function renderScheduleTable(blocks){
     const icon = SCHEDULE_TYPE_ICONS[b.type] || '•';
     const tr = mk('tr');
     tr.style.cssText = 'border-bottom:1px solid var(--border)';
+    // V15.12: tooltip mostra a descrição completa quando hover
+    if(b.desc) tr.title = b.desc;
     const durStr = (b.duration_min >= 60)
       ? `${Math.floor(b.duration_min/60)}h${b.duration_min%60>0?' '+(b.duration_min%60)+'m':''}`
       : `${b.duration_min}m`;
+    // V15.12: pomos badge se for bloco de estudo com config customizada
+    const pomoBadge = (b.type === 'study' && b.pomo_focus_min)
+      ? `<span style="margin-left:6px;font-size:10.5px;color:var(--text3);font-family:ui-monospace,monospace">[${b.pomo_focus_min}/${b.pomo_break_min||10}min]</span>`
+      : '';
     tr.innerHTML = `
       <td style="padding:.625rem .875rem;color:var(--text2)">${formatDayPattern(b.day_pattern)}</td>
       <td style="padding:.625rem .875rem;font-family:ui-monospace,monospace;color:var(--text)">${b.start_time||'—'}</td>
       <td style="padding:.625rem .875rem;font-family:ui-monospace,monospace;color:var(--text)">${b.end_time||'—'}</td>
       <td style="padding:.625rem .875rem;color:var(--text3);font-weight:600">${durStr}</td>
       <td style="padding:.625rem .875rem;color:var(--text)">
-        <span style="display:inline-flex;align-items:center;gap:6px">
+        <span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0"></span>
           <span>${icon}</span>
           <span>${escapeHTML(b.activity||'')}</span>
+          ${pomoBadge}
         </span>
       </td>
+      <td style="padding:.625rem .875rem;color:var(--text3);font-size:11.5px;line-height:1.45;max-width:280px">${b.desc ? escapeHTML(b.desc) : '<span style="opacity:.4">—</span>'}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -41409,7 +41648,10 @@ function renderScheduleWeekGrid(blocks){
         const color = SCHEDULE_TYPE_COLORS[b.type] || '#94a3b8';
         const icon = SCHEDULE_TYPE_ICONS[b.type] || '•';
         const item = mk('div');
-        item.style.cssText = `background:var(--surface);border-left:3px solid ${color};border-radius:5px;padding:.375rem .5rem;font-size:10.5px;line-height:1.4`;
+        item.style.cssText = `background:var(--surface);border-left:3px solid ${color};border-radius:5px;padding:.375rem .5rem;font-size:10.5px;line-height:1.4;cursor:help`;
+        // V15.12: tooltip com a descrição da atividade
+        if(b.desc) item.title = `${b.activity}\n\n${b.desc}`;
+        else item.title = b.activity || '';
         const durStr = (b.duration_min >= 60)
           ? `${Math.floor(b.duration_min/60)}h${b.duration_min%60>0?(b.duration_min%60)+'m':''}`
           : `${b.duration_min}m`;
@@ -41512,10 +41754,15 @@ function showEditScheduleModal(schedule){
     }
 
     editBlocks.forEach((b, idx)=>{
+      // V15.12: bloco agora é um wrapper que contém 2 linhas:
+      //  - linha principal (dia, horário, atividade, tipo, ações)
+      //  - linha secundária (descrição + config pomo se study)
+      const wrapper = mk('div');
+      wrapper.style.cssText = 'border:1px solid var(--border);background:var(--surface);border-radius:7px;margin-bottom:6px;padding:.5rem';
       const row = mk('div');
       row.draggable = true;
       row.dataset.idx = idx;
-      row.style.cssText = 'display:grid;grid-template-columns:24px 80px 80px 80px 1fr 70px auto auto auto auto;gap:6px;align-items:center;padding:.5rem;border:1px solid var(--border);background:var(--surface);border-radius:7px;margin-bottom:4px;font-size:12px;transition:all .15s';
+      row.style.cssText = 'display:grid;grid-template-columns:24px 80px 80px 80px 1fr 70px auto auto auto auto;gap:6px;align-items:center;font-size:12px;transition:all .15s';
       row.innerHTML = `
         <span class="sched-drag-handle" style="cursor:grab;color:var(--text3);text-align:center;font-size:14px;line-height:1;user-select:none;font-weight:700" title="Arraste para reordenar">⋮⋮</span>
         <input type="text" placeholder="1-5" value="${escapeHTML(b.day_pattern||'')}" style="padding:5px;font-size:11.5px;font-family:ui-monospace,monospace" data-field="day_pattern">
@@ -41535,6 +41782,61 @@ function showEditScheduleModal(schedule){
         <button type="button" data-action="duplicate" style="background:transparent;border:1px solid var(--border);color:var(--text2);padding:5px 7px;border-radius:5px;cursor:pointer;font-size:11px;font-family:inherit" title="Duplicar bloco">⎘</button>
         <button type="button" data-action="delete" style="background:transparent;border:1px solid var(--border);color:var(--red-text);padding:5px 8px;border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit" title="Remover">×</button>
       `;
+      wrapper.appendChild(row);
+
+      // V15.12: linha secundária — descrição + config pomodoro (se study)
+      const detailRow = mk('div');
+      const isStudy = b.type === 'study';
+      detailRow.style.cssText = `display:grid;grid-template-columns:${isStudy ? '1fr 90px 90px' : '1fr'};gap:6px;align-items:center;margin-top:6px;padding-left:24px`;
+      const descInput = mk('input');
+      descInput.type = 'text';
+      descInput.placeholder = 'Descrição (ex: tempo após acordar pra café e arrumar antes do estudo)';
+      descInput.value = b.desc || '';
+      descInput.maxLength = 180;
+      descInput.style.cssText = 'padding:5px 8px;font-size:11px;color:var(--text2)';
+      descInput.dataset.field = 'desc';
+      detailRow.appendChild(descInput);
+      let focusInput, breakInput;
+      if(isStudy){
+        focusInput = mk('input');
+        focusInput.type = 'number';
+        focusInput.min = 5; focusInput.max = 120;
+        focusInput.value = b.pomo_focus_min || 50;
+        focusInput.title = 'Pomodoro: minutos de FOCO';
+        focusInput.style.cssText = 'padding:5px;font-size:11px;text-align:center';
+        focusInput.dataset.field = 'pomo_focus_min';
+        const focusWrap = mk('div');
+        focusWrap.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3)';
+        focusWrap.innerHTML = '<span>foco</span>';
+        focusWrap.appendChild(focusInput);
+        detailRow.appendChild(focusWrap);
+
+        breakInput = mk('input');
+        breakInput.type = 'number';
+        breakInput.min = 1; breakInput.max = 30;
+        breakInput.value = b.pomo_break_min || 10;
+        breakInput.title = 'Pomodoro: minutos de PAUSA';
+        breakInput.style.cssText = 'padding:5px;font-size:11px;text-align:center';
+        breakInput.dataset.field = 'pomo_break_min';
+        const breakWrap = mk('div');
+        breakWrap.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3)';
+        breakWrap.innerHTML = '<span>pausa</span>';
+        breakWrap.appendChild(breakInput);
+        detailRow.appendChild(breakWrap);
+      }
+      wrapper.appendChild(detailRow);
+
+      // Listener pra desc / pomo
+      [descInput, focusInput, breakInput].forEach(inp=>{
+        if(!inp) return;
+        inp.addEventListener('change', e=>{
+          const field = e.target.getAttribute('data-field');
+          if(field === 'desc') editBlocks[idx].desc = e.target.value;
+          else if(field === 'pomo_focus_min') editBlocks[idx].pomo_focus_min = parseInt(e.target.value,10) || 50;
+          else if(field === 'pomo_break_min') editBlocks[idx].pomo_break_min = parseInt(e.target.value,10) || 10;
+        });
+        inp.addEventListener('mousedown', e=>e.stopPropagation());
+      });
 
       // Drag events
       row.addEventListener('dragstart', e=>{
@@ -41634,12 +41936,12 @@ function showEditScheduleModal(schedule){
           renderBlocks();
         });
       });
-      blocksWrap.appendChild(row);
+      blocksWrap.appendChild(wrapper);
     });
   }
 
   addBtn.addEventListener('click', ()=>{
-    editBlocks.push({day_pattern:'1-5', start_time:'08:00', end_time:'09:00', duration_min:60, activity:'', type:'study'});
+    editBlocks.push({day_pattern:'1-5', start_time:'08:00', end_time:'09:00', duration_min:60, activity:'', type:'study', desc:'', pomo_focus_min:50, pomo_break_min:10});
     renderBlocks();
   });
 
