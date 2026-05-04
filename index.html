@@ -19137,6 +19137,78 @@ function errStatus(err){
 // Highlight keyword in question text (safe HTML escape)
 function escapeHTML(s){return (s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
+// V15.8: Notion ao copiar conteúdo de toggle blocks gera markdown com indentação
+// inconsistente — ex: "- Bloco 1: Conceitos" no nível raiz, e dentro dele
+// "    ### Vogal e Semivogal" com 4 espaços de indent. Headers indentados não
+// batem com regex /^#/ tradicional. Esta função normaliza:
+// 1. Detecta wrappers de toggle (linha começa com "- Bloco N:") e remove eles
+// 2. Faz dedent: remove indent comum a todas linhas não-vazias
+// 3. Remove indent de linhas individuais que claramente são headers/listas
+//    indentadas (4+ espaços antes de #, -, *, **)
+function normalizeNotionMarkdown(text){
+  if(!text) return text;
+  let s = String(text);
+
+  // Remove wrappers de toggle do Notion: "- Bloco N: Título" seguido de bloco indentado
+  // O wrapper vira um header H2 e o conteúdo é desindentado.
+  // Padrão: linha começa com "- " e a próxima não-vazia tem indent maior.
+  s = s.replace(/^[-*]\s+(Bloco\s+\d+:\s+.+|.+:)\s*\n((?:[ \t]+.*\n?)+)/gim, (match, title, body) => {
+    // Calcula indent mínimo das linhas não-vazias do body
+    const lines = body.split('\n');
+    let minIndent = Infinity;
+    lines.forEach(l => {
+      if(!l.trim()) return;
+      const m = l.match(/^([ \t]+)/);
+      if(m){
+        const ind = m[1].replace(/\t/g, '    ').length;
+        if(ind < minIndent) minIndent = ind;
+      } else {
+        minIndent = 0;
+      }
+    });
+    if(minIndent === Infinity) minIndent = 0;
+    // Remove esse indent de cada linha
+    const dedented = lines.map(l => {
+      if(!l.trim()) return l;
+      // Substitui tabs por 4 espaços antes de cortar
+      const expanded = l.replace(/^\t+/, t => '    '.repeat(t.length));
+      return expanded.slice(minIndent);
+    }).join('\n');
+    // Promove o título a H2
+    return `## ${title.replace(/:$/, '')}\n${dedented}`;
+  });
+
+  // Caso geral: dedent global. Se TODAS as linhas não-vazias começam com 2+ espaços,
+  // remove esse indent comum.
+  const allLines = s.split('\n');
+  const nonEmpty = allLines.filter(l => l.trim());
+  if(nonEmpty.length > 0){
+    let globalMin = Infinity;
+    nonEmpty.forEach(l => {
+      const m = l.match(/^([ \t]+)/);
+      if(m){
+        const ind = m[1].replace(/\t/g, '    ').length;
+        if(ind < globalMin) globalMin = ind;
+      } else {
+        globalMin = 0;
+      }
+    });
+    if(globalMin > 0 && globalMin !== Infinity){
+      s = allLines.map(l => {
+        if(!l.trim()) return l;
+        const expanded = l.replace(/^\t+/, t => '    '.repeat(t.length));
+        return expanded.slice(globalMin);
+      }).join('\n');
+    }
+  }
+
+  // Linhas individuais com indent excessivo antes de header markdown — desindenta.
+  // Ex: "    ### Vogal" → "### Vogal"
+  s = s.replace(/^[ \t]{2,}(#{1,6}\s+)/gm, '$1');
+
+  return s;
+}
+
 // V15.7: Renderizador de markdown leve. Não usa lib externa pra manter o single-file.
 // Suporta: # ## ### #### headers, **negrito**, *itálico*, ~~tachado~~, `code`,
 // > callouts, listas (- ou *) numeradas (1.), separadores (---), checkboxes,
@@ -19145,8 +19217,8 @@ function escapeHTML(s){return (s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&
 function renderMarkdown(text){
   if(!text) return '';
 
-  // Helper: escape HTML mas preservar marcadores depois
-  let s = String(text);
+  // V15.8: Pré-processa pra normalizar export do Notion (toggles indentados)
+  let s = normalizeNotionMarkdown(text);
 
   // Code blocks ``` (preservar antes de tudo)
   const codeBlocks = [];
@@ -19268,19 +19340,17 @@ function renderMarkdown(text){
 // Detecta se um texto é predominantemente markdown.
 // Critério: tem pelo menos 1 header (#) OU 3+ marcações (negrito, listas, callouts).
 function looksLikeMarkdown(text){
-  // V15.7+: detecção mais permissiva. Antes exigia 3+ sinais de marcação.
-  // Agora qualquer sinal claro (header markdown, negrito, lista) já é suficiente
-  // pra renderizar com markdown — Notion exports tem header garantidos.
+  // V15.8: detecção tolerante a indentação (Notion exporta toggles indentados).
   if(!text || text.length < 30) return false;
   const sample = text.slice(0, 5000);
-  // Header markdown é sinal definitivo
-  if(/^#{1,6}\s+\S/m.test(sample)) return true;
-  // Tem pelo menos 2 negritos OU 2 listas OU callouts? renderiza
+  // Header markdown é sinal definitivo (com ou sem indent inicial)
+  if(/^[ \t]*#{1,6}\s+\S/m.test(sample)) return true;
+  // Conta sinais
   let signals = 0;
   if((sample.match(/\*\*[^*\n]{2,}\*\*/g) || []).length >= 2) signals += 2;
-  if((sample.match(/^[\s]*[-*]\s+\S/gm) || []).length >= 2) signals += 2;
-  if((sample.match(/^[\s]*\d+\.\s+\S/gm) || []).length >= 2) signals++;
-  if((sample.match(/^>\s+\S/gm) || []).length >= 1) signals++;
+  if((sample.match(/^[ \t]*[-*]\s+\S/gm) || []).length >= 2) signals += 2;
+  if((sample.match(/^[ \t]*\d+\.\s+\S/gm) || []).length >= 2) signals++;
+  if((sample.match(/^[ \t]*>\s+\S/gm) || []).length >= 1) signals++;
   if(/`[^`\n]+`/.test(sample)) signals++;
   return signals >= 2;
 }
@@ -19294,12 +19364,12 @@ function showSourceReaderModal(src){
   m.style.cssText = 'max-width:960px;width:100%;max-height:90vh;display:flex;flex-direction:column;background:var(--surface);border-radius:14px;overflow:hidden';
 
   // V15.8: Sempre tenta renderizar como markdown se houver QUALQUER marcação.
-  // Se a detecção falhar mas o texto tiver headers/listas/negrito, ainda renderiza.
+  // Tolerante a indentação (Notion exporta com indent).
   const srcText = src.content || '';
-  const hasAnyMarkdown = /^#{1,6}\s+\S/m.test(srcText) ||
+  const hasAnyMarkdown = /^[ \t]*#{1,6}\s+\S/m.test(srcText) ||
                          /\*\*[^*\n]+\*\*/.test(srcText) ||
-                         /^[\s]*[-*]\s+\S/m.test(srcText) ||
-                         /^>\s+\S/m.test(srcText);
+                         /^[ \t]*[-*]\s+\S/m.test(srcText) ||
+                         /^[ \t]*>\s+\S/m.test(srcText);
   const isMarkdown = hasAnyMarkdown || looksLikeMarkdown(srcText);
   const disc = getDiscipline(src.disciplineId);
   const cleanedToc = (function(){
@@ -31999,8 +32069,12 @@ async function showResourcePreviewModal(item){
       }
     } else if(item.resource_type === 'fonte' && r.payload.content){
       const text = String(r.payload.content).slice(0, 1500);
-      // V15.7+: Renderiza markdown se aplicável
-      if(typeof looksLikeMarkdown === 'function' && looksLikeMarkdown(text)){
+      // V15.8: Renderiza markdown sempre que há QUALQUER marcação (incluindo
+      // indentada — Notion exporta com toggles indentados).
+      const hasMd = /^[ \t]*#{1,6}\s+\S/m.test(text) ||
+                    /\*\*[^*\n]+\*\*/.test(text) ||
+                    (/^[ \t]*[-*]\s+\S/m.test(text) && (looksLikeMarkdown && looksLikeMarkdown(text)));
+      if(hasMd){
         const renderEl = mk('div', 'md-render');
         renderEl.style.fontSize = '12.5px';
         renderEl.innerHTML = renderMarkdown(text + (r.payload.content.length > 1500 ? '\n\n*...continua...*' : ''));
