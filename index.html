@@ -737,11 +737,34 @@ html.dark .countdown-pill.countdown-near{color:#e8c068}
 @media(min-width:1500px){
   .page{max-width:920px}
 }
+/* V15.12.4: quando sidebar tá aberta, o padding-left:264px da .page
+   COMERIA o conteúdo útil (740px - 264px = 476px → muito apertado).
+   Aumenta max-width na mesma proporção pra manter a leitura confortável.
+   Jean reportou que o conteúdo ficava encolhendo conforme a sidebar
+   abria/fechava. Agora a parte útil (depois do padding) fica sempre
+   com a largura total da leitura. */
+@media(min-width:1100px){
+  body.has-sidebar:not(.sidebar-collapsed) .page{max-width:calc(740px + 264px)}
+  body.has-sidebar.sidebar-collapsed .page{max-width:calc(740px + 64px)}
+}
+@media(min-width:1280px){
+  body.has-sidebar:not(.sidebar-collapsed) .page{max-width:calc(880px + 264px)}
+  body.has-sidebar.sidebar-collapsed .page{max-width:calc(880px + 64px)}
+}
+@media(min-width:1500px){
+  body.has-sidebar:not(.sidebar-collapsed) .page{max-width:calc(920px + 264px)}
+  body.has-sidebar.sidebar-collapsed .page{max-width:calc(920px + 64px)}
+}
 /* V15.12: Cronograma usa largura MAIOR — Jean apontou que a tabela
    semanal (7 colunas) ficava apertada com a largura padrão da .page. */
 body[data-view="schedule"] .page{max-width:1180px}
 @media(min-width:1280px){body[data-view="schedule"] .page{max-width:1240px}}
 @media(min-width:1500px){body[data-view="schedule"] .page{max-width:1320px}}
+/* V15.12.4: schedule também tem max-width aumentado quando sidebar aberta */
+@media(min-width:1100px){
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="schedule"] .page{max-width:calc(1180px + 264px)}
+  body.has-sidebar.sidebar-collapsed[data-view="schedule"] .page{max-width:calc(1180px + 64px)}
+}
 
 /* V14: Quick sidebar — barra lateral fixa no canto direito em desktop XL.
    Aparece apenas em ≥1400px com atalhos rápidos pros métodos mais usados.
@@ -3371,12 +3394,16 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 
 /* ====== PAINEL refinado (novo) ====== */
 /* Hero — countdown + today stats */
+/* V15.12.4: balanceia largura entre left (dias até prova) e right (meta + foco).
+   Antes: left tinha flex:1 e right não, então left ocupava 80%+ da largura
+   ficando "muito extenso" (Jean reportou). Agora ambos são flex:1 e dividem
+   o espaço meio a meio. */
 .dash-hero{display:flex;gap:12px;margin-bottom:1rem;align-items:stretch;flex-wrap:wrap}
-.dash-hero-left{flex:1;min-width:200px;background:var(--gralia-gradient);color:#fff;border-radius:var(--r);padding:1.125rem 1.25rem;display:flex;align-items:center;gap:14px;box-shadow:0 4px 16px rgba(124,92,255,.18)}
+.dash-hero-left{flex:1 1 280px;max-width:480px;min-width:240px;background:var(--gralia-gradient);color:#fff;border-radius:var(--r);padding:1.125rem 1.25rem;display:flex;align-items:center;gap:14px;box-shadow:0 4px 16px rgba(124,92,255,.18)}
 .dash-hero-big{font-size:44px;font-weight:800;line-height:1;letter-spacing:-2px}
 .dhl-main{font-size:11px;font-weight:700;letter-spacing:1px;opacity:.92}
 .dhl-sub{font-size:12.5px;opacity:.85;margin-top:3px}
-.dash-hero-right{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+.dash-hero-right{flex:1 1 280px;display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
 .dash-hero-stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:.625rem .875rem;min-width:95px;display:flex;flex-direction:column;justify-content:center}
 .dhs-val{font-size:16px;font-weight:700;color:var(--text);line-height:1}
 .dhs-lbl{font-size:10.5px;color:var(--text3);margin-top:3px}
@@ -15373,21 +15400,48 @@ function renderDashboard(){
     cell.innerHTML = `<div class="dhs-val">${val}</div><div class="dhs-lbl">⏱ hoje focado</div>`;
     heroRight.appendChild(cell);
   }
-  // Mini-card de Meta — substitui "questões hoje" e "cards pendentes"
+  // V15.12.4: Mini-card de Meta agora MAIS RICO em info — Jean pediu pra
+  // que esse card tenha mais informações (antes mostrava só "% meta semanal").
+  // Agora mostra: ícone+%, dias restantes do período, divisão por questões e
+  // pomodoros, status (no ritmo/adiantado/atrasado). E é mais largo pra
+  // balancear com o card "dias até prova" (que estava muito extenso).
   if(DATA.goals){
     const g = DATA.goals;
     if(maybeRenewGoalPeriod(g))save();
     const view = goalDailyView(g);
-    const periodLbl = g.period === 'weekly' ? 'meta semanal' : 'meta mensal';
+    const periodLbl = g.period === 'weekly' ? 'Meta semanal' : 'Meta mensal';
     let goalEmoji = '⚖️';
-    if(view.status === 'ahead') goalEmoji = '🚀';
-    else if(view.status === 'behind') goalEmoji = '⏳';
-    const cell = mk('button','dash-hero-stat');
-    cell.type = 'button';
-    cell.style.cssText = 'cursor:pointer;border-color:rgba(128,66,250,.30);background:linear-gradient(135deg,rgba(128,66,250,.06),var(--surface));font-family:inherit;text-align:left';
+    let statusTxt = 'No ritmo';
+    let statusColor = 'var(--text2)';
+    if(view.status === 'ahead'){ goalEmoji = '🚀'; statusTxt = 'Adiantado'; statusColor = 'var(--accent-text)'; }
+    else if(view.status === 'behind'){ goalEmoji = '⏳'; statusTxt = 'Atrasado'; statusColor = 'var(--amber-text)'; }
     const totalPct = Math.round(((view.pctQ||0) + (view.pctP||0))/2);
-    cell.innerHTML = `<div class="dhs-val">${goalEmoji} ${totalPct}%</div><div class="dhs-lbl">${periodLbl}</div>`;
-    cell.title = `Meta: ${view.doneQ}/${g.questionsTarget} questões · ${view.donePomos}/${g.pomosTarget} pomos`;
+
+    // Calcula dias restantes do período
+    let daysLeft = null;
+    if(g.periodEnd){
+      const ms = new Date(g.periodEnd).getTime() - Date.now();
+      daysLeft = Math.max(0, Math.ceil(ms / (24*3600*1000)));
+    }
+
+    const cell = mk('button','dash-hero-goal-card');
+    cell.type = 'button';
+    cell.style.cssText = 'cursor:pointer;border:1px solid rgba(128,66,250,.30);background:linear-gradient(135deg,rgba(128,66,250,.06),var(--surface));font-family:inherit;text-align:left;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:240px;flex:1';
+    cell.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">${periodLbl}</span>
+        <span style="font-size:11px;font-weight:700;color:${statusColor}">${goalEmoji} ${statusTxt}</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span style="font-size:26px;font-weight:800;color:var(--gralia-purple);line-height:1">${totalPct}%</span>
+        <span style="font-size:11.5px;color:var(--text3)">progresso geral</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text2)">
+        <div style="display:flex;justify-content:space-between;gap:8px"><span>📝 Questões</span><span><b>${view.doneQ}</b>/${g.questionsTarget} <span style="color:var(--text3)">(${view.pctQ}%)</span></span></div>
+        <div style="display:flex;justify-content:space-between;gap:8px"><span>🍅 Pomodoros</span><span><b>${view.donePomos}</b>/${g.pomosTarget} <span style="color:var(--text3)">(${view.pctP}%)</span></span></div>
+        ${daysLeft !== null ? `<div style="display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--border);padding-top:5px;margin-top:2px"><span>⏰ Dias restantes</span><span><b>${daysLeft}</b> ${daysLeft===1?'dia':'dias'}</span></div>` : ''}
+      </div>
+    `;
     cell.addEventListener('click',()=>{ navigateTo('goals',{label:viewLabel(ST.view)}); });
     heroRight.appendChild(cell);
   }
@@ -15425,10 +15479,31 @@ function renderDashboard(){
   // 4 cards de stats e ANTES da frase explicativa do heatmap. Antes ficava no
   // topo do dashboard (após o hero), agora aparece na primeira dobra junto dos
   // dados de desempenho.
+  // V15.12.4: margin-bottom maior pra não colar com o gráfico de atividade.
   const tipCardInline = (typeof buildTipOfTheDayCard === 'function') ? buildTipOfTheDayCard() : null;
   if(tipCardInline){
-    tipCardInline.style.margin = '1rem 0 0';
+    tipCardInline.style.margin = '1rem 0 1.25rem';
     wrap.appendChild(tipCardInline);
+  }
+
+  // V15.12.4: Card "Bloco atual" do cronograma reposicionado — Jean pediu
+  // pra ficar logo abaixo da dica do dia e ACIMA do gráfico "Atividade por
+  // dia da semana". Antes ficava bem mais embaixo (depois das warnings).
+  if(SCHEDULE.data && SCHEDULE.data.blocks && SCHEDULE.data.blocks.length > 0){
+    const ctx = getCurrentScheduleContext(SCHEDULE.data.blocks);
+    if(ctx.current || ctx.next){
+      const blockCard = buildDashboardScheduleCard(ctx);
+      if(blockCard){
+        blockCard.style.marginBottom = '1.25rem';
+        wrap.appendChild(blockCard);
+      }
+      setupScheduleAutoRefresh();
+    }
+  } else if(isAuthed() && !SCHEDULE.loaded && !SCHEDULE.loading){
+    SCHEDULE.loaded = true;
+    fetchMySchedule().then(()=>{
+      if(SCHEDULE.data) render();
+    });
   }
 
   // V15.12: tip do heatmap movida pra DEPOIS do gráfico (Jean pediu).
@@ -15447,39 +15522,12 @@ function renderDashboard(){
   if(heatmapTip) wrap.appendChild(heatmapTip);
 
   // ===== Mini-card de meta (resumo) =====
-  if(DATA.goals){
-    const g = DATA.goals;
-    if(maybeRenewGoalPeriod(g))save();
-    maybeNotifyGoalCompletion();
-    const view = goalDailyView(g);
-    const goalCard = mk('button','dash-goal-card');
-    goalCard.type='button';
-    goalCard.style.marginTop='12px';
-    let statusEmoji = '⚖️';
-    let statusLabel = 'No ritmo';
-    if(view.status==='ahead'){statusEmoji='🚀';statusLabel='Adiantado';}
-    else if(view.status==='behind'){statusEmoji='⏳';statusLabel='Atrasado';}
-    const periodLabel = g.period==='weekly' ? 'Meta semanal' : 'Meta mensal';
-    goalCard.innerHTML = `
-      <div class="dash-goal-emoji">${statusEmoji}</div>
-      <div class="dash-goal-body">
-        <div class="dash-goal-head">
-          <span class="dash-goal-title">${periodLabel}</span>
-          <span class="dash-goal-status ${view.status}">${statusLabel}</span>
-        </div>
-        <div class="dash-goal-progress">
-          <span>📝 <b>${view.doneQ}</b>/${g.questionsTarget} (${view.pctQ}%)</span>
-          <span>🌰 <b>${view.donePomos}</b>/${g.pomosTarget} (${view.pctP}%)</span>
-        </div>
-      </div>
-      <div class="dash-goal-cta">→</div>
-    `;
-    goalCard.addEventListener('click',()=>{
-      navigateTo('goals',{label:viewLabel(ST.view)});
-    });
-    wrap.appendChild(goalCard);
-  } else {
-    // Empty: convite a criar meta (sutil)
+  // V15.12.4: REMOVIDO daqui — o card grande de meta foi movido pro hero
+  // (linhas acima, junto do "dias até prova"), agora com mais info detalhada.
+  // Antes ficava DUPLICADO: mini-card no hero + card grande aqui — visualmente
+  // redundante. Mantido apenas o "convite a criar meta" (empty state) pra
+  // usuários que ainda não definiram meta.
+  if(!DATA.goals){
     const goalEmpty = mk('button','dash-goal-empty');
     goalEmpty.type='button';
     goalEmpty.style.marginTop='12px';
@@ -15518,22 +15566,9 @@ function renderDashboard(){
   // do bloco de stats (entre os 4 cards de número e o explainer do heatmap).
   // Agora aparece em buildKpiCards/dashboard, não mais no topo.
 
-  // V14: Card "Bloco atual" do cronograma — integração com o Pomodoro
-  // Só aparece se o usuário tem cronograma ativo e há um bloco atual ou próximo
-  if(SCHEDULE.data && SCHEDULE.data.blocks && SCHEDULE.data.blocks.length > 0){
-    const ctx = getCurrentScheduleContext(SCHEDULE.data.blocks);
-    if(ctx.current || ctx.next){
-      const blockCard = buildDashboardScheduleCard(ctx);
-      if(blockCard) wrap.appendChild(blockCard);
-      setupScheduleAutoRefresh();
-    }
-  } else if(isAuthed() && !SCHEDULE.loaded && !SCHEDULE.loading){
-    // Carrega cronograma em background pra próxima render mostrar o card
-    SCHEDULE.loaded = true; // flag pra não buscar várias vezes
-    fetchMySchedule().then(()=>{
-      if(SCHEDULE.data) render();
-    });
-  }
+  // V15.12.4: Card "Bloco atual" do cronograma REMOVIDO daqui — Jean pediu
+  // pra mover pra ANTES do gráfico de atividade (fica entre dica do dia e
+  // heatmap agora). Bloco original ficava aqui, depois das warnings.
 
   // ===== HOJE — V15: card consolidado com Próxima Ação + Insights de hoje =====
   // Antes eram 2 cards separados ("Próxima ação prioritária" e "Insight de hoje").
@@ -36606,16 +36641,23 @@ function renderEditalsCommunity(parent){
       return;
     }
     try{
-      // Busca todos os editais públicos. Limita 100 por enquanto pra não pesar.
+      // V15.12.4: SELECT direto com JOIN em profiles pra pegar username.
+      // Antes pedia total_uses (não existe na tabela — é calculado dentro
+      // do RPC search_public_resources via JOIN com resource_imports).
+      // Removido. owner_username agora vem do JOIN explícito com profiles.
       const {data, error} = await supa
         .from('shared_resources')
-        .select('id, owner_id, title, description, payload, created_at, moderation_status, total_uses, owner_username')
+        .select('id, owner_id, title, description, payload, created_at, moderation_status, profiles(username, display_name)')
         .eq('resource_type', 'edital')
         .eq('is_public', true)
         .order('created_at', {ascending:false})
         .limit(100);
       if(error) throw error;
-      let items = data || [];
+      let items = (data || []).map(it => ({
+        ...it,
+        owner_username: it.profiles?.username || null,
+        owner_display_name: it.profiles?.display_name || null
+      }));
 
       // Coleta opções únicas de banca/cargo dos payloads
       const bancas = new Set(['all']);
@@ -36866,32 +36908,26 @@ function renderEditalView(){
   headDiv.appendChild(headLeft);
 
   // Action row
+  // V15.12.4: removido botão "Despublicar" — Jean apontou que não faz sentido,
+  // já que a publicação é automática após análise (admin valida depois).
+  // Se realmente precisar tirar do ar, admin pode fazer pelo painel de
+  // moderação. Aqui só mostra o status "Publicado" como info.
   const actions = mk('div','ed-actions');
   if(edital.isPublished){
     const pubInfo = mk('span','ed-pub-info');
-    pubInfo.innerHTML = '🌐 Publicado na descoberta';
+    pubInfo.innerHTML = '🌐 Publicado na comunidade';
     actions.appendChild(pubInfo);
-    const unpubBtn = mkBtn('Despublicar', 'btn btn-sm');
-    unpubBtn.addEventListener('click', async()=>{
-      if(!confirm('Despublicar este edital? Outros usuários não poderão mais vê-lo na descoberta.')) return;
-      try{
-        await unpublishEdital(edital);
-        showToast('✓ Despublicado');
-        render();
-      }catch(e){
-        alert('Erro: ' + (e.message||e));
-      }
-    });
-    actions.appendChild(unpubBtn);
   } else {
-    const pubBtn = mkBtn('🌐 Publicar na descoberta', 'btn btn-sm btn-p');
+    // Caso raro: edital criado antes do auto-publish ou que falhou ao publicar.
+    // Mostra botão pra publicar manualmente.
+    const pubBtn = mkBtn('🌐 Publicar na comunidade', 'btn btn-sm btn-p');
     pubBtn.addEventListener('click', async()=>{
       if(!isAuthed()){alert('Você precisa estar logado pra publicar.');return;}
       if(!AUTH.profile || !AUTH.profile.username){
         alert('Você precisa ter um nome de usuário (@username) configurado em Config pra publicar.');
         return;
       }
-      if(!confirm('Publicar este edital na descoberta? Outros usuários da plataforma poderão vê-lo. Conteúdo será sanitizado automaticamente (referências a cursos, plataformas e nomes próprios são removidas).')) return;
+      if(!confirm('Publicar este edital na comunidade? Outros usuários poderão vê-lo. Conteúdo será sanitizado automaticamente.')) return;
       pubBtn.disabled = true;
       pubBtn.textContent = 'Publicando...';
       try{
@@ -36901,7 +36937,7 @@ function renderEditalView(){
       }catch(e){
         alert('Erro: ' + (e.message||e));
         pubBtn.disabled = false;
-        pubBtn.textContent = '🌐 Publicar na descoberta';
+        pubBtn.textContent = '🌐 Publicar na comunidade';
       }
     });
     actions.appendChild(pubBtn);
@@ -42186,7 +42222,11 @@ function formatDayPattern(pattern){
 
 function showEditScheduleModal(schedule){
   const m = mk('div');
-  m.style.cssText = 'min-width:min(560px,90vw);max-width:680px';
+  // V15.12.4: modal mais largo (antes 560px) — agora cabe layout em cards
+  // espaçados em vez de grid apertado de 10 colunas. Largura 720 dá conforto
+  // pros campos sem ficar gigante. Jean reportou "manutenção dos blocos do
+  // cronograma ruim, itens muito apertados, feio esteticamente."
+  m.style.cssText = 'min-width:min(720px,92vw);max-width:780px';
   const head = mk('div','modal-head');
   head.innerHTML = '<h3 style="margin:0">✏️ Editar cronograma</h3>';
   const cl = mkBtn('×','modal-close');cl.addEventListener('click',closeModal);
@@ -42208,116 +42248,239 @@ function showEditScheduleModal(schedule){
 
   // Lista de blocos editável
   const blocksLbl = mk('div');
-  blocksLbl.style.cssText = 'margin-top:1rem;font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;display:flex;justify-content:space-between;align-items:center';
+  blocksLbl.style.cssText = 'margin-top:1.25rem;font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;display:flex;justify-content:space-between;align-items:center';
   blocksLbl.innerHTML = '<span>Blocos do cronograma</span>';
-  const addBtn = mkBtn('+ Bloco','btn btn-sm');
-  addBtn.style.padding = '4px 10px';
-  addBtn.style.fontSize = '11px';
+  const addBtn = mkBtn('+ Novo bloco','btn btn-sm btn-p');
+  addBtn.style.cssText = 'padding:5px 12px;font-size:11.5px;font-weight:600';
   blocksLbl.appendChild(addBtn);
   m.appendChild(blocksLbl);
 
+  // Hint sobre tipos de atividade
+  const typeHint = mk('div');
+  typeHint.style.cssText = 'font-size:11.5px;color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.625rem .75rem;margin-top:.5rem;line-height:1.55';
+  typeHint.innerHTML = '<b>Tipos de atividade:</b> 📚 Estudo (com pomodoro) · 🏃 Exercício · 🍽️ Refeição · 🌙 Sono · ☕ Pausa · 🎯 Livre';
+  m.appendChild(typeHint);
+
   let editBlocks = JSON.parse(JSON.stringify(schedule.blocks||[]));
   const blocksWrap = mk('div');
-  blocksWrap.style.cssText = 'max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:.5rem;margin-top:.5rem;background:var(--surface2)';
+  blocksWrap.style.cssText = 'max-height:50vh;overflow-y:auto;border:1px solid var(--border);border-radius:10px;padding:.75rem;margin-top:.625rem;background:var(--surface2);display:flex;flex-direction:column;gap:.625rem';
 
   // V14: estado do drag
   let dragSourceIdx = null;
   let dragOverIdx = null;
 
+  // Cor + ícone por tipo de bloco
+  const TYPE_META = {
+    study:    {icon:'📚', label:'Estudo',    color:'#8042fa', bg:'rgba(128,66,250,.06)'},
+    exercise: {icon:'🏃', label:'Exercício', color:'#10b981', bg:'rgba(16,185,129,.06)'},
+    meal:     {icon:'🍽️', label:'Refeição',  color:'#f59e0b', bg:'rgba(245,158,11,.06)'},
+    sleep:    {icon:'🌙', label:'Sono',      color:'#6366f1', bg:'rgba(99,102,241,.06)'},
+    break:    {icon:'☕', label:'Pausa',     color:'#94a3b8', bg:'rgba(148,163,184,.06)'},
+    free:     {icon:'🎯', label:'Livre',     color:'#ef4444', bg:'rgba(239,68,68,.06)'}
+  };
+
   function renderBlocks(){
     blocksWrap.innerHTML = '';
     if(editBlocks.length === 0){
-      blocksWrap.innerHTML = '<div style="padding:1rem;text-align:center;font-size:12px;color:var(--text3)">Nenhum bloco. Clique em "+ Bloco" pra adicionar.</div>';
+      const empty = mk('div');
+      empty.style.cssText = 'padding:1.75rem 1rem;text-align:center;font-size:12.5px;color:var(--text3)';
+      empty.innerHTML = '<div style="font-size:28px;margin-bottom:6px">📅</div>Nenhum bloco. Clique em <b>"+ Novo bloco"</b> pra adicionar.';
+      blocksWrap.appendChild(empty);
       return;
     }
 
-    // Hint visual sobre drag
+    // Hint de drag
     if(editBlocks.length >= 2 && !DATA._dragHintShown){
       const hint = mk('div');
-      hint.style.cssText = 'padding:6px 10px;font-size:11px;color:var(--text3);background:rgba(128,66,250,.06);border-radius:6px;margin-bottom:6px;text-align:center';
-      hint.innerHTML = '💡 <b>Dica:</b> arraste pelo handle ⋮⋮ pra reordenar blocos';
+      hint.style.cssText = 'padding:8px 12px;font-size:11.5px;color:var(--text3);background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.20);border-radius:8px;text-align:center';
+      hint.innerHTML = '💡 <b>Dica:</b> arraste pelo handle <span style="font-family:ui-monospace,monospace">⋮⋮</span> pra reordenar blocos';
       blocksWrap.appendChild(hint);
-      // Marca como visto pra esta sessão
       DATA._dragHintShown = true;
     }
 
     editBlocks.forEach((b, idx)=>{
-      // V15.12: bloco agora é um wrapper que contém 2 linhas:
-      //  - linha principal (dia, horário, atividade, tipo, ações)
-      //  - linha secundária (descrição + config pomo se study)
-      const wrapper = mk('div');
-      wrapper.style.cssText = 'border:1px solid var(--border);background:var(--surface);border-radius:7px;margin-bottom:6px;padding:.5rem';
-      const row = mk('div');
-      row.draggable = true;
-      row.dataset.idx = idx;
-      row.style.cssText = 'display:grid;grid-template-columns:24px 80px 80px 80px 1fr 70px auto auto auto auto;gap:6px;align-items:center;font-size:12px;transition:all .15s';
-      row.innerHTML = `
-        <span class="sched-drag-handle" style="cursor:grab;color:var(--text3);text-align:center;font-size:14px;line-height:1;user-select:none;font-weight:700" title="Arraste para reordenar">⋮⋮</span>
-        <input type="text" placeholder="1-5" value="${escapeHTML(b.day_pattern||'')}" style="padding:5px;font-size:11.5px;font-family:ui-monospace,monospace" data-field="day_pattern">
-        <input type="time" value="${b.start_time||''}" style="padding:5px;font-size:11.5px" data-field="start_time">
-        <input type="time" value="${b.end_time||''}" style="padding:5px;font-size:11.5px" data-field="end_time">
-        <input type="text" placeholder="Atividade" value="${escapeHTML(b.activity||'')}" style="padding:5px;font-size:11.5px" data-field="activity" maxlength="50">
-        <select style="padding:5px;font-size:11.5px" data-field="type">
-          <option value="study"${b.type==='study'?' selected':''}>📚 Estudo</option>
-          <option value="exercise"${b.type==='exercise'?' selected':''}>🏃 Exerc</option>
-          <option value="meal"${b.type==='meal'?' selected':''}>🍽️ Refeição</option>
-          <option value="sleep"${b.type==='sleep'?' selected':''}>🌙 Sono</option>
-          <option value="break"${b.type==='break'?' selected':''}>☕ Pausa</option>
-          <option value="free"${b.type==='free'?' selected':''}>🎯 Livre</option>
-        </select>
-        <button type="button" data-action="up" style="background:transparent;border:1px solid var(--border);color:var(--text3);padding:5px 7px;border-radius:5px;cursor:pointer;font-size:11px;font-family:inherit;${idx===0?'opacity:.3;cursor:not-allowed':''}" title="Mover pra cima" ${idx===0?'disabled':''}>▲</button>
-        <button type="button" data-action="down" style="background:transparent;border:1px solid var(--border);color:var(--text3);padding:5px 7px;border-radius:5px;cursor:pointer;font-size:11px;font-family:inherit;${idx===editBlocks.length-1?'opacity:.3;cursor:not-allowed':''}" title="Mover pra baixo" ${idx===editBlocks.length-1?'disabled':''}>▼</button>
-        <button type="button" data-action="duplicate" style="background:transparent;border:1px solid var(--border);color:var(--text2);padding:5px 7px;border-radius:5px;cursor:pointer;font-size:11px;font-family:inherit" title="Duplicar bloco">⎘</button>
-        <button type="button" data-action="delete" style="background:transparent;border:1px solid var(--border);color:var(--red-text);padding:5px 8px;border-radius:5px;cursor:pointer;font-size:13px;font-family:inherit" title="Remover">×</button>
-      `;
-      wrapper.appendChild(row);
-
-      // V15.12: linha secundária — descrição + config pomodoro (se study)
-      const detailRow = mk('div');
+      const meta = TYPE_META[b.type] || TYPE_META.study;
       const isStudy = b.type === 'study';
-      detailRow.style.cssText = `display:grid;grid-template-columns:${isStudy ? '1fr 90px 90px' : '1fr'};gap:6px;align-items:center;margin-top:6px;padding-left:24px`;
-      const descInput = mk('input');
-      descInput.type = 'text';
-      descInput.placeholder = 'Descrição (ex: tempo após acordar pra café e arrumar antes do estudo)';
-      descInput.value = b.desc || '';
-      descInput.maxLength = 180;
-      descInput.style.cssText = 'padding:5px 8px;font-size:11px;color:var(--text2)';
-      descInput.dataset.field = 'desc';
-      detailRow.appendChild(descInput);
+
+      // Card do bloco
+      const card = mk('div');
+      card.draggable = true;
+      card.dataset.idx = idx;
+      card.style.cssText = `background:var(--surface);border:1px solid var(--border);border-left:4px solid ${meta.color};border-radius:10px;padding:.75rem .875rem;transition:all .15s;display:flex;flex-direction:column;gap:.625rem`;
+
+      // Header: drag + tipo + ações
+      const header = mk('div');
+      header.style.cssText = 'display:flex;align-items:center;gap:8px';
+
+      const drag = mk('span');
+      drag.className = 'sched-drag-handle';
+      drag.style.cssText = 'cursor:grab;color:var(--text3);font-size:14px;line-height:1;user-select:none;font-weight:700;padding:2px 4px';
+      drag.title = 'Arraste para reordenar';
+      drag.textContent = '⋮⋮';
+      header.appendChild(drag);
+
+      // Tipo selector com ícone
+      const typeSel = mk('select');
+      typeSel.style.cssText = `padding:5px 8px;font-size:12px;font-weight:600;color:${meta.color};background:${meta.bg};border:1px solid ${meta.color}33;border-radius:6px;cursor:pointer;font-family:inherit`;
+      typeSel.dataset.field = 'type';
+      Object.entries(TYPE_META).forEach(([key, t])=>{
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = `${t.icon} ${t.label}`;
+        if(b.type === key) opt.selected = true;
+        typeSel.appendChild(opt);
+      });
+      header.appendChild(typeSel);
+
+      // Spacer
+      const spacer = mk('div');
+      spacer.style.flex = '1';
+      header.appendChild(spacer);
+
+      // Ações
+      const actsRow = mk('div');
+      actsRow.style.cssText = 'display:flex;gap:4px;flex-shrink:0';
+      const mkActBtn = (action, icon, title, disabled, danger)=>{
+        const btn = mk('button');
+        btn.type = 'button';
+        btn.dataset.action = action;
+        btn.title = title;
+        btn.disabled = !!disabled;
+        btn.style.cssText = `background:transparent;border:1px solid var(--border);color:${danger?'var(--red-text)':'var(--text2)'};padding:5px 8px;border-radius:6px;cursor:pointer;font-size:12px;font-family:inherit;${disabled?'opacity:.3;cursor:not-allowed':''}`;
+        btn.textContent = icon;
+        return btn;
+      };
+      actsRow.appendChild(mkActBtn('up', '▲', 'Mover pra cima', idx===0));
+      actsRow.appendChild(mkActBtn('down', '▼', 'Mover pra baixo', idx===editBlocks.length-1));
+      actsRow.appendChild(mkActBtn('duplicate', '⎘', 'Duplicar bloco'));
+      actsRow.appendChild(mkActBtn('delete', '×', 'Remover', false, true));
+      header.appendChild(actsRow);
+      card.appendChild(header);
+
+      // Linha 1: Dias + Início + Fim
+      const timeRow = mk('div');
+      timeRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px';
+      const mkField = (labelText, input)=>{
+        const w = mk('div');
+        w.style.cssText = 'display:flex;flex-direction:column;gap:3px';
+        const l = mk('label');
+        l.style.cssText = 'font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px';
+        l.textContent = labelText;
+        w.appendChild(l);
+        w.appendChild(input);
+        return w;
+      };
+
+      const dayInp = mk('input');
+      dayInp.type = 'text';
+      dayInp.placeholder = '1-5 (seg-sex)';
+      dayInp.value = b.day_pattern || '';
+      dayInp.style.cssText = 'padding:7px 10px;font-size:12.5px;font-family:ui-monospace,monospace';
+      dayInp.dataset.field = 'day_pattern';
+      dayInp.title = '0=domingo, 1=segunda, 2=terça, ..., 6=sábado. Ex: "1-5" (seg-sex), "0,6" (sáb e dom), "1,3,5" (seg/qua/sex)';
+      timeRow.appendChild(mkField('Dias da semana', dayInp));
+
+      const startInp = mk('input');
+      startInp.type = 'time';
+      startInp.value = b.start_time || '';
+      startInp.style.cssText = 'padding:7px 10px;font-size:12.5px';
+      startInp.dataset.field = 'start_time';
+      timeRow.appendChild(mkField('Início', startInp));
+
+      const endInp = mk('input');
+      endInp.type = 'time';
+      endInp.value = b.end_time || '';
+      endInp.style.cssText = 'padding:7px 10px;font-size:12.5px';
+      endInp.dataset.field = 'end_time';
+      timeRow.appendChild(mkField('Fim', endInp));
+
+      card.appendChild(timeRow);
+
+      // Linha 2: Atividade
+      const actInp = mk('input');
+      actInp.type = 'text';
+      actInp.placeholder = 'Ex: Português - Concordância';
+      actInp.value = b.activity || '';
+      actInp.maxLength = 50;
+      actInp.style.cssText = 'padding:7px 10px;font-size:12.5px';
+      actInp.dataset.field = 'activity';
+      card.appendChild(mkField('Nome da atividade', actInp));
+
+      // Linha 3: Descrição (textarea)
+      const descInp = mk('textarea');
+      descInp.placeholder = isStudy
+        ? 'Detalhes do bloco. Ex: revisão de erros + 30 questões CESPE'
+        : 'Descrição (opcional). Ex: tempo após acordar pra café';
+      descInp.value = b.desc || '';
+      descInp.maxLength = 180;
+      descInp.rows = 2;
+      descInp.style.cssText = 'padding:7px 10px;font-size:12.5px;resize:vertical;min-height:42px;font-family:inherit';
+      descInp.dataset.field = 'desc';
+      card.appendChild(mkField('Descrição', descInp));
+
+      // Linha 4: Pomodoro (só pra study)
       let focusInput, breakInput;
       if(isStudy){
+        const pomoRow = mk('div');
+        pomoRow.style.cssText = `display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:.625rem .75rem;background:${meta.bg};border:1px solid ${meta.color}22;border-radius:8px`;
+
         focusInput = mk('input');
         focusInput.type = 'number';
         focusInput.min = 5; focusInput.max = 120;
         focusInput.value = b.pomo_focus_min || 50;
-        focusInput.title = 'Pomodoro: minutos de FOCO';
-        focusInput.style.cssText = 'padding:5px;font-size:11px;text-align:center';
+        focusInput.style.cssText = 'padding:7px 10px;font-size:12.5px;text-align:center;font-weight:700';
         focusInput.dataset.field = 'pomo_focus_min';
-        const focusWrap = mk('div');
-        focusWrap.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3)';
-        focusWrap.innerHTML = '<span>foco</span>';
-        focusWrap.appendChild(focusInput);
-        detailRow.appendChild(focusWrap);
+        const fLabel = mk('label');
+        fLabel.style.cssText = 'font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:4px';
+        fLabel.innerHTML = '🍅 Foco (minutos)';
+        const fW = mk('div');fW.style.cssText='display:flex;flex-direction:column;gap:3px';
+        fW.appendChild(fLabel);fW.appendChild(focusInput);
+        pomoRow.appendChild(fW);
 
         breakInput = mk('input');
         breakInput.type = 'number';
         breakInput.min = 1; breakInput.max = 30;
         breakInput.value = b.pomo_break_min || 10;
-        breakInput.title = 'Pomodoro: minutos de PAUSA';
-        breakInput.style.cssText = 'padding:5px;font-size:11px;text-align:center';
+        breakInput.style.cssText = 'padding:7px 10px;font-size:12.5px;text-align:center;font-weight:700';
         breakInput.dataset.field = 'pomo_break_min';
-        const breakWrap = mk('div');
-        breakWrap.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3)';
-        breakWrap.innerHTML = '<span>pausa</span>';
-        breakWrap.appendChild(breakInput);
-        detailRow.appendChild(breakWrap);
-      }
-      wrapper.appendChild(detailRow);
+        const bLabel = mk('label');
+        bLabel.style.cssText = 'font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;gap:4px';
+        bLabel.innerHTML = '☕ Pausa (minutos)';
+        const bW = mk('div');bW.style.cssText='display:flex;flex-direction:column;gap:3px';
+        bW.appendChild(bLabel);bW.appendChild(breakInput);
+        pomoRow.appendChild(bW);
 
-      // Listener pra desc / pomo
-      [descInput, focusInput, breakInput].forEach(inp=>{
-        if(!inp) return;
+        card.appendChild(pomoRow);
+      }
+
+      // === Listeners ===
+
+      // Tipo: re-renderiza pra mostrar/esconder pomodoro
+      typeSel.addEventListener('change', e=>{
+        editBlocks[idx].type = e.target.value;
+        renderBlocks();
+      });
+
+      // Inputs de tempo/atividade/dia: atualiza editBlocks + recalcula duração
+      [dayInp, startInp, endInp, actInp].forEach(inp=>{
         inp.addEventListener('change', e=>{
+          const field = e.target.getAttribute('data-field');
+          editBlocks[idx][field] = e.target.value;
+          if(field === 'start_time' || field === 'end_time'){
+            const [sh,sm] = (editBlocks[idx].start_time||'00:00').split(':').map(n=>parseInt(n));
+            const [eh,em] = (editBlocks[idx].end_time||'00:00').split(':').map(n=>parseInt(n));
+            let dur = (eh*60+em) - (sh*60+sm);
+            if(dur < 0) dur += 24*60;
+            editBlocks[idx].duration_min = dur;
+          }
+        });
+        inp.addEventListener('mousedown', e=>e.stopPropagation());
+      });
+
+      // Desc + pomo
+      [descInp, focusInput, breakInput].forEach(inp=>{
+        if(!inp) return;
+        inp.addEventListener('input', e=>{
           const field = e.target.getAttribute('data-field');
           if(field === 'desc') editBlocks[idx].desc = e.target.value;
           else if(field === 'pomo_focus_min') editBlocks[idx].pomo_focus_min = parseInt(e.target.value,10) || 50;
@@ -42326,88 +42489,67 @@ function showEditScheduleModal(schedule){
         inp.addEventListener('mousedown', e=>e.stopPropagation());
       });
 
-      // Drag events
-      row.addEventListener('dragstart', e=>{
+      // Drag events (só no card todo)
+      card.addEventListener('dragstart', e=>{
+        // Só inicia drag se o evento veio do handle (drag) — não de inputs
+        if(e.target !== card && e.target !== drag){ e.preventDefault(); return; }
         dragSourceIdx = idx;
-        row.style.opacity = '0.4';
-        row.style.cursor = 'grabbing';
+        card.style.opacity = '0.4';
         if(e.dataTransfer){
           e.dataTransfer.effectAllowed = 'move';
-          // Firefox precisa de setData
           try{ e.dataTransfer.setData('text/plain', String(idx)); }catch(_){}
         }
       });
-      row.addEventListener('dragend', ()=>{
-        row.style.opacity = '1';
-        row.style.cursor = '';
-        // Limpa todos highlights
-        blocksWrap.querySelectorAll('[data-idx]').forEach(r=>{
-          r.style.borderTopColor = '';
-          r.style.borderBottomColor = '';
-          r.style.borderTopWidth = '';
-          r.style.borderBottomWidth = '';
+      card.addEventListener('dragend', ()=>{
+        card.style.opacity = '1';
+        blocksWrap.querySelectorAll('[data-idx]').forEach(c=>{
+          c.style.borderTopColor = '';
+          c.style.borderBottomColor = '';
+          c.style.borderTopWidth = '';
+          c.style.borderBottomWidth = '';
         });
         dragSourceIdx = null;
         dragOverIdx = null;
       });
-      row.addEventListener('dragover', e=>{
+      card.addEventListener('dragover', e=>{
         e.preventDefault();
         if(e.dataTransfer) e.dataTransfer.dropEffect = 'move';
         if(dragSourceIdx === idx) return;
-        // Reset all
-        blocksWrap.querySelectorAll('[data-idx]').forEach(r=>{
-          r.style.borderTopColor = '';
-          r.style.borderBottomColor = '';
-          r.style.borderTopWidth = '';
-          r.style.borderBottomWidth = '';
+        blocksWrap.querySelectorAll('[data-idx]').forEach(c=>{
+          c.style.borderTopColor = '';
+          c.style.borderBottomColor = '';
+          c.style.borderTopWidth = '';
+          c.style.borderBottomWidth = '';
         });
-        // Mostra indicador de drop position
-        const rect = row.getBoundingClientRect();
+        const rect = card.getBoundingClientRect();
         const midY = rect.top + rect.height/2;
         if(e.clientY < midY){
-          row.style.borderTopColor = 'var(--gralia-purple)';
-          row.style.borderTopWidth = '2px';
+          card.style.borderTopColor = 'var(--gralia-purple)';
+          card.style.borderTopWidth = '3px';
           dragOverIdx = idx;
         } else {
-          row.style.borderBottomColor = 'var(--gralia-purple)';
-          row.style.borderBottomWidth = '2px';
+          card.style.borderBottomColor = 'var(--gralia-purple)';
+          card.style.borderBottomWidth = '3px';
           dragOverIdx = idx + 1;
         }
       });
-      row.addEventListener('drop', e=>{
+      card.addEventListener('drop', e=>{
         e.preventDefault();
         if(dragSourceIdx == null || dragOverIdx == null || dragSourceIdx === dragOverIdx) return;
-        // Move o bloco
         const moved = editBlocks.splice(dragSourceIdx, 1)[0];
-        // Ajusta o índice de destino se for depois da origem
         let target = dragOverIdx;
         if(dragOverIdx > dragSourceIdx) target--;
         editBlocks.splice(target, 0, moved);
         renderBlocks();
       });
 
-      row.querySelectorAll('input, select').forEach(inp=>{
-        inp.addEventListener('change', e=>{
-          const field = e.target.getAttribute('data-field');
-          editBlocks[idx][field] = e.target.value;
-          // Recalcula duração
-          if(field === 'start_time' || field === 'end_time'){
-            const [sh,sm] = (editBlocks[idx].start_time||'00:00').split(':').map(n=>parseInt(n));
-            const [eh,em] = (editBlocks[idx].end_time||'00:00').split(':').map(n=>parseInt(n));
-            let dur = (eh*60+em) - (sh*60+sm);
-            if(dur < 0) dur += 24*60; // pula meia-noite
-            editBlocks[idx].duration_min = dur;
-          }
-        });
-        // Inputs não devem disparar drag — quando o usuário interage com o campo
-        inp.addEventListener('mousedown', e=>e.stopPropagation());
-      });
       // Action buttons
-      row.querySelectorAll('button[data-action]').forEach(b=>{
-        if(b.disabled) return;
-        b.addEventListener('click',()=>{
-          const action = b.getAttribute('data-action');
+      actsRow.querySelectorAll('button[data-action]').forEach(btn=>{
+        if(btn.disabled) return;
+        btn.addEventListener('click', ()=>{
+          const action = btn.getAttribute('data-action');
           if(action === 'delete'){
+            if(!confirm('Remover este bloco?')) return;
             editBlocks.splice(idx, 1);
           } else if(action === 'duplicate'){
             const copy = JSON.parse(JSON.stringify(editBlocks[idx]));
@@ -42424,13 +42566,16 @@ function showEditScheduleModal(schedule){
           renderBlocks();
         });
       });
-      blocksWrap.appendChild(wrapper);
+
+      blocksWrap.appendChild(card);
     });
   }
 
   addBtn.addEventListener('click', ()=>{
     editBlocks.push({day_pattern:'1-5', start_time:'08:00', end_time:'09:00', duration_min:60, activity:'', type:'study', desc:'', pomo_focus_min:50, pomo_break_min:10});
     renderBlocks();
+    // Scroll pro novo bloco
+    setTimeout(()=>{ blocksWrap.scrollTop = blocksWrap.scrollHeight; }, 50);
   });
 
   renderBlocks();
@@ -42438,7 +42583,7 @@ function showEditScheduleModal(schedule){
 
   // Botões
   const btnRow = mk('div','flex');
-  btnRow.style.cssText = 'margin-top:1rem;gap:8px;justify-content:flex-end';
+  btnRow.style.cssText = 'margin-top:1.25rem;gap:8px;justify-content:flex-end';
   const cancel = mkBtn('Cancelar','btn btn-sm');
   cancel.addEventListener('click', closeModal);
   btnRow.appendChild(cancel);
