@@ -122,7 +122,19 @@ a{color:var(--accent)}
 body.method-focus-mode .quick-fab,
 body.srs-focus-mode .quick-fab,
 body.method-focus-mode .quick-fab-panel,
-body.srs-focus-mode .quick-fab-panel{display:none !important}
+body.srs-focus-mode .quick-fab-panel,
+/* V15.10: Modo foco esconde TODOS os botões flutuantes que distraem.
+   Mantém visível APENAS: .pomo-float (timer), .flashcard-toast (popup do
+   flashcard que nasce durante prática), .reviewed-badge (selo "revisado pela
+   IA"). Tudo o mais é distração no modo foco. */
+body.method-focus-mode .feedback-floating-btn,
+body.srs-focus-mode .feedback-floating-btn,
+body.method-focus-mode .shortcuts-floating-btn,
+body.srs-focus-mode .shortcuts-floating-btn,
+body.method-focus-mode .faq-floating-btn,
+body.srs-focus-mode .faq-floating-btn,
+body.method-focus-mode .admin-floating-btn,
+body.srs-focus-mode .admin-floating-btn{display:none !important}
 
 /* V14: FABs DESKTOP-ONLY (item 33) — ⌨ atalhos e 💬 fale conosco */
 @media(max-width:899px){
@@ -175,11 +187,11 @@ body.sidebar-collapsed.has-sidebar #app{padding-left:64px}
 /* Toggle button */
 .sidebar-collapse-toggle{
   position:absolute;
-  top:18px;
+  top:13px;
   right:10px;
-  width:26px;
-  height:26px;
-  border-radius:8px;
+  width:24px;
+  height:24px;
+  border-radius:7px;
   background:var(--surface2);
   border:1px solid var(--border);
   cursor:pointer;
@@ -242,9 +254,9 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:28px}
 .app-sidebar-item{
   display:flex;
   align-items:center;
-  gap:10px;
-  padding:.5rem .75rem;
-  margin:1px 4px;
+  gap:11px;
+  padding:.55rem .8rem;
+  margin:2px 4px;
   border-radius:8px;
   color:var(--text2);
   font-size:13px;
@@ -275,8 +287,9 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:28px}
   border-radius:0 2px 2px 0;
 }
 .app-sidebar-item-ico{
-  font-size:14px;
-  width:20px;
+  /* V15.10: ícones 20% maiores (14→17px) — Jean pediu pra ocupar melhor o espaço da sidebar */
+  font-size:17px;
+  width:22px;
   text-align:center;
   line-height:1;
   flex-shrink:0;
@@ -4366,6 +4379,50 @@ body.pomo-active .shortcuts-floating-btn{display:none !important}
 @keyframes credit-pulse{0%,100%{opacity:1}50%{opacity:.65}}
 
 /* V15.10: Divisor sutil entre grupos de items na topbar direita */
+/* V15.10: Barra de atalhos de teclado — sutil, no rodapé da página em modo foco.
+   Visível apenas em focus mode. Cada item: tecla(s) + descrição curta. */
+.kbd-hints-bar{
+  display:flex;flex-wrap:wrap;justify-content:center;
+  gap:14px;
+  margin:1.5rem auto 1rem;
+  padding:.625rem 1rem;
+  max-width:760px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:10px;
+  font-size:11.5px;
+  color:var(--text3);
+}
+.kbd-hint-item{
+  display:inline-flex;align-items:center;gap:5px;
+}
+.kbd-hint-key{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:22px;height:22px;
+  padding:0 6px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-bottom-width:2px;
+  border-radius:5px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:10.5px;font-weight:600;
+  color:var(--text2);
+  letter-spacing:.2px;
+  line-height:1;
+}
+.kbd-hint-sep{
+  color:var(--text3);font-size:9px;font-weight:600;
+  margin:0 1px;
+}
+.kbd-hint-label{
+  color:var(--text2);font-weight:500;
+}
+
+/* V15.10: Layout 2-col do modal de flashcard cai pra coluna única em mobile */
+@media(max-width:720px){
+  .fc-modal-grid{grid-template-columns:1fr !important}
+}
+
 /* V15.10: Divisor sutil entre grupos de items na topbar direita (réingressado) */
 .topbar-divider{
   width:1px;height:18px;
@@ -4377,9 +4434,9 @@ body.pomo-active .shortcuts-floating-btn{display:none !important}
 /* V15.10: Links institucionais "Sobre" / "Como usar" no topbar.
    Discretos, sem ícone, com tooltip rico no hover. Transmitem seriedade. */
 .topbar-inst-links{
-  display:flex;align-items:center;gap:14px;
+  display:flex;align-items:center;gap:18px;
   flex-shrink:0;
-  margin-left:8px;
+  margin-left:20px;
 }
 .topbar-inst-link{
   position:relative;
@@ -9735,7 +9792,9 @@ function showUserAvatarMenu(anchor){
     {icon:'🎯', label:'Minhas metas', action:()=>{ ST.view = 'goals'; render(); }}
   ];
   if(typeof isAdminUser === 'function' && isAdminUser()){
-    items.push({icon:'🔧', label:'Painel admin', action:()=>{ ST.view = 'admin'; render(); }});
+    // V15.10: Admin é o único caminho pro painel admin agora (botão flutuante removido).
+    // Marca com flag pra renderizar com destaque visual no dropdown.
+    items.push({icon:'🔧', label:'Painel admin', admin:true, action:()=>{ ST.view = 'admin'; render(); }});
   }
   items.push({type:'divider'});
   items.push({icon:'🎓', label:'Tutorial visual', action:()=>{ if(typeof showVisualTutorial === 'function') showVisualTutorial(); }});
@@ -9759,7 +9818,11 @@ function showUserAvatarMenu(anchor){
     }
     const item = mk('button');
     item.type = 'button';
-    item.style.cssText = `display:flex;align-items:center;gap:10px;width:100%;padding:.5rem .75rem;background:transparent;border:none;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;color:${it.danger?'var(--red-text)':'var(--text)'};text-align:left;transition:background .12s;font-weight:500`;
+    // V15.10: Admin destacado (cor âmbar) — único caminho pro painel agora
+    const adminStyle = it.admin
+      ? 'color:#a76e1a;background:linear-gradient(135deg,rgba(232,164,60,.10),rgba(232,164,60,.04));font-weight:700'
+      : `color:${it.danger?'var(--red-text)':'var(--text)'}`;
+    item.style.cssText = `display:flex;align-items:center;gap:10px;width:100%;padding:.5rem .75rem;background:transparent;border:none;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;text-align:left;transition:background .12s;font-weight:500;${adminStyle}`;
     const ico = mk('span');
     ico.style.cssText = 'font-size:14px;width:18px;text-align:center;flex-shrink:0';
     ico.textContent = it.icon;
@@ -11724,7 +11787,7 @@ function buildAppSidebar(){
   // V14: Buscar tudo (Cmd+K) — vem ANTES dos grupos pra ser primeira ação visível
   const searchBtn = mk('button','app-sidebar-search-btn');
   searchBtn.type = 'button';
-  searchBtn.style.cssText = 'margin:8px 12px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;color:var(--text2);font-size:12.5px;font-weight:500;transition:all .12s';
+  searchBtn.style.cssText = 'margin:8px 44px 8px 12px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;color:var(--text2);font-size:12px;font-weight:500;transition:all .12s';
   searchBtn.innerHTML = '<span style="font-size:13px">🔍</span><span style="flex:1;text-align:left">Buscar tudo</span><span style="display:inline-flex"><kbd style="font-size:9.5px;padding:1px 4px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:ui-monospace,monospace;color:var(--text3)">Ctrl K</kbd></span>';
   searchBtn.addEventListener('mouseenter', ()=>{searchBtn.style.borderColor='var(--gralia-purple)';searchBtn.style.color='var(--text)';});
   searchBtn.addEventListener('mouseleave', ()=>{searchBtn.style.borderColor='var(--border)';searchBtn.style.color='var(--text2)';});
@@ -11751,7 +11814,7 @@ function buildAppSidebar(){
       items:[
         {view:'srs', icon:'🎴', label:'Flashcards', badge:dueSrs > 0 ? dueSrs : null},
         {view:'history', icon:'📜', label:'Histórico de erros', badge:errorsNoCard > 0 ? errorsNoCard : null},
-        {view:'pomodoro', icon:'🍅', label:'Pomodoro', desc:'Timer de estudo com pausas'},
+        {view:'pomodoro', icon:'🌰', label:'Pomodoro', desc:'Timer de estudo com pausas'},
       ]
     },
     {
@@ -11976,6 +12039,18 @@ function render(){
   if(oldFab) oldFab.remove();
   const oldPanel = document.querySelector('.quick-fab-panel');
   if(oldPanel) oldPanel.remove();
+  // V15.10: Barra de atalhos visível em modo foco (item #5). Injetada NO FIM
+  // da página de prática pra ficar logo abaixo das questões/cards.
+  // Os atalhos mostrados dependem do contexto (método ativo / SRS / etc).
+  if((ST.methodFocusActive || ST.srsFocusActive) && typeof buildKeyboardHintsBar === 'function'){
+    try{
+      const hintsBar = buildKeyboardHintsBar();
+      if(hintsBar && pg){
+        pg.appendChild(hintsBar);
+      }
+    }catch(e){console.warn('[hints bar]', e);}
+  }
+
   // V14: Barra superior do Modo Foco de método — placar live + sair
   if(ST.methodFocusActive){
     const methodViews = ['practice','calibration','drill','interleaving','examiner','elaborative'];
@@ -11997,15 +12072,8 @@ function render(){
   // (calibração, drill DNA, intercalação, etc) já tem seu próprio modo foco
   // contextual, então o botão global virou redundante.
 
-  // V12: Botão flutuante de admin (canto superior direito) — só pra admin
-  // Antes era tab no menu, ficava grudado com Config + créditos
-  if(isAdminUser() && ST.view !== 'admin' && !isFocusMode()){
-    const adminBtn = mk('button','admin-floating-btn');
-    adminBtn.title = 'Painel administrativo';
-    adminBtn.innerHTML = '<span class="afb-icon">🔧</span><span class="afb-label">Admin</span>';
-    adminBtn.addEventListener('click',()=>{ST.view='admin';render();});
-    APP.appendChild(adminBtn);
-  }
+  // V15.10: Botão flutuante "🔧 Admin" REMOVIDO daqui — Jean pediu pra mover
+  // pro dropdown do avatar (showUserAvatarMenu). Aparece só pra admin user.
 
   // V14: Botão flutuante "Fale conosco" — APENAS DESKTOP (item 33).
   // Em mobile fica poluído. Usuário pode acessar via Conta → Fale conosco.
@@ -13765,7 +13833,7 @@ const VIEW_META = {
   srs:          {label:'Flashcards',            icon:'🎴', group:'review'},
   history:      {label:'Histórico de erros',    icon:'📜', group:'review'},
   review:       {label:'Revisão Turbo',         icon:'⚡', group:'review'},
-  pomodoro:     {label:'Pomodoro',              icon:'⏱',  group:'review'},
+  pomodoro:     {label:'Pomodoro',              icon:'🌰', group:'review'},
   // Planejar
   goals:        {label:'Metas',                 icon:'🎯', group:'plan'},
   schedule:     {label:'Cronograma',            icon:'📅', group:'plan'},
@@ -13905,7 +13973,7 @@ function renderTopbar(){
       {view:'srs',label:'Flashcards',icon:'🎴',desc:'Revisão espaçada (SRS)'},
       {view:'history',label:'Histórico de erros',icon:'📜',desc:'Todos os erros pra revisar e aprender'},
       {view:'review',label:'Revisão Turbo',icon:'⚡',desc:'Ciclos adaptativos e véspera de prova'},
-      {view:'pomodoro',label:'Pomodoro',icon:'⏱',desc:'Timer de foco'}
+      {view:'pomodoro',label:'Pomodoro',icon:'🌰',desc:'Timer de foco'}
     ]},
     {type:'group',key:'plan',label:'Planejar',icon:'🗺',children:[
       {view:'goals',label:'Metas',icon:'🎯',desc:'Metas mensais/semanais com fasamento'},
@@ -14124,8 +14192,8 @@ function renderTopbar(){
       const a = mk('button','topbar-inst-link');
       a.type = 'button';
       a.textContent = it.label;
-      a.title = it.desc;
-      // Tooltip rico (em vez de title nativo)
+      // V15.10: title nativo REMOVIDO — só o tooltip estilizado (.til-tip) aparece.
+      // Antes: dois tooltips simultâneos (nativo do navegador + card) ficava feio.
       const tip = mk('span','til-tip');
       tip.textContent = it.desc;
       a.appendChild(tip);
@@ -19503,8 +19571,10 @@ Gere UM flashcard que RESOLVA a dificuldade. Escolha o tipo de card que melhor a
 
 function showEditCardModal(card,isNew,onSave){
   const m = mk('div');
-  // V14: Modal mais largo pra flashcards (item 30) — antes scrollava muito.
-  m.style.cssText = 'min-width:min(640px,90vw);max-width:760px;width:100%';
+  // V15.10: Modal mais largo pra desktop (760→920px) — Jean reportou que a barra
+  // de rolagem aparecia em telas grandes mesmo com pouco conteúdo. Largura maior
+  // permite que frente/verso fiquem lado-a-lado em algumas resoluções e respira.
+  m.style.cssText = 'min-width:min(920px,92vw);max-width:1040px;width:100%';
   const head = mk('div','modal-head');
   const h = mk('h3');h.textContent=isNew?'Revisar novo flashcard':'Editar flashcard';
   const cl = mkBtn('×','modal-close');cl.addEventListener('click',closeModal);
@@ -19538,13 +19608,26 @@ function showEditCardModal(card,isNew,onSave){
   });
   m.appendChild(lblD);m.appendChild(selD);
 
-  const lblF = mk('label');lblF.textContent='Frente (pergunta ou prompt)';lblF.style.marginTop='.75rem';
-  const inpF = mk('textarea','autosize-textarea');inpF.rows=2;inpF.value=normText(card.front);
-  m.appendChild(lblF);m.appendChild(inpF);
+  // V15.10: Frente + Verso lado-a-lado em telas largas (≥720px). Antes ficavam
+  // empilhados verticalmente forçando muita rolagem. Em mobile cai pra coluna única.
+  const fcGrid = mk('div','fc-modal-grid');
+  fcGrid.style.cssText = 'display:grid;grid-template-columns:1fr 1.2fr;gap:14px;margin-top:.75rem';
 
-  const lblB = mk('label');lblB.textContent='Verso (resposta, exemplos, mnemônico)';lblB.style.marginTop='.75rem';
+  const colFrente = mk('div');
+  const lblF = mk('label');lblF.textContent='Frente (pergunta ou prompt)';
+  const inpF = mk('textarea','autosize-textarea');inpF.rows=3;inpF.value=normText(card.front);
+  inpF.style.minHeight = '110px';
+  colFrente.appendChild(lblF);colFrente.appendChild(inpF);
+
+  const colVerso = mk('div');
+  const lblB = mk('label');lblB.textContent='Verso (resposta, exemplos, mnemônico)';
   const inpB = mk('textarea','autosize-textarea');inpB.rows=4;inpB.value=normText(card.back);
-  m.appendChild(lblB);m.appendChild(inpB);
+  inpB.style.minHeight = '110px';
+  colVerso.appendChild(lblB);colVerso.appendChild(inpB);
+
+  fcGrid.appendChild(colFrente);
+  fcGrid.appendChild(colVerso);
+  m.appendChild(fcGrid);
 
   // V12: Auto-resize textareas conforme texto
   setTimeout(()=>{
@@ -26363,6 +26446,71 @@ function buildMethodFocusToggleBtn(){
   btn.title = 'Esconde topbar e sidebar, mostra placar live';
   btn.addEventListener('click', enterMethodFocus);
   return btn;
+}
+
+// V15.10: Barra de hints de atalhos de teclado — visível APENAS em modo foco.
+// Mostra apenas os atalhos relevantes ao contexto atual (método ativo).
+// Visual sutil, fixo no rodapé da página, fácil de ignorar e fácil de consultar.
+function buildKeyboardHintsBar(){
+  // Define quais atalhos mostrar baseado no contexto
+  let shortcuts = [];
+
+  if(ST.srsFocusActive){
+    // Modo foco do SRS — atalhos de revisão de flashcards
+    shortcuts = [
+      {keys:['Espaço'], label:'Revelar verso'},
+      {keys:['1'], label:'Errei'},
+      {keys:['2'], label:'Difícil'},
+      {keys:['3'], label:'Bom'},
+      {keys:['4'], label:'Fácil'},
+      {keys:['E'], label:'Editar card'},
+      {keys:['Esc'], label:'Sair do foco'},
+    ];
+  } else if(ST.methodFocusActive){
+    // Modo foco de método — depende da view atual
+    const view = ST.view;
+    if(view === 'practice' || view === 'calibration' || view === 'drill' ||
+       view === 'interleaving' || view === 'examiner' || view === 'elaborative'){
+      // Métodos que geram questões C/E
+      shortcuts = [
+        {keys:['C'], label:'Certo'},
+        {keys:['E'], label:'Errado'},
+        {keys:['Espaço'], label:'Próxima'},
+        {keys:['B'], label:'Anterior'},
+        {keys:['Esc'], label:'Sair do foco'},
+      ];
+    } else {
+      // Default
+      shortcuts = [
+        {keys:['Esc'], label:'Sair do foco'},
+      ];
+    }
+  } else {
+    // Não está em modo foco — não mostra
+    return null;
+  }
+
+  if(shortcuts.length === 0) return null;
+
+  const bar = mk('div','kbd-hints-bar');
+  shortcuts.forEach(s => {
+    const item = mk('div','kbd-hint-item');
+    s.keys.forEach((k, i) => {
+      if(i > 0){
+        const sep = mk('span','kbd-hint-sep');
+        sep.textContent = '+';
+        item.appendChild(sep);
+      }
+      const kbd = mk('kbd','kbd-hint-key');
+      kbd.textContent = k;
+      item.appendChild(kbd);
+    });
+    const lbl = mk('span','kbd-hint-label');
+    lbl.textContent = s.label;
+    item.appendChild(lbl);
+    bar.appendChild(item);
+  });
+  return bar;
 }
 
 // V14: Constrói a barra superior do modo foco de método (placar live + sair).
@@ -47907,28 +48055,34 @@ document.addEventListener('keydown',e=>{
 
   // V12: Fluxo de prática mais inteligente — se C/E não conseguir responder
   // (porque já respondeu), tenta "próxima" como fallback. Reduz frustração.
-  if(k==='C'){
+  // V15.10: Atalhos de prática (C/E/A/B/D/Space/R/B) só funcionam em modo foco.
+  // Antes disparavam em qualquer página, podendo causar ações indesejadas.
+  // Agora exigem ST.methodFocusActive ou ST.srsFocusActive.
+  const inFocusMode = !!(ST.methodFocusActive || ST.srsFocusActive);
+
+  if(k==='C' && inFocusMode){
     handled = dispatchAnswer('C');
     if(!handled) handled = dispatchNext();
   }
-  else if(k==='E'){
+  else if(k==='E' && inFocusMode){
     handled = dispatchAnswer('E');
     if(!handled) handled = dispatchNext();
   }
-  else if(k==='A'||k==='B'||k==='D'){
+  else if((k==='A'||k==='B'||k==='D') && inFocusMode){
     handled = dispatchAnswer(k);
   }
-  else if(e.key===' '||k===' '){
+  else if((e.key===' '||k===' ') && inFocusMode){
     // Espaço: prioriza próxima (fluxo natural), e se não tem próxima, tenta confirmar resposta
     handled = dispatchNext();
   }
   else if(k==='F'){
+    // Toggle modo foco — sempre funciona (atalho global)
     toggleFocusMode();handled=true;
   }
   else if(k==='T'){
     toggleTheme();showToast(localStorage.getItem('nexus_theme')==='light'?'☀ Tema claro':'🌙 Tema escuro');handled=true;
   }
-  else if(k==='R'){
+  else if(k==='R' && inFocusMode){
     // Retry current question in quick-review mode (clears answer, re-presents)
     if(ST.historyReviewActive&&ST.historyReviewAnswered){
       ST.historyReviewAnswered = false;
@@ -47938,12 +48092,12 @@ document.addEventListener('keydown',e=>{
     }
   }
   else if(k==='P'){
-    // P — abre/fecha pomodoro
+    // P — abre/fecha pomodoro (sempre funciona, é atalho global)
     if(typeof togglePomodoroPanel === 'function'){
       togglePomodoroPanel();handled=true;
     }
   }
-  else if(k==='B'){
+  else if(k==='B' && inFocusMode){
     // V12: B (back) — volta pra questão anterior do histórico (24h)
     if(typeof navigateToPreviousQuestion === 'function'){
       handled = navigateToPreviousQuestion();
