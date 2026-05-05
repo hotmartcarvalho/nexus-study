@@ -1,12 +1,20 @@
 // =============================================================================
-// /api/mp-webhook.js — Recebe notificações do Mercado Pago
+// /api/mp-webhook.js — V2 (FASE B — top-up atômico + idempotente)
 // =============================================================================
-// V13: Adicionado processamento de comissão de afiliado quando subscription
-// é autorizada ou quando uma mensalidade é cobrada.
+// Substitui o read-modify-write antigo (linhas 53-67 da v1) por
+// add_topup_credits_atomic. Vantagens:
 //
-// Configurar em: https://www.mercadopago.com.br/developers/panel/webhooks
-//   URL: https://gralia.com.br/api/mp-webhook
-//   Eventos: payment, subscription_preapproval, subscription_authorized_payment
+// 1. ATÔMICO: INSERT...ON CONFLICT DO UPDATE em uma transação. Sem race
+//    condition entre SELECT e UPDATE.
+// 2. IDEMPOTENTE: passa mp_payment_id; se o mesmo evento chegar duas vezes
+//    (retry do MP, nova tentativa de webhook), a RPC detecta que já foi
+//    processado e retorna duplicate=true sem cobrar de novo.
+// 3. Marca topup_purchases.mp_status='approved' dentro da mesma transação.
+//
+// REQUISITOS:
+// - RPC add_topup_credits_atomic (criada em gralia-credits-system-v3.1.sql)
+//
+// O resto do arquivo (assinaturas, comissão de afiliado) fica IGUAL ao V1.
 // =============================================================================
 
 import { createClient } from '@supabase/supabase-js';
@@ -35,7 +43,9 @@ export default async function handler(req, res) {
 
   try {
     if (type === 'payment' || type === 'payment.updated' || type === 'payment.created') {
-      // Pagamento avulso (top-up)
+      // -----------------------------------------------------------------
+      // Pagamento avulso (top-up) — V2: usa add_topup_credits_atomic
+      // -----------------------------------------------------------------
       const paymentRes = await fetch(`https://api.mercadopago.com/v1/payments/${dataId}`, {
         headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
       });
@@ -45,30 +55,35 @@ export default async function handler(req, res) {
         const userId = payment.metadata.user_id;
         const credits = parseInt(payment.metadata.credits, 10);
 
-        await supabase.from('topup_purchases').update({
-          mp_status: 'approved',
-          approved_at: new Date().toISOString()
-        }).eq('mp_payment_id', String(dataId));
-
-        const { data: cur } = await supabase
-          .from('user_credits').select('topup_credits').eq('user_id', userId).maybeSingle();
-
-        if (cur) {
-          await supabase.from('user_credits').update({
-            topup_credits: cur.topup_credits + credits,
-            updated_at: new Date().toISOString()
-          }).eq('user_id', userId);
-        } else {
-          await supabase.from('user_credits').insert([{
-            user_id: userId,
-            plan_credits: 0,
-            topup_credits: credits
-          }]);
+        if (!userId || !Number.isFinite(credits) || credits <= 0) {
+          console.error('[mp-webhook] topup metadata inválido:', payment.metadata);
+          return;
         }
-        console.log('[mp-webhook] topup approved:', userId, credits, 'credits');
+
+        // V2: uma única chamada atômica + idempotente. mp_payment_id é a chave.
+        const { data: result, error: addErr } = await supabase.rpc('add_topup_credits_atomic', {
+          p_user_id: userId,
+          p_credits: credits,
+          p_mp_payment_id: String(dataId)
+        });
+
+        if (addErr) {
+          console.error('[mp-webhook] add_topup_credits_atomic error:', addErr);
+          return;
+        }
+
+        if (result?.duplicate) {
+          console.log('[mp-webhook] topup já processado anteriormente (idempotente):', userId, 'mp_payment_id:', dataId);
+        } else if (result?.success) {
+          console.log('[mp-webhook] topup approved:', userId, '+'+credits, 'créditos. Saldo:', result.new_balance);
+        } else {
+          console.error('[mp-webhook] add_topup_credits_atomic non-success:', result);
+        }
       }
     } else if (type === 'subscription_preapproval' || type === 'preapproval' || type === 'subscription_authorized_payment') {
-      // Assinatura criada / autorizada / pagamento mensal cobrado
+      // -----------------------------------------------------------------
+      // Assinatura — IGUAL ao V1
+      // -----------------------------------------------------------------
       const preRes = await fetch(`https://api.mercadopago.com/preapproval/${dataId}`, {
         headers: { 'Authorization': `Bearer ${process.env.MP_ACCESS_TOKEN}` }
       });
@@ -82,13 +97,11 @@ export default async function handler(req, res) {
       };
       const internalStatus = statusMap[pre.status] || pre.status;
 
-      // Atualiza subscription
       await supabase.from('subscriptions').update({
         status: internalStatus,
         updated_at: new Date().toISOString()
       }).eq('mp_subscription_id', String(dataId));
 
-      // Se autorizou pela primeira vez OU é uma cobrança recorrente: reseta créditos + processa comissão
       if (pre.status === 'authorized') {
         const { data: sub } = await supabase
           .from('subscriptions').select('user_id, plan_id, billing_period')
@@ -103,7 +116,7 @@ export default async function handler(req, res) {
             console.log('[mp-webhook] subscription authorized:', sub.user_id, 'plan:', sub.plan_id);
           }
 
-          // V13: Processa comissão de afiliado (se houver)
+          // V13: comissão de afiliado
           const paymentAmount = parseFloat(pre.auto_recurring?.transaction_amount || 0);
           if (paymentAmount > 0) {
             try {
@@ -113,7 +126,6 @@ export default async function handler(req, res) {
               });
               console.log('[mp-webhook] affiliate commission processed for', sub.user_id, paymentAmount);
             } catch (e) {
-              // Função pode não existir ainda — não é fatal
               console.warn('[mp-webhook] affiliate commission failed:', e.message);
             }
           }
