@@ -39341,25 +39341,45 @@ function renderAdminDashboard(){
 
     cpCreateBtn.disabled = true; cpCreateBtn.textContent = '...';
     try{
-      const insert = {
-        code: code,
-        description: desc || null,
-        discount_pct: pct,
-        max_uses: maxUses
-      };
+      // V15.12.11 (Fase B): cria cupom via RPC admin_create_coupon
+      // — valida is_admin() server-side
+      // — registra admin_audit_log
+      // — retorna {success:bool, error?, coupon_id?, code?}
+      let validUntilISO = null;
       if(days){
-        const validUntil = new Date(Date.now() + days*86400*1000).toISOString();
-        insert.valid_until = validUntil;
+        validUntilISO = new Date(Date.now() + days*86400*1000).toISOString();
       }
-      const {error} = await supa.from('coupons').insert(insert);
+      const {data, error} = await supa.rpc('admin_create_coupon', {
+        p_code: code,
+        p_discount_pct: pct,
+        p_max_uses: maxUses,
+        p_valid_until: validUntilISO,
+        p_description: desc || null
+      });
       if(error) throw error;
-      cpResult.innerHTML = `<span style="color:var(--accent-text)">✓ Cupom <b>${code}</b> criado.</span>`;
+      if(!data || data.success !== true){
+        const reason = data?.error || 'erro desconhecido';
+        // Erros de negócio retornados pela RPC (sem throw)
+        if(/admin/i.test(reason)){
+          cpResult.innerHTML = '<span style="color:var(--red-text)">Apenas administradores podem criar cupons.</span>';
+        } else if(/duplicate|already exists/i.test(reason)){
+          cpResult.innerHTML = '<span style="color:var(--red-text)">Já existe cupom com esse código.</span>';
+        } else {
+          cpResult.innerHTML = '<span style="color:var(--red-text)">Erro: '+escapeHTML(reason)+'</span>';
+        }
+        return;
+      }
+      cpResult.innerHTML = `<span style="color:var(--accent-text)">✓ Cupom <b>${escapeHTML(code)}</b> criado.</span>`;
       cpCode.value = ''; cpPct.value = ''; cpMax.value = ''; cpDesc.value = '';
       // Recarrega lista
       setTimeout(()=>render(), 600);
     }catch(e){
       const msg = (e.message||String(e)).toLowerCase();
-      if(msg.includes('coupons') || msg.includes('does not exist')){
+      if(msg.includes('admin_create_coupon') && msg.includes('does not exist')){
+        cpResult.innerHTML = '<span style="color:var(--red-text)">RPC admin_create_coupon não existe. Rode o SQL gralia-credits-system-v3.1.sql.</span>';
+      } else if(msg.includes('apenas admin') || msg.includes('admin only') || msg.includes('access denied')){
+        cpResult.innerHTML = '<span style="color:var(--red-text)">Apenas administradores podem criar cupons.</span>';
+      } else if(msg.includes('coupons') && msg.includes('does not exist')){
         cpResult.innerHTML = '<span style="color:var(--red-text)">Tabela coupons não existe. Rode o SQL gralia-v13-coupons.sql.</span>';
       } else if(msg.includes('duplicate') || msg.includes('unique')){
         cpResult.innerHTML = '<span style="color:var(--red-text)">Já existe cupom com esse código.</span>';
