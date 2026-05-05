@@ -7044,13 +7044,126 @@ async function importSourceToLocal(resourceId, targetDisciplineId){
 // V12: Pré-carrega uma questão em background pra uma fonte recém-importada
 // A questão fica disponível em DATA.preloadedQuestions.practice pra ser usada
 // na próxima entrada em "Resolver questões". Roda assíncrono — usuário não espera.
+
+// =============================================================================
+// V15.12.12 (Fase B+) — SISTEMA DE LOCK DE PREFETCH
+// =============================================================================
+// Antes: cada aba podia disparar prefetch concorrente; com 0 créditos o
+// prefetch consumia tudo em cascata; erro 402 não suspendia novos prefetches.
+//
+// Agora:
+// - canStartPrefetch(action_id, key) verifica saldo + lock cross-tab + visibility
+// - acquirePrefetchLock(key, ttl) bloqueia outras abas via BroadcastChannel
+// - releasePrefetchLock(key) libera ao final
+// - notifyPrefetchNoCredits() suspende TODOS os prefetches até saldo atualizar
+// - lock auto-expira via TTL (default 60s) — abas zumbis não travam o sistema
+// =============================================================================
+
+const PREFETCH_LOCK_TTL_MS = 60000;  // 60s — se aba travar, libera em 1 min
+let _prefetchLocks = new Map();  // key -> {acquiredAt, ttl}
+let _prefetchSuspendedUntil = 0;  // timestamp; 0 = não suspenso
+const PREFETCH_SUSPEND_AFTER_402_MS = 30000;  // 30s sem prefetch após 402
+
+let _prefetchChannel = null;
+try {
+  if(typeof BroadcastChannel !== 'undefined'){
+    _prefetchChannel = new BroadcastChannel('gralia-prefetch-v1');
+    _prefetchChannel.addEventListener('message', (ev) => {
+      const m = ev.data || {};
+      if(m.type === 'lock'){
+        // Outra aba pegou um lock — registra localmente
+        _prefetchLocks.set(m.key, {acquiredAt: m.at, ttl: m.ttl, foreign: true});
+      } else if(m.type === 'release'){
+        _prefetchLocks.delete(m.key);
+      } else if(m.type === 'suspend'){
+        _prefetchSuspendedUntil = Math.max(_prefetchSuspendedUntil, m.until);
+      }
+    });
+  }
+} catch(_){}
+
+function _isLockActive(key){
+  const l = _prefetchLocks.get(key);
+  if(!l) return false;
+  if(Date.now() - l.acquiredAt > l.ttl){
+    _prefetchLocks.delete(key);
+    return false;
+  }
+  return true;
+}
+
+function acquirePrefetchLock(key, ttl){
+  ttl = ttl || PREFETCH_LOCK_TTL_MS;
+  if(_isLockActive(key)) return false;
+  const at = Date.now();
+  _prefetchLocks.set(key, {acquiredAt: at, ttl});
+  if(_prefetchChannel){
+    try { _prefetchChannel.postMessage({type:'lock', key, at, ttl}); } catch(_){}
+  }
+  return true;
+}
+
+function releasePrefetchLock(key){
+  _prefetchLocks.delete(key);
+  if(_prefetchChannel){
+    try { _prefetchChannel.postMessage({type:'release', key}); } catch(_){}
+  }
+}
+
+// Pré-flight pra prefetches: combina visibility + suspensão + saldo + lock.
+// IMPORTANTE: prefetch NUNCA mostra modal — falha silenciosa.
+function canStartPrefetch(action_id, lockKey, batch_size){
+  // 1) Aba em background? (pular pra economizar)
+  if(typeof document !== 'undefined' && document.visibilityState === 'hidden'){
+    return false;
+  }
+  // 2) Suspenso após 402 recente?
+  if(Date.now() < _prefetchSuspendedUntil){
+    return false;
+  }
+  // 3) Tem saldo?
+  if(action_id){
+    const r = canAffordAction(action_id, batch_size);
+    if(!r.ok) return false;
+  }
+  // 4) Já tem prefetch desse tipo rodando (em qualquer aba)?
+  if(lockKey && _isLockActive(lockKey)){
+    return false;
+  }
+  return true;
+}
+
+// Chamado quando QUALQUER chamada de IA recebe NO_CREDITS — suspende
+// prefetches em todas as abas até o saldo ser refrescado.
+function notifyPrefetchNoCredits(){
+  const until = Date.now() + PREFETCH_SUSPEND_AFTER_402_MS;
+  _prefetchSuspendedUntil = Math.max(_prefetchSuspendedUntil, until);
+  // Limpa locks ativos (libera filas)
+  _prefetchLocks.clear();
+  if(_prefetchChannel){
+    try { _prefetchChannel.postMessage({type:'suspend', until}); } catch(_){}
+  }
+  console.warn('[prefetch] suspenso por 30s após NO_CREDITS');
+}
+
+// Quando o saldo é atualizado pra > 0, levanta a suspensão imediatamente
+function clearPrefetchSuspension(){
+  if(QUOTA.remaining && QUOTA.remaining > 0){
+    _prefetchSuspendedUntil = 0;
+  }
+}
+
 async function preloadQuestionForSource(src){
   if(!src || !src.content) return;
+  // V15.12.12: pré-flight com lock cross-tab
+  const lockKey = 'preload-question-source-' + src.id;
+  if(!canStartPrefetch('practice_question', lockKey)) return;
   // Não pré-carrega se já tem uma fila com questão recente (<1h)
   const existing = DATA.preloadedQuestions?.practice;
   if(existing && existing.generatedAt && (Date.now() - existing.generatedAt) < 3600000){
     return;
   }
+  if(!acquirePrefetchLock(lockKey)) return;
   try{
     const seed = avoidRepeatPrompt('practice');
     const res = await timedCallAPI('practice','question',SYS_PRACT,
@@ -7062,7 +7175,13 @@ async function preloadQuestionForSource(src){
       save();
     }
   }catch(e){
-    // Falha silenciosa — usuário não foi avisado, então não precisa avisar
+    // V15.12.12: 402 → suspende prefetch global; outros erros = silêncio
+    if(e && (e.name === 'CreditsError' || (e.name === 'ApiError' && e.status === 402))){
+      notifyPrefetchNoCredits();
+    }
+    // Demais erros: falha silenciosa
+  } finally {
+    releasePrefetchLock(lockKey);
   }
 }
 
@@ -7886,6 +8005,12 @@ function startPrefetchExplanation(q, model){
   const key = _prefetchKey(q, 'explicacao', model);
   if(SHARED_PREFETCH[key]) return SHARED_PREFETCH[key];
 
+  // V15.12.12: pré-flight (saldo + visibility + cross-tab + suspensão)
+  const action_id = model === 'sonnet' ? 'imported_question_explanation_premium' : 'imported_question_explanation';
+  const lockKey = 'prefetch-explan-' + key;
+  if(!canStartPrefetch(action_id, lockKey)) return null;
+  if(!acquirePrefetchLock(lockKey)) return null;
+
   const userAnswered = ST.importedAnswer;
   const qText = q.kind==='MC'
     ? `${q.enunciado}\n\nAlternativas:\n${(q.alternatives||[]).map(a=>`${a.letter}) ${a.text}`).join('\n')}`
@@ -7895,7 +8020,7 @@ function startPrefetchExplanation(q, model){
     : 'Você é professor de concursos. Responda SEMPRE em JSON puro, sem markdown.';
   const prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nCandidato respondeu ${userAnswered||'(em branco)'} e ${userAnswered===q.answer?'acertou':'errou'}. Explique o gabarito em 2-4 frases, identifique a armadilha (o motivo de muitos errarem) e a palavra-gatilho do enunciado. Responda em JSON:\n{"explanation":"...","trap":"...","keyword":"..."}`;
   const modelStr = model === 'sonnet' ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
-  const opts = {model: modelStr, action: 'imported_question_explanation'};
+  const opts = {model: modelStr, action: action_id};
   const entry = {promise: null, payload: null, error: null, startedAt: Date.now()};
   entry.promise = callAPI(sys, [{role:'user', content: prompt}], opts)
     .then(res=>{
@@ -7907,20 +8032,44 @@ function startPrefetchExplanation(q, model){
       entry.payload = payload;
       // Salva no cache compartilhado em background (não bloqueia)
       saveSharedExplanation(q.enunciado, 'explicacao', model, payload).catch(()=>{});
+      releasePrefetchLock(lockKey);
       return payload;
     })
-    .catch(e=>{ entry.error = e; throw e; });
+    .catch(e=>{
+      entry.error = e;
+      releasePrefetchLock(lockKey);
+      // V15.12.12: 402 silencioso + suspende prefetch global
+      if(e && (e.name==='CreditsError' || (e.name==='ApiError' && e.status===402))){
+        notifyPrefetchNoCredits();
+      }
+      throw e;
+    });
   SHARED_PREFETCH[key] = entry;
   return entry;
 }
 
 async function generateAndSaveExplanation(q, model, container, triggerBtn){
   const userAnswered = ST.importedAnswer;
-  // Custo aproximado pra alertar usuário
-  const costMsg = model === 'sonnet'
-    ? 'Gerar com Sonnet 4.5 custa ~5-8 créditos. A explicação ficará disponível pra outros usuários (e pra você sempre que voltar nessa questão).\n\nContinuar?'
-    : 'Gerar com Haiku custa ~1-2 créditos. A explicação ficará disponível pra outros usuários.\n\nContinuar?';
-  if(!confirm(costMsg)) return;
+  // V15.12.12: usa modal customizado em vez de confirm() nativo
+  const action_id = model === 'sonnet' ? 'imported_question_explanation_premium' : 'imported_question_explanation';
+  const desc = model === 'sonnet'
+    ? 'Análise mais profunda com Sonnet 4.5. A explicação fica disponível pra outros usuários (e pra você sempre que voltar nessa questão).'
+    : 'Explicação rápida com Haiku. Fica disponível pra outros usuários (e pra você sempre que voltar nessa questão).';
+  const ok = await confirmAction({
+    title: model === 'sonnet' ? '⚡ Gerar com Sonnet' : '🤖 Gerar com Haiku',
+    body: desc,
+    costAction: action_id,
+    confirmLabel: 'Gerar explicação'
+  });
+  if(!ok) return;
+
+  // V15.12.12: pré-flight ANTES do loading
+  try {
+    assertCanAfford(action_id);
+  } catch(creditsErr) {
+    handleApiError(creditsErr, {context:'explicacao'});
+    return;
+  }
 
   // Loading visual imediato no botão
   let originalLabel = '';
@@ -7964,7 +8113,7 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn){
         : 'Você é professor de concursos. Responda SEMPRE em JSON puro, sem markdown.';
       const prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nCandidato respondeu ${userAnswered||'(em branco)'} e ${userAnswered===q.answer?'acertou':'errou'}. Explique o gabarito em 2-4 frases, identifique a armadilha (o motivo de muitos errarem) e a palavra-gatilho do enunciado. Responda em JSON:\n{"explanation":"...","trap":"...","keyword":"..."}`;
       const modelStr = model === 'sonnet' ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
-      const res = await callAPI(sys, [{role:'user', content: prompt}], {model: modelStr, action: 'imported_question_explanation'});
+      const res = await callAPI(sys, [{role:'user', content: prompt}], {model: modelStr, action: action_id});
       payload = {
         explanation: res.explanation || '',
         trap: res.trap || '',
@@ -7999,22 +8148,14 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn){
     clearPrefetchedShared(q, 'explicacao', model);
     showToast('✓ Explicação gerada e compartilhada');
 
-    // Após gerar explicação, dispara prefetch silencioso de flashcard Haiku em background
-    // Assim, se o usuário decidir gerar flashcard depois, tem chance de já estar pronto
-    // (não consome crédito agora — só inicia a API call que pode terminar antes do click)
-    // Comentado por segurança: prefetch automático gasta crédito sem confirmação explícita.
-    // Manteremos prefetch só sob demanda (após click no botão de flashcard).
-
     // Atualiza estado dos botões (background) — refetch real depois pra pegar id e voto
     setTimeout(()=>{
-      // Re-render da seção pra atualizar labels dos botões ("Gerar" → "Atualizar minha")
-      // mas preserva cards já visíveis
       try{ renderSharedExplanationsBody(container, q); }catch(e){}
     }, 1200);
   }catch(e){
     placeholderCard.remove();
     if(triggerBtn){ triggerBtn.disabled = false; triggerBtn.textContent = originalLabel; }
-    alert('Erro: ' + (e.message||e));
+    handleApiError(e, {context:'explicacao'});
   }
 }
 
@@ -11027,11 +11168,30 @@ async function apiGenerate(body){
       if(chip)updateCreditsChip(chip);
     }
     // Detect quota exhaustion (HTTP 402 Payment Required)
+    // V15.12.12: SÓ mostra modal aqui se a chamada foi do USUÁRIO (não prefetch).
+    // O distinção vem por: caller passar opts.silentOn402 quando for prefetch.
+    // Como apiGenerate é o ponto comum, sempre suspendemos prefetch global,
+    // mas só mostramos modal pra chamadas explícitas.
     if(r.status===402){
       try{
         const clone = r.clone();
         clone.json().then(d=>{
-          if(d.code==='NO_CREDITS') handleNoCreditsError();
+          if(d.code==='NO_CREDITS' || /insufficient/i.test(d.error||'')){
+            // Suspende prefetch em todas as abas
+            try { notifyPrefetchNoCredits(); } catch(_){}
+            // Atualiza saldo local imediatamente
+            if(typeof d.balance === 'number'){
+              QUOTA.remaining = d.balance;
+              const chip = document.getElementById('credits-chip');
+              if(chip) updateCreditsChip(chip);
+            }
+            // Modal SÓ pra chamadas explícitas (não prefetch).
+            // O caller que faz prefetch deve setar body._silentOn402=true e
+            // capturar o CreditsError no .catch sem chamar handleApiError.
+            if(!body._silentOn402){
+              showCreditsRequiredModal(d);
+            }
+          }
         }).catch(()=>{});
       }catch(_){}
     }
@@ -11226,8 +11386,9 @@ async function showCreditsBreakdownPopover(anchor){
     html += `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Estornos por falha</div>`;
     html += `<div style="display:flex;flex-direction:column;gap:5px;font-size:12px;margin-bottom:12px">`;
     breakdown.recent_refunds.forEach(r => {
+      const lbl = actionLabel(r.action_id) || 'Geração com IA';
       html += `<div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
-        <span style="color:var(--text2)">↩ ${escapeHTML(r.action_id || 'ação')}</span>
+        <span style="color:var(--text2)">↩ ${escapeHTML(lbl)}</span>
         <span style="color:var(--text3);font-size:11px">${fmtDate(r.created_at)}</span>
       </div>`;
     });
@@ -11335,8 +11496,9 @@ async function showUsageSummaryModal(){
     html += `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Consumo por ação</div>`;
     html += `<div style="display:flex;flex-direction:column;gap:5px;font-size:12.5px;margin-bottom:1.25rem">`;
     summary.by_action.forEach(a => {
+      const lbl = actionLabel(a.action_id) || a.action_id;
       html += `<div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;padding:.5rem .75rem;background:var(--surface2);border-radius:6px">
-        <span style="color:var(--text2)">${escapeHTML(a.action_id)} <span style="color:var(--text3);font-size:11px">· ${a.calls}×</span></span>
+        <span style="color:var(--text2)">${escapeHTML(lbl)} <span style="color:var(--text3);font-size:11px">· ${a.calls}×</span></span>
         <span style="color:var(--text);font-weight:700">${a.credits} créd.</span>
       </div>`;
     });
@@ -11348,9 +11510,10 @@ async function showUsageSummaryModal(){
     html += `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Histórico recente</div>`;
     html += `<div style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">`;
     summary.recent_activity.forEach((a, i) => {
+      const lbl = actionLabel(a.action_id) || a.action_id;
       html += `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:.5rem .75rem;font-size:12px${i > 0 ? ';border-top:1px solid var(--border)' : ''}">
         <div style="flex:1;min-width:0">
-          <div style="color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(a.action_id)}</div>
+          <div style="color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(lbl)}</div>
           <div style="color:var(--text3);font-size:11px">${fmtDateTime(a.created_at)} · ${escapeHTML(a.model || '')}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
@@ -11415,25 +11578,334 @@ function showQualityPopover(){
   showModal(modal);
 }
 
-// Central handler for "no credits" errors — shown on all generation methods
-function handleNoCreditsError(){
-  QUOTA.remaining = 0;
+// =============================================================================
+// V15.12.12 (Fase B+) — NÚCLEO DE TRATAMENTO DE ERRO DE CRÉDITOS / API
+// =============================================================================
+// Antes: cada catch fazia alert('Erro ao gerar X: '+e.message) e mostrava JSON
+// cru tipo "api-402: {error:'Créditos insuficientes',code:'NO_CREDITS',...}".
+// Agora: erros são TIPADOS, e o handleApiError central decide se mostra modal,
+// toast, ou só loga no console. Modal de créditos respeita Trial vs pago.
+// =============================================================================
+
+// --- Classes de erro tipadas ---------------------------------------------
+class CreditsError extends Error {
+  constructor(payload){
+    super(payload?.error || 'Créditos insuficientes');
+    this.name = 'CreditsError';
+    this.code = 'NO_CREDITS';
+    this.payload = payload || {};
+  }
+}
+class ApiError extends Error {
+  constructor(status, body, ctx){
+    super('api-'+status);
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body || null;
+    this.ctx = ctx || null;
+  }
+}
+
+// --- Estado anti-spam de modal -------------------------------------------
+// Evita 2+ modais de "sem crédito" abertos em sequência por catches paralelos.
+let _creditsModalShownAt = 0;
+const CREDITS_MODAL_DEBOUNCE_MS = 4000;
+
+// --- Pré-flight: posso pagar essa ação? ----------------------------------
+// Usa AI_COSTS local (sincronizado server-side via loadActionCatalog no boot)
+// + QUOTA.remaining (atualizado pelo header X-Credits-Remaining).
+// Retorna {ok:true} ou {ok:false, balance, required, action_id}.
+// Usado por: prefetches, botões de geração, antes do loading.
+function canAffordAction(action_id, batch_size){
+  if(!action_id) return {ok:true};  // sem id, deixa o backend decidir
+  const meta = (window.AI_COSTS||{})[action_id];
+  if(!meta) return {ok:true};        // ação desconhecida, backend valida
+  if(meta.is_free === true) return {ok:true};
+  const cost = (meta.base_credits || 0) * (Math.max(1, batch_size||1));
+  if(cost === 0) return {ok:true};
+  const balance = QUOTA.remaining;
+  if(balance === null || balance === undefined) return {ok:true};  // sem dado, tenta
+  if(balance < cost){
+    return {ok:false, balance, required:cost, action_id};
+  }
+  return {ok:true};
+}
+
+// Versão "throw" pra usar antes do loading:
+//   try { assertCanAfford('practice_question'); } catch(e){ handleApiError(e); return; }
+function assertCanAfford(action_id, batch_size){
+  const r = canAffordAction(action_id, batch_size);
+  if(!r.ok){
+    throw new CreditsError({
+      error: 'Créditos insuficientes',
+      code: 'NO_CREDITS',
+      balance: r.balance,
+      required: r.required,
+      short_by: r.required - r.balance,
+      action_id: r.action_id,
+      plan: QUOTA.plan
+    });
+  }
+}
+
+// --- Modal bonito de créditos esgotados (Trial vs pago) ------------------
+function showCreditsRequiredModal(payload){
+  // Anti-spam: se acabou de mostrar, ignora
+  if(Date.now() - _creditsModalShownAt < CREDITS_MODAL_DEBOUNCE_MS) return;
+  _creditsModalShownAt = Date.now();
+
+  const isTrialUser = (QUOTA.plan === 'trial' || !QUOTA.plan);
+  // V15.12.12: top-up só está visível pra quem pode comprar (cf. PLAN_LIMITS.can_buy_topup)
+  const canBuyTopup = (() => {
+    try { return getPlanLimits().can_buy_topup === true; } catch(_) { return !isTrialUser; }
+  })();
+
   const modal = mk('div');
-  modal.style.cssText='max-width:400px;padding:1.5rem;text-align:center';
-  const emoji = mk('div');emoji.style.cssText='font-size:44px;margin-bottom:.75rem';emoji.textContent='⏳';
+  modal.style.cssText='max-width:440px;padding:1.5rem;text-align:center';
+
+  const emoji = mk('div');
+  emoji.style.cssText='font-size:44px;margin-bottom:.5rem;line-height:1';
+  emoji.textContent = isTrialUser ? '🎁' : '⚡';
   modal.appendChild(emoji);
-  const title = mk('h2');title.style.cssText='margin:0 0 .75rem;font-size:18px';title.textContent='Seus créditos acabaram';
+
+  const title = mk('h2');
+  title.style.cssText='margin:0 0 .75rem;font-size:18px;font-weight:700';
+  title.textContent = isTrialUser ? 'Seus créditos grátis acabaram' : 'Seus créditos de IA acabaram';
   modal.appendChild(title);
-  const desc = mk('p','txt2');desc.style.cssText='line-height:1.55;margin-bottom:1.25rem';
-  desc.innerHTML = 'Você usou todos os créditos do seu plano <b>'+QUOTA.plan+'</b>. Você pode <b>assinar um plano</b> ou <b>comprar um pacote avulso de créditos</b> pra continuar usando agora mesmo. Top-ups são úteis quando você usa demais da IA num mês específico (ex: véspera de prova) — eles não expiram e somam ao que vier.';
+
+  const desc = mk('p','txt2');
+  desc.style.cssText='line-height:1.6;margin-bottom:1.25rem;font-size:13.5px';
+  if(isTrialUser){
+    desc.textContent = 'Você ainda pode revisar flashcards, usar Pomodoro, importar questões, fazer simulados com questões salvas e acessar seus materiais. Pra continuar gerando questões, explicações e flashcards automáticos com IA, escolha um plano ou compre créditos avulsos.';
+  } else {
+    desc.textContent = 'Você ainda pode continuar estudando com os recursos sem IA. Pra gerar novas questões, explicações, flashcards automáticos ou análises com IA, compre créditos extras ou ajuste seu plano.';
+  }
   modal.appendChild(desc);
-  const note = mk('p','txt3');note.style.cssText='font-size:12px;margin-bottom:1.25rem';
-  note.textContent = 'Seus dados ficam salvos. Assim que os planos forem lançados, basta assinar para continuar de onde parou.';
-  modal.appendChild(note);
-  const closeBtn = mkBtn('Entendi','btn btn-p');
-  closeBtn.addEventListener('click',()=>closeModal());
-  modal.appendChild(closeBtn);
+
+  // V15.12.13: Detalhes amigáveis (sem JSON, action_id, NO_CREDITS, etc)
+  // Mostra: Ação (rótulo legível) · Custo · Seu saldo
+  // Detalhes técnicos seguem no console (handleApiError já loga lá).
+  if(payload && (payload.balance != null || payload.required != null || payload.action_id)){
+    const det = mk('div');
+    det.style.cssText='font-size:12px;color:var(--text2);margin:0 0 1.25rem;padding:.625rem .875rem;background:var(--surface2);border-radius:8px;display:inline-block;line-height:1.7;text-align:left';
+    const lines = [];
+    const label = actionLabel(payload.action_id);
+    if(label) lines.push(`<span style="color:var(--text3)">Ação:</span> <b>${escapeHTML(label)}</b>`);
+    if(payload.required != null){
+      const c = Number(payload.required);
+      lines.push(`<span style="color:var(--text3)">Custo:</span> <b>${c} crédito${c===1?'':'s'}</b>`);
+    }
+    if(payload.balance != null){
+      const b = Number(payload.balance);
+      lines.push(`<span style="color:var(--text3)">Seu saldo:</span> <b>${b} crédito${b===1?'':'s'}</b>`);
+    }
+    if(lines.length > 0){
+      det.innerHTML = lines.join('<br>');
+      modal.appendChild(det);
+    }
+  }
+
+  // ---- Botões: ordem e destaque dependem do tipo de usuário ----
+  const btnRow = mk('div');
+  btnRow.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:.5rem';
+
+  const goPlans = (label, primary) => {
+    const b = mkBtn(label, primary ? 'btn btn-p' : 'btn');
+    b.addEventListener('click', () => {
+      closeModal();
+      ST.view = 'plans';
+      render();
+    });
+    return b;
+  };
+  const goTopups = (label, primary) => {
+    const b = mkBtn(label, primary ? 'btn btn-p' : 'btn');
+    b.addEventListener('click', () => {
+      closeModal();
+      ST.view = 'topups';
+      render();
+    });
+    return b;
+  };
+  const continueWithoutAI = () => {
+    const b = mkBtn('Continuar sem IA', 'btn');
+    b.style.opacity = '0.85';
+    b.addEventListener('click', closeModal);
+    return b;
+  };
+
+  if(isTrialUser){
+    // Trial: foco principal em conhecer/assinar plano
+    btnRow.appendChild(goPlans('Ver planos', true));
+    if(canBuyTopup) btnRow.appendChild(goTopups('Comprar créditos', false));
+    btnRow.appendChild(continueWithoutAI());
+  } else {
+    // Pago: foco principal em comprar top-up
+    if(canBuyTopup){
+      btnRow.appendChild(goTopups('Comprar créditos', true));
+      btnRow.appendChild(goPlans('Ver planos', false));
+    } else {
+      btnRow.appendChild(goPlans('Ver planos', true));
+    }
+    btnRow.appendChild(continueWithoutAI());
+  }
+
+  modal.appendChild(btnRow);
   showModal(modal);
+}
+
+// --- Handler central de erro de API --------------------------------------
+// Recebe o erro lançado por callAPI/apiGenerate e decide o que mostrar.
+// Use no catch de qualquer função de geração:
+//   } catch(err){ handleApiError(err, {context:'flashcard'}); }
+//
+// Mantém log técnico no console pra debug, mas mostra UI amigável.
+function handleApiError(err, ctx){
+  ctx = ctx || {};
+  console.error('[handleApiError]', ctx.context || '(sem contexto)', err);
+
+  // 1) CreditsError tipado (o ideal)
+  if(err && err.name === 'CreditsError'){
+    QUOTA.remaining = err.payload?.balance ?? 0;
+    showCreditsRequiredModal(err.payload || {});
+    return;
+  }
+
+  // 2) ApiError tipado por status
+  if(err && err.name === 'ApiError'){
+    if(err.status === 402){
+      // Backend retornou 402 mas não foi capturado como CreditsError → trata aqui
+      QUOTA.remaining = err.body?.balance ?? 0;
+      showCreditsRequiredModal(err.body || {});
+      return;
+    }
+    if(err.status === 403){
+      showToast(err.body?.error || 'Acesso negado.', 4000);
+      return;
+    }
+    if(err.status === 409){
+      // Idempotency duplicate — silencia, já foi processado
+      console.warn('[handleApiError] requisição duplicada (409); ignorando UI');
+      return;
+    }
+    if(err.status === 429){
+      showToast('Você está fazendo muitas requisições. Aguarde alguns segundos.', 5000);
+      return;
+    }
+    if(err.status === 400){
+      showToast('Requisição inválida. Tente novamente ou recarregue a página.', 4000);
+      return;
+    }
+    if(err.status >= 500){
+      showToast('A IA está com instabilidade momentânea. Tente novamente em instantes.', 5000);
+      return;
+    }
+    showToast('Erro na geração ('+err.status+'). Tente novamente.', 4000);
+    return;
+  }
+
+  // 3) Erro legado (string "api-402: {...}") — extrai e re-trata
+  const msg = (err && err.message) || String(err || '');
+  // Detecta 402 mesmo em formato legado
+  if(/api-402|NO_CREDITS|insufficient_credits|insufficient_balance|Créditos insuficientes/i.test(msg)){
+    // Tenta extrair o payload JSON, se vier no formato "api-402: {...}"
+    let payload = {};
+    const jsonMatch = msg.match(/\{.*\}/);
+    if(jsonMatch){
+      try { payload = JSON.parse(jsonMatch[0]); } catch(_) {}
+    }
+    QUOTA.remaining = payload.balance ?? 0;
+    showCreditsRequiredModal(payload);
+    return;
+  }
+
+  // 4) Erro de rede (fetch sem resposta)
+  if(/Failed to fetch|NetworkError|network/i.test(msg)){
+    showToast('Sem conexão com o servidor. Verifique sua internet.', 5000);
+    return;
+  }
+
+  // 5) Erro "no-content" (já tem mensagem amigável montada em callAPI)
+  if(/no-content/i.test(msg)){
+    showToast(msg.replace(/^no-content:\s*/, '').slice(0, 200), 6000);
+    return;
+  }
+
+  // 6) Genérico
+  showToast('Não foi possível concluir a geração. Veja o console pra detalhes.', 4000);
+}
+
+// Compat: handleNoCreditsError() era chamado em vários lugares
+function handleNoCreditsError(payload){
+  showCreditsRequiredModal(payload || {});
+}
+
+// V15.12.12 — Modal de confirmação custom (substitui confirm() nativo)
+// Uso:
+//   const ok = await confirmAction({title:'Sintetizar?', body:'Vai consumir...', costAction:'edital_synthesis', confirmLabel:'Sintetizar'});
+//   if(!ok) return;
+function confirmAction(opts){
+  opts = opts || {};
+  return new Promise((resolve) => {
+    const modal = mk('div');
+    modal.style.cssText='max-width:420px;padding:1.5rem';
+
+    if(opts.title){
+      const t = mk('h2');
+      t.style.cssText='margin:0 0 .625rem;font-size:17px;font-weight:700';
+      t.textContent = opts.title;
+      modal.appendChild(t);
+    }
+
+    if(opts.body){
+      const p = mk('p','txt2');
+      p.style.cssText='margin:0 0 1rem;line-height:1.6;font-size:13.5px';
+      // Suporta string simples ou HTML
+      if(opts.bodyHtml){ p.innerHTML = opts.body; } else { p.textContent = opts.body; }
+      modal.appendChild(p);
+    }
+
+    if(opts.costAction){
+      const cost = mk('div');
+      cost.style.cssText='display:inline-block;padding:.375rem .75rem;background:var(--surface2);border-radius:7px;font-size:12px;margin-bottom:1rem';
+      const cur = QUOTA.remaining;
+      const meta = (window.AI_COSTS||{})[opts.costAction];
+      const ccost = meta ? meta.base_credits : null;
+      let html = `Custo: <b>${aiCostBadgeHTML(opts.costAction)}</b>`;
+      if(typeof cur === 'number'){
+        html += ` &nbsp;·&nbsp; Saldo: <b>${cur}</b>`;
+      }
+      cost.innerHTML = html;
+      modal.appendChild(cost);
+    }
+
+    const row = mk('div');
+    row.style.cssText='display:flex;gap:8px;justify-content:flex-end;margin-top:.5rem';
+
+    const cancelBtn = mkBtn(opts.cancelLabel || 'Cancelar', 'btn');
+    cancelBtn.addEventListener('click', () => { closeModal(); resolve(false); });
+    row.appendChild(cancelBtn);
+
+    const okBtn = mkBtn(opts.confirmLabel || 'Confirmar', 'btn btn-p');
+    okBtn.addEventListener('click', () => { closeModal(); resolve(true); });
+    row.appendChild(okBtn);
+
+    modal.appendChild(row);
+    showModal(modal);
+  });
+}
+
+// Helper pra converter response não-OK de apiGenerate em CreditsError/ApiError
+// tipados. Usado em todos os pontos que faziam: throw new Error('api-'+r.status+...)
+async function apiRespToError(r, action_id){
+  let errText = '';
+  let parsed = null;
+  try{ errText = await r.text(); }catch(_){}
+  try{ parsed = errText ? JSON.parse(errText) : null; }catch(_){}
+  if(r.status === 402 && parsed && (parsed.code === 'NO_CREDITS' || /insufficient|cr[eé]ditos/i.test(parsed.error||''))){
+    return new CreditsError(parsed);
+  }
+  return new ApiError(r.status, parsed || {raw:errText.slice(0,300)}, action_id);
 }
 
 /* API */
@@ -11504,9 +11976,15 @@ async function callAPI(system, msgs, opts){
   }
   if(!r.ok){
     let errText = '';
+    let parsed = null;
     try{errText = await r.text();}catch(e){}
+    try{parsed = errText ? JSON.parse(errText) : null;}catch(_){}
     console.error('API error', r.status, errText);
-    throw new Error('api-'+r.status+': '+errText.slice(0,300));
+    // V15.12.12: erros tipados — handleApiError sabe processar
+    if(r.status === 402 && parsed && parsed.code === 'NO_CREDITS'){
+      throw new CreditsError(parsed);
+    }
+    throw new ApiError(r.status, parsed || {raw:errText.slice(0,300)}, opts && opts.action);
   }
   let d;
   try{d = await r.json();}catch(e){throw new Error('resposta não é JSON válido');}
@@ -16660,6 +17138,43 @@ const AI_COSTS = {
   exam_analysis_premium: 50
 };
 
+// V15.12.13 (Fase B+): rótulos amigáveis para cada action_id, exibidos
+// em modais voltados ao usuário final (modal de créditos insuficientes,
+// confirmação de custo, etc). Os action_id em si NÃO devem aparecer na UI.
+const ACTION_LABELS = {
+  organize_import: 'Organizar fonte importada',
+  extract_questions_pdf: 'Extrair questões do PDF',
+  classify_imported_question: 'Classificar questão',
+  health_check: 'Teste de conexão',
+  practice_question_eval: 'Avaliar resposta',
+  error_flashcard: 'Flashcard a partir de erro',
+  insight_daily: 'Análise diária do mentor',
+  practice_question: 'Gerar questão de prática',
+  imported_question_explanation: 'Explicação de questão',
+  practice_question_detailed: 'Questão de prática detalhada',
+  topic_summary: 'Resumo de tópico',
+  examiner_review: 'Revisão do examinador',
+  reverse_engineering: 'Engenharia reversa',
+  smart_organize: 'Organização inteligente',
+  schedule_generation: 'Cronograma de estudo',
+  srs_batch_generate: 'Geração em lote de flashcards',
+  imported_question_explanation_premium: 'Explicação aprofundada (Sonnet)',
+  series_batch: 'Caderno em série',
+  drill_session: 'Sessão de drill',
+  topic_profile_audio: 'Roteiro de áudio do tópico',
+  exam_analysis: 'Análise de prova',
+  simulado_generation: 'Simulado',
+  topic_profile: 'Perfil aprofundado de tópico',
+  edital_synthesis: 'Síntese de edital',
+  edital_synthesis_premium: 'Síntese de edital aprofundada',
+  exam_analysis_premium: 'Análise de prova aprofundada'
+};
+
+function actionLabel(action_id){
+  if(!action_id) return null;
+  return ACTION_LABELS[action_id] || null;  // null se desconhecido — esconde na UI
+}
+
 // V15.12.11: catálogo carregado do servidor (sobrescreve AI_COSTS local)
 // Populado por loadActionCatalog() ao logar.
 let AI_COSTS_SERVER = null;
@@ -19846,7 +20361,18 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →'){
 }
 function handleErr(e,container){
   console.error('NEXUS error:',e);
+  // V15.12.12: erros tipados (CreditsError, ApiError) → handleApiError central
+  // que mostra modal/toast bonito em vez de errorBox embedado
+  if(e && (e.name === 'CreditsError' || e.name === 'ApiError')){
+    handleApiError(e, {context:'method'});
+    return;
+  }
   const msg = e.message||String(e);
+  // Captura formato legado "api-402: {...}" (compat)
+  if(/api-402|NO_CREDITS|insufficient/i.test(msg)){
+    handleApiError(e, {context:'method'});
+    return;
+  }
   let text = 'Erro ao conectar com a IA.';
   let canRetry = true;
   if(msg.includes('no-content')){
@@ -20506,7 +21032,7 @@ Se NÃO encontrar nenhuma questão neste trecho, retorne []`;
       const r = await apiGenerate(body);
       if(!r.ok){
         const errText = await r.text().catch(()=>'');
-        throw new Error('api-' + r.status + ': ' + errText.slice(0,150));
+        throw await apiRespToError(r);
       }
       const d = await r.json();
       if(d.usage){
@@ -20793,6 +21319,10 @@ function parseMultipleChoiceFormat(raw){
 function prefetchErrorCard(err,modelOverride){
   if(!ST.prefetchedCards)ST.prefetchedCards={};
   if(ST.prefetchedCards[err.id])return; // already fetching/fetched
+  // V15.12.12: pré-flight (saldo + visibility + suspensão)
+  const lockKey = 'prefetch-error-card-' + err.id;
+  if(!canStartPrefetch('error_flashcard', lockKey)) return;
+  if(!acquirePrefetchLock(lockKey)) return;
   const prompt = `O candidato errou:
 
 QUESTÃO: ${err.question}
@@ -20806,8 +21336,16 @@ Gere UM flashcard que RESOLVA a dificuldade. Escolha o tipo de card que melhor a
   const entry = {promise:null,result:null,error:null,startedAt:Date.now()};
   ST.prefetchedCards[err.id] = entry;
   entry.promise = callAPIWithScore('srs','flashcard',SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}],{model:modelOverride, action:'error_flashcard'},75)
-    .then(gated=>{entry.result=gated;return gated;})
-    .catch(e=>{entry.error=e;throw e;});
+    .then(gated=>{entry.result=gated;releasePrefetchLock(lockKey);return gated;})
+    .catch(e=>{
+      entry.error=e;
+      releasePrefetchLock(lockKey);
+      // V15.12.12: 402 silencioso + suspende prefetch global
+      if(e && (e.name==='CreditsError' || (e.name==='ApiError' && e.status===402))){
+        notifyPrefetchNoCredits();
+      }
+      throw e;
+    });
 }
 function getPrefetchedCard(errId){
   const entry = (ST.prefetchedCards||{})[errId];
@@ -20819,6 +21357,14 @@ function clearPrefetchedCard(errId){
 }
 
 async function generateCardFromError(err,btn,modelOverride,ctaRow,quick){
+  // V15.12.12: pré-flight ANTES de mostrar loading. Sem isso, usuário via
+  // "Gerando..." e depois recebia erro de crédito.
+  try {
+    assertCanAfford('error_flashcard');
+  } catch(creditsErr) {
+    handleApiError(creditsErr, {context:'flashcard-erro'});
+    return;
+  }
   const orig = btn.textContent;
   btn.disabled=true;btn.textContent='Gerando...';
   try{
@@ -20904,9 +21450,9 @@ Gere UM flashcard que RESOLVA a dificuldade. Escolha o tipo de card que melhor a
     // Agora mostramos texto amigável com instrução do que fazer.
     const errMsg = String(e.message||e).toLowerCase();
     if(errMsg.includes('429') || errMsg.includes('rate limit')){
-      alert('⏳ Limite de uso da IA atingido por agora.\n\nA Anthropic limita a 50.000 tokens/minuto. Geração em lote consome rápido — tente de novo em 1-2 minutos.\n\nDica: gere um flashcard de cada vez em vez de todos juntos pra evitar isso.');
+      showToast('⏳ Limite de uso da IA atingido. Aguarde 1-2 minutos. Dica: gere um flashcard por vez.', 7000);
     } else {
-      alert('Erro ao gerar card: '+(e.message||e));
+      handleApiError(e, {context:'flashcard-erro'});
     }
   }
 }
@@ -22266,7 +22812,7 @@ function renderMapTopicDetail(map){
             render();
           }catch(err){
             console.error('Profile gen error:',err);
-            alert('Erro ao gerar perfil: '+(err.message||err));
+            handleApiError(err, {context:'topic-profile'});
             genBtn.disabled=false;
             genBtn.innerHTML = `🧠 Gerar perfil completo <span class="btn-cost-hint ${cost.tier}">${credText}</span>`;
           }
@@ -23394,7 +23940,7 @@ function renderTurbo(){
         save();
         turboNext();
       }catch(e){
-        alert('Erro ao gerar: '+(e.message||e));
+        handleApiError(e, {context:'caderno-serie'});
         genBtn.disabled=false;genBtn.textContent='🎴 Virar flashcard';
       }
     });
@@ -24794,7 +25340,7 @@ async function runRevgen(){
     });
     if(!r.ok){
       const t = await r.text().catch(()=>'');
-      throw new Error('api-'+r.status+': '+t.slice(0,150));
+      throw await apiRespToError(r);
     }
     const d = await r.json();
     if(d.usage){
@@ -25227,21 +25773,34 @@ function showGenerateSeriesModal(){
   actions.appendChild(cancel);
   const go = mkBtn('🪄 Gerar série','btn btn-p');go.style.flex='2';
   go.addEventListener('click', async()=>{
-    if(srcs.length === 0){alert('Sem fonte ativa');return;}
+    if(srcs.length === 0){
+      showToast('Sem fonte ativa', 3000);
+      return;
+    }
     const srcId = srcSel.value;
     const nNotebooks = parseInt(nSel.value, 10);
     const nQuestions = parseInt(qSel.value, 10);
     // V15.12.11: custo = 10 créditos por caderno (action series_batch)
     if(nQuestions > 10){
-      alert('Cada caderno é limitado a 10 questões. Reduza a quantidade.');
+      showToast('Cada caderno é limitado a 10 questões. Reduza a quantidade.', 4000);
       return;
     }
+    // V15.12.12: assertCanAfford lança CreditsError tratado pelo handleApiError
+    try {
+      assertCanAfford('series_batch', nNotebooks);
+    } catch(creditsErr) {
+      handleApiError(creditsErr, {context:'caderno-serie'});
+      return;
+    }
+    // V15.12.12: usa modal customizado em vez de confirm() nativo
     const totalCredits = nNotebooks * 10;
-    if(QUOTA.remaining !== null && QUOTA.remaining < totalCredits){
-      alert(`Você tem ${QUOTA.remaining} créditos. Esta operação consome ${totalCredits} (${nNotebooks} cadernos × 10 cada). Adicione créditos ou reduza a quantidade.`);
-      return;
-    }
-    if(!confirm(`Gerar ${nNotebooks} cadernos com ${nQuestions} questões cada? Vai consumir ${totalCredits} créditos (${nNotebooks} × 10).`)) return;
+    const ok = await confirmAction({
+      title: '🪄 Gerar série de cadernos',
+      body: `Vai gerar <b>${nNotebooks} cadernos</b> com <b>${nQuestions} questões cada</b>. Consumo total: <b>${totalCredits} créditos</b> (${nNotebooks} × 10).`,
+      bodyHtml: true,
+      confirmLabel: 'Gerar série'
+    });
+    if(!ok) return;
 
     closeModal();
     await generateNotebookSeries(srcId, nNotebooks, nQuestions);
@@ -25261,7 +25820,10 @@ async function generateNotebookSeries(srcId, nNotebooks, nQuestions){
   if(!src){alert('Fonte não encontrada');return;}
 
   const text = src.content || '';
-  if(text.length < 200){alert('Fonte muito curta pra dividir em série');return;}
+  if(text.length < 200){
+    showToast('Fonte muito curta pra dividir em série', 4000);
+    return;
+  }
 
   // V14: Tenta usar TOC se houver — divisão semântica > divisão por bytes
   const toc = src.toc || [];
@@ -25321,7 +25883,7 @@ SAÍDA — JSON puro array:
       const r = await apiGenerate(body);
       if(!r.ok){
         const errText = await r.text().catch(()=>'');
-        throw new Error('api-' + r.status + ': ' + errText.slice(0,150));
+        throw await apiRespToError(r);
       }
       const d = await r.json();
       if(d.usage){
@@ -25393,7 +25955,7 @@ SAÍDA — JSON puro array:
   if(progressEl.parentNode) progressEl.parentNode.removeChild(progressEl);
 
   if(created.length === 0){
-    alert('Nenhum caderno foi gerado. Verifique seus créditos e tente novamente.');
+    showToast('Nenhum caderno foi gerado. Verifique seus créditos e tente novamente.', 5000);
   } else {
     const errMsg = totalErrors > 0 ? ` (${totalErrors} ${totalErrors===1?'falhou':'falharam'})` : '';
     const tocMsg = useToc ? ' usando o índice da fonte' : '';
@@ -27005,13 +27567,20 @@ async function practStart(container){
     render();
     return;
   }
+  // V15.12.12: pré-flight ANTES do loading
+  try {
+    assertCanAfford('practice_question');
+  } catch(creditsErr) {
+    handleApiError(creditsErr, {context:'pratica'});
+    return;
+  }
   ST.practLoading=true;ST.practHist=[];render();
   try{
     const seed = avoidRepeatPrompt('practice');
     const res = await timedCallAPI('practice','question',SYS_PRACT,[{role:'user',content:'Primeira questão.'+seed}],{model:getMethodModel('practice'), action:'practice_question'});
     ST.practHist=[{role:'user',content:'Primeira questão.'+seed},{role:'assistant',content:JSON.stringify(res)}];
     ST.practQ=res;saveAIQuestion('practice',res,getMethodModel('practice'));
-  }catch(e){handleErr(e,container);}
+  }catch(e){handleApiError(e, {context:'pratica'});}
   ST.practLoading=false;render();
 }
 // V12: Histórico de questões praticadas.
@@ -27359,13 +27928,20 @@ function renderSimulado(){
   return wrap;
 }
 async function simGenerate(numQ,mins,container){
+  // V15.12.11 (Fase B): valida batch_size client-side antes de enviar
+  if(numQ > 10){
+    showToast('Simulado limitado a 10 questões por geração. Reduza a quantidade.', 4000);
+    return;
+  }
+  // V15.12.12: pré-flight ANTES do loading
+  try {
+    assertCanAfford('simulado_generation', numQ);
+  } catch(creditsErr) {
+    handleApiError(creditsErr, {context:'simulado'});
+    return;
+  }
   ST.simLoading=true;render();
   try{
-    // V15.12.11 (Fase B): valida batch_size client-side antes de enviar
-    if(numQ > 10){
-      alert('Simulado limitado a 10 questões por geração. Reduza a quantidade.');
-      ST.simLoading=false;render();return;
-    }
     const msg = `Gere EXATAMENTE ${numQ} questões C/E variadas cobrindo diferentes tópicos e tipos de armadilha. Cada questão com campo "explanation" explicando o gabarito em 2 frases.`;
     // V15.12.11: action='simulado_generation' (20 créditos, max 10 questões)
     const res = await timedCallAPI('simulado','question',SYS_SIM,[{role:'user',content:msg}],{
@@ -27376,7 +27952,7 @@ async function simGenerate(numQ,mins,container){
     ST.simQs = res.questions.slice(0,numQ);
     ST.simAnswers = new Array(ST.simQs.length).fill(null);
     ST.simIdx=0;ST.simState='running';ST.simStartTime=Date.now();ST.simTimeLimit=mins*60;ST.simSaved=false;
-  }catch(e){handleErr(e,container);}
+  }catch(e){handleApiError(e, {context:'simulado'});}
   ST.simLoading=false;render();
 }
 
@@ -28695,13 +29271,20 @@ function renderSRSManage(wrap,allCards){
   return wrap;
 }
 async function srsGenerate(n,container,modelOverride){
+  // V15.12.11 (Fase B): valida batch_size client-side
+  if(n > 20){
+    showToast('Geração em lote limitada a 20 flashcards por vez. Reduza a quantidade.', 4000);
+    return;
+  }
+  // V15.12.12: pré-flight ANTES do loading
+  try {
+    assertCanAfford('srs_batch_generate');
+  } catch(creditsErr) {
+    handleApiError(creditsErr, {context:'srs-batch'});
+    return;
+  }
   ST.srsGenLoading=true;render();
   try{
-    // V15.12.11 (Fase B): valida batch_size client-side
-    if(n > 20){
-      alert('Geração em lote limitada a 20 flashcards por vez. Reduza a quantidade.');
-      ST.srsGenLoading=false;render();return;
-    }
     const gated = await callAPIWithScore('srs','flashcard',SYS_SRS_GEN,
       [{role:'user',content:`Gere exatamente ${n} flashcards. Use tipos variados (concept, mnemonic, list, comparison, why) e inclua mnemônicos/exemplos quando agregar valor.`}],
       {model:modelOverride, action:'srs_batch_generate', batch_size:n},75);
@@ -28720,7 +29303,7 @@ async function srsGenerate(n,container,modelOverride){
     });
     save();
     ST.lastGenScore = {key:'srs',score:gated.finalScore,regenerated:gated.regenerated,discarded:gated.discarded,count:res.cards.length};
-  }catch(e){handleErr(e,container);}
+  }catch(e){handleApiError(e, {context:'srs-batch'});}
   ST.srsGenLoading=false;ST.srsSubview='study';render();
 }
 
@@ -30451,7 +31034,7 @@ Gere o perfil completo seguindo a estrutura obrigatória.`;
   });
   if(!r.ok){
     const t = await r.text().catch(()=>'');
-    throw new Error('api-'+r.status+': '+t.slice(0,150));
+    throw await apiRespToError(r);
   }
   const d = await r.json();
   if(d.usage){
@@ -30528,7 +31111,7 @@ Aplique a instrução, mantendo as 8 seções e o que estava bom. Devolva o perf
   });
   if(!r.ok){
     const t = await r.text().catch(()=>'');
-    throw new Error('api-'+r.status+': '+t.slice(0,150));
+    throw await apiRespToError(r);
   }
   const d = await r.json();
   if(d.usage){
@@ -30597,7 +31180,7 @@ async function runAudioFromProfile(disciplineId, topic){
     });
     if(!r.ok){
       const t = await r.text().catch(()=>'');
-      throw new Error('api-'+r.status+': '+t.slice(0,150));
+      throw await apiRespToError(r);
     }
     const d = await r.json();
     if(d.usage){
@@ -30612,7 +31195,7 @@ async function runAudioFromProfile(disciplineId, topic){
   }catch(err){
     console.error('Audio from profile error:',err);
     closeModal();
-    alert('Erro ao gerar roteiro: '+(err.message||err));
+    handleApiError(err, {context:'topic-profile-audio'});
   }
 }
 
@@ -31153,7 +31736,7 @@ SAÍDA (JSON puro, sem markdown):
   const r = await apiGenerate(body);
   if(!r.ok){
     const errText = await r.text().catch(()=>'');
-    throw new Error('api-'+r.status+': '+errText.slice(0,200));
+    throw await apiRespToError(r);
   }
   const d = await r.json();
   if(d.usage){
@@ -37647,6 +38230,16 @@ async function unpublishEdital(edital){
 function renderEditals(){
   const wrap = mk('div','fade editals-page');
 
+  // V15.12.12: fonte ÚNICA de verdade — checkPlanFeature consulta PLAN_LIMITS
+  // + DATA.editalUsage. Antes tinha 3 fontes diferentes (EDITAL_MONTHLY_LIMIT
+  // constante, editalsThisMonth contando DATA.editals, e editalUsage). Isso
+  // gerava contradição: tela dizia "1 disponível", submit dizia "esgotado".
+  const planCheck = checkPlanFeature('edital_synthesis');
+  const limits = getPlanLimits();
+  const usedThisMonth = getEditalCountThisMonth();
+  const monthlyLimit = limits.edital_per_month;
+  const hasLimitLeft = planCheck.allowed;
+
   // Header
   const head = mk('div','editals-head');
   const titleBlock = mk('div');
@@ -37658,24 +38251,33 @@ function renderEditals(){
   titleBlock.appendChild(sub);
   head.appendChild(titleBlock);
 
-  const newBtn = mkBtn('+ Sintetizar edital', 'btn btn-p btn-sm');
-  newBtn.addEventListener('click', ()=>showCreateEditalModal());
+  // V15.12.12: botão muda quando limite atingido — vira "+ Fazer upgrade"
+  // que leva pra tela de planos (decisão Jean Q2).
+  const newBtn = mkBtn(
+    hasLimitLeft || isAdminUser() ? '+ Sintetizar edital' : '+ Fazer upgrade',
+    'btn btn-p btn-sm'
+  );
+  newBtn.addEventListener('click', ()=>{
+    if(!hasLimitLeft && !isAdminUser()){
+      ST.view = 'plans';
+      render();
+      return;
+    }
+    showCreateEditalModal();
+  });
   head.appendChild(newBtn);
   wrap.appendChild(head);
 
-  // Limite info card
-  const monthlyCount = editalsThisMonth();
+  // Limite info card — usa a MESMA fonte que o botão acima
   const limitInfo = mk('div','editals-limit-info');
   if(isAdminUser()){
-    limitInfo.innerHTML = `<span class="eli-badge admin">🔧 Admin</span><span class="eli-text">Você tem limite ilimitado. Total este mês: <b>${monthlyCount}</b>.</span>`;
+    limitInfo.innerHTML = `<span class="eli-badge admin">🔧 Admin</span><span class="eli-text">Você tem limite ilimitado. Total este mês: <b>${usedThisMonth}</b>.</span>`;
+  } else if(hasLimitLeft){
+    const remaining = monthlyLimit - usedThisMonth;
+    limitInfo.innerHTML = `<span class="eli-badge ok">${remaining}</span><span class="eli-text">Você ainda pode sintetizar <b>${remaining}</b> edita${remaining===1?'l':'is'} este mês no plano <b>${escapeHTML(limits.name)}</b>. O limite renova no início do próximo mês.</span>`;
   } else {
-    const remaining = EDITAL_MONTHLY_LIMIT - monthlyCount;
-    if(remaining > 0){
-      limitInfo.innerHTML = `<span class="eli-badge ok">${remaining}</span><span class="eli-text">Você ainda pode sintetizar <b>${remaining}</b> edita${remaining===1?'l':'is'} este mês. O limite renova no início do próximo mês.</span>`;
-    } else {
-      limitInfo.classList.add('full');
-      limitInfo.innerHTML = `<span class="eli-badge full">!</span><span class="eli-text">Você atingiu o limite mensal de <b>${EDITAL_MONTHLY_LIMIT}</b> edital${EDITAL_MONTHLY_LIMIT===1?'':'is'}. O limite renova no dia 1º do próximo mês.</span>`;
-    }
+    limitInfo.classList.add('full');
+    limitInfo.innerHTML = `<span class="eli-badge full">!</span><span class="eli-text">Você já usou sua${monthlyLimit===1?'':'s'} <b>${monthlyLimit}</b> síntese${monthlyLimit===1?'':'s'} de edital deste mês no plano <b>${escapeHTML(limits.name)}</b>. Faça upgrade pra liberar mais análises ou aguarde a renovação do ciclo.</span>`;
   }
   wrap.appendChild(limitInfo);
 
@@ -37714,6 +38316,8 @@ function renderEditals(){
 
   if(editals.length === 0){
     const empty = mk('div','card editals-empty');
+    // V15.12.12: botão muda se limite mensal atingido
+    const btnLabel = (hasLimitLeft || isAdminUser()) ? '+ Sintetizar primeiro edital' : '+ Fazer upgrade';
     empty.innerHTML = `
       <div class="ee-icon">📋</div>
       <h3 style="margin:0 0 .5rem;font-size:17px">Você ainda não sintetizou nenhum edital</h3>
@@ -37727,11 +38331,20 @@ function renderEditals(){
         <li><b>Estratégia</b> de estudo personalizada</li>
         <li><b>Pegadinhas</b> que costumam passar despercebidas</li>
       </ul>
-      <button class="btn btn-p btn-sm" id="ee-new">+ Sintetizar primeiro edital</button>`;
+      <button class="btn btn-p btn-sm" id="ee-new">${btnLabel}</button>`;
     wrap.appendChild(empty);
     setTimeout(()=>{
       const b = empty.querySelector('#ee-new');
-      if(b) b.addEventListener('click', ()=>showCreateEditalModal());
+      if(b){
+        b.addEventListener('click', ()=>{
+          if(!hasLimitLeft && !isAdminUser()){
+            ST.view = 'plans';
+            render();
+            return;
+          }
+          showCreateEditalModal();
+        });
+      }
     }, 0);
     return wrap;
   }
@@ -38355,10 +38968,16 @@ function renderEditalView(){
 
 // === Modal de criação ===
 function showCreateEditalModal(){
-  const lim = canCreateEdital();
-  if(!lim.ok && lim.reason === 'monthly_limit'){
-    alert(`Você atingiu o limite mensal de ${EDITAL_MONTHLY_LIMIT} edital${EDITAL_MONTHLY_LIMIT===1?'':'is'}. O limite renova no início do próximo mês.`);
-    return;
+  // V15.12.12: usa fonte ÚNICA (checkPlanFeature) — antes usava canCreateEdital
+  // baseado em EDITAL_MONTHLY_LIMIT, divergente do submit
+  if(!isAdminUser()){
+    const planCheck = checkPlanFeature('edital_synthesis');
+    if(!planCheck.allowed){
+      // Limite mensal usado → manda direto pra planos (decisão Q2)
+      ST.view = 'plans';
+      render();
+      return;
+    }
   }
 
   const m = mk('div');m.style.cssText='max-width:560px';
@@ -38573,19 +39192,36 @@ function showCreateEditalModal(){
   const generate = mk('button','btn btn-sm btn-p');
   generate.innerHTML = 'Sintetizar com Sonnet 4.6 → ' + aiCostBadgeHTML('edital_synthesis');
   generate.addEventListener('click',async()=>{
-    if(!state.name.trim()){alert('Dê um nome curto pra esta análise.');nIn.focus();return;}
-    if(!state.text || state.text.trim().length < 200){alert('Cole o texto do edital ou anexe um PDF (mínimo 200 caracteres).');return;}
-    // V12: gating de plano pra síntese de edital
-    const planCheck = checkPlanFeature('edital_synthesis');
-    if(!planCheck.allowed){
-      if(confirm(`${planCheck.reason}\n\nVer planos disponíveis?`)){
+    if(!state.name.trim()){
+      showToast('Dê um nome curto pra esta análise', 3000);
+      nIn.focus();
+      return;
+    }
+    if(!state.text || state.text.trim().length < 200){
+      showToast('Cole o texto do edital ou anexe um PDF (mínimo 200 caracteres)', 4000);
+      return;
+    }
+
+    // V15.12.12: 2 verificações em ORDEM CLARA — limite mensal vs créditos.
+    // Limite mensal usado → manda pra planos (regra Q2)
+    // Créditos insuficientes → modal de créditos (regra Q1)
+    if(!isAdminUser()){
+      const planCheck = checkPlanFeature('edital_synthesis');
+      if(!planCheck.allowed){
         closeModal();
         ST.view = 'plans';
         render();
+        return;
       }
-      return;
+      // Tem limite mensal — mas tem créditos?
+      try {
+        assertCanAfford('edital_synthesis');
+      } catch(creditsErr) {
+        closeModal();
+        handleApiError(creditsErr, {context:'edital'});
+        return;
+      }
     }
-    if(!confirm(`Sintetizar este edital? Vai consumir 30 créditos. A análise leva 1-2 minutos.\n\nDeseja continuar?`)) return;
 
     // Cria o edital com status analyzing e fecha modal
     const edital = editalNew({
@@ -38643,7 +39279,7 @@ function showCreateEditalModal(){
       edital.failureReason = e.message || String(e);
       save();
       render();
-      alert('Erro ao analisar edital: ' + (e.message||e));
+      handleApiError(e, {context:'edital'});
     }
   });
   actions.appendChild(generate);
@@ -40303,8 +40939,13 @@ async function renderHealthChecks(container, opts){
   if(!includeApiTest){
     const testBtn = mkBtn('🔌 Testar API agora (1 crédito)','btn btn-sm');
     testBtn.style.cssText='margin-top:.625rem';
-    testBtn.addEventListener('click', ()=>{
-      if(!confirm('Esse teste vai gastar 1 crédito de IA. Continuar?')) return;
+    testBtn.addEventListener('click', async ()=>{
+      const ok = await confirmAction({
+        title: '🔌 Testar API',
+        body: 'Esse teste faz uma chamada real à API pra confirmar conectividade. Custa 1 crédito.',
+        confirmLabel: 'Testar agora'
+      });
+      if(!ok) return;
       renderHealthChecks(container, {includeApiTest:true});
     });
     container.appendChild(testBtn);
@@ -47515,7 +48156,7 @@ SUGESTÃO ATUAL POR DIA: ${view.todayQ} questões, ${view.todayP} pomos`;
   });
   if(!r.ok){
     const t = await r.text().catch(()=>'');
-    throw new Error('api-'+r.status+': '+t.slice(0,150));
+    throw await apiRespToError(r);
   }
   const d = await r.json();
   if(d.usage){
@@ -49372,7 +50013,7 @@ function renderGoals(){
       console.error('Mentor error:',err);
       mentorBtn.disabled = false;
       mentorBtn.innerHTML = `🤖 Pedir feedback do mentor IA <span class="btn-cost-hint ${mentorCost.tier}">${mentorCost.min}-${mentorCost.max} créd.</span>`;
-      alert('Erro ao gerar feedback: '+(err.message||err));
+      handleApiError(err, {context:'mentor-meta'});
     }
   });
   mentorRow.appendChild(mentorBtn);
