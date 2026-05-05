@@ -260,8 +260,8 @@ body.sidebar-collapsed .sidebar-collapse-toggle{right:auto;left:50%;transform:tr
   text-decoration:none;
   position:relative;
 }
-.app-sidebar-brand .brand-bird{height:32px;width:auto;flex-shrink:0;margin-right:0;transition:height .2s}
-body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:28px}
+.app-sidebar-brand .brand-bird{height:35px;width:auto;flex-shrink:0;margin-right:0;transition:height .2s} /* V15.12.9: +10% (32→35px) */
+body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: +10% (28→31px) */
 .app-sidebar-brand-emoji{font-size:22px;line-height:1}
 .app-sidebar-section{padding:10px 12px 4px}
 .app-sidebar-section-label{
@@ -429,7 +429,7 @@ body.srs-focus-mode #app .page{padding-left:0 !important}
 .bt-feature b{color:var(--text);font-weight:600}
 .bt-cta{margin-top:.75rem;padding-top:.625rem;border-top:1px solid var(--border);font-size:11.5px;color:var(--gralia-purple);font-weight:700;text-align:right}
 @media(max-width:640px){.brand-tooltip{display:none}}
-.brand-bird{height:40px;width:auto;display:block;flex-shrink:0;margin-right:-2px}
+.brand-bird{height:44px;width:auto;display:block;flex-shrink:0;margin-right:-2px} /* V15.12.9: +10% (40→44px) */
 .brand-bird-dark{display:none}
 :root[data-theme="dark"] .brand-bird-light{display:none}
 :root[data-theme="dark"] .brand-bird-dark{display:block}
@@ -2226,8 +2226,27 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 /* ============================================================
    V15.12.8 — Página Sobre o Gralia (renderAboutPage refeita)
    Tom emocional + estratégico, escaneável, sem promessas absolutas.
+   V15.12.9: text-wrap:pretty global em todos os parágrafos e cards.
+   Antes algumas linhas terminavam com pontuação solta na linha seguinte
+   ("Você não sabia\n.") porque o algoritmo de quebra padrão (greedy) não
+   considera o equilíbrio das linhas. O 'pretty' rebalanceia as últimas
+   linhas pra evitar viúvas (palavra+pontuação solta no fim). Suportado
+   em Chrome 117+, Firefox 121+, Safari 17.4+; navegadores antigos caem
+   no padrão (não quebra).
    ============================================================ */
 .about-page{padding-bottom:2rem}
+.about-page p,
+.about-page li,
+.about-page .adc-text,
+.about-page .am-pivot,
+.about-page .ao-emphasis,
+.about-page .ao-quote,
+.about-page .as-closing,
+.about-page .ao-closing,
+.about-page .acf-text,
+.about-page .ah-tagline{
+  text-wrap:pretty;
+}
 
 /* Hero da página Sobre */
 .about-page .about-hero{
@@ -2237,7 +2256,7 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
   margin-bottom:1.5rem;
 }
 .about-page .ah-logo{margin:0 auto .875rem;display:flex;justify-content:center}
-.about-page .about-page-bird{height:80px;width:auto;display:block}
+.about-page .about-page-bird{height:96px;width:auto;display:block} /* V15.12.9: +20% (80→96px) */
 .about-page .about-page-bird-light{display:block}
 .about-page .about-page-bird-dark{display:none}
 .about-page .ah-title{
@@ -2367,6 +2386,12 @@ html.dark .about-page .am-pivot{background:rgba(220,38,38,.08)}
   border:1px solid var(--border);
   border-radius:8px;
 }
+/* V15.12.9: span do texto (depois do bullet) usa flex:1 pra ocupar todo
+   o espaço disponível. Antes ele assumia tamanho do conteúdo, deixando
+   espaço sobrando à direita e quebrando antes de pontuação ("dados ." em
+   linhas separadas). Combinado com text-wrap:pretty, o navegador equilibra
+   melhor as linhas e evita "viúvas" (palavra/pontuação solta na última). */
+.about-page .am-list li > span:last-child{flex:1;text-wrap:pretty}
 .about-page .am-list b{color:var(--gralia-purple);font-weight:700}
 
 /* Diferenciais — grid 2x3 desktop, 1 col mobile */
@@ -2457,6 +2482,7 @@ html.dark .about-page .am-pivot{background:rgba(220,38,38,.08)}
   background:var(--surface2);
   border:1px solid var(--border);
   border-radius:8px;
+  text-wrap:pretty; /* V15.12.9: evita pontuação órfã */
 }
 .about-page .ao-list li > span:first-child{
   font-size:18px;
@@ -5150,7 +5176,7 @@ body.pomo-active .faq-floating-btn{display:none !important}
 /* V12: Brand center — apenas a logo, em tamanho confortável (já contém "Gralia" no SVG) */
 .wel-brand-center{display:flex;flex-direction:column;align-items:center;gap:.75rem;padding:2.5rem 1rem 1.25rem;text-align:center}
 .wbc-mark{display:flex;align-items:center;justify-content:center}
-.wbc-bird{width:auto;max-width:340px;height:auto;max-height:120px;object-fit:contain}
+.wbc-bird{width:auto;max-width:408px;height:auto;max-height:144px;object-fit:contain} /* V15.12.9: +20% (340→408 max-w, 120→144 max-h) */
 /* V14: Por default light visível, dark some.
    Quando tema dark, inverter explicitamente. Sem flash de ambos. */
 .wbc-bird-light{display:block}
@@ -5403,7 +5429,11 @@ html.dark .wel-problem-section .wel-section-label{color:rgba(245,158,11,.95)}
 
 /* V15.12.7: CTA inline no meio da página — captura conversão depois
    da seção Cebraspe (ponto quente do funil). Visualmente destacado mas
-   não invasivo: card com gradiente sutil da marca + botão grande. */
+   não invasivo: card com gradiente sutil da marca + botão grande.
+   V15.12.9: 3 CTAs inline ao longo da página agora — pra evitar parecer
+   repetitivo, criada variante .wel-mid-cta-compact (barra mais discreta,
+   menor padding, botão mais sutil) que alterna com o card "default" mais
+   robusto. */
 .wel-mid-cta{
   display:flex;
   flex-wrap:wrap;
@@ -5430,10 +5460,29 @@ html.dark .wel-problem-section .wel-section-label{color:rgba(245,158,11,.95)}
   color:var(--text2);
   line-height:1.5;
 }
+
+/* Variante compact: barra mais sutil pra usar entre CTAs robustos */
+.wel-mid-cta.wel-mid-cta-compact{
+  padding:1rem 1.25rem;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-left:3px solid var(--gralia-purple);
+  border-radius:12px;
+  gap:1rem;
+}
+.wel-mid-cta.wel-mid-cta-compact .wmc-text h3{font-size:15.5px;margin-bottom:2px}
+.wel-mid-cta.wel-mid-cta-compact .wmc-text p{font-size:12.5px}
+.wel-mid-cta.wel-mid-cta-compact .wel-hero-cta-v3{
+  padding:10px 20px !important;
+  font-size:13.5px !important;
+  box-shadow:0 2px 10px rgba(124,92,255,.25) !important;
+}
+
 @media(max-width:560px){
   .wel-mid-cta{padding:1.25rem;flex-direction:column;align-items:stretch;text-align:center}
   .wel-mid-cta .wmc-text{min-width:0}
   .wel-mid-cta .wel-hero-cta-v3{width:100%}
+  .wel-mid-cta.wel-mid-cta-compact{padding:1rem;gap:.75rem}
 }
 
 /* === Trial credits box (créditos iniciais grátis) === */
@@ -7006,7 +7055,7 @@ async function preloadQuestionForSource(src){
     const seed = avoidRepeatPrompt('practice');
     const res = await timedCallAPI('practice','question',SYS_PRACT,
       [{role:'user',content:'Primeira questão.'+seed}],
-      {model:getMethodModel('practice')});
+      {model:getMethodModel('practice'), action:'practice_question'});
     if(res && res.question){
       DATA.preloadedQuestions = DATA.preloadedQuestions || {};
       DATA.preloadedQuestions.practice = {q: res, generatedAt: Date.now(), preloadedFromSource: src.id};
@@ -7846,7 +7895,7 @@ function startPrefetchExplanation(q, model){
     : 'Você é professor de concursos. Responda SEMPRE em JSON puro, sem markdown.';
   const prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nCandidato respondeu ${userAnswered||'(em branco)'} e ${userAnswered===q.answer?'acertou':'errou'}. Explique o gabarito em 2-4 frases, identifique a armadilha (o motivo de muitos errarem) e a palavra-gatilho do enunciado. Responda em JSON:\n{"explanation":"...","trap":"...","keyword":"..."}`;
   const modelStr = model === 'sonnet' ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
-  const opts = {model: modelStr};
+  const opts = {model: modelStr, action: 'imported_question_explanation'};
   const entry = {promise: null, payload: null, error: null, startedAt: Date.now()};
   entry.promise = callAPI(sys, [{role:'user', content: prompt}], opts)
     .then(res=>{
@@ -7915,7 +7964,7 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn){
         : 'Você é professor de concursos. Responda SEMPRE em JSON puro, sem markdown.';
       const prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nCandidato respondeu ${userAnswered||'(em branco)'} e ${userAnswered===q.answer?'acertou':'errou'}. Explique o gabarito em 2-4 frases, identifique a armadilha (o motivo de muitos errarem) e a palavra-gatilho do enunciado. Responda em JSON:\n{"explanation":"...","trap":"...","keyword":"..."}`;
       const modelStr = model === 'sonnet' ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
-      const res = await callAPI(sys, [{role:'user', content: prompt}], {model: modelStr});
+      const res = await callAPI(sys, [{role:'user', content: prompt}], {model: modelStr, action: 'imported_question_explanation'});
       payload = {
         explanation: res.explanation || '',
         trap: res.trap || '',
@@ -7994,7 +8043,7 @@ async function generateAndSaveFlashcard(q, model, container, triggerBtn){
     const prompt = `Crie UM flashcard a partir desta questão:\n\nQUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nO flashcard deve testar o CONCEITO da questão, não decorar a questão. Foque na regra/princípio que ela cobra.\n\nResponda em JSON:\n{"front":"...","back":"...","type":"concept"}`;
 
     const modelStr = model === 'sonnet' ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
-    const res = await callAPI(sys, [{role:'user', content: prompt}], {model: modelStr});
+    const res = await callAPI(sys, [{role:'user', content: prompt}], {model: modelStr, action: 'error_flashcard'});
 
     if(!res || !res.front || !res.back){
       if(triggerBtn){ triggerBtn.disabled = false; triggerBtn.textContent = originalLabel; }
@@ -8139,7 +8188,7 @@ DÚVIDA ESPECÍFICA DO ESTUDANTE:
 
 Responda em texto plano (sem JSON, sem markdown), focando exatamente nessa dúvida.`;
 
-      const opts = {model: 'claude-sonnet-4-6', raw: true};  // raw: pega texto puro sem extrair JSON
+      const opts = {model: 'claude-sonnet-4-6', raw: true, action: 'imported_question_explanation_premium'};  // raw: pega texto puro sem extrair JSON
       const respText = await callAPI(sys, [{role:'user', content: userMsg}], opts);
 
       respArea.innerHTML = '';
@@ -10949,13 +10998,25 @@ async function apiGenerate(body){
     headers['Authorization'] = 'Bearer '+AUTH.session.access_token;
   }
 
+  // V15.12.10 (auditoria créditos): Idempotency-Key automático. Garante que
+  // se a mesma chamada cair na rede e o cliente fizer retry, o backend
+  // detecta e retorna 409 em vez de cobrar 2x. Cliente pode passar
+  // body._idempotencyKey explicitamente pra forçar retry com mesma key.
+  const idempotencyKey = (body && body._idempotencyKey)
+    || ('grl-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12));
+  headers['Idempotency-Key'] = idempotencyKey;
+
+  // V15.12.10: Limpa campos auxiliares antes de serializar (não mandar pro backend)
+  const cleanBody = Object.assign({}, body);
+  delete cleanBody._idempotencyKey;
+
   const callPromise = fetch('/api/generate',{
     method:'POST',
     headers,
     // V15.12: sanitiza surrogates UTF-16 órfãos antes de serializar.
     // Evita "no low surrogate in string" que aparecia em síntese de
     // edital com texto extraído de PDF.
-    body:JSON.stringify(sanitizeUnicodeForJSON(body))
+    body:JSON.stringify(sanitizeUnicodeForJSON(cleanBody))
   }).then(r => {
     // Update quota from response header (backend sends after successful call)
     const remaining = r.headers.get('X-Credits-Remaining');
@@ -10973,6 +11034,12 @@ async function apiGenerate(body){
           if(d.code==='NO_CREDITS') handleNoCreditsError();
         }).catch(()=>{});
       }catch(_){}
+    }
+    // V15.12.10: 409 = retry duplicado detectado pelo backend (idempotency-key
+    // já foi processada). Não mostra erro pro usuário, apenas avisa o caller
+    // pra usar o resultado anterior (que ele já deve ter recebido).
+    if(r.status===409){
+      console.warn('[api] requisição duplicada detectada pelo backend (idempotency)');
     }
     return r;
   }).finally(() => {
@@ -11016,13 +11083,17 @@ function updateCreditsChip(chip){
 // V12: Popover rico explicando o que cada ação consome.
 // Aparece ao clicar no chip de créditos. Ajuda o usuário entender quanto vai render
 // — antes só tinha tooltip curto, mas usuário não sabia se 40 créditos eram pra 5 ou 50 ações.
-function showCreditsBreakdownPopover(anchor){
+// V15.12.11 (Fase B): Popover do chip de créditos. Substituído por uma view
+// completa que mostra: saldo destrinchado (plano/topup/promo), top-ups,
+// estornos, ajustes admin e link pra extrato detalhado. Lê via RPC
+// my_credit_breakdown (server-side, sempre atualizado).
+async function showCreditsBreakdownPopover(anchor){
   // Fecha popover anterior se houver
   const existing = document.querySelector('.credits-breakdown-pop');
   if(existing){existing.remove();return;}
 
   const pop = mk('div','credits-breakdown-pop');
-  pop.style.cssText = 'position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.125rem 1.25rem;box-shadow:0 12px 32px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.08);width:min(360px,92vw);max-height:80vh;overflow-y:auto';
+  pop.style.cssText = 'position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.125rem 1.25rem;box-shadow:0 12px 32px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.08);width:min(420px,94vw);max-height:80vh;overflow-y:auto';
 
   // Posiciona abaixo do anchor
   const rect = anchor.getBoundingClientRect();
@@ -11031,80 +11102,18 @@ function showCreditsBreakdownPopover(anchor){
   pop.style.top = top + 'px';
   pop.style.right = right + 'px';
 
-  const remaining = QUOTA.remaining || 0;
-  const plan = QUOTA.plan || 'trial';
-
+  // Loading inicial
   pop.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Seus créditos</div>
-        <div style="font-size:24px;font-weight:800;color:var(--text);line-height:1.1;margin-top:2px">${remaining}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">Plano <b style="color:var(--text2)">${escapeHTML(plan)}</b></div>
-      </div>
-      <button class="cbp-close" aria-label="Fechar" style="background:transparent;border:none;color:var(--text3);font-size:20px;cursor:pointer;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center">×</button>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">Créditos</div>
+      <button class="cbp-close" aria-label="Fechar" style="background:transparent;border:none;color:var(--text3);font-size:20px;cursor:pointer;width:28px;height:28px;border-radius:50%">×</button>
     </div>
-
-    <div style="font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">O que cada ação consome</div>
-    <div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;line-height:1.5">
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
-        <span style="color:var(--text2)">📝 Gerar 1 questão</span>
-        <span style="color:var(--text);font-weight:700">~1 créd.</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
-        <span style="color:var(--text2)">💡 Explicação de erro</span>
-        <span style="color:var(--text);font-weight:700">~1 créd.</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
-        <span style="color:var(--text2)">🎴 Criar flashcard de erro</span>
-        <span style="color:var(--text);font-weight:700">~1 créd.</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
-        <span style="color:var(--text2)">🧠 Mentor diário (análise)</span>
-        <span style="color:var(--text);font-weight:700">~2 créd.</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
-        <span style="color:var(--text2)">📚 Perfil aprofundado de tópico</span>
-        <span style="color:var(--text);font-weight:700">~8 créd.</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">
-        <span style="color:var(--text2)">📋 Síntese de edital (Sonnet)</span>
-        <span style="color:var(--text);font-weight:700">~30 créd.</span>
-      </div>
-    </div>
-
-    <div style="margin-top:12px;padding:.625rem .75rem;background:var(--accent-light);border:1px solid var(--accent);border-radius:8px;font-size:11.5px;line-height:1.5;color:var(--accent-text)">
-      ✓ <b>Não consomem créditos:</b> revisar flashcards prontos, importar fonte/PDF, praticar questões importadas, simulado, mapa, pomodoro, estatísticas.
-    </div>
-
-    <div style="margin-top:8px;font-size:11px;color:var(--text3);line-height:1.5">
-      Cada ação mostra o custo exato <b>antes</b> de rodar. Você nunca é cobrado por surpresa.
-    </div>
-    ${remaining < 10 ? `<div style="margin-top:12px;padding:.75rem .875rem;background:linear-gradient(135deg,rgba(128,66,250,.08),rgba(128,66,250,.02));border:1px solid rgba(128,66,250,.30);border-radius:9px;display:flex;align-items:center;gap:10px">
-      <span style="font-size:22px;line-height:1">${remaining === 0 ? '⚠️' : '⚡'}</span>
-      <div style="flex:1;font-size:12px;line-height:1.5">
-        <b style="color:var(--gralia-purple)">${remaining === 0 ? 'Créditos esgotados' : 'Créditos quase no fim'}</b><br>
-        <span style="color:var(--text2)">Faça upgrade pra continuar gerando</span>
-      </div>
-      <button class="cbp-upgrade" style="background:var(--gralia-purple);color:#fff;border:none;border-radius:7px;padding:.5rem .875rem;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Ver planos</button>
-    </div>` : ''}
+    <div style="text-align:center;padding:1.25rem 0;color:var(--text3);font-size:12.5px">Carregando…</div>
   `;
-
   document.body.appendChild(pop);
-
-  // Close button
   pop.querySelector('.cbp-close').addEventListener('click',()=>pop.remove());
 
-  // V14: Botão "Ver planos" se aparecer
-  const upgradeBtn = pop.querySelector('.cbp-upgrade');
-  if(upgradeBtn){
-    upgradeBtn.addEventListener('click',()=>{
-      pop.remove();
-      ST.view = 'upgrade';
-      render();
-    });
-  }
-
-  // Click-outside fecha
+  // Click-outside
   setTimeout(()=>{
     const closeOnOutside = (e)=>{
       if(!pop.contains(e.target) && e.target !== anchor){
@@ -11114,6 +11123,249 @@ function showCreditsBreakdownPopover(anchor){
     };
     document.addEventListener('click', closeOnOutside);
   }, 50);
+
+  // Busca breakdown server-side
+  let breakdown = null;
+  try{
+    const {data, error} = await supa.rpc('my_credit_breakdown');
+    if(error) throw error;
+    breakdown = data;
+  }catch(e){
+    console.warn('[creditsPopover] my_credit_breakdown error:', e.message);
+    // Fallback: usa QUOTA local se RPC ainda não foi instalada
+    breakdown = {
+      plan_credits: 0,
+      topup_credits: 0,
+      promotional_credits: 0,
+      total_credits: QUOTA.remaining || 0,
+      plan_id: QUOTA.plan || 'trial',
+      subscription_status: 'trialing',
+      recent_topups: [],
+      recent_admin_grants: [],
+      recent_refunds: []
+    };
+  }
+
+  if(!pop.parentNode) return;  // popover fechado durante o load
+
+  const planCred  = breakdown.plan_credits || 0;
+  const topupCred = breakdown.topup_credits || 0;
+  const promoCred = breakdown.promotional_credits || 0;
+  const total     = breakdown.total_credits || 0;
+  const planId    = breakdown.plan_id || 'trial';
+  const renewsAt  = breakdown.plan_renews_at;
+
+  const planLabel = ({trial:'Teste grátis', estudante:'Estudante', concurseiro:'Concurseiro+', pro:'Pro'})[planId] || planId;
+
+  // Helpers de formatação
+  function fmtDate(iso){
+    if(!iso) return '';
+    try{ return new Date(iso).toLocaleDateString('pt-BR', {day:'2-digit', month:'short'}); }catch(_){ return ''; }
+  }
+  function fmtBRL(v){
+    if(v == null) return '';
+    return Number(v).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+  }
+
+  let html = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Saldo total</div>
+        <div style="font-size:28px;font-weight:800;color:var(--text);line-height:1.05;margin-top:2px">${total}</div>
+        <div style="font-size:11.5px;color:var(--text3);margin-top:3px">Plano <b style="color:var(--text2)">${escapeHTML(planLabel)}</b>${renewsAt ? ` · renova em ${fmtDate(renewsAt)}` : ''}</div>
+      </div>
+      <button class="cbp-close" aria-label="Fechar" style="background:transparent;border:none;color:var(--text3);font-size:20px;cursor:pointer;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0">×</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="padding:.625rem;background:var(--surface2);border-radius:8px;text-align:center">
+        <div style="font-size:18px;font-weight:800;color:var(--gralia-purple);line-height:1">${planCred}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.4px">Plano</div>
+      </div>
+      <div style="padding:.625rem;background:var(--surface2);border-radius:8px;text-align:center">
+        <div style="font-size:18px;font-weight:800;color:var(--accent-text);line-height:1">${topupCred}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.4px">Comprados</div>
+      </div>
+      <div style="padding:.625rem;background:var(--surface2);border-radius:8px;text-align:center">
+        <div style="font-size:18px;font-weight:800;color:var(--text2);line-height:1">${promoCred}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.4px">Promo</div>
+      </div>
+    </div>
+  `;
+
+  // Top-ups recentes
+  if(breakdown.recent_topups && breakdown.recent_topups.length > 0){
+    html += `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Top-ups recentes</div>`;
+    html += `<div style="display:flex;flex-direction:column;gap:5px;font-size:12px;margin-bottom:12px">`;
+    breakdown.recent_topups.forEach(t => {
+      const status = t.mp_status === 'approved' ? '✓' : t.mp_status === 'pending' ? '⏳' : '✗';
+      const color = t.mp_status === 'approved' ? 'var(--accent-text)' : 'var(--text3)';
+      html += `<div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+        <span style="color:var(--text2)">${status} ${t.credits} créditos${t.amount_brl ? ' · ' + fmtBRL(t.amount_brl) : ''}</span>
+        <span style="color:${color};font-size:11px">${fmtDate(t.approved_at || t.created_at)}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Ajustes do admin
+  if(breakdown.recent_admin_grants && breakdown.recent_admin_grants.length > 0){
+    html += `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Créditos adicionados pelo time</div>`;
+    html += `<div style="display:flex;flex-direction:column;gap:5px;font-size:12px;margin-bottom:12px">`;
+    breakdown.recent_admin_grants.forEach(g => {
+      html += `<div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+        <span style="color:var(--text2)">+${g.amount || '?'} créditos${g.reason ? ' · ' + escapeHTML(g.reason) : ''}</span>
+        <span style="color:var(--text3);font-size:11px">${fmtDate(g.created_at)}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Estornos recentes
+  if(breakdown.recent_refunds && breakdown.recent_refunds.length > 0){
+    html += `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Estornos por falha</div>`;
+    html += `<div style="display:flex;flex-direction:column;gap:5px;font-size:12px;margin-bottom:12px">`;
+    breakdown.recent_refunds.forEach(r => {
+      html += `<div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+        <span style="color:var(--text2)">↩ ${escapeHTML(r.action_id || 'ação')}</span>
+        <span style="color:var(--text3);font-size:11px">${fmtDate(r.created_at)}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Botões de ação
+  html += `<div style="display:flex;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+    <button class="cbp-extrato" style="flex:1;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:.5rem .75rem;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">📊 Extrato completo</button>
+    <button class="cbp-planos" style="flex:1;background:var(--gralia-purple);color:#fff;border:none;border-radius:8px;padding:.5rem .75rem;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">${total < 10 ? 'Comprar créditos' : 'Ver planos'}</button>
+  </div>`;
+
+  pop.innerHTML = html;
+
+  pop.querySelector('.cbp-close').addEventListener('click',()=>pop.remove());
+  const extratoBtn = pop.querySelector('.cbp-extrato');
+  if(extratoBtn){
+    extratoBtn.addEventListener('click',()=>{
+      pop.remove();
+      showUsageSummaryModal();
+    });
+  }
+  const planosBtn = pop.querySelector('.cbp-planos');
+  if(planosBtn){
+    planosBtn.addEventListener('click',()=>{
+      pop.remove();
+      ST.view = total < 10 ? 'topups' : 'plans';
+      render();
+    });
+  }
+}
+
+// V15.12.11 (Fase B): Modal de extrato completo de uso. Lê via RPC
+// my_usage_summary (últimos 30 dias) e mostra: total de chamadas, créditos
+// gastos, agregação por ação, agregação por modelo, últimas 50 atividades.
+async function showUsageSummaryModal(){
+  const modal = mk('div');
+  modal.style.cssText = 'max-width:680px;width:94vw;max-height:84vh;overflow-y:auto;padding:1.5rem 1.5rem';
+  modal.innerHTML = `<div style="text-align:center;padding:2rem 0;color:var(--text3)">Carregando extrato…</div>`;
+  showModal(modal);
+
+  let summary = null;
+  try{
+    const {data, error} = await supa.rpc('my_usage_summary', {p_days: 30});
+    if(error) throw error;
+    summary = data;
+  }catch(e){
+    modal.innerHTML = `<div style="padding:1rem;color:var(--red-text)">Erro ao carregar extrato: ${escapeHTML(e.message||String(e))}</div>`;
+    return;
+  }
+
+  if(summary && summary.error){
+    modal.innerHTML = `<div style="padding:1rem;color:var(--red-text)">${escapeHTML(summary.error)}</div>`;
+    return;
+  }
+
+  function fmtDateTime(iso){
+    try{ return new Date(iso).toLocaleString('pt-BR', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(_){ return ''; }
+  }
+  const statusColor = (s) => ({
+    success: 'var(--accent-text)',
+    free: 'var(--text2)',
+    insufficient_credits: 'var(--amber)',
+    anthropic_error_refunded: 'var(--red-text)',
+    network_error_refunded: 'var(--red-text)',
+    invalid_action: 'var(--red-text)',
+    admin_blocked: 'var(--red-text)',
+    batch_too_large: 'var(--amber)'
+  })[s] || 'var(--text3)';
+  const statusLabel = (s) => ({
+    success: 'OK',
+    free: 'Grátis',
+    insufficient_credits: 'Sem créditos',
+    anthropic_error_refunded: 'Estornado',
+    network_error_refunded: 'Estornado',
+    invalid_action: 'Inválido',
+    admin_blocked: 'Bloqueado',
+    batch_too_large: 'Lote grande'
+  })[s] || s;
+
+  let html = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:1rem">
+      <h2 style="margin:0;font-size:18px;font-weight:700">Extrato de uso · últimos 30 dias</h2>
+      <button class="usm-close" aria-label="Fechar" style="background:transparent;border:none;color:var(--text3);font-size:22px;cursor:pointer">×</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.25rem">
+      <div style="padding:.875rem 1rem;background:var(--surface2);border-radius:10px;text-align:center">
+        <div style="font-size:22px;font-weight:800;color:var(--text);line-height:1">${summary.total_calls || 0}</div>
+        <div style="font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-top:3px">Chamadas</div>
+      </div>
+      <div style="padding:.875rem 1rem;background:var(--surface2);border-radius:10px;text-align:center">
+        <div style="font-size:22px;font-weight:800;color:var(--gralia-purple);line-height:1">${summary.total_credits_spent || 0}</div>
+        <div style="font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-top:3px">Créditos gastos</div>
+      </div>
+      <div style="padding:.875rem 1rem;background:var(--surface2);border-radius:10px;text-align:center">
+        <div style="font-size:22px;font-weight:800;color:var(--accent-text);line-height:1">${Math.round((summary.total_input_tokens || 0) / 1000)}k</div>
+        <div style="font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-top:3px">Tokens in</div>
+      </div>
+    </div>
+  `;
+
+  // Por ação
+  if(summary.by_action && summary.by_action.length > 0){
+    html += `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Consumo por ação</div>`;
+    html += `<div style="display:flex;flex-direction:column;gap:5px;font-size:12.5px;margin-bottom:1.25rem">`;
+    summary.by_action.forEach(a => {
+      html += `<div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;padding:.5rem .75rem;background:var(--surface2);border-radius:6px">
+        <span style="color:var(--text2)">${escapeHTML(a.action_id)} <span style="color:var(--text3);font-size:11px">· ${a.calls}×</span></span>
+        <span style="color:var(--text);font-weight:700">${a.credits} créd.</span>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // Histórico recente
+  if(summary.recent_activity && summary.recent_activity.length > 0){
+    html += `<div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Histórico recente</div>`;
+    html += `<div style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">`;
+    summary.recent_activity.forEach((a, i) => {
+      html += `<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:.5rem .75rem;font-size:12px${i > 0 ? ';border-top:1px solid var(--border)' : ''}">
+        <div style="flex:1;min-width:0">
+          <div style="color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(a.action_id)}</div>
+          <div style="color:var(--text3);font-size:11px">${fmtDateTime(a.created_at)} · ${escapeHTML(a.model || '')}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="color:${statusColor(a.status)};font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px">${statusLabel(a.status)}</div>
+          <div style="color:var(--text2);font-size:12px;font-weight:700">${a.credits_charged > 0 ? '-'+a.credits_charged : '0'} créd.</div>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<div style="padding:1.5rem;text-align:center;color:var(--text3);font-size:12.5px">Sem atividade nos últimos 30 dias.</div>`;
+  }
+
+  modal.innerHTML = html;
+  modal.querySelector('.usm-close').addEventListener('click', closeModal);
 }
 
 // Popover amigável explicando o selo "Revisado" (aparece ao clicar no selo)
@@ -11219,7 +11471,30 @@ async function callAPI(system, msgs, opts){
   ];
   const finalMsgs = msgs; // user messages ficam limpos, sem conteúdo duplicado
   const modelOverride = opts&&opts.model;
-  const body = {model:modelOverride||DATA.config.model,max_tokens:2500,system:systemArr,messages:finalMsgs};
+  // V15.12.10 (auditoria créditos): action_id é obrigatório pro backend V2.
+  // Se opts.action não vier, usa fallback 'practice_question' (1 crédito).
+  // Toda chamada que NÃO seja prática deveria passar opts.action explicitamente.
+  // Lista válida (server-side em ai_actions): practice_question, flashcard_create,
+  // flashcard_explanation, topic_profile, smart_organize, insight_daily,
+  // question_explanation, edital_synthesis, topic_summary, examiner_review,
+  // simulado_generation, drill_session, practice_batch, cards_from_error,
+  // series_batch, reverse_engineering, organize_import, extract_questions_pdf,
+  // classify_imported_question.
+  // V15.12.11 (Fase B): action_id agora é OBRIGATÓRIO no backend. Se não vier,
+  // backend retorna 400. Default 'practice_question' aqui é só pra evitar
+  // quebras durante migração — TODA chamada nova deve passar opts.action.
+  const actionId = (opts && opts.action) || 'practice_question';
+  const body = {
+    model: modelOverride || DATA.config.model,
+    max_tokens: (opts && opts.max_tokens) || 2500,
+    system: systemArr,
+    messages: finalMsgs,
+    action_id: actionId
+  };
+  // V15.12.11: batch_size é validado server-side contra max_batch_size da ação
+  if(opts && typeof opts.batch_size === 'number' && opts.batch_size > 0){
+    body.batch_size = opts.batch_size;
+  }
   let r;
   try{
     r = await apiGenerate(body);
@@ -12936,9 +13211,9 @@ function showFAQModal(){
     // === Créditos e planos ===
     {q:'O que são "créditos" exatamente?', a:'Unidades consumidas só quando a IA faz algo: gerar 1 questão (~1 crédito), criar flashcard (~1 crédito), perfil de matéria completo (~8 créditos), síntese de edital (~30 créditos), análise do mentor (~2 créditos). Cada ação mostra o custo aproximado ANTES de rodar — você nunca é surpreendido.'},
 
-    {q:'Qual a diferença entre os planos?', a:'Estudante (R$ 19,90 / 250 créditos/mês) — pra quem usa IA com moderação. Concurseiro (R$ 39,90 / 700 créditos/mês — recomendado) — pra estudo intenso. Pro (R$ 89,90 / 2000 créditos/mês + acesso ao modelo Sonnet 4.6 + edital ilimitado) — pra quem usa IA todos os dias e quer respostas mais profundas. Cancela quando quiser.'},
+    {q:'Qual a diferença entre os planos?', a:'Estudante (R$ 19,90 / 300 créditos/mês) — pra quem usa IA com moderação. Concurseiro+ (R$ 39,90 / 900 créditos/mês — recomendado) — pra estudo intenso. Pro (R$ 89,90 / 2.400 créditos/mês + acesso ao modelo Sonnet 4.6 + edital ilimitado) — pra quem usa IA todos os dias e quer respostas mais profundas. Cancela quando quiser.'},
 
-    {q:'O que são top-ups (créditos avulsos)?', a:'Pacotes de créditos que NÃO expiram. Útil quando você esgota o saldo do plano antes de o mês renovar (ex: véspera de prova). Pacotes: 100/R$ 9,90 · 300/R$ 22,90 · 1000/R$ 64,90. Acumulam mesmo se você cancelar a assinatura.'},
+    {q:'O que são top-ups (créditos avulsos)?', a:'Pacotes de créditos que NÃO expiram. Útil quando você esgota o saldo do plano antes de o mês renovar (ex: véspera de prova). Pacotes: 100/R$ 9,90 · 300/R$ 24,90 · 750/R$ 49,90 · 1.600/R$ 89,90 · 4.000/R$ 189,90. Acumulam mesmo se você cancelar a assinatura.'},
 
     {q:'Os créditos não usados acumulam mês a mês?', a:'Os créditos do PLANO resetam mensalmente (vira saldo 250/700/2000 todo mês). Os créditos de TOP-UP (avulsos) nunca expiram — somam ao saldo e ficam disponíveis indefinidamente.'},
 
@@ -13172,6 +13447,34 @@ function renderWelcome(){
   themeSwitch.addEventListener('click',()=>{toggleTheme();render();});
   themeWrap.appendChild(themeSwitch);
   wrap.appendChild(themeWrap);
+
+  // V15.12.9: Helper pra criar CTAs inline ao longo da página. Jean
+  // pediu pra ter mais botões de "Criar conta grátis" porque tem muito
+  // conteúdo entre o hero e o próximo CTA. Função recebe título, sub e
+  // (opcional) variant ('default' card médio | 'compact' barra discreta)
+  // pra que CTAs próximos não fiquem visualmente repetitivos. Só
+  // renderiza pra usuário NÃO autenticado — pra logado vira ruído.
+  function mkInlineCta(title, sub, variant){
+    if(isAuthed()) return null;
+    const sec = mk('section','wel-mid-cta' + (variant==='compact' ? ' wel-mid-cta-compact' : ''));
+    sec.innerHTML = `
+      <div class="wmc-text">
+        <h3>${escapeHTML(title)}</h3>
+        <p>${escapeHTML(sub)}</p>
+      </div>
+    `;
+    const btn = mkBtn('Criar conta grátis →','btn btn-p btn-lg wel-hero-cta-v3');
+    btn.addEventListener('click',()=>{
+      DATA.welcomeShown=true;
+      DATA.setup=true;
+      ST.view='dashboard';
+      save();
+      if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;ST.authMode='signup';}
+      render();
+    });
+    sec.appendChild(btn);
+    return sec;
+  }
 
   // ====== HERO ======
   // V12: Hero refeito — logo+nome centralizados em destaque (Gralia é o nome, ele tem que ser O elemento),
@@ -13457,6 +13760,19 @@ function renderWelcome(){
 
   wrap.appendChild(chartSec);
 
+  // V15.12.9: CTA #2 — depois da curva de Ebbinghaus. Momento ideal:
+  // o usuário acabou de absorver a "ciência" do problema (70% esquecido
+  // sem revisão vs 90%+ com revisão espaçada). Aqui o ganho cognitivo
+  // tá fresco — bom momento pra capturar conversão antes de seguir pra
+  // mais conteúdo. Variante "compact" (barra discreta) pra não competir
+  // com o CTA card mais robusto que vem depois de Cebraspe.
+  const ctaCurve = mkInlineCta(
+    'Quer parar de esquecer?',
+    'Crie sua conta grátis em 30 segundos · sem cartão',
+    'compact'
+  );
+  if(ctaCurve) wrap.appendChild(ctaCurve);
+
   // ====== GRÁFICO: Produtividade Gralia vs concorrência ======
   // Mostra tempo total pra completar o ciclo "questão → entendi → memorizei"
   // em diferentes plataformas. Visual de barras horizontais pra impacto.
@@ -13603,28 +13919,15 @@ function renderWelcome(){
   // V15.12.7 (auditoria conversão): CTA inline no meio da página, logo
   // depois da seção Cebraspe (ponto mais quente do funil pro público
   // prioritário). Captura conversão de quem já se convenceu sem precisar
-  // rolar até o CTA final. Não aparece pra usuário já logado pra evitar
-  // ruído quando ele tá só explorando.
-  if(!isAuthed()){
-    const midCta = mk('section','wel-mid-cta');
-    midCta.innerHTML = `
-      <div class="wmc-text">
-        <h3>Pronto pra testar?</h3>
-        <p>40 ações de IA grátis · sem cartão · cancela quando quiser</p>
-      </div>
-    `;
-    const midCtaBtn = mkBtn('Criar conta grátis →','btn btn-p btn-lg wel-hero-cta-v3');
-    midCtaBtn.addEventListener('click',()=>{
-      DATA.welcomeShown=true;
-      DATA.setup=true;
-      ST.view='dashboard';
-      save();
-      if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;ST.authMode='signup';}
-      render();
-    });
-    midCta.appendChild(midCtaBtn);
-    wrap.appendChild(midCta);
-  }
+  // rolar até o CTA final.
+  // V15.12.9: refatorado pra usar helper mkInlineCta. Continua sendo o
+  // CTA "robusto" (variante default) — esse é o ponto de máxima persuasão
+  // pra concurseiro Cebraspe, então merece destaque visual.
+  const ctaCebraspe = mkInlineCta(
+    'Pronto pra testar?',
+    '40 ações de IA grátis · sem cartão · cancela quando quiser'
+  );
+  if(ctaCebraspe) wrap.appendChild(ctaCebraspe);
 
   // ====== FLUXO ANIMADO: questão → entendimento → flashcard ======
   // Skeleton SVG inline (peso baixo) que mostra o fluxo característico
@@ -13910,6 +14213,17 @@ function renderWelcome(){
   featSec.appendChild(featNote);
 
   wrap.appendChild(featSec);
+
+  // V15.12.9: CTA #3 — depois dos 4 grupos de recursos. Momento ideal:
+  // o usuário acabou de ver TUDO que tem na plataforma (prática, retenção,
+  // diagnóstico, planejamento). Quem chegou até aqui já tá interessado.
+  // Variante "compact" pra alternar visual com o CTA card de Cebraspe.
+  const ctaFeat = mkInlineCta(
+    'Tudo isso de graça pra começar',
+    '40 ações de IA grátis + recursos sem IA ilimitados · sem cartão',
+    'compact'
+  );
+  if(ctaFeat) wrap.appendChild(ctaFeat);
 
   // ====== PREVIEW DO PINHAL DE ARAUCÁRIAS (avançado) ======
   // Mostra como fica a floresta de quem está há meses no Gralia.
@@ -14476,7 +14790,7 @@ function renderWelcome(){
   topupInfo.innerHTML = `
     <div class="wti-icon">⚡</div>
     <div class="wti-text">
-      <b>Acabaram os créditos antes do mês renovar?</b> Quem assina pode comprar pacotes avulsos pra continuar usando: 100 créditos por R$ 9,90, 300 por R$ 22,90 ou 1000 por R$ 64,90. Top-ups <b>não expiram</b> — acumulam mesmo se você cancelar a assinatura. Mas se você usa muito a IA, vale a pena olhar o plano Pro (2000 créditos/mês por R$ 89,90).
+      <b>Acabaram os créditos antes do mês renovar?</b> Quem assina pode comprar pacotes avulsos pra continuar usando: pacotes a partir de 100 créditos. Top-ups <b>não expiram</b> — acumulam mesmo se você cancelar a assinatura. Veja todos os planos e pacotes na área de assinatura.
     </div>
   `;
   plansSec.appendChild(topupInfo);
@@ -16293,44 +16607,104 @@ function renderDashboard(){
 // Os valores são baseados no histórico de uso típico com Haiku 4.5 + cache.
 // ============================================================================
 
+// V15.12.11 (Fase B): Catálogo de custos sincronizado com tabela ai_actions
+// no Supabase. Custo é FIXO por action_id — não há mais multiplicador automático
+// por modelo. Premium tem action_id próprio (ex. edital_synthesis_premium).
+// Este objeto é fallback inicial; o front busca list_action_costs() RPC ao
+// logar pra garantir que está sempre alinhado com a tabela.
 const AI_COSTS = {
-  // Métodos de estudo
-  practice_question: 1,        // Gerar 1 questão (Prática, Drill, Calibração, etc.)
-  practice_batch: 5,           // Gerar lote de 5 questões
-  flashcard_create: 1,         // Criar flashcard via IA
-  flashcard_explanation: 1,    // Explicar flashcard ("Não entendi")
-  topic_profile: 8,            // Perfil de matéria completo
-  smart_organize: 3,           // Organizar conteúdo de fonte
-  insight_daily: 1,            // Insight diário do painel
-  question_explanation: 1,     // Explicação de uma questão
+  // ---- 0 créditos (gratuitas/internas) ----
+  organize_import: 0,
+  extract_questions_pdf: 0,
+  classify_imported_question: 0,
+  health_check: 0,
+  practice_question_eval: 0,            // avaliação de resposta no ciclo questão→resposta
 
-  // Funções avançadas
-  edital_synthesis: 30,        // Síntese de edital (Sonnet 4.6, mais caro)
-  topic_summary: 2,            // Resumo de tópico
-  examiner_review: 2,          // Modo Examinador
-  simulado_generation: 30,     // Geração de simulado completo (15-20 questões)
-  drill_session: 5             // Sessão completa de Drill (várias questões)
+  // ---- 1 crédito ----
+  error_flashcard: 1,
+  insight_daily: 1,
+
+  // ---- 2 créditos ----
+  practice_question: 2,                  // gera questão única
+  imported_question_explanation: 2,
+
+  // ---- 3 créditos ----
+  practice_question_detailed: 3,
+  topic_summary: 3,
+  examiner_review: 3,
+  reverse_engineering: 3,
+  smart_organize: 3,
+
+  // ---- 5 créditos ----
+  schedule_generation: 5,
+  srs_batch_generate: 5,
+  imported_question_explanation_premium: 5,
+
+  // ---- 10 créditos ----
+  series_batch: 10,
+  drill_session: 10,
+  topic_profile_audio: 10,
+
+  // ---- 15 créditos ----
+  exam_analysis: 15,
+
+  // ---- 20 créditos ----
+  simulado_generation: 20,
+  topic_profile: 20,
+
+  // ---- 30 créditos ----
+  edital_synthesis: 30,
+
+  // ---- 50 créditos ----
+  edital_synthesis_premium: 50,
+  exam_analysis_premium: 50
 };
 
-// V12: Multiplicador de custo conforme modelo escolhido
-// Sonnet 4.6 custa ~6x mais que Haiku 4.5 em tokens. Refletir no badge.
+// V15.12.11: catálogo carregado do servidor (sobrescreve AI_COSTS local)
+// Populado por loadActionCatalog() ao logar.
+let AI_COSTS_SERVER = null;
+
+async function loadActionCatalog(){
+  if(!supa) return;
+  try{
+    const {data, error} = await supa.rpc('list_action_costs');
+    if(error) throw error;
+    if(data && typeof data === 'object'){
+      AI_COSTS_SERVER = data;
+      // Sobrescreve AI_COSTS local com valores do servidor (autoritativo)
+      Object.keys(data).forEach(k => {
+        if(typeof data[k].cost === 'number'){
+          AI_COSTS[k] = data[k].cost;
+        }
+      });
+      console.log('[catalog] '+Object.keys(data).length+' ações sincronizadas');
+    }
+  }catch(e){
+    console.warn('[catalog] falha ao sincronizar (usando fallback local):', e.message);
+  }
+}
+
+// V15.12.11: getModelCostMultiplier MANTIDO POR COMPATIBILIDADE mas SEMPRE
+// retorna 1. O custo é fixo por action_id; modelo não multiplica mais.
+// Pra premium use action_id próprio (ex. edital_synthesis_premium).
 function getModelCostMultiplier(methodKey){
-  const model = methodKey ? getMethodModel(methodKey) : (DATA?.config?.model || 'claude-haiku-4-5-20251001');
-  if(model && model.includes('sonnet')) return 6;
-  return 1;
+  return 1;  // V15.12.11: sem multiplicador automático
 }
 
 // Helper conveniente: retorna HTML inline pra usar em innerHTML
+// V15.12.11: aceita action_id direto (string) ou número fixo. Lê de AI_COSTS
+// (que é sincronizado com o servidor via loadActionCatalog).
 function aiCostBadgeHTML(costKey, options){
-  const cost = typeof costKey === 'number' ? costKey : (AI_COSTS[costKey] || 1);
+  const cost = typeof costKey === 'number' ? costKey : (AI_COSTS[costKey] !== undefined ? AI_COSTS[costKey] : 1);
   const opts = options || {};
-  const mult = opts.methodKey ? getModelCostMultiplier(opts.methodKey) : 1;
-  const finalCost = Math.round(cost * mult);
-  const cls = 'ai-cost-badge' + (opts.size === 'lg' ? ' lg' : '') + (mult > 1 ? ' premium' : '');
-  const prefix = opts.prefix === false ? '' : '~';
-  const label = opts.label || (finalCost === 1 ? 'crédito' : 'créditos');
-  const title = `Esta ação consome aproximadamente ${finalCost} ${label} de IA${mult>1?' (modelo Sonnet — mais caro que Haiku)':''}`;
-  return `<span class="${cls}" title="${title}"><span class="acb-icon">⚡</span><span class="acb-text">${prefix}${finalCost} ${label}</span></span>`;
+  const cls = 'ai-cost-badge' + (opts.size === 'lg' ? ' lg' : '');
+  const prefix = opts.prefix === false ? '' : '';
+  const label = opts.label || (cost === 1 ? 'crédito' : 'créditos');
+  if(cost === 0){
+    return `<span class="${cls}" title="Esta ação não consome créditos"><span class="acb-icon">✓</span><span class="acb-text">grátis</span></span>`;
+  }
+  const title = `Esta ação consome ${cost} ${label} de IA`;
+  return `<span class="${cls}" title="${title}"><span class="acb-icon">⚡</span><span class="acb-text">${prefix}${cost} ${label}</span></span>`;
 }
 
 // V15: Card "Hoje" — consolida Próxima Ação Prioritária + Insights de hoje num
@@ -20122,8 +20496,12 @@ Se NÃO encontrar nenhuma questão neste trecho, retorne []`;
         max_tokens: 4000,
         system: sys,
         messages: [{role:'user', content: 'Extraia as questões deste trecho:\n\n' + chunks[i]}],
-        // Importação é gratuita pro usuário (custo da plataforma).
-        free_action: 'extract_questions_pdf'
+        // V15.12.10 (auditoria créditos): action_id é a forma nova de marcar
+        // como gratuito. O backend V2 ignora `free_action` (era um bypass
+        // controlado pelo cliente). 'extract_questions_pdf' é registrado em
+        // ai_actions com is_free=true, então não cobra crédito.
+        action_id: 'extract_questions_pdf',
+        free_action: 'extract_questions_pdf'  // mantido pra compatibilidade durante transição
       };
       const r = await apiGenerate(body);
       if(!r.ok){
@@ -20427,7 +20805,7 @@ TÓPICO: ${err.topic||''}
 Gere UM flashcard que RESOLVA a dificuldade. Escolha o tipo de card que melhor ataca este tipo de erro.`;
   const entry = {promise:null,result:null,error:null,startedAt:Date.now()};
   ST.prefetchedCards[err.id] = entry;
-  entry.promise = callAPIWithScore('srs','flashcard',SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}],{model:modelOverride},75)
+  entry.promise = callAPIWithScore('srs','flashcard',SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}],{model:modelOverride, action:'error_flashcard'},75)
     .then(gated=>{entry.result=gated;return gated;})
     .catch(e=>{entry.error=e;throw e;});
 }
@@ -20469,7 +20847,7 @@ GATILHO: ${err.keyword||''}
 TÓPICO: ${err.topic||''}
 
 Gere UM flashcard que RESOLVA a dificuldade. Escolha o tipo de card que melhor ataca este tipo de erro.`;
-      gated = await callAPIWithScore('srs','flashcard',SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}],{model:modelOverride},75);
+      gated = await callAPIWithScore('srs','flashcard',SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}],{model:modelOverride, action:'error_flashcard'},75);
     }
     clearPrefetchedCard(err.id);
     const res = gated.result;
@@ -20631,11 +21009,11 @@ function showEditCardModal(card,isNew,onSave){
         if(canRegenFromError){
           const d = card.sourceErrorData;
           const prompt = `O candidato errou:\n\nQUESTÃO: ${d.question}\nGABARITO: ${d.correctAnswer}\nEXPLICAÇÃO: ${d.explanation||''}\nARMADILHA: ${d.trap||''} (tipo: ${TRAP_TYPES[d.trapType||0]})\nGATILHO: ${d.keyword||''}\nTÓPICO: ${d.topic||''}\n\nGere UM flashcard que RESOLVA a dificuldade.`;
-          res = await callAPI(SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}],{model:altModel});
+          res = await callAPI(SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}],{model:altModel, action:'error_flashcard'});
         } else {
           const topic = card.tags&&card.tags[0]||'conteúdo';
           const prompt = `Regenere o flashcard sobre "${topic}". Forneça formato alternativo.`;
-          res = await callAPI(SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}],{model:altModel});
+          res = await callAPI(SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}],{model:altModel, action:'error_flashcard'});
         }
         inpF.value = normText(res.front||inpF.value);
         inpB.value = normText(res.back||inpB.value);
@@ -22811,7 +23189,7 @@ async function turboNext(){
   try{
     const worst = turboWorstDiscipline();
     const hint = worst?` Priorize o tópico da disciplina "${worst.name}".`:'';
-    const res = await callAPI(SYS_PRACT,[{role:'user',content:'Questão para revisão turbo.'+hint}]);
+    const res = await callAPI(SYS_PRACT,[{role:'user',content:'Questão para revisão turbo.'+hint}],{action:'practice_question'});
     t.q = res;t.loading=false;render();
   }catch(e){
     t.loading=false;t.error=e.message||'erro';
@@ -22825,7 +23203,7 @@ async function turboSubmitAnswer(answer){
   t.answered=true;t.loading=true;render();
   try{
     const hist = [{role:'user',content:'Questão para revisão turbo.'},{role:'assistant',content:JSON.stringify(t.q)},{role:'user',content:'Resposta: '+answer}];
-    const res = await callAPI(SYS_PRACT,hist);
+    const res = await callAPI(SYS_PRACT,hist,{action:'practice_question_eval'});
     const ok = res.is_correct;
     // Update stats
     t.stats.questions+=1;
@@ -23004,7 +23382,7 @@ function renderTurbo(){
       genBtn.disabled=true;genBtn.textContent='Gerando...';
       try{
         const prompt = `QUESTÃO: ${err.question}\nGABARITO: ${err.correctAnswer}\nEXPLICAÇÃO: ${err.explanation||''}\nARMADILHA: ${err.trap||''} (${TRAP_TYPES[err.trapType||0]})\nTÓPICO: ${err.topic||''}\n\nGere o flashcard.`;
-        const res = await callAPI(SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}]);
+        const res = await callAPI(SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}],{action:'error_flashcard'});
         DATA.srs.cards.push({
           id:Date.now()+''+Math.random(),front:res.front,back:res.back,
           type:res.type||'concept',tags:res.tags||[err.topic||''],
@@ -24411,7 +24789,8 @@ async function runRevgen(){
       model,
       max_tokens:4000,
       system,
-      messages:[{role:'user',content:userMsg}]
+      messages:[{role:'user',content:userMsg}],
+      action_id: 'reverse_engineering'
     });
     if(!r.ok){
       const t = await r.text().catch(()=>'');
@@ -24837,9 +25216,9 @@ function showGenerateSeriesModal(){
   });
   m.appendChild(qSel);
 
-  // Cost warning
+  // Cost warning — V15.12.11: cada caderno custa 10 créditos (action series_batch)
   const costNote = mk('p','txt3');costNote.style.cssText='margin:.875rem 0 .25rem;padding:.5rem .75rem;background:rgba(255,160,0,.08);border:1px solid rgba(255,160,0,.25);border-radius:7px;font-size:11.5px;line-height:1.55';
-  costNote.innerHTML = '⚠ <b>Atenção:</b> esse processo gasta créditos. 4 cadernos × 10 questões = ~40 créditos. <b>Confirme se tem saldo</b> antes de prosseguir.';
+  costNote.innerHTML = '⚠ <b>Atenção:</b> esse processo gasta créditos. Cada caderno custa <b>10 créditos</b>. Confira o saldo antes de prosseguir.';
   m.appendChild(costNote);
 
   const actions = mk('div');actions.style.cssText='display:flex;gap:8px;margin-top:1rem';
@@ -24852,12 +25231,17 @@ function showGenerateSeriesModal(){
     const srcId = srcSel.value;
     const nNotebooks = parseInt(nSel.value, 10);
     const nQuestions = parseInt(qSel.value, 10);
-    const totalCredits = nNotebooks * nQuestions;
-    if(QUOTA.remaining !== null && QUOTA.remaining < totalCredits){
-      alert(`Você tem ${QUOTA.remaining} créditos. Esta operação precisa de aproximadamente ${totalCredits}. Adicione créditos ou reduza a quantidade.`);
+    // V15.12.11: custo = 10 créditos por caderno (action series_batch)
+    if(nQuestions > 10){
+      alert('Cada caderno é limitado a 10 questões. Reduza a quantidade.');
       return;
     }
-    if(!confirm(`Gerar ${nNotebooks} cadernos com ${nQuestions} questões cada? Vai consumir ~${totalCredits} créditos.`)) return;
+    const totalCredits = nNotebooks * 10;
+    if(QUOTA.remaining !== null && QUOTA.remaining < totalCredits){
+      alert(`Você tem ${QUOTA.remaining} créditos. Esta operação consome ${totalCredits} (${nNotebooks} cadernos × 10 cada). Adicione créditos ou reduza a quantidade.`);
+      return;
+    }
+    if(!confirm(`Gerar ${nNotebooks} cadernos com ${nQuestions} questões cada? Vai consumir ${totalCredits} créditos (${nNotebooks} × 10).`)) return;
 
     closeModal();
     await generateNotebookSeries(srcId, nNotebooks, nQuestions);
@@ -24931,7 +25315,8 @@ SAÍDA — JSON puro array:
         model: DATA.config.model || 'claude-haiku-4-5-20251001',
         max_tokens: 4000,
         system: sys,
-        messages: [{role:'user', content: userMsg}]
+        messages: [{role:'user', content: userMsg}],
+        action_id: 'series_batch'  // V15.12.10: 10 créditos por caderno (era 1)
       };
       const r = await apiGenerate(body);
       if(!r.ok){
@@ -25893,7 +26278,7 @@ async function calibStart(container){
   ST.calibLoading=true;render();
   try{
     const seed = avoidRepeatPrompt('calibration');
-    const res = await timedCallAPI('calibration','question',SYS_CALIB,[{role:'user',content:'Gere a primeira questão.'+seed}],{model:getMethodModel('calibration')});
+    const res = await timedCallAPI('calibration','question',SYS_CALIB,[{role:'user',content:'Gere a primeira questão.'+seed}],{model:getMethodModel('calibration'), action:'practice_question'});
     ST.calibHist=[{role:'user',content:'Gere a primeira questão.'},{role:'assistant',content:JSON.stringify(res)}];
     ST.calibQ=res;saveAIQuestion('calibration',res,getMethodModel('calibration'));
   }catch(e){handleErr(e,container);}
@@ -25905,7 +26290,7 @@ async function calibSubmit(answer){
   const um = {role:'user',content:'Resposta: '+answer};
   const nh = [...ST.calibHist,um];
   try{
-    const res = await timedCallAPI('calibration','question',SYS_CALIB,nh,{model:getMethodModel('calibration')});
+    const res = await timedCallAPI('calibration','question',SYS_CALIB,nh,{model:getMethodModel('calibration'), action:'practice_question_eval'});
     ST.calibHist=[...nh,{role:'assistant',content:JSON.stringify(res)}];
     const ok = res.is_correct, ck = ST.calibConf;
     DATA.session.total+=1;if(ok)DATA.session.correct+=1;
@@ -26058,7 +26443,7 @@ function renderExaminer(){
 async function examFetch(container){
   ST.examLoading=true;ST.examStep='write';ST.examEval=null;ST.examTrap='';render();
   try{
-    const res = await timedCallAPI('examiner','question',SYS_EXAM,[{role:'user',content:'Forneça um conceito.'}],{model:getMethodModel('examiner')});
+    const res = await timedCallAPI('examiner','question',SYS_EXAM,[{role:'user',content:'Forneça um conceito.'}],{model:getMethodModel('examiner'), action:'examiner_review'});
     ST.examHist=[{role:'user',content:'Forneça um conceito.'},{role:'assistant',content:JSON.stringify(res)}];
     ST.examConcept=res;
   }catch(e){handleErr(e,container);}
@@ -26069,7 +26454,7 @@ async function examSubmit(container){
   const um = {role:'user',content:'Minha assertiva errada: '+ST.examTrap};
   const nh = [...ST.examHist,um];
   try{
-    const res = await timedCallAPI('examiner','question',SYS_EXAM,nh,{model:getMethodModel('examiner')});
+    const res = await timedCallAPI('examiner','question',SYS_EXAM,nh,{model:getMethodModel('examiner'), action:'practice_question_eval'});
     ST.examHist=[...nh,{role:'assistant',content:JSON.stringify(res)}];
     ST.examEval=res;
     DATA.session.examTotal+=1;if(res.stars>=2)DATA.session.examScore+=1;
@@ -26205,7 +26590,7 @@ async function drillStart(idx,container){
   ST.drillLoading=true;ST.drillHist=[];render();
   try{
     const msg = `Gere uma questão usando EXCLUSIVAMENTE o tipo ${idx} (${TRAP_TYPES[idx]}).`+avoidRepeatPrompt('drill');
-    const res = await timedCallAPI('drill','question',SYS_DRILL,[{role:'user',content:msg}],{model:getMethodModel('drill')});
+    const res = await timedCallAPI('drill','question',SYS_DRILL,[{role:'user',content:msg}],{model:getMethodModel('drill'), action:'practice_question'});
     ST.drillHist=[{role:'user',content:msg},{role:'assistant',content:JSON.stringify(res)}];
     ST.drillQ=res;saveAIQuestion('drill',res,getMethodModel('drill'));
   }catch(e){handleErr(e,container);}
@@ -26217,7 +26602,7 @@ async function drillSubmit(answer){
   const um = {role:'user',content:'Resposta: '+answer};
   const nh = [...ST.drillHist,um];
   try{
-    const res = await timedCallAPI('drill','question',SYS_DRILL,nh,{model:getMethodModel('drill')});
+    const res = await timedCallAPI('drill','question',SYS_DRILL,nh,{model:getMethodModel('drill'), action:'practice_question_eval'});
     ST.drillHist=[...nh,{role:'assistant',content:JSON.stringify(res)}];
     const ok = res.is_correct;
     DATA.session.total+=1;if(ok)DATA.session.correct+=1;
@@ -26369,7 +26754,7 @@ function renderElaborative(){
 async function elabFetch(container){
   ST.elabLoading=true;ST.elabEval=null;ST.elabExplain='';render();
   try{
-    const res = await timedCallAPI('elaborative','question',SYS_ELAB,[{role:'user',content:'Nova pergunta de interrogação elaborativa.'}],{model:getMethodModel('elaborative')});
+    const res = await timedCallAPI('elaborative','question',SYS_ELAB,[{role:'user',content:'Nova pergunta de interrogação elaborativa.'}],{model:getMethodModel('elaborative'), action:'practice_question'});
     ST.elabHist=[{role:'user',content:'Nova pergunta.'},{role:'assistant',content:JSON.stringify(res)}];
     ST.elabQ=res;
   }catch(e){handleErr(e,container);}
@@ -26380,7 +26765,7 @@ async function elabSubmit(container){
   const um = {role:'user',content:'Minha explicação: '+ST.elabExplain};
   const nh = [...ST.elabHist,um];
   try{
-    const res = await timedCallAPI('elaborative','question',SYS_ELAB,nh,{model:getMethodModel('elaborative')});
+    const res = await timedCallAPI('elaborative','question',SYS_ELAB,nh,{model:getMethodModel('elaborative'), action:'practice_question_eval'});
     ST.elabEval=res;
     // Conta como questão respondida pra meta (sucesso se score adequado)
     if(res){
@@ -26623,7 +27008,7 @@ async function practStart(container){
   ST.practLoading=true;ST.practHist=[];render();
   try{
     const seed = avoidRepeatPrompt('practice');
-    const res = await timedCallAPI('practice','question',SYS_PRACT,[{role:'user',content:'Primeira questão.'+seed}],{model:getMethodModel('practice')});
+    const res = await timedCallAPI('practice','question',SYS_PRACT,[{role:'user',content:'Primeira questão.'+seed}],{model:getMethodModel('practice'), action:'practice_question'});
     ST.practHist=[{role:'user',content:'Primeira questão.'+seed},{role:'assistant',content:JSON.stringify(res)}];
     ST.practQ=res;saveAIQuestion('practice',res,getMethodModel('practice'));
   }catch(e){handleErr(e,container);}
@@ -26691,7 +27076,7 @@ async function practSubmit(answer){
   const um = {role:'user',content:'Resposta: '+answer};
   const nh = [...ST.practHist,um];
   try{
-    const res = await timedCallAPI('practice','question',SYS_PRACT,nh,{model:getMethodModel('practice')});
+    const res = await timedCallAPI('practice','question',SYS_PRACT,nh,{model:getMethodModel('practice'), action:'practice_question_eval'});
     ST.practHist=[...nh,{role:'assistant',content:JSON.stringify(res)}];
     const ok = res.is_correct;
     DATA.session.total+=1;if(ok)DATA.session.correct+=1;
@@ -26976,8 +27361,18 @@ function renderSimulado(){
 async function simGenerate(numQ,mins,container){
   ST.simLoading=true;render();
   try{
+    // V15.12.11 (Fase B): valida batch_size client-side antes de enviar
+    if(numQ > 10){
+      alert('Simulado limitado a 10 questões por geração. Reduza a quantidade.');
+      ST.simLoading=false;render();return;
+    }
     const msg = `Gere EXATAMENTE ${numQ} questões C/E variadas cobrindo diferentes tópicos e tipos de armadilha. Cada questão com campo "explanation" explicando o gabarito em 2 frases.`;
-    const res = await timedCallAPI('simulado','question',SYS_SIM,[{role:'user',content:msg}],{model:getMethodModel('simulado')});
+    // V15.12.11: action='simulado_generation' (20 créditos, max 10 questões)
+    const res = await timedCallAPI('simulado','question',SYS_SIM,[{role:'user',content:msg}],{
+      model:getMethodModel('simulado'),
+      action: 'simulado_generation',
+      batch_size: numQ
+    });
     ST.simQs = res.questions.slice(0,numQ);
     ST.simAnswers = new Array(ST.simQs.length).fill(null);
     ST.simIdx=0;ST.simState='running';ST.simStartTime=Date.now();ST.simTimeLimit=mins*60;ST.simSaved=false;
@@ -27071,7 +27466,7 @@ async function interStart(container){
   }
   ST.interLoading=true;ST.interHist=[];ST.interTopics=[];render();
   try{
-    const res = await timedCallAPI('interleaving','question',SYS_INTER,[{role:'user',content:'Primeira questão. Escolha um tópico inicial.'+avoidRepeatPrompt('interleaving')}],{model:getMethodModel('interleaving')});
+    const res = await timedCallAPI('interleaving','question',SYS_INTER,[{role:'user',content:'Primeira questão. Escolha um tópico inicial.'+avoidRepeatPrompt('interleaving')}],{model:getMethodModel('interleaving'), action:'practice_question'});
     ST.interHist=[{role:'user',content:'Primeira.'},{role:'assistant',content:JSON.stringify(res)}];
     ST.interQ=res;saveAIQuestion('interleaving',res,getMethodModel('interleaving'));ST.interTopics.push(res.topic);
   }catch(e){handleErr(e,container);}
@@ -27083,7 +27478,7 @@ async function interSubmit(answer){
   const um = {role:'user',content:'Resposta: '+answer+'. IMPORTANTE: próxima questão DEVE ser de tópico diferente.'};
   const nh = [...ST.interHist,um];
   try{
-    const res = await timedCallAPI('interleaving','question',SYS_INTER,nh,{model:getMethodModel('interleaving')});
+    const res = await timedCallAPI('interleaving','question',SYS_INTER,nh,{model:getMethodModel('interleaving'), action:'practice_question_eval'});
     ST.interHist=[...nh,{role:'assistant',content:JSON.stringify(res)}];
     const ok = res.is_correct;
     DATA.session.total+=1;if(ok)DATA.session.correct+=1;
@@ -27929,7 +28324,7 @@ function renderSRSErrors(wrap,errors){
         while(attempt < 3 && !success){
           try{
             const prompt = `QUESTÃO: ${err.question}\nGABARITO: ${err.correctAnswer}\nEXPLICAÇÃO: ${err.explanation}\nARMADILHA: ${err.trap} (${TRAP_TYPES[err.trapType||0]})\nTÓPICO: ${err.topic||''}\n\nGere o flashcard.`;
-            const res = await callAPI(SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}]);
+            const res = await callAPI(SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}],{action:'error_flashcard'});
             DATA.srs.cards.push({
               id:Date.now()+''+Math.random(),front:res.front,back:res.back,
               type:res.type||'concept',tags:res.tags||[err.topic||''],
@@ -28302,9 +28697,14 @@ function renderSRSManage(wrap,allCards){
 async function srsGenerate(n,container,modelOverride){
   ST.srsGenLoading=true;render();
   try{
+    // V15.12.11 (Fase B): valida batch_size client-side
+    if(n > 20){
+      alert('Geração em lote limitada a 20 flashcards por vez. Reduza a quantidade.');
+      ST.srsGenLoading=false;render();return;
+    }
     const gated = await callAPIWithScore('srs','flashcard',SYS_SRS_GEN,
       [{role:'user',content:`Gere exatamente ${n} flashcards. Use tipos variados (concept, mnemonic, list, comparison, why) e inclua mnemônicos/exemplos quando agregar valor.`}],
-      {model:modelOverride},75);
+      {model:modelOverride, action:'srs_batch_generate', batch_size:n},75);
     const res = gated.result;
     if(!res||!Array.isArray(res.cards))throw new Error('Resposta inválida da IA');
     res.cards.forEach(c=>{
@@ -29337,7 +29737,8 @@ ${sample}`;
 
   const result = await callAPI(SYSTEM, [{role:'user', content: PROMPT}], {
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 2000
+    max_tokens: 2000,
+    action: 'organize_import'  // V15.12.10: TOC de fonte é parte da importação - grátis
   });
 
   if(!result || !Array.isArray(result.toc)) return null;
@@ -30045,7 +30446,8 @@ Gere o perfil completo seguindo a estrutura obrigatória.`;
     model,
     max_tokens:4500,
     system:SYS_TOPIC_PROFILE,
-    messages:[{role:'user',content:userMsg}]
+    messages:[{role:'user',content:userMsg}],
+    action_id: 'topic_profile'
   });
   if(!r.ok){
     const t = await r.text().catch(()=>'');
@@ -30121,7 +30523,8 @@ Aplique a instrução, mantendo as 8 seções e o que estava bom. Devolva o perf
     model,
     max_tokens:4500,
     system:SYS_PROFILE_IMPROVE,
-    messages:[{role:'user',content:userMsg}]
+    messages:[{role:'user',content:userMsg}],
+    action_id: 'topic_profile'
   });
   if(!r.ok){
     const t = await r.text().catch(()=>'');
@@ -30189,7 +30592,8 @@ async function runAudioFromProfile(disciplineId, topic){
       model,
       max_tokens:3500,
       system:SYS_AUDIO_FROM_PROFILE,
-      messages:[{role:'user',content:userMsg}]
+      messages:[{role:'user',content:userMsg}],
+      action_id: 'topic_profile_audio'
     });
     if(!r.ok){
       const t = await r.text().catch(()=>'');
@@ -30559,7 +30963,7 @@ REGRAS:
 SAÍDA (JSON puro):
 {"summary":"2-5 linhas","key_points":["ponto 1 curto","ponto 2 curto","ponto 3 curto"],"watch_out":"1-2 frases sobre onde a banca pega"}`;
   const userMsg = `Disciplina: ${discName}\nTópico: ${topic}\n\nResumo focado neste tópico.`;
-  const res = await callAPI(sys,[{role:'user',content:userMsg}]);
+  const res = await callAPI(sys,[{role:'user',content:userMsg}],{action:'topic_summary'});
   // ST._lastUsage was set by callAPI — log it with correct kind
   const u = ST._lastUsage||{};
   logUsage({
@@ -30743,7 +31147,8 @@ SAÍDA (JSON puro, sem markdown):
     model,
     max_tokens:1500,
     system:sys,
-    messages:[{role:'user',content:`MÉTRICAS DE HOJE (${dk}):\n${JSON.stringify(payload,null,2)}`}]
+    messages:[{role:'user',content:`MÉTRICAS DE HOJE (${dk}):\n${JSON.stringify(payload,null,2)}`}],
+    action_id: 'insight_daily'
   };
   const r = await apiGenerate(body);
   if(!r.ok){
@@ -35676,7 +36081,7 @@ function renderAboutSobre(wrap){
   status.innerHTML = `
     <h2 class="abs-title">🚀 Versão BETA em desenvolvimento ativo</h2>
     <p class="abs-text">A plataforma está nas suas primeiras versões e em melhoria constante. Novas funções e ajustes saem toda semana, baseados no que você pede pelo Fale conosco.</p>
-    <p class="abs-text"><b>Como funciona o acesso:</b> sua conta começa com 40 créditos grátis (válidos por 14 dias) pra testar todos os recursos com IA. Pra continuar usando IA depois, você assina um plano (a partir de R$ 19,90/mês) ou compra créditos avulsos. Recursos sem IA (flashcards, mapa, pomodoro, simulado com importadas) continuam grátis pra sempre.</p>
+    <p class="abs-text"><b>Como funciona o acesso:</b> sua conta começa com 40 créditos grátis (válidos por 14 dias) pra testar todos os recursos com IA. Pra continuar usando IA depois, você pode assinar um plano ou comprar créditos avulsos. Recursos sem IA (flashcards, mapa, pomodoro, simulado com importadas) continuam grátis pra sempre.</p>
     <p class="abs-text"><b>Desconto BETA:</b> os 200 primeiros assinantes pagantes têm desconto escalonado (Pioneiro 30% / Veterano 20% / Beta 10%) e selo permanente no perfil. Quem está aqui agora ajuda a construir e tem prioridade em novidades.</p>
     <p class="abs-text">Encontrou bug, tem ideia, quer reclamar? Use o botão flutuante <b>"Fale conosco"</b> (canto inferior direito) — você recebe a resposta direto no app na aba "Minhas mensagens".</p>
   `;
@@ -35713,11 +36118,11 @@ function renderAboutFAQ(wrap){
   const FAQ = [
     {
       q: 'O Gralia é grátis?',
-      a: 'Pra começar, sim. Cada conta começa com <b>40 créditos grátis</b> (válidos por 14 dias) pra testar todos os recursos com IA. Depois disso, recursos sem IA continuam grátis (flashcards, mapa, pomodoro, simulado com importadas). Pra continuar usando IA, você assina um plano (a partir de R$ 19,90/mês) ou compra créditos avulsos.'
+      a: 'Pra começar, sim. Cada conta começa com <b>40 créditos grátis</b> (válidos por 14 dias) pra testar todos os recursos com IA. Depois disso, recursos sem IA continuam grátis (flashcards, mapa, pomodoro, simulado com importadas). Pra continuar usando IA, você pode assinar um plano ou comprar créditos avulsos. Os planos disponíveis aparecem na área de assinatura após criar conta.'
     },
     {
       q: 'Quais são os planos pagos?',
-      a: '<b>Estudante</b> (R$ 19,90/mês — 250 créditos) pra uso moderado, <b>Concurseiro</b> (R$ 39,90/mês — 700 créditos, recomendado) pra estudo intenso, <b>Pro</b> (R$ 89,90/mês — 2000 créditos + Sonnet 4.6 + edital ilimitado) pra quem usa IA todos os dias. Sem fidelidade, cancela quando quiser. Os 200 primeiros assinantes têm desconto BETA escalonado e selo permanente no perfil.'
+      a: 'Temos três faixas: <b>Estudante</b> (uso moderado), <b>Concurseiro+</b> (estudo intenso, recomendado) e <b>Pro</b> (uso diário com modelo premium e edital ilimitado). Cada plano dá uma quantidade mensal de créditos pra usar a IA. Os preços aparecem na área de assinatura. Sem fidelidade, cancela quando quiser. Os 200 primeiros assinantes têm desconto BETA escalonado e selo permanente no perfil.'
     },
     {
       q: 'O que são "créditos" e quando são gastos?',
@@ -35725,7 +36130,7 @@ function renderAboutFAQ(wrap){
     },
     {
       q: 'O que são top-ups (créditos avulsos)?',
-      a: 'Pacotes que você compra pra adicionar ao seu saldo: 100 créditos por R$ 9,90, 300 por R$ 22,90 ou 1000 por R$ 64,90. Os créditos de top-up <b>não expiram</b> — acumulam mesmo se você cancelar a assinatura. Útil pra picos de uso (véspera de prova) ou pra quem quer experimentar IA sem assinar plano.'
+      a: 'Pacotes de créditos que você compra avulso pra adicionar ao seu saldo. Os créditos de top-up <b>não expiram</b> — acumulam mesmo se você cancelar a assinatura. Útil pra picos de uso (véspera de prova) ou pra quem quer experimentar IA sem assinar plano. Os pacotes disponíveis e preços ficam na área interna de assinatura.'
     },
     {
       q: 'Posso usar pra vestibular ou só concurso?',
@@ -35881,7 +36286,7 @@ function renderAboutManual(wrap){
     },
     {
       n:11, icon:'💳', title:'(Quando os créditos acabarem) Escolha um plano',
-      body:'Em <b>Configurações → Minha assinatura → Ver planos</b>, conheça as opções: <b>Estudante</b> (R$ 19,90/mês — 250 créditos), <b>Concurseiro</b> (R$ 39,90/mês — 700 créditos, recomendado) ou <b>Pro</b> (R$ 89,90/mês — 2000 créditos + Sonnet 4.6 + edital ilimitado). Sem fidelidade. Você também pode comprar créditos avulsos (top-ups) que não expiram. Os 200 primeiros assinantes têm desconto BETA escalonado.',
+      body:'Em <b>Configurações → Minha assinatura → Ver planos</b>, você encontra todos os planos e pacotes de créditos disponíveis com seus preços. Temos três faixas: Estudante (uso moderado), Concurseiro+ (recomendado) e Pro (uso diário com Sonnet 4.6 e edital ilimitado). Sem fidelidade. Você também pode comprar créditos avulsos (top-ups) que não expiram. Os 200 primeiros assinantes têm desconto BETA escalonado.',
       where:'Configurações → Minha assinatura'
     }
   ];
@@ -37155,10 +37560,13 @@ Responda em JSON com EXATAMENTE essa estrutura:
 
   // Modelo: Sonnet 4.6 (premium — análise profunda)
   // V14: max_tokens 16000 — antes 8000 estava sendo truncado em editais grandes (Câmara dos Deputados etc)
+  // V15.12.10 (auditoria créditos): action='edital_synthesis' = 30 créditos base × 6 (Sonnet) = 180 créditos
+  // Antes: cobrava só 1 crédito! Agora cobra o valor real.
   const startTime = Date.now();
   const result = await callAPI(SYSTEM, [{role:'user', content: PROMPT}], {
     model: 'claude-sonnet-4-6',
-    max_tokens: 16000
+    max_tokens: 16000,
+    action: 'edital_synthesis'
   });
   const duration = Date.now() - startTime;
 
@@ -37959,7 +38367,7 @@ function showCreateEditalModal(){
   title.textContent='📋 Sintetizar edital';
   m.appendChild(title);
   const sub = mk('p','txt2');sub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.55';
-  sub.innerHTML='A IA Sonnet 4.6 lê o edital e gera análise estruturada. Custo: <b>~$0,30 (~R$1,50)</b> por edital. Tempo: 1-2 minutos.';
+  sub.innerHTML='A IA Sonnet 4.6 lê o edital e gera análise estruturada. Custo: <b>30 créditos</b> por edital. Tempo: 1-2 minutos.';
   m.appendChild(sub);
 
   // Info banner
@@ -38177,7 +38585,7 @@ function showCreateEditalModal(){
       }
       return;
     }
-    if(!confirm(`Sintetizar este edital? Vai consumir ~30 créditos (~$0,30). A análise leva 1-2 minutos.\n\nDeseja continuar?`)) return;
+    if(!confirm(`Sintetizar este edital? Vai consumir 30 créditos. A análise leva 1-2 minutos.\n\nDeseja continuar?`)) return;
 
     // Cria o edital com status analyzing e fecha modal
     const edital = editalNew({
@@ -38416,7 +38824,7 @@ function renderAdminDashboard(){
     const orig = testApiBtn.textContent;
     testApiBtn.textContent = 'Testando...';
     try{
-      const r = await apiGenerate({model:DATA.config.model,max_tokens:20,messages:[{role:'user',content:'oi'}]});
+      const r = await apiGenerate({model:DATA.config.model,max_tokens:20,messages:[{role:'user',content:'oi'}],action_id:'health_check'});
       if(r.ok){
         showToast('✓ Conexão OK. Servidor e modelo respondendo.', 5000);
       } else {
@@ -39835,7 +40243,7 @@ async function renderHealthChecks(container, opts){
   // Test API endpoint — APENAS se solicitado explicitamente
   if(includeApiTest){
     try{
-      const r = await apiGenerate({model:'claude-haiku-4-5-20251001',max_tokens:5,messages:[{role:'user',content:'oi'}]});
+      const r = await apiGenerate({model:'claude-haiku-4-5-20251001',max_tokens:5,messages:[{role:'user',content:'oi'}],action_id:'health_check'});
       checks.push({name:'API Anthropic (via Vercel)', ok: r.ok, detail: r.ok?'Respondendo normalmente':`Erro ${r.status}`});
     }catch(e){
       checks.push({name:'API Anthropic (via Vercel)', ok:false, detail:'Falha de rede: '+(e.message||e)});
@@ -40023,9 +40431,9 @@ function checkForestMilestones(){
 // Catálogo de planos client-side (espelha o do Supabase pra display rápido)
 // O servidor é a fonte de verdade — esses dados são fallback se Supabase não carregar
 const PLAN_CATALOG_FALLBACK = [
-  {id: 'estudante', name: 'Estudante', description: 'Pra quem estuda casualmente', price_brl: 19.90, price_brl_yearly: 199.00, credits_per_month: 250, display_order: 1, features: {all_methods: true, all_disciplines: true}},
-  {id: 'concurseiro', name: 'Concurseiro', description: 'Pra quem estuda intensivamente — recomendado', price_brl: 39.90, price_brl_yearly: 399.00, credits_per_month: 700, display_order: 2, features: {all_methods: true, all_disciplines: true, priority_support: true}},
-  {id: 'pro', name: 'Pro', description: 'Concurseiro full-time / múltiplas provas', price_brl: 89.90, price_brl_yearly: 899.00, credits_per_month: 2000, display_order: 3, features: {all_methods: true, all_disciplines: true, priority_support: true, early_access: true}}
+  {id: 'estudante', name: 'Estudante', description: 'Pra quem estuda casualmente', price_brl: 19.90, price_brl_yearly: 199.00, credits_per_month: 300, display_order: 1, features: {all_methods: true, all_disciplines: true}},
+  {id: 'concurseiro', name: 'Concurseiro+', description: 'Pra quem estuda intensivamente — recomendado', price_brl: 39.90, price_brl_yearly: 399.00, credits_per_month: 900, display_order: 2, features: {all_methods: true, all_disciplines: true, priority_support: true}},
+  {id: 'pro', name: 'Pro', description: 'Concurseiro full-time / múltiplas provas', price_brl: 89.90, price_brl_yearly: 899.00, credits_per_month: 2400, display_order: 3, features: {all_methods: true, all_disciplines: true, priority_support: true, early_access: true}}
 ];
 
 let _plansCache = null;
@@ -40343,7 +40751,7 @@ function getFaqCategories(){
     {
       title:'💳 Planos e pagamento',
       items:[
-        {q:'Qual a diferença entre os planos?', a:'Estudante (R$ 19,90 / 250 créditos/mês) — uso moderado. Concurseiro (R$ 39,90 / 700 créditos/mês — recomendado) — estudo intenso. Pro (R$ 89,90 / 2000 créditos/mês + Sonnet 4.6 + edital ilimitado) — uso diário e profundo.'},
+        {q:'Qual a diferença entre os planos?', a:'Estudante (R$ 19,90 / 300 créditos/mês) — uso moderado. Concurseiro+ (R$ 39,90 / 900 créditos/mês — recomendado) — estudo intenso. Pro (R$ 89,90 / 2.400 créditos/mês + Sonnet 4.6 + edital ilimitado) — uso diário e profundo.'},
         {q:'Os créditos não usados acumulam?', a:'Os créditos do PLANO resetam mensalmente. Os créditos de TOP-UP (avulsos) nunca expiram — somam ao saldo e ficam disponíveis indefinidamente.'},
         {q:'Posso cancelar a qualquer momento?', a:'Sim. Sem fidelidade. Em "Conta → Assinatura" você cancela com 1 clique. Mantém acesso até o fim do período pago. Top-ups continuam seus pra sempre.'},
         {q:'Tem desconto BETA?', a:'Sim. Os 100 primeiros assinantes pagantes ganham desconto progressivo no primeiro mês: 1º-30º (Pioneiro) 30% off · 31º-60º (Veterano) 20% off · 61º-100º (Beta) 10% off. Cada nível inclui selo permanente no perfil.'}
@@ -42365,7 +42773,7 @@ Responda APENAS com JSON válido seguindo o schema:
 }
 Cubra: estudo (com pomodoros), refeições, exercício, sono. Seja realista — não preencha 100% do dia.`;
       const userMsg = `Disponibilidade: ${desc}${inpH.value ? `\nHoras/dia desejadas: ${inpH.value}` : ''}${inpD.value ? `\nData da prova: ${inpD.value}` : ''}`;
-      const res = await callAPI(sys, [{role:'user',content:userMsg}], {model:'claude-haiku-4-5-20251001'});
+      const res = await callAPI(sys, [{role:'user',content:userMsg}], {model:'claude-haiku-4-5-20251001', action:'schedule_generation'});
       if(!res || !res.blocks){throw new Error('IA não retornou cronograma válido');}
 
       const {data, error} = await supa.from('study_schedules').insert({
@@ -43877,7 +44285,7 @@ function renderPlans(){
     <b>Para que serve:</b> esgotou os créditos do seu plano antes do mês renovar?
     Comprar avulso te mantém usando IA sem precisar mudar de plano.<br>
     <b>Vantagens:</b> não expiram (acumulam mesmo se você cancelar a assinatura) e ficam disponíveis pra qualquer feature da IA.<br>
-    <b>Quando vale:</b> picos de uso pontuais (véspera de prova, semana de mais drills). Se você usa demais a IA todo mês, considere o <b>plano Pro</b> (R$ 89,90 / 2000 créditos/mês — mais barato por crédito).
+    <b>Quando vale:</b> picos de uso pontuais (véspera de prova, semana de mais drills). Se você usa demais a IA todo mês, considere o <b>plano Pro</b> (R$ 89,90 / 2.400 créditos/mês — mais barato por crédito).
   `;
   topupSec.appendChild(topupHead);
   topupSec.appendChild(topupSub);
@@ -44378,7 +44786,7 @@ function renderCancelSubscription(){
     const offers = {
       too_expensive: {
         title: '🎁 Que tal um plano mais leve?',
-        msg: 'Ao invés de cancelar, você pode <b>fazer downgrade</b> pra um plano mais barato. O plano Estudante custa R$ 19,90/mês com 250 créditos — pode caber melhor no seu orçamento agora.',
+        msg: 'Ao invés de cancelar, você pode <b>fazer downgrade</b> pra um plano mais barato. O plano Estudante custa R$ 19,90/mês com 300 créditos — pode caber melhor no seu orçamento agora.',
         actionLabel: 'Ver planos mais baratos',
         action: ()=>{ ST.view = 'plans'; render(); }
       },
@@ -47082,7 +47490,8 @@ SUGESTÃO ATUAL POR DIA: ${view.todayQ} questões, ${view.todayP} pomos`;
     model,
     max_tokens:900,
     system:SYS_GOAL_MENTOR,
-    messages:[{role:'user',content:context+'\n\nGere o feedback agora.'}]
+    messages:[{role:'user',content:context+'\n\nGere o feedback agora.'}],
+    action_id: 'exam_analysis'
   });
   if(!r.ok){
     const t = await r.text().catch(()=>'');
@@ -50861,6 +51270,8 @@ async function initAuth(){
         console.warn('[NEXUS] Initial syncDown (auto) failed:',err.message);
       });
       fetchQuota().then(()=>render()).catch(()=>{});
+      // V15.12.11 (Fase B): sincroniza catálogo de custos com o servidor
+      loadActionCatalog().catch(()=>{});
       fetchUserProfile(true).then(()=>render()).catch(()=>{});
       // V12: Carrega dados de assinatura do usuário + checa notificações
       fetchSubscription(true).then(()=>{
