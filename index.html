@@ -1565,6 +1565,56 @@ html.dark .fc-highlight{background:rgba(73,197,137,.20);color:rgb(120,220,160)}
 html.dark .wfb-tag-free{color:#7dd3a8}
 html.dark .wfb-tag-ai{color:#b08aff}
 
+/* V15.12.6: 4 grupos lógicos de recursos (Prática ativa / Retenção /
+   Diagnóstico / Planejamento). Substitui a listagem grande de features
+   anterior — fica mais escaneável. */
+.wel-feat-groups{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+  gap:14px;
+  margin-top:1.5rem;
+}
+.wel-feat-group{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:1.25rem 1.375rem;
+  display:flex;
+  flex-direction:column;
+  gap:.875rem;
+  transition:transform .15s,box-shadow .15s,border-color .15s;
+}
+.wel-feat-group:hover{
+  transform:translateY(-2px);
+  border-color:rgba(128,66,250,.30);
+  box-shadow:0 6px 20px rgba(128,66,250,.10);
+}
+.wel-feat-group .wfg-head{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  padding-bottom:.625rem;
+  border-bottom:1px solid var(--border);
+}
+.wel-feat-group .wfg-icon{font-size:32px;line-height:1;flex-shrink:0}
+.wel-feat-group .wfg-text h3{
+  margin:0 0 3px;font-size:17px;font-weight:700;color:var(--text);letter-spacing:-.3px;
+}
+.wel-feat-group .wfg-text p{margin:0;font-size:12.5px;line-height:1.5;color:var(--text2)}
+.wel-feat-group .wfg-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.625rem}
+.wel-feat-group .wfg-item{display:flex;align-items:flex-start;gap:10px}
+.wel-feat-group .wfg-item-icon{font-size:18px;line-height:1.1;flex-shrink:0;width:24px;text-align:center}
+.wel-feat-group .wfg-item-text{flex:1;font-size:12.5px;line-height:1.55}
+.wel-feat-group .wfg-item-text b{display:block;color:var(--text);font-size:13px;font-weight:700;margin-bottom:2px}
+.wel-feat-group .wfg-item-text span{color:var(--text2)}
+
+.wel-feat-note{
+  margin:1.5rem 0 0;font-size:13px;line-height:1.6;color:var(--text2);
+  background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+  padding:.875rem 1.125rem;text-align:center;
+}
+.wel-feat-note b{color:var(--text);font-weight:700}
+
 /* V12: CTA inline pra criar conta — aparece em momentos da landing que mencionam o trial */
 .wel-trial-info-box{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:14px;margin-top:1rem;padding:1rem 1.25rem;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center}
 .wel-trial-info-box .wel-trial-info{margin:0;font-size:13px;line-height:1.5;color:var(--text)}
@@ -2172,6 +2222,338 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 /* V15.12.2: Mesma lógica pra renderAboutPage (página Sobre o Gralia separada) */
 :root[data-theme="dark"] .about-page-bird-light{display:none !important}
 :root[data-theme="dark"] .about-page-bird-dark{display:block !important}
+
+/* ============================================================
+   V15.12.8 — Página Sobre o Gralia (renderAboutPage refeita)
+   Tom emocional + estratégico, escaneável, sem promessas absolutas.
+   ============================================================ */
+.about-page{padding-bottom:2rem}
+
+/* Hero da página Sobre */
+.about-page .about-hero{
+  text-align:center;
+  padding:1.25rem 0 1.75rem;
+  border-bottom:1px solid var(--border);
+  margin-bottom:1.5rem;
+}
+.about-page .ah-logo{margin:0 auto .875rem;display:flex;justify-content:center}
+.about-page .about-page-bird{height:80px;width:auto;display:block}
+.about-page .about-page-bird-light{display:block}
+.about-page .about-page-bird-dark{display:none}
+.about-page .ah-title{
+  margin:0 0 .625rem;
+  font-size:32px;
+  font-weight:800;
+  letter-spacing:-.6px;
+  line-height:1.15;
+  color:var(--text);
+}
+.about-page .ah-tagline{
+  margin:0 auto 1.5rem;
+  max-width:580px;
+  font-size:17px;
+  line-height:1.5;
+  color:var(--text);
+  font-weight:600;
+}
+.about-page .ah-tagline em{
+  font-style:normal;
+  color:var(--gralia-purple);
+  font-weight:700;
+}
+.about-page .ah-body{
+  max-width:600px;
+  margin:0 auto;
+  text-align:left;
+}
+.about-page .ah-body p{
+  margin:0 0 .875rem;
+  font-size:14.5px;
+  line-height:1.7;
+  color:var(--text2);
+}
+.about-page .ah-body p:last-child{margin-bottom:0}
+.about-page .ah-body b{color:var(--text);font-weight:700}
+
+/* Seções genéricas (.about-section) */
+.about-page .about-section{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:1.75rem 1.625rem;
+  margin-bottom:1.25rem;
+}
+.about-page .as-label{
+  font-size:11px;
+  font-weight:700;
+  color:var(--text3);
+  text-transform:uppercase;
+  letter-spacing:.6px;
+  margin-bottom:.5rem;
+}
+.about-page .as-title{
+  margin:0 0 1rem;
+  font-size:22px;
+  font-weight:800;
+  letter-spacing:-.4px;
+  line-height:1.25;
+  color:var(--text);
+}
+.about-page .as-body p{
+  margin:0 0 .875rem;
+  font-size:14.5px;
+  line-height:1.7;
+  color:var(--text2);
+}
+.about-page .as-body b{color:var(--text);font-weight:700}
+.about-page .as-closing{
+  margin:1.25rem 0 0;
+  font-size:14px;
+  line-height:1.7;
+  color:var(--text2);
+  padding:.875rem 1rem;
+  background:var(--surface2);
+  border-left:3px solid var(--gralia-purple);
+  border-radius:8px;
+}
+.about-page .as-closing b{color:var(--text);font-weight:700}
+
+/* Seção Missão — bloco "pivot" destacado + lista visual */
+.about-page .about-mission{
+  background:linear-gradient(135deg,rgba(128,66,250,.04),var(--surface) 60%);
+  border-color:rgba(128,66,250,.20);
+}
+.about-page .am-pivot{
+  margin:.5rem 0 1rem;
+  padding:.875rem 1.125rem;
+  background:rgba(220,38,38,.05);
+  border-left:3px solid rgba(220,38,38,.50);
+  border-radius:8px;
+  font-size:14.5px;
+  line-height:1.6;
+  color:var(--text);
+}
+html.dark .about-page .am-pivot{background:rgba(220,38,38,.08)}
+.about-page .am-list{
+  list-style:none;
+  margin:1rem 0 0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:.5rem;
+}
+.about-page .am-list li{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:.75rem 1rem;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:10px;
+  font-size:14px;
+  line-height:1.45;
+  color:var(--text);
+}
+.about-page .am-list .aml-bullet{
+  font-size:18px;
+  line-height:1;
+  flex-shrink:0;
+  width:32px;
+  height:32px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+}
+.about-page .am-list b{color:var(--gralia-purple);font-weight:700}
+
+/* Diferenciais — grid 2x3 desktop, 1 col mobile */
+.about-page .about-diff-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:12px;
+  margin-top:1rem;
+}
+.about-page .about-diff-card{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-left:3px solid var(--gralia-purple);
+  border-radius:12px;
+  padding:1.125rem 1.25rem;
+  transition:transform .15s, box-shadow .15s, border-color .15s;
+}
+.about-page .about-diff-card:hover{
+  transform:translateY(-2px);
+  border-color:var(--gralia-purple);
+  box-shadow:0 6px 20px rgba(128,66,250,.10);
+}
+.about-page .adc-icon{font-size:26px;line-height:1;margin-bottom:.5rem}
+.about-page .adc-title{
+  margin:0 0 .375rem;
+  font-size:15px;
+  font-weight:700;
+  color:var(--text);
+  letter-spacing:-.2px;
+}
+.about-page .adc-text{
+  margin:0;
+  font-size:13px;
+  line-height:1.6;
+  color:var(--text2);
+}
+.about-page .adc-text b{color:var(--text);font-weight:700}
+.about-page .adc-note{
+  margin:.625rem 0 0;
+  padding:.5rem .75rem;
+  font-size:11.5px;
+  line-height:1.5;
+  color:var(--text3);
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:7px;
+  font-style:italic;
+}
+
+/* Seção Por que "Gralia" — tom verde-natureza alinhado com a metáfora */
+.about-page .about-origin{
+  background:linear-gradient(135deg,rgba(73,197,137,.04),var(--surface) 60%);
+  border-color:rgba(73,197,137,.20);
+}
+.about-page .ao-body p{
+  margin:0 0 .75rem;
+  font-size:14.5px;
+  line-height:1.7;
+  color:var(--text2);
+}
+.about-page .ao-body b{color:var(--text);font-weight:700}
+.about-page .ao-emphasis{
+  margin:1rem 0 !important;
+  padding:.875rem 1.125rem;
+  background:var(--surface2);
+  border-left:3px solid rgba(73,197,137,.60);
+  border-radius:8px;
+  font-size:14.5px;
+  line-height:1.6;
+  color:var(--text) !important;
+}
+.about-page .ao-list{
+  list-style:none;
+  margin:1rem 0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:.5rem;
+}
+.about-page .ao-list li{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-size:14px;
+  line-height:1.5;
+  color:var(--text);
+  padding:.625rem .875rem;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:8px;
+}
+.about-page .ao-list li > span:first-child{
+  font-size:18px;
+  line-height:1;
+  flex-shrink:0;
+  width:28px;
+  text-align:center;
+}
+.about-page .ao-list b{color:rgb(33,140,80);font-weight:700}
+html.dark .about-page .ao-list b{color:rgb(73,197,137)}
+.about-page .ao-closing{
+  margin:1rem 0 1.25rem;
+  font-size:14.5px;
+  line-height:1.7;
+  color:var(--text2);
+}
+.about-page .ao-closing b{color:var(--text);font-weight:700}
+.about-page .ao-quote{
+  margin:1.25rem 0 0;
+  padding:1.125rem 1.25rem;
+  background:linear-gradient(135deg,rgba(73,197,137,.10),rgba(73,197,137,.04));
+  border:1px solid rgba(73,197,137,.30);
+  border-radius:12px;
+  font-size:16px;
+  line-height:1.4;
+  font-weight:700;
+  color:var(--text);
+  text-align:center;
+  font-style:italic;
+  letter-spacing:-.2px;
+}
+html.dark .about-page .ao-quote{
+  background:linear-gradient(135deg,rgba(73,197,137,.14),rgba(73,197,137,.06));
+  border-color:rgba(73,197,137,.40);
+}
+
+/* CTA final da página Sobre */
+.about-page .about-cta-final{
+  margin-top:1.5rem;
+  padding:2rem 1.75rem;
+  text-align:center;
+  background:linear-gradient(135deg,rgba(128,66,250,.08),var(--surface) 60%);
+  border:1px solid rgba(128,66,250,.30);
+  border-radius:18px;
+}
+.about-page .acf-title{
+  margin:0 0 .625rem;
+  font-size:22px;
+  font-weight:800;
+  letter-spacing:-.4px;
+  line-height:1.25;
+  color:var(--text);
+}
+.about-page .acf-text{
+  margin:0 auto 1.25rem;
+  max-width:480px;
+  font-size:14.5px;
+  line-height:1.6;
+  color:var(--text2);
+}
+.about-page .acf-btn{
+  padding:13px 32px !important;
+  font-size:15px !important;
+  font-weight:700 !important;
+  background:linear-gradient(135deg,var(--gralia-blue) 0%,var(--gralia-purple) 100%) !important;
+  color:#fff !important;
+  border:none !important;
+  box-shadow:0 4px 18px rgba(124,92,255,.30);
+  transition:transform .15s, box-shadow .15s;
+}
+.about-page .acf-btn:hover{
+  transform:translateY(-1px);
+  box-shadow:0 6px 24px rgba(124,92,255,.40);
+}
+
+/* Mobile (≤640px) — tipografia e padding mais respirados */
+@media(max-width:640px){
+  .about-page .ah-title{font-size:26px}
+  .about-page .ah-tagline{font-size:15px}
+  .about-page .ah-body p{font-size:13.5px}
+  .about-page .about-section{padding:1.25rem 1.125rem;border-radius:12px}
+  .about-page .as-title{font-size:19px}
+  .about-page .as-body p,
+  .about-page .ao-body p,
+  .about-page .ao-closing,
+  .about-page .as-closing{font-size:13.5px}
+  .about-page .am-list li,
+  .about-page .ao-list li{font-size:13px;padding:.625rem .75rem}
+  .about-page .am-pivot,
+  .about-page .ao-emphasis{font-size:13.5px}
+  .about-page .acf-title{font-size:19px}
+  .about-page .acf-text{font-size:13.5px}
+  .about-page .acf-btn{padding:11px 24px !important;font-size:14px !important;width:100%;max-width:320px}
+  .about-page .about-cta-final{padding:1.5rem 1.125rem}
+  .about-page .ao-quote{font-size:14.5px;padding:1rem}
+  .about-page .adc-text{font-size:12.5px}
+}
 .about-hero-sub{font-size:14px;color:var(--text2);margin:.875rem auto 0;max-width:460px;line-height:1.55}
 
 .about-section{margin-bottom:1.75rem}
@@ -4799,6 +5181,70 @@ body.pomo-active .faq-floating-btn{display:none !important}
 .wel-hero-cta-v3:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(124,92,255,.45)}
 .wel-hero-note-v3{margin:1rem 0 0;font-size:12.5px;color:var(--text3)}
 .wel-hero-note-v3 b{color:var(--text2);font-weight:600}
+
+/* V15.12.7: regras .wel-hero-reinforce removidas — frase de reforço
+   eliminada do hero (duplicava o subtítulo + mini-fluxo). */
+
+/* V15.12.6: mini-fluxo visual logo abaixo do CTA primário do hero —
+   comunica o ciclo único do Gralia em 4 passos. Substitui a "dica do
+   tema" que ficava ali e estava desconectada do propósito.
+   V15.12.7: wrap com label "Como funciona" pra dar âncora semântica;
+   no mobile, setas viram quebra de linha vertical (mais clara). */
+.wel-mini-flow-wrap{margin:1.5rem auto 0;max-width:760px}
+.wel-mini-flow-label{
+  font-size:11px;
+  font-weight:700;
+  color:var(--text3);
+  text-transform:uppercase;
+  letter-spacing:.6px;
+  margin-bottom:8px;
+  text-align:center;
+}
+.wel-mini-flow{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:center;
+  gap:10px 8px;
+  padding:.875rem 1rem;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:14px;
+}
+.wel-mini-flow .wmf-step{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 12px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:999px;
+  font-size:13px;
+  font-weight:600;
+  color:var(--text);
+  white-space:nowrap;
+}
+.wel-mini-flow .wmf-icon{font-size:15px;line-height:1}
+.wel-mini-flow .wmf-text{}
+.wel-mini-flow .wmf-arrow{
+  color:var(--gralia-purple);
+  font-weight:700;
+  font-size:16px;
+  opacity:.7;
+}
+@media(max-width:560px){
+  /* V15.12.7: em telas pequenas, vira lista vertical com setas pra baixo
+     em vez de tentar caber 4 chips + 3 setas numa linha (que ficava
+     bagunçado mesmo com flex-wrap). */
+  .wel-mini-flow{flex-direction:column;gap:6px;padding:.75rem;align-items:stretch}
+  .wel-mini-flow .wmf-step{justify-content:center;width:100%;font-size:12.5px;padding:7px 10px}
+  .wel-mini-flow .wmf-arrow{transform:rotate(90deg);font-size:14px;opacity:.6}
+}
+
+/* Login link discreto */
+.wel-hero-login{margin:1rem 0 0;font-size:12.5px;color:var(--text3)}
+.wel-hero-login a{color:var(--gralia-purple);font-weight:600;text-decoration:none;border-bottom:1px solid transparent;transition:border-color .15s}
+.wel-hero-login a:hover{border-bottom-color:var(--gralia-purple)}
 .wel-hero-visual{display:flex;justify-content:center;align-items:center;position:relative}
 .wel-hero-brand{display:flex;align-items:center;gap:14px;filter:drop-shadow(0 8px 28px rgba(124,92,255,.18))}
 .wel-hero-bird{height:180px;width:auto;display:block;flex-shrink:0;margin-right:-10px}
@@ -4818,6 +5264,15 @@ body.pomo-active .faq-floating-btn{display:none !important}
   .wel-hero-visual{order:-1}
   .wel-hero-bird{height:130px;margin-right:-6px}
   .wel-hero-name{font-size:56px;letter-spacing:-2.5px}
+}
+/* V15.12.7: refino mobile pequeno (≤480px) — headline ainda menor pra
+   caber bem no iPhone SE/standard, sub mais respirado. */
+@media (max-width:480px){
+  .wel-hero-headline-v3{font-size:26px;letter-spacing:-1px;line-height:1.2}
+  .wel-hero-sub-v3{font-size:14.5px;line-height:1.55}
+  .wel-hero-eyebrow-v3{font-size:10.5px;letter-spacing:1px;padding:4px 10px}
+  .wel-hero-cta-row .btn-lg{padding:11px 18px !important;font-size:14px !important;width:100%}
+  .wel-mid-cta .wel-hero-cta-v3{padding:11px 18px !important;font-size:14px !important}
 }
 
 /* Pilares — 5 cards numerados */
@@ -4891,6 +5346,95 @@ body.pomo-active .faq-floating-btn{display:none !important}
 /* === Seção: Estudo passivo + ativo (transparência) === */
 .wel-base-section{background:linear-gradient(135deg,rgba(73,197,137,.04),var(--surface));border:1px solid rgba(73,197,137,.18);border-radius:18px;padding:2rem 1.75rem}
 .wel-base-section .wel-section-label,.wel-base-section .wel-section-title{max-width:780px;margin-left:auto;margin-right:auto}
+
+/* V15.12.6: Seção do problema — tom mais emocional pra reforçar a dor
+   antes da solução.
+   V15.12.7: cor reduzida — antes vermelho-suave forte (alarmista), agora
+   borda neutra com label discreto em âmbar. Reforça a dor sem parecer
+   sensacionalista. */
+.wel-problem-section{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-left:3px solid rgba(245,158,11,.50);
+  border-radius:18px;
+  padding:2rem 1.75rem;
+  text-align:center;
+}
+.wel-problem-section .wel-section-label{color:rgba(180,120,20,.95);font-weight:700}
+html.dark .wel-problem-section .wel-section-label{color:rgba(245,158,11,.95)}
+.wel-problem-section .wel-section-title{max-width:760px;margin-left:auto;margin-right:auto}
+.wel-problem-section .wel-section-sub{max-width:680px;margin-left:auto;margin-right:auto;font-size:15px;line-height:1.7}
+
+/* V15.12.6: Seção Cebraspe — foco em concurseiros de C/E. Tom roxo
+   (cor da marca) pra destacar como o público prioritário. */
+.wel-cebraspe-section{
+  background:linear-gradient(135deg,rgba(128,66,250,.05),var(--surface));
+  border:1px solid rgba(128,66,250,.20);
+  border-radius:18px;
+  padding:2rem 1.75rem;
+}
+.wel-cebraspe-section .wel-section-label{color:var(--gralia-purple);font-weight:700}
+.wel-cebraspe-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:14px;
+  margin-top:1.5rem;
+}
+.wel-ces-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-left:3px solid var(--gralia-purple);
+  border-radius:12px;
+  padding:1.125rem 1.25rem;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  transition:transform .15s,box-shadow .15s;
+}
+.wel-ces-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 6px 20px rgba(128,66,250,.12);
+}
+.wel-ces-card .wcc-icon{font-size:28px;line-height:1}
+.wel-ces-card .wcc-title{margin:0;font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.2px}
+.wel-ces-card .wcc-text{margin:0;font-size:13px;line-height:1.55;color:var(--text2)}
+.wel-ces-coverage{margin:1.25rem 0 0;font-size:12.5px;color:var(--text3);text-align:center;font-style:normal}
+.wel-ces-coverage i{font-style:normal;opacity:.85}
+
+/* V15.12.7: CTA inline no meio da página — captura conversão depois
+   da seção Cebraspe (ponto quente do funil). Visualmente destacado mas
+   não invasivo: card com gradiente sutil da marca + botão grande. */
+.wel-mid-cta{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:space-between;
+  gap:1.25rem;
+  margin:1rem 0;
+  padding:1.5rem 1.75rem;
+  background:linear-gradient(135deg,rgba(128,66,250,.07),var(--surface) 60%);
+  border:1px solid rgba(128,66,250,.25);
+  border-radius:18px;
+}
+.wel-mid-cta .wmc-text{flex:1;min-width:240px}
+.wel-mid-cta .wmc-text h3{
+  margin:0 0 4px;
+  font-size:18px;
+  font-weight:700;
+  color:var(--text);
+  letter-spacing:-.3px;
+}
+.wel-mid-cta .wmc-text p{
+  margin:0;
+  font-size:13px;
+  color:var(--text2);
+  line-height:1.5;
+}
+@media(max-width:560px){
+  .wel-mid-cta{padding:1.25rem;flex-direction:column;align-items:stretch;text-align:center}
+  .wel-mid-cta .wmc-text{min-width:0}
+  .wel-mid-cta .wel-hero-cta-v3{width:100%}
+}
 
 /* === Trial credits box (créditos iniciais grátis) === */
 .wel-trial-box{margin:1.5rem auto 0;max-width:680px;padding:1.25rem 1.375rem;background:linear-gradient(135deg,rgba(73,197,137,.06),var(--surface));border:1px solid rgba(73,197,137,.25);border-radius:14px}
@@ -12647,22 +13191,31 @@ function renderWelcome(){
   wrap.appendChild(brandCenter);
 
   // HERO sem coluna direita (logo já foi)
+  // V15.12.6: Refatoração de copy com foco em conversão. Posicionamento:
+  // "O app que transforma seus erros em aprovação". Promessa: "Encurta o
+  // caminho entre errar e não errar mais." Público prioritário: concurseiros
+  // (com foco Cebraspe). Mensagem clara em 5s: o que é, pra quem é, qual
+  // dor resolve, como começar grátis.
   const hero = mk('section','wel-hero-v3 wel-hero-centered');
   const heroLeft = mk('div','wel-hero-left');
 
   const eyebrow = mk('div','wel-hero-eyebrow-v3');
-  // V12: "Plataforma de estudo" era genérico — não distingue Gralia de TEC, Anki, Estratégia, etc.
-  // Nova eyebrow comunica a essência única: o ciclo completo num lugar só.
-  eyebrow.textContent='O ciclo completo do estudo num só lugar';
+  eyebrow.textContent='Para concurseiros que estudam por questões';
   heroLeft.appendChild(eyebrow);
 
   const headline = mk('h2','wel-hero-headline-v3');
-  // Headline com promessa específica (não "estude melhor" genérico)
-  headline.innerHTML = 'Cada questão errada vira <em>flashcard</em>. Cada hora rende <em>5×</em> mais.';
+  // Headline direto ao ponto, sem promessa absoluta de aprovação.
+  headline.innerHTML = 'Transforme seus <em>erros</em> em aprovação';
   heroLeft.appendChild(headline);
 
+  // V15.12.7 (auditoria conversão): Subtítulo encurtado e foco em UM
+  // benefício concreto. Antes ele LISTAVA 3 ações ("resolva questões,
+  // entenda pegadinha, crie flashcards") que duplicavam o mini-fluxo
+  // logo abaixo + a frase de reforço — redundância tripla. Agora ele
+  // contextualiza só o público + diferencial. O "como funciona" fica
+  // pro mini-fluxo (mais visual). E a frase de reforço foi removida.
   const subheadline = mk('p','wel-hero-sub-v3');
-  subheadline.textContent='Resolva questões no estilo da sua banca, entenda o erro com a IA e fixe a pegadinha em revisão espaçada — tudo em 1m25s sem trocar de aba.';
+  subheadline.innerHTML = 'A camada inteligente <b>pós-teoria</b> pra concurseiros — depois do PDF e da videoaula, o Gralia transforma cada erro em revisão programada.';
   heroLeft.appendChild(subheadline);
 
   const ctaRow = mk('div','wel-hero-cta-row');
@@ -12684,7 +13237,7 @@ function renderWelcome(){
     });
     ctaRow.appendChild(exploreBtn);
   } else {
-    const heroCta = mkBtn('Começar grátis →','btn btn-p btn-lg wel-hero-cta-v3');
+    const heroCta = mkBtn('Criar conta grátis →','btn btn-p btn-lg wel-hero-cta-v3');
     heroCta.addEventListener('click',()=>{
       DATA.welcomeShown=true;
       DATA.setup=true;
@@ -12697,49 +13250,102 @@ function renderWelcome(){
 
     const heroSecondaryBtn = mk('button','btn btn-lg wel-hero-secondary');
     heroSecondaryBtn.type='button';
-    heroSecondaryBtn.textContent='Já tenho conta';
+    heroSecondaryBtn.textContent='Ver como funciona';
     heroSecondaryBtn.addEventListener('click',()=>{
-      DATA.welcomeShown=true;
-      save();
-      if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;ST.authMode='login';}
-      render();
+      // Rola até a seção do fluxo de produtividade
+      const target = wrap.querySelector('.wel-prod-section') || wrap.querySelector('.wel-flow-section') || wrap.querySelector('.wel-section');
+      if(target && target.scrollIntoView) target.scrollIntoView({behavior:'smooth',block:'start'});
     });
     ctaRow.appendChild(heroSecondaryBtn);
   }
   heroLeft.appendChild(ctaRow);
 
   const heroNote = mk('p','wel-hero-note-v3');
-  heroNote.innerHTML = '<b>40 créditos grátis em 14 dias</b> · sem cartão · cancela quando quiser';
+  heroNote.innerHTML = '<b>40 créditos grátis</b> · sem cartão · beta aberto';
   heroLeft.appendChild(heroNote);
 
-  // V12: Dica de funcionalidade do tema — sutil, abaixo da nota
-  const themeHint = mk('p','wel-theme-hint');
-  themeHint.innerHTML = '💡 <span>Cansa o olho? Clique no <b>☀ / 🌙</b> no canto superior direito pra alternar entre claro e escuro.</span>';
-  heroLeft.appendChild(themeHint);
+  // V15.12.6: Mini-fluxo visual logo abaixo do CTA — comunica em 4 passos
+  // o ciclo único do Gralia. Substitui a antiga "dica do tema" que estava
+  // desconectada do propósito do hero.
+  // V15.12.7: label "Como funciona" acima dá peso semântico — antes
+  // era um chip solto sem âncora textual.
+  const miniFlowWrap = mk('div','wel-mini-flow-wrap');
+  const miniFlowLabel = mk('div','wel-mini-flow-label');
+  miniFlowLabel.textContent = 'Como funciona';
+  miniFlowWrap.appendChild(miniFlowLabel);
+  const miniFlow = mk('div','wel-mini-flow');
+  miniFlow.setAttribute('aria-label','Como o Gralia funciona em 4 passos');
+  miniFlow.innerHTML = `
+    <div class="wmf-step"><span class="wmf-icon">❌</span><span class="wmf-text">Questão errada</span></div>
+    <span class="wmf-arrow" aria-hidden="true">→</span>
+    <div class="wmf-step"><span class="wmf-icon">🤖</span><span class="wmf-text">IA explica</span></div>
+    <span class="wmf-arrow" aria-hidden="true">→</span>
+    <div class="wmf-step"><span class="wmf-icon">🎴</span><span class="wmf-text">Flashcard criado</span></div>
+    <span class="wmf-arrow" aria-hidden="true">→</span>
+    <div class="wmf-step"><span class="wmf-icon">📅</span><span class="wmf-text">Revisão no dia certo</span></div>
+  `;
+  miniFlowWrap.appendChild(miniFlow);
+  heroLeft.appendChild(miniFlowWrap);
+
+  // Login pra quem já tem conta — link discreto
+  if(!isAuthed()){
+    const loginLink = mk('p','wel-hero-login');
+    loginLink.innerHTML = 'Já tem conta? <a href="#" data-action="login">Entrar</a>';
+    setTimeout(()=>{
+      const a = loginLink.querySelector('[data-action="login"]');
+      if(a) a.addEventListener('click', e=>{
+        e.preventDefault();
+        DATA.welcomeShown=true;
+        save();
+        if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;ST.authMode='login';}
+        render();
+      });
+    }, 0);
+    heroLeft.appendChild(loginLink);
+  }
 
   hero.appendChild(heroLeft);
   wrap.appendChild(hero);
 
+  // ====== PROBLEMA: por que esquecemos ======
+  // V15.12.6: Seção pra reforçar a dor antes de mostrar a solução.
+  // V15.12.7 (auditoria conversão): Movida pra ANTES de "Onde o Gralia
+  // entra" — ordem clássica PAS (Problem → Agitate → Solution). Antes
+  // a solução vinha primeiro, o que enfraquece o impacto emocional. Label
+  // mudou de "A dor que ninguém resolve" (sensacionalista) pra
+  // "Por que isso acontece" (mais sóbrio, foco em entendimento).
+  const problemaSec = mk('section','wel-section wel-problem-section');
+  const problemaLbl = mk('div','wel-section-label');problemaLbl.textContent='Por que isso acontece';
+  problemaSec.appendChild(problemaLbl);
+  const problemaHead = mk('h2','wel-section-title');
+  problemaHead.textContent='Você não está esquecendo por falta de esforço.';
+  problemaSec.appendChild(problemaHead);
+  const problemaBody = mk('p','wel-section-sub');
+  problemaBody.innerHTML = 'Você esquece porque seu estudo <b>não tem sistema</b>. Você lê PDF, assiste aula, faz questões e até cria alguns flashcards. Mas os erros se perdem no caminho. A pegadinha que te derrubou hoje volta daqui a alguns dias — e te derruba de novo. <b>O Gralia fecha esse ciclo.</b>';
+  problemaSec.appendChild(problemaBody);
+  wrap.appendChild(problemaSec);
+
   // ====== TRANSPARÊNCIA: ESTUDO ATIVO + PASSIVO ======
   // V12: Copy reescrita pra ser mais direta e empática.
-  // Antes: tom defensivo ("não substitui"). Agora: posiciona como complemento natural.
+  // V15.12.6: Reescrita com conceito "camada inteligente pós-teoria" — mais
+  // claro o papel do Gralia no ecossistema do concurseiro.
+  // V15.12.7: posicionada DEPOIS da seção de problema — primeiro a dor,
+  // depois a solução.
   const transparenciaSec = mk('section','wel-section wel-base-section');
   const transpLbl = mk('div','wel-section-label');transpLbl.textContent='Onde o Gralia entra na sua rotina';
   transparenciaSec.appendChild(transpLbl);
-  const transpHead = mk('h2','wel-section-title');transpHead.textContent='Continue estudando do seu jeito. A gente cuida do que ninguém cuida.';
+  const transpHead = mk('h2','wel-section-title');transpHead.textContent='O Gralia é a camada inteligente pós-teoria.';
   transparenciaSec.appendChild(transpHead);
   const transpBody = mk('div','wel-base-body');
   transpBody.innerHTML = `
-    <p class="wel-base-text">Estudar concurso é trabalho árduo. Você lê PDFs, assiste videoaula, faz resumo. Tudo isso é <b>essencial</b> — e nenhum app pode (ou deve) substituir. Mas tem um problema com o que vem depois: <b>fixar o que você estudou e entender exatamente onde tá errando</b>.</p>
-    <p class="wel-base-text">É aí que entram repetição espaçada, prática deliberada, calibração de confiança e análise de padrões de erro. Ferramentas que <b>quase ninguém aplica</b> porque dão trabalho de organizar manualmente. O Gralia automatiza isso.</p>
+    <p class="wel-base-text">Você continua estudando com seus <b>PDFs, videoaulas, resumos e sites de questões</b>. O Gralia entra <b>depois</b>: transforma seus erros em flashcards, identifica padrões de pegadinha e agenda revisões pra você não repetir o mesmo erro.</p>
     <div class="wel-base-flow">
-      <div class="wbfl-step"><div class="wbfl-num">1</div><div class="wbfl-content"><b>Sua teoria</b><span>PDFs, videoaulas, resumos — o que você já consome</span></div></div>
+      <div class="wbfl-step"><div class="wbfl-num">1</div><div class="wbfl-content"><b>Teoria</b><span>PDFs, videoaulas, resumos — o que você já consome</span></div></div>
       <div class="wbfl-arrow">→</div>
-      <div class="wbfl-step"><div class="wbfl-num">2</div><div class="wbfl-content"><b>Aqui no Gralia</b><span>Questões, flashcards, mapa, mentor IA</span></div></div>
+      <div class="wbfl-step"><div class="wbfl-num">2</div><div class="wbfl-content"><b>Gralia</b><span>Erros viram flashcards, IA explica, sistema agenda revisão</span></div></div>
       <div class="wbfl-arrow">→</div>
-      <div class="wbfl-step active"><div class="wbfl-num">3</div><div class="wbfl-content"><b>Domínio real</b><span>Fixação de longo prazo + identificação de armadilhas</span></div></div>
+      <div class="wbfl-step active"><div class="wbfl-num">3</div><div class="wbfl-content"><b>Domínio real</b><span>Você para de errar a mesma pegadinha duas vezes</span></div></div>
     </div>
-    <p class="wel-base-text" style="margin-top:1rem;font-size:13.5px;color:var(--text2)">⚡ <b>O que isso significa na prática:</b> você gasta o mesmo tempo lendo, mas extrai 5× mais. A diferença não é o quanto você estuda — é o que você faz com o conteúdo depois.</p>
   `;
   transparenciaSec.appendChild(transpBody);
   wrap.appendChild(transparenciaSec);
@@ -12855,9 +13461,12 @@ function renderWelcome(){
   // Mostra tempo total pra completar o ciclo "questão → entendi → memorizei"
   // em diferentes plataformas. Visual de barras horizontais pra impacto.
   const prodSec = mk('section','wel-section wel-prod-section');
+  // V15.12.6: Mensagem central reescrita — "Do erro à revisão em segundos"
+  // (era "Mesmo erro, plataformas diferentes..."). Menos sensacionalista,
+  // mais ancorado no benefício prático.
   const prodLbl = mk('div','wel-section-label');prodLbl.textContent='Produtividade real';
   prodSec.appendChild(prodLbl);
-  const prodHead = mk('h2','wel-section-title');prodHead.textContent='Mesmo erro, plataformas diferentes — quanto tempo até você fixar de verdade?';
+  const prodHead = mk('h2','wel-section-title');prodHead.textContent='Do erro à revisão em segundos.';
   prodSec.appendChild(prodHead);
   const prodSub = mk('p','wel-section-sub');
   prodSub.textContent = 'Tempo médio do ciclo "errar uma questão → entender por quê → criar flashcard pra revisar". Cada minuto a mais é menos questão resolvida no dia.';
@@ -12949,6 +13558,73 @@ function renderWelcome(){
   prodSec.appendChild(prodInsight);
 
   wrap.appendChild(prodSec);
+
+  // ====== SEÇÃO CEBRASPE — V15.12.6 ======
+  // Foco prioritário do posicionamento: concurseiros que estudam por questões,
+  // especialmente quem encara CESPE/Cebraspe. Cards específicos que comunicam
+  // os recursos do Gralia mais valiosos pra esse perfil.
+  const cebraspeSec = mk('section','wel-section wel-cebraspe-section');
+  const cesLbl = mk('div','wel-section-label');cesLbl.textContent='Foco em Cebraspe';
+  cebraspeSec.appendChild(cesLbl);
+  const cesHead = mk('h2','wel-section-title');
+  cesHead.textContent='Feito para quem não pode vacilar em certo/errado';
+  cebraspeSec.appendChild(cesHead);
+  const cesSub = mk('p','wel-section-sub');
+  cesSub.innerHTML = 'No Cebraspe, o erro <b>não é só uma questão perdida</b>. Pode virar ponto negativo. Por isso, o Gralia ajuda você a identificar falsa segurança, classificar armadilhas e revisar exatamente o que mais te derruba.';
+  cebraspeSec.appendChild(cesSub);
+
+  const cesGrid = mk('div','wel-cebraspe-grid');
+  cesGrid.innerHTML = `
+    <div class="wel-ces-card">
+      <div class="wcc-icon">🎯</div>
+      <h3 class="wcc-title">Calibração de confiança</h3>
+      <p class="wcc-text">Descubra onde você acha que sabe, mas erra. O Gralia separa "tinha certeza" de "chutei" pra revelar suas falsas seguranças.</p>
+    </div>
+    <div class="wel-ces-card">
+      <div class="wcc-icon">🧬</div>
+      <h3 class="wcc-title">DNA dos erros</h3>
+      <p class="wcc-text">Veja quais tipos de pegadinha mais aparecem nos seus erros — generalização indevida, troca de palavra-chave, exceção esquecida.</p>
+    </div>
+    <div class="wel-ces-card">
+      <div class="wcc-icon">⚡</div>
+      <h3 class="wcc-title">Flashcard automático</h3>
+      <p class="wcc-text">Cada erro pode virar revisão com 1 clique. A IA gera o card preciso, com a armadilha destacada, e agenda no momento certo.</p>
+    </div>
+  `;
+  cebraspeSec.appendChild(cesGrid);
+
+  // Nota discreta mantendo cobertura de outras bancas
+  const cesFoot = mk('p','wel-ces-coverage');
+  cesFoot.innerHTML = '<i>Funciona também pra FGV, FCC, Vunesp, IBFC e outras bancas — mas o foco inicial do Gralia é otimizar o estudo de quem mais sofre com armadilha de C/E.</i>';
+  cebraspeSec.appendChild(cesFoot);
+
+  wrap.appendChild(cebraspeSec);
+
+  // V15.12.7 (auditoria conversão): CTA inline no meio da página, logo
+  // depois da seção Cebraspe (ponto mais quente do funil pro público
+  // prioritário). Captura conversão de quem já se convenceu sem precisar
+  // rolar até o CTA final. Não aparece pra usuário já logado pra evitar
+  // ruído quando ele tá só explorando.
+  if(!isAuthed()){
+    const midCta = mk('section','wel-mid-cta');
+    midCta.innerHTML = `
+      <div class="wmc-text">
+        <h3>Pronto pra testar?</h3>
+        <p>40 ações de IA grátis · sem cartão · cancela quando quiser</p>
+      </div>
+    `;
+    const midCtaBtn = mkBtn('Criar conta grátis →','btn btn-p btn-lg wel-hero-cta-v3');
+    midCtaBtn.addEventListener('click',()=>{
+      DATA.welcomeShown=true;
+      DATA.setup=true;
+      ST.view='dashboard';
+      save();
+      if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;ST.authMode='signup';}
+      render();
+    });
+    midCta.appendChild(midCtaBtn);
+    wrap.appendChild(midCta);
+  }
 
   // ====== FLUXO ANIMADO: questão → entendimento → flashcard ======
   // Skeleton SVG inline (peso baixo) que mostra o fluxo característico
@@ -13139,115 +13815,99 @@ function renderWelcome(){
 
   // ====== RECURSOS DIFERENCIAIS ======
   const featSec = mk('section','wel-section');
+  // V15.12.6: Refatorado de 2 grupos (IA vs Grátis) pra 4 grupos LÓGICOS
+  // por função do estudo: Prática ativa, Retenção, Diagnóstico, Planejamento.
+  // Antes a lista era enorme e dispersa — agora cada grupo tem 3-4 recursos
+  // com 1 linha de descrição cada. Fica mais escaneável.
   const featLbl = mk('div','wel-section-label');featLbl.textContent='Recursos completos';
   featSec.appendChild(featLbl);
   const featHead = mk('h2','wel-section-title');featHead.textContent='Tudo em um lugar só';
   featSec.appendChild(featHead);
   const featSub = mk('p','wel-section-sub');
-  featSub.textContent = 'A maioria dos recursos do Gralia funciona sem IA. Os créditos só entram quando você quer geração inteligente — questões novas, perfis aprofundados, análises do mentor.';
+  featSub.textContent = 'A maioria dos recursos funciona sem IA. Os créditos só entram quando você quer geração inteligente — questões novas, perfis aprofundados, síntese de edital.';
   featSec.appendChild(featSub);
 
-  // V12: Features divididas em GRÁTIS (sem IA) vs COM IA (consome créditos / planos pagos)
-  const FREE_FEATURES = [
-    {icon:'🎴',title:'Flashcards com revisão espaçada (SRS)',
-      impact:'Esquecer não é mais opção.',
-      desc:'Algoritmo SM-2 (mesmo do Anki) agenda automaticamente o melhor momento pra revisar cada card. Importe decks da comunidade, crie manualmente ou gere a partir de erros — todos revisáveis sem custo. Funciona offline-first com sync entre dispositivos.'},
-    {icon:'🗺️',title:'Mapa da matéria com filtros inteligentes',
-      impact:'Pare de chutar onde estudar.',
-      desc:'Visão por disciplina, tópico e até subtópico. Veja % de acerto por área, número de questões resolvidas, status (não estudado / estudando / dominado). Filtros por banca, tipo de questão e dificuldade. Você sabe exatamente onde investir tempo.'},
-    {icon:'⏱️',title:'Pomodoro com background sincronizado',
-      impact:'Não perca o foco entre dispositivos.',
-      desc:'Timer disponível em todas as páginas, persiste se você fechar a aba e sincroniza entre celular e PC. Notificação push quando o ciclo termina. Histórico de blocos completados rastreado automaticamente.'},
-    {icon:'📊',title:'Estatísticas profundas e padrões temporais',
-      impact:'Descubra quando você rende mais.',
-      desc:'Heatmap mostrando seus melhores horários, evolução por disciplina ao longo das semanas, taxa de calibração ("falsa segurança"), curva de retenção dos cards. Dados que você não vê em planilha — decisões baseadas em evidência, não em achismo.'},
-    {icon:'📝',title:'Importação inteligente de questões',
-      impact:'Suas questões do TEC, em segundos.',
-      desc:'Cole texto do TEC Concursos, QConcursos, Estratégia, Gran Cursos, Direção ou outras plataformas. O parser detecta enunciado, alternativas, gabarito, banca, ano, comentários e organiza automaticamente. Sem retrabalho.'},
-    {icon:'⏰',title:'Simulado cronometrado completo',
-      impact:'Treine como se fosse o dia da prova.',
-      desc:'Timer regressivo, navegação livre entre questões, marcação pra revisar depois, calibração de confiança em cada resposta, correção detalhada com análise por disciplina e tópico. Funciona com suas questões importadas (sem custo de IA).'},
-    {icon:'🎯',title:'Metas, calendário e rotina sustentável',
-      impact:'Constância sem culpa.',
-      desc:'Define meta diária ou semanal (questões, flashcards, pomodoros) com sistema rastreando "adiantado/no ritmo/atrasado". Calendário visual mostra constância. Funciona com Google Calendar pra agendar sessões de estudo direto.'},
-    {icon:'📚',title:'Importar fontes ricas (PDFs, leis, jurisprudência)',
-      impact:'Sua biblioteca, organizada sozinha.',
-      desc:'Anexe apostilas em PDF, transcrições de aula, resumos próprios, lei seca completa, jurisprudência selecionada, doutrinas. A plataforma extrai texto, detecta capítulos automaticamente e organiza. Sua biblioteca pessoal de estudo, com busca rápida.'},
-    {icon:'🌍',title:'Comunidade aberta com material curado',
-      impact:'Não precisa criar tudo do zero.',
-      desc:'Importe materiais já criados e validados pela comunidade: cadernos de questões organizados por edital, perfis aprofundados de tópicos densos (controle de constitucionalidade, princípios da AP, etc.), fontes de lei seca e jurisprudência, decks de flashcards. Tudo com avaliação de outros usuários.'}
+  const FEATURE_GROUPS = [
+    {
+      id:'practice',
+      icon:'⚡',
+      title:'Prática ativa',
+      desc:'Resolver questões no estilo da sua banca.',
+      items:[
+        {icon:'🤖', title:'Questões geradas por IA', text:'Cebraspe, FCC, FGV, Vunesp e mais — a IA cria questões inéditas no estilo da banca, focadas nos seus pontos fracos.'},
+        {icon:'📝', title:'Importação de questões', text:'Cole texto de TEC, QConcursos, Estratégia, Gran ou Direção — o parser organiza tudo automaticamente.'},
+        {icon:'⏰', title:'Simulado cronometrado', text:'Timer regressivo, calibração de confiança, correção detalhada por disciplina e tópico.'}
+      ]
+    },
+    {
+      id:'retention',
+      icon:'🎴',
+      title:'Retenção',
+      desc:'Fixar o que você já estudou — sem esquecer.',
+      items:[
+        {icon:'🎴', title:'Flashcards SRS', text:'Algoritmo SM-2 (mesmo do Anki) agenda automaticamente o melhor momento de revisar cada card.'},
+        {icon:'📅', title:'Revisão espaçada', text:'O sistema mostra apenas os cards no ponto certo de revisão — você não precisa pensar no que estudar.'},
+        {icon:'⚡', title:'Cards automáticos', text:'Errou uma questão? 1 clique e a IA cria flashcard atacando exatamente aquela armadilha.'}
+      ]
+    },
+    {
+      id:'diagnosis',
+      icon:'🔍',
+      title:'Diagnóstico',
+      desc:'Saber onde você realmente está — e onde está errando.',
+      items:[
+        {icon:'🎯', title:'Calibração de confiança', text:'Separa "tinha certeza" de "chutei" — revela onde você acha que sabe, mas erra.'},
+        {icon:'🧬', title:'Drill DNA', text:'Identifica os tipos de armadilha que mais aparecem nos seus erros — generalização, troca de palavra, exceção esquecida.'},
+        {icon:'📊', title:'Estatísticas profundas', text:'Heatmap de horários, evolução por disciplina, curva de retenção. Decisões com dado, não achismo.'}
+      ]
+    },
+    {
+      id:'planning',
+      icon:'🗺️',
+      title:'Planejamento',
+      desc:'Saber o que fazer depois — e quando.',
+      items:[
+        {icon:'📋', title:'Síntese de edital', text:'Cole o PDF, em 1 minuto a IA Sonnet 4.6 extrai cronograma, vagas, disciplinas com peso e tópicos cobrados.'},
+        {icon:'🗺️', title:'Mapa da matéria', text:'Visão por disciplina/tópico/subtópico com % de acerto e status (não estudado / estudando / dominado).'},
+        {icon:'🧠', title:'Mentor IA', text:'Análise diária dos seus erros e sugestões específicas pro próximo dia — drills, revisões, horário ideal.'}
+      ]
+    }
   ];
 
-  const AI_FEATURES = [
-    {icon:'🤖',title:'Geração de questões personalizadas',
-      impact:'Questões inéditas, no estilo da sua banca.',
-      desc:'A IA cria questões C/E ou múltipla escolha baseadas no SEU material — adaptadas ao estilo da banca alvo (Cebraspe, FCC, FGV, Vunesp, IBFC, Quadrix, Cesgranrio). Cada questão é única, foca seus pontos fracos detectados pelo mapa e inclui explicação detalhada com referência legal.'},
-    {icon:'🎯',title:'Questões por tópico específico',
-      impact:'Foque na reta final do edital.',
-      desc:'Escolha um tópico exato do seu edital ou fonte (ex: "Princípios da Administração Pública", "Controle Difuso de Constitucionalidade"). A IA gera questões focadas só naquilo. Ideal pra reta final ou pra atacar tópicos onde você tem dificuldade específica.'},
-    {icon:'🎴',title:'Flashcard automático a partir do erro',
-      impact:'Errou uma vez. Não erra mais.',
-      desc:'Errou uma questão? 1 clique e a IA cria flashcard que ataca exatamente aquela armadilha — com palavras-chave destacadas, mnemônico e referência legal. Vai pra revisão espaçada (SRS) automaticamente. Cada erro vira aprendizado fixado.'},
-    {icon:'📚',title:'Perfil aprofundado de matéria',
-      impact:'Estudo de véspera, em 30 segundos.',
-      desc:'A IA gera estudo completo de 1 tópico: conceitos, jurisprudência relevante (STF/STJ), mnemônicos, tabelas comparativas, mapa de armadilhas que a banca usa, exemplos de questões prováveis com gabarito comentado. Material salvo pra revisar nos dias finais antes da prova — substitui horas de pesquisa solta.'},
-    {icon:'📋',title:'Síntese de editais com Sonnet 4.6',
-      impact:'80 páginas de edital em 1 minuto.',
-      desc:'Cole o edital ou anexe o PDF. Em 1 minuto a IA Sonnet 4.6 (modelo premium) extrai: cronograma com datas-chave, vagas por cargo, distribuição e peso de cada disciplina, tópicos cobrados, mudanças em relação ao último edital. Você vê o que importa.'},
-    {icon:'🧠',title:'Análise diária do mentor IA',
-      impact:'Mentor que olha seus dados todo dia.',
-      desc:'Diariamente a IA analisa seus erros, padrões temporais, taxa de calibração e sugere ajustes específicos pro próximo dia: drills focados em tópicos fracos, revisões prioritárias, recomendação de horário ideal pra estudo intenso. Disponível com 20+ questões resolvidas no dia.'},
-    {icon:'🌐',title:'Cache compartilhado de explicações',
-      impact:'Comunidade cresce → IA fica mais barata.',
-      desc:'Quando outros usuários da comunidade já geraram explicação pra mesma questão, você acessa de graça (não consome seus créditos). Quanto mais a comunidade cresce, mais você economiza. Boa fé do projeto: a IA fica mais barata pra todo mundo conforme o tempo passa.'}
-  ];
-
-  // V12: AI antes de Free — recursos com IA são o diferencial-chave (vendem a plataforma).
-  // Recursos grátis aparecem depois pra mostrar amplitude do produto.
-
-  // Grupo: features com IA (PRIMEIRO)
-  const aiBlock = mk('div','wel-feat-block wel-feat-ai');
-  const aiBlockHead = mk('div','wfb-head');
-  aiBlockHead.innerHTML = '<span class="wfb-tag wfb-tag-ai">Usa créditos de IA</span><h3>Recursos com inteligência artificial</h3><p>Quando você quer geração automática, perfis profundos ou análise personalizada. Cada operação mostra o custo antes de rodar.</p>';
-  aiBlock.appendChild(aiBlockHead);
-  const aiGrid = mk('div','wel-features-v3');
-  AI_FEATURES.forEach(f=>{
-    const item = mk('div','wel-feat-v3 wfv3-ai');
-    const ic = mk('div','wel-feat-icon-v3');ic.textContent=f.icon;
-    const t = mk('h3','wel-feat-title-v3');t.textContent=f.title;
-    item.appendChild(ic);item.appendChild(t);
-    if(f.impact){
-      const imp = mk('div','wel-feat-impact');imp.textContent=f.impact;
-      item.appendChild(imp);
-    }
-    const d = mk('p','wel-feat-desc-v3');d.textContent=f.desc;
-    item.appendChild(d);
-    aiGrid.appendChild(item);
+  const groupsGrid = mk('div','wel-feat-groups');
+  FEATURE_GROUPS.forEach(group=>{
+    const block = mk('div','wel-feat-group');
+    block.dataset.group = group.id;
+    const blockHead = mk('div','wfg-head');
+    blockHead.innerHTML = `
+      <div class="wfg-icon">${group.icon}</div>
+      <div class="wfg-text">
+        <h3>${escapeHTML(group.title)}</h3>
+        <p>${escapeHTML(group.desc)}</p>
+      </div>
+    `;
+    block.appendChild(blockHead);
+    const itemsList = mk('ul','wfg-items');
+    group.items.forEach(item=>{
+      const li = mk('li','wfg-item');
+      li.innerHTML = `
+        <span class="wfg-item-icon">${item.icon}</span>
+        <div class="wfg-item-text">
+          <b>${escapeHTML(item.title)}</b>
+          <span>${escapeHTML(item.text)}</span>
+        </div>
+      `;
+      itemsList.appendChild(li);
+    });
+    block.appendChild(itemsList);
+    groupsGrid.appendChild(block);
   });
-  aiBlock.appendChild(aiGrid);
-  featSec.appendChild(aiBlock);
+  featSec.appendChild(groupsGrid);
 
-  // Grupo: features grátis (DEPOIS)
-  const freeBlock = mk('div','wel-feat-block wel-feat-free');
-  const freeBlockHead = mk('div','wfb-head');
-  freeBlockHead.innerHTML = '<span class="wfb-tag wfb-tag-free">Sem créditos</span><h3>Recursos gratuitos da plataforma</h3><p>Estes funcionam sempre — sem usar IA, sem gastar créditos.</p>';
-  freeBlock.appendChild(freeBlockHead);
-  const freeGrid = mk('div','wel-features-v3');
-  FREE_FEATURES.forEach(f=>{
-    const item = mk('div','wel-feat-v3');
-    const ic = mk('div','wel-feat-icon-v3');ic.textContent=f.icon;
-    const t = mk('h3','wel-feat-title-v3');t.textContent=f.title;
-    item.appendChild(ic);item.appendChild(t);
-    if(f.impact){
-      const imp = mk('div','wel-feat-impact');imp.textContent=f.impact;
-      item.appendChild(imp);
-    }
-    const d = mk('p','wel-feat-desc-v3');d.textContent=f.desc;
-    item.appendChild(d);
-    freeGrid.appendChild(item);
-  });
-  freeBlock.appendChild(freeGrid);
-  featSec.appendChild(freeBlock);
+  // Nota explicativa sobre IA vs grátis
+  const featNote = mk('p','wel-feat-note');
+  featNote.innerHTML = '💡 <b>Recursos com IA</b> (geração de questões, perfis, edital, mentor, flashcards automáticos a partir de erros) consomem créditos. <b>Todo o resto</b> — flashcards SRS, importação, simulados, mapa, calibração, estatísticas — é grátis e ilimitado.';
+  featSec.appendChild(featNote);
 
   wrap.appendChild(featSec);
 
@@ -13486,53 +14146,50 @@ function renderWelcome(){
   // wrap.appendChild(forestSec);
 
   // ====== TRANSPARÊNCIA SOBRE IA NA CRIAÇÃO DE QUESTÕES ======
+  // V15.12.6: Seção IA reescrita com tom equilibrado — Jean pediu pra
+  // reduzir o "medo" mas manter transparência. Mensagem central agora
+  // é que questões IA COMPLEMENTAM as reais, não substituem fontes oficiais.
+  // V15.12.7: ordem dos itens reorganizada — antes a seção fechava com
+  // o aviso "A IA pode errar" (tom defensivo). Agora o aviso vem no
+  // MEIO e a seção fecha com algo positivo (foco no estilo da banca,
+  // que é o diferencial real). Princípio de copy: terminar com força.
   const aiTranspSec = mk('section','wel-section wel-ai-transparency');
   const aitLbl = mk('div','wel-section-label');aitLbl.textContent='Sobre nossa IA';
   aiTranspSec.appendChild(aitLbl);
-  const aitHead = mk('h2','wel-section-title');aitHead.textContent='Transparência total sobre como criamos questões';
+  const aitHead = mk('h2','wel-section-title');aitHead.textContent='IA que complementa — não substitui';
   aiTranspSec.appendChild(aitHead);
+  const aitSub = mk('p','wel-section-sub');
+  aitSub.innerHTML = 'As questões geradas por IA <b>complementam</b> suas questões reais (importadas de TEC, QConcursos, Estratégia, Gran). Elas não substituem sua fonte oficial.';
+  aiTranspSec.appendChild(aitSub);
+
   const aitBody = mk('div','wel-ait-body');
   aitBody.innerHTML = `
     <div class="wait-row">
-      <div class="wait-icon">🤖</div>
-      <div class="wait-content">
-        <b>Nossas questões são criadas por IA</b>
-        <p>Bancas examinadoras já usam IA na criação de provas. Não há nada de errado nisso — o que importa é a <b>qualidade</b> da questão.</p>
-      </div>
-    </div>
-    <div class="wait-row">
       <div class="wait-icon">✓</div>
       <div class="wait-content">
-        <b>Validação em camadas</b>
-        <p>Cada questão passa por <b>auto-avaliação em 5 critérios</b>. Se não atinge o mínimo, é refeita. Cerca de 15% são descartadas antes de chegar até você.</p>
+        <b>Validação automática</b>
+        <p>Cada questão passa por auto-avaliação em 5 critérios antes de chegar até você. Se não atinge o mínimo, é refeita. Cerca de 15% são descartadas no processo.</p>
       </div>
     </div>
     <div class="wait-row">
       <div class="wait-icon">👥</div>
       <div class="wait-content">
-        <b>Avaliação da comunidade</b>
-        <p>Outros usuários votam nas explicações geradas. As de melhor qualidade aparecem primeiro. Você nunca está sozinho julgando.</p>
-      </div>
-    </div>
-    <div class="wait-row">
-      <div class="wait-icon">⚖️</div>
-      <div class="wait-content">
-        <b>Combinação com questões reais</b>
-        <p>Você também tem acesso a questões importadas do TEC Concursos — questões históricas reais das bancas. As da IA complementam, não substituem.</p>
+        <b>Comunidade ajuda a curar</b>
+        <p>Outros usuários votam nas explicações geradas. As de melhor qualidade aparecem primeiro — você não está sozinho julgando.</p>
       </div>
     </div>
     <div class="wait-row wait-warn">
       <div class="wait-icon">⚠️</div>
       <div class="wait-content">
-        <b>O que pode dar errado</b>
-        <p>Apesar das validações, IA pode errar. Em matérias muito específicas (legislações novas, jurisprudência) o cuidado é maior. Sempre confirme conceitos críticos com sua fonte oficial. <b>Reportar erro é fácil — basta clicar no botão na questão.</b></p>
+        <b>A IA pode errar — e a gente fala disso</b>
+        <p>Especialmente em <b>legislação nova</b> ou <b>jurisprudência específica</b>. Reportar problema é 1 clique e a recomendação é conferir pontos críticos em fonte oficial. Use a IA pra praticar — sempre valide o que for sensível.</p>
       </div>
     </div>
     <div class="wait-row">
       <div class="wait-icon">🎯</div>
       <div class="wait-content">
-        <b>Banca evolui — questões evoluem</b>
-        <p>Bancas estão saindo da letra de lei pura e indo pra <b>aplicação e interpretação</b>. Nossa IA é orientada pra esse padrão atual: situação prática + análise crítica, não decoreba.</p>
+        <b>Foco no estilo da banca</b>
+        <p>A IA é treinada com prompts específicos pra Cebraspe, FCC, FGV, Vunesp e outras — gera questões no padrão de cobrança da sua banca alvo, com armadilhas características.</p>
       </div>
     </div>
   `;
@@ -13595,10 +14252,11 @@ function renderWelcome(){
   const credSec = mk('section','wel-section wel-credits');
   const credLbl = mk('div','wel-section-label');credLbl.textContent='Transparência de uso';
   credSec.appendChild(credLbl);
-  const credHead = mk('h2','wel-section-title');credHead.textContent='Você sabe o que cada crédito rende';
+  // V15.12.6: Título mais concreto sobre o que os créditos viram na prática.
+  const credHead = mk('h2','wel-section-title');credHead.textContent='Comece com 40 ações de IA grátis';
   credSec.appendChild(credHead);
   const credSub = mk('p','wel-section-sub');
-  credSub.textContent='Cada ação tem um custo claro em créditos — sem surpresas no fim do mês. Veja o que cada plano rende:';
+  credSub.innerHTML = 'Teste questões geradas, explicações com IA e flashcards automáticos <b>sem cartão</b>. Cada ação tem um custo claro em créditos — sem surpresas no fim do mês.';
   credSec.appendChild(credSub);
 
   // Tabela fixa: quantos créditos custa cada ação (alinha com AI_COSTS no código)
@@ -13909,17 +14567,21 @@ function renderWelcome(){
 
 
   // ====== TAGLINE + FINAL CTA ======
+  // V15.12.6: Tagline alinhada com o novo posicionamento — encurta o caminho
+  // entre errar e não errar mais.
   const tagline = mk('section','wel-tagline');
-  tagline.innerHTML = 'Aproveite seu tempo. <span>Entenda suas dificuldades.</span> Foque no que importa.';
+  tagline.innerHTML = 'Encurte o caminho <span>entre errar</span> e não errar mais.';
   wrap.appendChild(tagline);
 
+  // V15.12.6: CTA final refeito — Jean pediu título específico:
+  // "Seu próximo erro pode virar revisão."
   const finalCta = mk('section','wel-final-cta-v3');
-  const fcTitle = mk('h2','wel-final-title');fcTitle.textContent='Comece a estudar agora';
+  const fcTitle = mk('h2','wel-final-title');fcTitle.textContent='Seu próximo erro pode virar revisão.';
   finalCta.appendChild(fcTitle);
   const fcSub = mk('p','wel-final-sub');
-  fcSub.textContent='Créditos grátis. Sem cartão. Sem pegadinha. Cancela quando quiser.';
+  fcSub.textContent='Crie sua conta grátis e teste o Gralia com créditos iniciais. Sem cartão, sem compromisso.';
   finalCta.appendChild(fcSub);
-  const fcBtn = mkBtn('Criar conta →','btn btn-p btn-lg wel-final-btn');
+  const fcBtn = mkBtn('Começar agora →','btn btn-p btn-lg wel-final-btn');
   fcBtn.addEventListener('click',()=>{
     DATA.welcomeShown=true;
     DATA.setup=true;
@@ -19858,7 +20520,16 @@ Gere UM flashcard que RESOLVA a dificuldade. Escolha o tipo de card que melhor a
     }
   }catch(e){
     btn.disabled=false;btn.textContent=orig;
-    alert('Erro ao gerar card: '+(e.message||e));
+    // V15.12.5: Mensagem clara em caso de rate limit. Jean reportou erro
+    // técnico do tipo "api-429: This request would exceed your organization's
+    // rate limit of 50,000 input tokens per minute" — confuso pro usuário.
+    // Agora mostramos texto amigável com instrução do que fazer.
+    const errMsg = String(e.message||e).toLowerCase();
+    if(errMsg.includes('429') || errMsg.includes('rate limit')){
+      alert('⏳ Limite de uso da IA atingido por agora.\n\nA Anthropic limita a 50.000 tokens/minuto. Geração em lote consome rápido — tente de novo em 1-2 minutos.\n\nDica: gere um flashcard de cada vez em vez de todos juntos pra evitar isso.');
+    } else {
+      alert('Erro ao gerar card: '+(e.message||e));
+    }
   }
 }
 
@@ -25724,6 +26395,7 @@ async function elabSubmit(container){
 /* PRACTICE */
 function practReset(){
   ST.practQ=null;ST.practFb=null;ST.practHist=[];ST.practLoading=false;ST.practAnswered=false;
+  ST.practError=null; // V15.12.5: limpa aviso de erro ao resetar prática
 }
 
 function renderPractice(){
@@ -25909,6 +26581,26 @@ function renderPractice(){
   wrap.appendChild(topBar);
 
   wrap.appendChild(questionCard(ST.practQ));
+  // V15.12.5: Mostra aviso de erro quando IA falhou ao avaliar.
+  // Antes a tela voltava do loading sem feedback nenhum — Jean reportou
+  // "questão volta sem dar explicação". Agora mostra um banner CLARO
+  // pra usuário saber o que aconteceu e tentar de novo.
+  if(ST.practError && !ST.practFb && !ST.practLoading){
+    const errBanner = mk('div');
+    errBanner.style.cssText = 'background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.30);border-radius:10px;padding:.875rem 1rem;margin-bottom:.875rem;display:flex;align-items:flex-start;gap:10px';
+    const txt = mk('div');
+    txt.style.cssText = 'flex:1;font-size:13px;color:var(--text);line-height:1.5';
+    txt.textContent = ST.practError;
+    errBanner.appendChild(txt);
+    const dismiss = mk('button');
+    dismiss.type = 'button';
+    dismiss.style.cssText = 'background:transparent;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 4px;line-height:1';
+    dismiss.textContent = '×';
+    dismiss.title = 'Fechar aviso';
+    dismiss.addEventListener('click', ()=>{ ST.practError = null; render(); });
+    errBanner.appendChild(dismiss);
+    wrap.appendChild(errBanner);
+  }
   if(!ST.practFb&&!ST.practLoading)wrap.appendChild(answerButtons(practSubmit,ST.practAnswered));
   if(ST.practLoading&&ST.practAnswered)wrap.appendChild(dynamicLoading('explanation','Avaliando...'));
   if(ST.practFb&&!ST.practLoading)wrap.appendChild(feedbackCard(ST.practFb,practNext));
@@ -26032,10 +26724,25 @@ async function practSubmit(answer){
       save();
     }
   }catch(e){
+    // V15.12.5: BUG FIX — antes só setava practAnswered=false, mas não
+    // dava feedback claro pro usuário. handleErr mostra toast efêmero,
+    // e a tela voltava pra "responder de novo" sem explicar nada — Jean
+    // reportou "questão volta sem dar explicação se estava correta ou
+    // errada". Causa raiz: API falhando silenciosamente (rate limit,
+    // timeout, JSON inválido). Solução: render com aviso CLARO no
+    // próprio card pra usuário tentar de novo, e diferenciar 429 dos
+    // outros erros.
     ST.practAnswered=false;
-    // V15.4 fix: practSubmit não recebe container (é callback de answerButtons).
-    // Usa a tela atual como fallback. Antes: ReferenceError: container is not defined.
-    handleErr(e, document.querySelector('.fade') || document.body);
+    const errMsg = String(e.message||e);
+    const lower = errMsg.toLowerCase();
+    if(lower.includes('429') || lower.includes('rate limit')){
+      ST.practError = '⏳ Limite da IA atingido. Aguarde 1-2 minutos e tente responder novamente. (Anthropic limita 50k tokens/min — gerar muitas questões seguidas dispara isso.)';
+    } else if(lower.includes('timeout') || lower.includes('aborted')){
+      ST.practError = '⌛ A IA demorou demais pra responder. Pode ser instabilidade de rede — tente responder de novo.';
+    } else {
+      ST.practError = '⚠️ Não consegui processar sua resposta agora: ' + errMsg.slice(0, 200) + '. Tente novamente.';
+    }
+    // Não chama handleErr (que sobreporia com outro toast)
   }
   ST.practLoading=false;render();
 }
@@ -26044,6 +26751,7 @@ function practNext(){
     ST.practQ=ST.practFb.next;
     saveAIQuestion('practice',ST.practQ,getMethodModel('practice'));
     ST.practFb=null;ST.practAnswered=false;
+    ST.practError=null; // V15.12.5: limpa eventual aviso de erro anterior
     // V12: limpa o preload (já consumimos)
     if(DATA.preloadedQuestions?.practice){
       delete DATA.preloadedQuestions.practice;
@@ -26609,7 +27317,9 @@ function renderSRSFocusOverlay(card, dueList){
       const small = mk('small');small.textContent = r.sub;
       const key = mk('span','key');key.textContent = r.key;
       b.appendChild(bold);b.appendChild(small);b.appendChild(key);
-      b.addEventListener('click',()=>{
+      b.addEventListener('click',(e)=>{
+        // V15.12.5: blur — libera foco do teclado pra atalhos 1-4 funcionarem
+        if(e && e.currentTarget && e.currentTarget.blur) e.currentTarget.blur();
         srsRate(card, r.rating);
         DATA.session.srsReviewed = (DATA.session.srsReviewed || 0) + 1;
         save();
@@ -27160,7 +27870,14 @@ function renderSRSStudy(wrap,due,total){
       const bold = mk('b');bold.textContent=lbl;
       const hd = mk('div','rating-hint');hd.textContent=hint;
       b.appendChild(bold);b.appendChild(hd);b.style.color=color;
-      b.addEventListener('click',()=>{
+      b.addEventListener('click',(e)=>{
+        // V15.12.5: blur+preventDefault — Jean reportou que após clicar
+        // num botão de rating, atalhos 1-4 paravam de funcionar e até
+        // novos cliques eram ignorados. Causa: o botão clicado ficava
+        // com foco do teclado, e o navegador roteava as teclas 1-4
+        // pra ele (que não tem handler de keypress nativo pra dígitos),
+        // bloqueando o handler global. Forçar blur libera o foco.
+        if(e && e.currentTarget && e.currentTarget.blur) e.currentTarget.blur();
         srsRate(card,rating);
         DATA.session.srsReviewed=(DATA.session.srsReviewed||0)+1;save();
         // Respect active filter when finding next card
@@ -27194,20 +27911,60 @@ function renderSRSErrors(wrap,errors){
     const n = Math.min(5,errors.length);
     const bbtn = mkBtn(`Gerar ${n} cards dos erros mais recentes`,'btn btn-p');
     bbtn.addEventListener('click',async()=>{
-      bbtn.disabled=true;bbtn.textContent='Gerando...';
+      bbtn.disabled=true;
       const batch = errors.slice(0,n);  // most recent first
-      for(const err of batch){
-        try{
-          const prompt = `QUESTÃO: ${err.question}\nGABARITO: ${err.correctAnswer}\nEXPLICAÇÃO: ${err.explanation}\nARMADILHA: ${err.trap} (${TRAP_TYPES[err.trapType||0]})\nTÓPICO: ${err.topic||''}\n\nGere o flashcard.`;
-          const res = await callAPI(SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}]);
-          DATA.srs.cards.push({
-            id:Date.now()+''+Math.random(),front:res.front,back:res.back,
-            type:res.type||'concept',tags:res.tags||[err.topic||''],
-            disciplineId:err.disciplineId,nextReview:Date.now(),
-            interval:0,ease:2.5,reviews:0,createdAt:Date.now(),fromErrorId:err.id
-          });
-          err.hasCard=true;save();
-        }catch(e){console.error(e);}
+      let ok = 0, failed = 0;
+      // V15.12.5: Delay entre chamadas + retry em 429 — Jean reportou
+      // "rate limit of 50,000 input tokens per minute" gerando 3 cards
+      // simultâneos. Cada call consome ~500-1000 tokens input
+      // (questão+explicação+armadilha+tópico+system). Com 3 calls
+      // sequenciais SEM delay, o servidor processa rápido demais e
+      // dispara 429. Solução: 1.2s de delay entre cada call (≤50 calls/min)
+      // + retry automático até 2x em caso de 429 com backoff exponencial.
+      for(let i = 0; i < batch.length; i++){
+        const err = batch[i];
+        bbtn.textContent = `Gerando ${i+1}/${batch.length}...`;
+        let attempt = 0;
+        let success = false;
+        while(attempt < 3 && !success){
+          try{
+            const prompt = `QUESTÃO: ${err.question}\nGABARITO: ${err.correctAnswer}\nEXPLICAÇÃO: ${err.explanation}\nARMADILHA: ${err.trap} (${TRAP_TYPES[err.trapType||0]})\nTÓPICO: ${err.topic||''}\n\nGere o flashcard.`;
+            const res = await callAPI(SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}]);
+            DATA.srs.cards.push({
+              id:Date.now()+''+Math.random(),front:res.front,back:res.back,
+              type:res.type||'concept',tags:res.tags||[err.topic||''],
+              disciplineId:err.disciplineId,nextReview:Date.now(),
+              interval:0,ease:2.5,reviews:0,createdAt:Date.now(),fromErrorId:err.id
+            });
+            err.hasCard=true;save();
+            ok++;
+            success = true;
+          }catch(e){
+            const msg = String(e.message||e).toLowerCase();
+            const isRateLimit = msg.includes('429') || msg.includes('rate limit');
+            attempt++;
+            if(isRateLimit && attempt < 3){
+              // Backoff exponencial: 5s, depois 10s
+              const waitMs = 5000 * attempt;
+              bbtn.textContent = `⏳ Rate limit — esperando ${waitMs/1000}s...`;
+              await new Promise(r => setTimeout(r, waitMs));
+            } else {
+              console.error('[bulk gen]', e);
+              failed++;
+              break;
+            }
+          }
+        }
+        // Delay entre chamadas pra evitar rate limit (exceto última)
+        if(i < batch.length - 1){
+          await new Promise(r => setTimeout(r, 1200));
+        }
+      }
+      // Mostra resultado
+      if(failed > 0){
+        showToast(`✓ ${ok} cards criados. ${failed} falharam — tente os erros restantes em alguns minutos.`, 6000);
+      } else {
+        showToast(`✓ ${ok} cards criados com sucesso`, 3500);
       }
       render();
     });
@@ -39328,80 +40085,181 @@ async function fetchTopupPackages(){
 // Linkadas no menu do avatar (canto direito da topbar).
 
 function renderAboutPage(){
-  const wrap = mk('div','fade');
-  wrap.style.cssText = 'max-width:760px;margin:0 auto';
+  const wrap = mk('div','fade about-page');
+  // V15.12.8: Refatoração completa da página Sobre conforme briefing.
+  // Posicionamento: "A plataforma que transforma seus erros em revisão
+  // inteligente." Tom emocional + estratégico, escaneável, sem promessas
+  // absolutas. Estrutura: Hero → Missão (com bloco visual) → Diferenciais
+  // (6 cards com aviso de IA equilibrado) → Por que "Gralia" → CTA final.
+  wrap.style.cssText = 'max-width:780px;margin:0 auto';
   wrap.appendChild(backBtn('dashboard'));
 
-  // Hero
-  // V15.12.2: emoji 🌲 substituído pela logo do site (light/dark conforme tema)
-  // — Jean pediu pra trocar o ícone de árvore que aparecia acima de
-  // "Sobre o Gralia" pela logo da gralha-azul.
-  const hero = mk('div');
-  hero.style.cssText = 'text-align:center;padding:1.5rem 1rem 2rem';
+  // ====== HERO ======
+  // V15.12.2: emoji 🌲 substituído pela logo do site (light/dark conforme tema).
+  // V15.12.8: copy refeito — subtítulo agora carrega o posicionamento
+  // ("transforma seus erros em revisão inteligente") e texto explica em 3
+  // parágrafos curtos a dor + a solução.
+  // V15.12.8b (revisão de tamanho): P3 reduzido de 38→22 palavras pra ficar
+  // mais escaneável no mobile sem perder a ideia ("ciclo fechado / nada se
+  // perde / vira fixação").
+  const hero = mk('section','about-hero');
   hero.innerHTML = `
-    <div style="margin-bottom:1rem;display:flex;justify-content:center">
-      <img src="${BRAND.birdLogo}" alt="" class="about-page-bird about-page-bird-light" style="height:80px;width:auto;display:block">
-      <img src="${BRAND.birdLogoDark}" alt="" class="about-page-bird about-page-bird-dark" style="height:80px;width:auto;display:none">
+    <div class="ah-logo">
+      <img src="${BRAND.birdLogo}" alt="" class="about-page-bird about-page-bird-light">
+      <img src="${BRAND.birdLogoDark}" alt="" class="about-page-bird about-page-bird-dark">
     </div>
-    <h1 style="margin:0 0 .75rem;font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1.2">Sobre o Gralia</h1>
-    <p style="margin:0 auto;font-size:15px;line-height:1.65;color:var(--text2);max-width:560px">A plataforma que aprende com seus erros pra te aprovar mais rápido em concursos públicos.</p>
+    <h1 class="ah-title">Sobre o Gralia</h1>
+    <p class="ah-tagline">A plataforma que transforma seus erros em <em>revisão inteligente</em>.</p>
+    <div class="ah-body">
+      <p>O Gralia nasceu pra resolver um problema simples e brutal: o concurseiro estuda muito, mas <b>nem sempre aprende com os próprios erros</b>.</p>
+      <p>Você lê PDF, assiste aula, resolve questões, cria flashcards… e mesmo assim cai na mesma pegadinha dias depois. Não faltou esforço — <b>faltou sistema</b>.</p>
+      <p>O Gralia fecha esse ciclo: cada erro vira explicação, flashcard e revisão no momento certo. Nada se perde — <b>tudo vira fixação</b>.</p>
+    </div>
   `;
   wrap.appendChild(hero);
 
-  // Missão
-  const missao = mk('section');
-  missao.style.cssText = 'padding:0 0 2rem';
+  // ====== MISSÃO ======
+  // V15.12.8b: P1 reduzido (30→23 palavras), pivot reforçado, closing
+  // reduzido (49→28 palavras). Mantém a estrutura visual (pivot vermelho
+  // + lista 4 itens) mas com leitura mais rápida.
+  const missao = mk('section','about-section about-mission');
   missao.innerHTML = `
-    <h2 style="margin:1.5rem 0 .75rem;font-size:18px;font-weight:700;letter-spacing:-.3px">Nossa missão</h2>
-    <p style="margin:0 0 1rem;font-size:14px;line-height:1.7;color:var(--text2)">A maioria dos concurseiros perde tempo estudando o que <b>já sabe</b>. Erram a mesma armadilha 5, 10 vezes — sem nunca identificar o padrão. Lêem 80 páginas de edital sem saber o que é prioridade. Acumulam flashcards genéricos sem foco.</p>
-    <p style="margin:0;font-size:14px;line-height:1.7;color:var(--text2)">O Gralia inverte isso. Cada erro vira flashcard. Cada armadilha é classificada. Cada edital vira plano de estudo concreto. A IA trabalha pra você, não o contrário.</p>
+    <div class="as-label">Nossa missão</div>
+    <h2 class="as-title">Fazer cada erro trabalhar a favor da sua aprovação.</h2>
+    <div class="as-body">
+      <p>A maioria dos concurseiros perde tempo no que <b>já domina</b> e negligencia o que mais derruba na prova: erros recorrentes, falsa segurança e armadilhas da banca.</p>
+      <p class="am-pivot">O problema não é só errar.<br><b>É errar, entender por cima, seguir em frente e nunca revisar no momento certo.</b></p>
+      <p>O Gralia inverte essa lógica:</p>
+    </div>
+    <ul class="am-list">
+      <li><span class="aml-bullet">📝</span><span>Cada questão respondida <b>gera dados</b>.</span></li>
+      <li><span class="aml-bullet">🔍</span><span>Cada erro <b>revela um padrão</b>.</span></li>
+      <li><span class="aml-bullet">🎯</span><span>Cada padrão <b>aponta uma prioridade</b>.</span></li>
+      <li><span class="aml-bullet">📅</span><span>Cada flashcard <b>volta no momento certo</b>.</span></li>
+    </ul>
+    <p class="as-closing">A IA não substitui seu estudo, sua teoria nem suas fontes oficiais. Ela organiza o que normalmente se espalha — erros, pegadinhas, revisões — e <b>transforma sua prática em retenção</b>.</p>
   `;
   wrap.appendChild(missao);
 
-  // Diferencial
-  const diff = mk('section');
-  diff.innerHTML = `
-    <h2 style="margin:1.5rem 0 .75rem;font-size:18px;font-weight:700;letter-spacing:-.3px">O que nos diferencia</h2>
+  // ====== DIFERENCIAIS ======
+  const diff = mk('section','about-section about-diff');
+  const diffHead = mk('div');
+  diffHead.innerHTML = `
+    <div class="as-label">O que nos diferencia</div>
+    <h2 class="as-title">Não é só estudar mais. É estudar com retorno.</h2>
   `;
-  const diffPoints = [
-    {icon:'🧬', title:'DNA dos erros', body:'Cada erro é categorizado em 6 tipos de armadilha (termo absoluto, inversão, generalização indevida, etc). Você não erra mais por acidente — descobre seu padrão.'},
-    {icon:'🎯', title:'Calibração de confiança', body:'A causa #1 de reprovação não é falta de estudo — é "falsa segurança". A calibração mostra exatamente onde você acha que sabe, mas não sabe.'},
-    {icon:'🪄', title:'IA com gabarito Cebraspe', body:'Questões geradas no estilo da banca, com armadilhas reais. Cada erro vira flashcard automaticamente, sem você precisar criar nada manualmente.'},
-    {icon:'🌱', title:'Ferramentas anti-procrastinação', body:'Constância > intensidade. Streaks, dicas diárias, modos de foco, sistema de hábito. Foi feito pra você manter o ritmo mesmo nos dias difíceis.'}
+  diff.appendChild(diffHead);
+
+  // V15.12.8b (revisão de tamanho): cards "DNA dos erros", "Calibração de
+  // confiança" e "Ferramentas de constância" reduzidos pra ficarem
+  // escaneáveis no mobile. Mantém os exemplos concretos das armadilhas
+  // (importantes pra credibilidade) mas corta circumlocuções.
+  const DIFF_CARDS = [
+    {
+      icon:'🧬',
+      title:'DNA dos erros',
+      body:'Seus erros são classificados por tipo de armadilha — termo absoluto, inversão de lógica, generalização indevida, troca de prazo. Você enxerga <b>o padrão que te derruba</b>, não só o erro isolado.'
+    },
+    {
+      icon:'🎯',
+      title:'Calibração de confiança',
+      body:'O erro mais perigoso é a <b>falsa segurança</b>: marcar com convicção e errar. Você marca se sabia, achava ou chutou — e o Gralia mostra onde sua confiança não bate com seu desempenho.'
+    },
+    {
+      icon:'⚡',
+      title:'Flashcards que nascem do erro',
+      body:'Card genérico ajuda. Card criado a partir de um erro real ajuda muito mais. Uma questão errada vira card de revisão em segundos, focado na pegadinha que te derrubou.'
+    },
+    {
+      icon:'🤖',
+      title:'Questões com estilo de banca',
+      body:'A IA gera questões a partir das suas fontes, adaptadas pra banca alvo. Pra quem treina Cebraspe: certo/errado, linguagem precisa, armadilhas interpretativas e cobrança normativa.',
+      note:'⚖️ As questões de IA não substituem questões reais nem fontes oficiais. Elas complementam sua preparação com prática direcionada.'
+    },
+    {
+      icon:'📋',
+      title:'Síntese de edital e prioridade',
+      body:'Edital grande não pode virar leitura passiva. O Gralia extrai disciplinas, tópicos, pesos, datas e prioridades — você gasta menos tempo decidindo e mais executando.'
+    },
+    {
+      icon:'🌱',
+      title:'Ferramentas de constância',
+      body:'Aprovação não vem de uma semana perfeita. Vem de meses minimamente consistentes. Revisão diária, metas, modo foco, streaks — tudo pra <b>reduzir atrito</b>.'
+    }
   ];
-  diffPoints.forEach(p=>{
-    const card = mk('div');
-    card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.125rem 1.25rem;margin-bottom:.75rem';
+
+  const diffGrid = mk('div','about-diff-grid');
+  DIFF_CARDS.forEach(c=>{
+    const card = mk('div','about-diff-card');
     card.innerHTML = `
-      <div style="display:flex;align-items:flex-start;gap:14px">
-        <div style="font-size:28px;line-height:1;flex-shrink:0">${p.icon}</div>
-        <div style="flex:1">
-          <h3 style="margin:0 0 4px;font-size:14.5px;font-weight:700">${escapeHTML(p.title)}</h3>
-          <p style="margin:0;font-size:13px;color:var(--text2);line-height:1.6">${escapeHTML(p.body)}</p>
-        </div>
-      </div>
+      <div class="adc-icon">${c.icon}</div>
+      <h3 class="adc-title">${escapeHTML(c.title)}</h3>
+      <p class="adc-text">${c.body}</p>
+      ${c.note ? `<p class="adc-note">${c.note}</p>` : ''}
     `;
-    diff.appendChild(card);
+    diffGrid.appendChild(card);
   });
+  diff.appendChild(diffGrid);
   wrap.appendChild(diff);
 
-  // Origem
-  const origem = mk('section');
-  origem.style.cssText = 'padding:1.5rem 0 0';
+  // ====== POR QUE GRALIA ======
+  // V15.12.8: copy reescrita conforme briefing — metáfora da gralha-azul
+  // como semente que cresce mesmo a partir do esquecimento.
+  // V15.12.8b: P1 reduzido (28→18 palavras) - corta "ave símbolo do Paraná"
+  // (já está nas explicações da landing) e foca na ação simbólica que
+  // sustenta a metáfora.
+  const origem = mk('section','about-section about-origin');
   origem.innerHTML = `
-    <h2 style="margin:1.5rem 0 .75rem;font-size:18px;font-weight:700;letter-spacing:-.3px">Por que "Gralia"?</h2>
-    <p style="margin:0 0 1rem;font-size:14px;line-height:1.7;color:var(--text2)">A gralia-azul (Cyanocorax caeruleus) é uma ave nativa do sul do Brasil que planta pinhões em segredo — e esquece onde os enterrou. Os pinhões esquecidos viram araucárias. Sem ela, o pinheiro brasileiro estaria extinto.</p>
-    <p style="margin:0;font-size:14px;line-height:1.7;color:var(--text2)">Nosso símbolo é a memória que cresce mesmo no esquecimento. Cada questão respondida, cada erro corrigido, planta uma semente que vira floresta. <b>Constância é o solo. Esquecimento é o adubo.</b> Crescer demora — mas é certo.</p>
+    <div class="as-label">A inspiração do nome</div>
+    <h2 class="as-title">Por que "Gralia"?</h2>
+    <div class="ao-body">
+      <p>A <b>gralha-azul</b> espalha pinhões pela mata. Ao esquecer parte deles, ajuda novas araucárias a nascerem.</p>
+      <p>O Gralia nasce dessa metáfora.</p>
+      <p class="ao-emphasis">Nos estudos, esquecer não é fracasso — é parte do processo.<br>O problema é esquecer <b>sem voltar no momento certo</b>.</p>
+    </div>
+    <ul class="ao-list">
+      <li><span>📝</span> Cada questão respondida <b>planta um dado</b>.</li>
+      <li><span>🌱</span> Cada erro corrigido <b>planta uma revisão</b>.</li>
+      <li><span>🌳</span> Cada flashcard revisado <b>fortalece uma memória</b>.</li>
+      <li><span>🌲</span> Com constância, essas sementes <b>viram domínio</b>.</li>
+    </ul>
+    <p class="ao-closing">O nome <b>Gralia</b> representa essa ideia: memória que cresce mesmo a partir do esquecimento.</p>
+    <div class="ao-quote">Cada erro plantado vira memória que cresce.</div>
   `;
   wrap.appendChild(origem);
 
-  // CTA final
-  const cta = mk('div');
-  cta.style.cssText = 'text-align:center;padding:2rem 0 1rem';
-  const ctaBtn = mk('button','btn btn-p');
-  ctaBtn.style.cssText='font-size:14px;padding:.75rem 2rem;font-weight:700';
-  ctaBtn.textContent = 'Ver planos';
-  ctaBtn.addEventListener('click',()=>{ST.view='plans';render();});
+  // ====== CTA FINAL ======
+  // V15.12.8: alinhado com o CTA final da landing — "Seu próximo erro pode
+  // virar revisão." Botão "Começar agora" que abre signup pra usuário não
+  // logado, ou vai pro painel se já tá logado.
+  const cta = mk('section','about-cta-final');
+  const ctaTitle = mk('h2','acf-title');
+  ctaTitle.textContent = 'Seu próximo erro pode virar revisão.';
+  cta.appendChild(ctaTitle);
+  const ctaText = mk('p','acf-text');
+  if(isAuthed()){
+    ctaText.textContent = 'Você já faz parte do Gralia. Continue de onde parou.';
+  } else {
+    ctaText.textContent = 'Crie sua conta grátis e teste o Gralia com créditos iniciais. Sem cartão, sem compromisso.';
+  }
+  cta.appendChild(ctaText);
+
+  const ctaBtn = mk('button','btn btn-p btn-lg acf-btn');
+  ctaBtn.type = 'button';
+  if(isAuthed()){
+    ctaBtn.textContent = '→ Ir pro meu Painel';
+    ctaBtn.addEventListener('click',()=>{ST.view='dashboard';render();});
+  } else {
+    ctaBtn.textContent = 'Começar agora →';
+    ctaBtn.addEventListener('click',()=>{
+      DATA.welcomeShown=true;
+      DATA.setup=true;
+      ST.view='dashboard';
+      save();
+      if(supabaseConfigured()&&!isAuthed()){ST.showAuth=true;ST.authMode='signup';}
+      render();
+    });
+  }
   cta.appendChild(ctaBtn);
   wrap.appendChild(cta);
 
@@ -41165,22 +42023,61 @@ const SCHEDULE_TEMPLATES = {
 };
 
 const DAY_NAMES = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+// V15.12.5: cores e ícones expandidos pra todos os tipos novos.
+// Antes só 6 tipos — agora 13 (incluindo work, family, commute, leisure,
+// health, errand, custom). Essas constantes são usadas em renderização
+// do grid semanal, cards do dashboard, etc.
 const SCHEDULE_TYPE_COLORS = {
-  study: '#8042fa',
+  study:    '#8042fa',
+  work:     '#0ea5e9',
   exercise: '#16a34a',
-  meal: '#f59e0b',
-  sleep: '#3b82f6',
-  break: '#ec4899',
-  free: '#94a3b8'
+  meal:     '#f59e0b',
+  sleep:    '#3b82f6',
+  break:    '#ec4899',
+  family:   '#22c55e',
+  commute:  '#64748b',
+  leisure:  '#ec4899',
+  health:   '#dc2626',
+  errand:   '#f97316',
+  free:     '#a855f7',
+  custom:   '#0f6e56'
 };
 const SCHEDULE_TYPE_ICONS = {
-  study: '📚',
+  study:    '📚',
+  work:     '💼',
   exercise: '🏃',
-  meal: '🍽️',
-  sleep: '🌙',
-  break: '☕',
-  free: '🎯'
+  meal:     '🍽️',
+  sleep:    '🌙',
+  break:    '☕',
+  family:   '👨‍👩‍👧',
+  commute:  '🚗',
+  leisure:  '🎮',
+  health:   '🩺',
+  errand:   '🛒',
+  free:     '🎯',
+  custom:   '✏️'
 };
+const SCHEDULE_TYPE_LABELS = {
+  study:    'Estudo',
+  work:     'Trabalho',
+  exercise: 'Exercício',
+  meal:     'Refeição',
+  sleep:    'Sono',
+  break:    'Pausa',
+  family:   'Família',
+  commute:  'Deslocamento',
+  leisure:  'Lazer',
+  health:   'Saúde',
+  errand:   'Compras/Tarefas',
+  free:     'Tempo livre',
+  custom:   'Personalizado'
+};
+// Helper: pega label considerando customTypeLabel se for type='custom'
+function getBlockTypeLabel(b){
+  if(!b) return '';
+  if(b.type === 'custom' && b.customTypeLabel) return b.customTypeLabel;
+  return SCHEDULE_TYPE_LABELS[b.type] || b.type || 'Atividade';
+}
 
 async function fetchMySchedule(){
   if(!supa || !AUTH.user) return null;
@@ -42258,7 +43155,7 @@ function showEditScheduleModal(schedule){
   // Hint sobre tipos de atividade
   const typeHint = mk('div');
   typeHint.style.cssText = 'font-size:11.5px;color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.625rem .75rem;margin-top:.5rem;line-height:1.55';
-  typeHint.innerHTML = '<b>Tipos de atividade:</b> 📚 Estudo (com pomodoro) · 🏃 Exercício · 🍽️ Refeição · 🌙 Sono · ☕ Pausa · 🎯 Livre';
+  typeHint.innerHTML = '<b>Tipos:</b> 📚 Estudo (com pomodoro) · 💼 Trabalho · 🏃 Exercício · 🍽️ Refeição · 🌙 Sono · ☕ Pausa · 👨‍👩‍👧 Família · 🚗 Deslocamento · 🎮 Lazer · 🩺 Saúde · 🛒 Compras/Tarefas · 🎯 Tempo livre · ✏️ Personalizado';
   m.appendChild(typeHint);
 
   let editBlocks = JSON.parse(JSON.stringify(schedule.blocks||[]));
@@ -42270,13 +43167,27 @@ function showEditScheduleModal(schedule){
   let dragOverIdx = null;
 
   // Cor + ícone por tipo de bloco
+  // V15.12.5: tipos expandidos — Jean pediu mais opções e custom.
+  // Antes: 6 tipos (study, exercise, meal, sleep, break, free).
+  // Agora: 11 tipos cobrindo casos comuns + 'custom' pra digitar texto livre.
+  // Cores escolhidas pra serem distinguíveis no grid semanal sem competir
+  // com a paleta principal (gralia-purple). 'work' é azul-aço (formal),
+  // 'family' verde-suave, 'commute' cinza-azulado, 'leisure' rosa coral,
+  // 'health' vermelho-suave (médico/consultas/remédios), 'errand' âmbar.
   const TYPE_META = {
-    study:    {icon:'📚', label:'Estudo',    color:'#8042fa', bg:'rgba(128,66,250,.06)'},
-    exercise: {icon:'🏃', label:'Exercício', color:'#10b981', bg:'rgba(16,185,129,.06)'},
-    meal:     {icon:'🍽️', label:'Refeição',  color:'#f59e0b', bg:'rgba(245,158,11,.06)'},
-    sleep:    {icon:'🌙', label:'Sono',      color:'#6366f1', bg:'rgba(99,102,241,.06)'},
-    break:    {icon:'☕', label:'Pausa',     color:'#94a3b8', bg:'rgba(148,163,184,.06)'},
-    free:     {icon:'🎯', label:'Livre',     color:'#ef4444', bg:'rgba(239,68,68,.06)'}
+    study:    {icon:'📚', label:'Estudo',        color:'#8042fa', bg:'rgba(128,66,250,.06)'},
+    work:     {icon:'💼', label:'Trabalho',      color:'#0ea5e9', bg:'rgba(14,165,233,.06)'},
+    exercise: {icon:'🏃', label:'Exercício',     color:'#10b981', bg:'rgba(16,185,129,.06)'},
+    meal:     {icon:'🍽️', label:'Refeição',      color:'#f59e0b', bg:'rgba(245,158,11,.06)'},
+    sleep:    {icon:'🌙', label:'Sono',          color:'#6366f1', bg:'rgba(99,102,241,.06)'},
+    break:    {icon:'☕', label:'Pausa',         color:'#94a3b8', bg:'rgba(148,163,184,.06)'},
+    family:   {icon:'👨‍👩‍👧', label:'Família',       color:'#22c55e', bg:'rgba(34,197,94,.06)'},
+    commute:  {icon:'🚗', label:'Deslocamento',  color:'#64748b', bg:'rgba(100,116,139,.06)'},
+    leisure:  {icon:'🎮', label:'Lazer',         color:'#ec4899', bg:'rgba(236,72,153,.06)'},
+    health:   {icon:'🩺', label:'Saúde',         color:'#dc2626', bg:'rgba(220,38,38,.06)'},
+    errand:   {icon:'🛒', label:'Compras/Tarefas',color:'#f97316',bg:'rgba(249,115,22,.06)'},
+    free:     {icon:'🎯', label:'Tempo livre',   color:'#a855f7', bg:'rgba(168,85,247,.06)'},
+    custom:   {icon:'✏️', label:'Personalizado', color:'#0f6e56', bg:'rgba(15,110,86,.06)'}
   };
 
   function renderBlocks(){
@@ -42357,9 +43268,7 @@ function showEditScheduleModal(schedule){
       header.appendChild(actsRow);
       card.appendChild(header);
 
-      // Linha 1: Dias + Início + Fim
-      const timeRow = mk('div');
-      timeRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px';
+      // Helper pra criar field com label
       const mkField = (labelText, input)=>{
         const w = mk('div');
         w.style.cssText = 'display:flex;flex-direction:column;gap:3px';
@@ -42371,14 +43280,105 @@ function showEditScheduleModal(schedule){
         return w;
       };
 
-      const dayInp = mk('input');
-      dayInp.type = 'text';
-      dayInp.placeholder = '1-5 (seg-sex)';
-      dayInp.value = b.day_pattern || '';
-      dayInp.style.cssText = 'padding:7px 10px;font-size:12.5px;font-family:ui-monospace,monospace';
-      dayInp.dataset.field = 'day_pattern';
-      dayInp.title = '0=domingo, 1=segunda, 2=terça, ..., 6=sábado. Ex: "1-5" (seg-sex), "0,6" (sáb e dom), "1,3,5" (seg/qua/sex)';
-      timeRow.appendChild(mkField('Dias da semana', dayInp));
+      // V15.12.5: Linha de Dias da semana — agora chips visuais clicáveis
+      // em vez de input de texto tipo "1-5". Antes Jean tinha que decorar
+      // o formato "0=domingo, 1=segunda..." e digitar manualmente; péssima
+      // UX. Agora basta clicar nos chips de cada dia.
+      const dayBlock = mk('div');
+      dayBlock.style.cssText = 'display:flex;flex-direction:column;gap:3px';
+      const dayLbl = mk('label');
+      dayLbl.style.cssText = 'font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px';
+      dayLbl.textContent = 'Dias da semana';
+      dayBlock.appendChild(dayLbl);
+
+      const daysRow = mk('div');
+      daysRow.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap';
+      const DAY_NAMES = [
+        {n:1, lbl:'Seg'}, {n:2, lbl:'Ter'}, {n:3, lbl:'Qua'},
+        {n:4, lbl:'Qui'}, {n:5, lbl:'Sex'}, {n:6, lbl:'Sáb'}, {n:0, lbl:'Dom'}
+      ];
+
+      // Parser/serializador: converte "1-5" / "1,3,5" / "0,6" pra Set de números, e vice-versa
+      function parseDayPattern(p){
+        const set = new Set();
+        if(!p) return set;
+        String(p).split(',').forEach(seg=>{
+          seg = seg.trim();
+          if(!seg) return;
+          if(seg.includes('-')){
+            const [a,b] = seg.split('-').map(n=>parseInt(n,10));
+            if(!isNaN(a) && !isNaN(b)){
+              for(let d=Math.min(a,b); d<=Math.max(a,b); d++) set.add(d);
+            }
+          } else {
+            const n = parseInt(seg,10);
+            if(!isNaN(n) && n>=0 && n<=6) set.add(n);
+          }
+        });
+        return set;
+      }
+      function serializeDays(set){
+        // Tenta compactar em ranges quando dias consecutivos (ex: {1,2,3,4,5} → "1-5")
+        const arr = [...set].sort((a,b)=>a-b);
+        if(arr.length === 0) return '';
+        const parts = [];
+        let rangeStart = arr[0], prev = arr[0];
+        for(let i=1; i<arr.length; i++){
+          if(arr[i] === prev + 1){
+            prev = arr[i];
+          } else {
+            parts.push(rangeStart === prev ? String(rangeStart) : `${rangeStart}-${prev}`);
+            rangeStart = prev = arr[i];
+          }
+        }
+        parts.push(rangeStart === prev ? String(rangeStart) : `${rangeStart}-${prev}`);
+        return parts.join(',');
+      }
+
+      const selectedDays = parseDayPattern(b.day_pattern);
+      DAY_NAMES.forEach(({n, lbl})=>{
+        const chip = mk('button');
+        chip.type = 'button';
+        const isOn = selectedDays.has(n);
+        chip.style.cssText = `padding:6px 10px;border-radius:7px;border:1px solid ${isOn ? meta.color : 'var(--border)'};background:${isOn ? meta.bg : 'var(--surface2)'};color:${isOn ? meta.color : 'var(--text2)'};font-size:11.5px;font-weight:${isOn?'700':'600'};cursor:pointer;font-family:inherit;transition:all .12s;min-width:38px;text-align:center`;
+        chip.textContent = lbl;
+        chip.dataset.day = n;
+        chip.addEventListener('click', ()=>{
+          if(selectedDays.has(n)) selectedDays.delete(n);
+          else selectedDays.add(n);
+          editBlocks[idx].day_pattern = serializeDays(selectedDays);
+          renderBlocks(); // re-render pra atualizar visual
+        });
+        daysRow.appendChild(chip);
+      });
+
+      // Botões de atalho (seg-sex / fim de semana / todos)
+      const presetsRow = mk('div');
+      presetsRow.style.cssText = 'display:flex;gap:4px;margin-top:5px;flex-wrap:wrap';
+      const PRESETS = [
+        {label:'Seg-Sex', pattern:'1-5'},
+        {label:'Fim de semana', pattern:'0,6'},
+        {label:'Todos', pattern:'0-6'},
+        {label:'Limpar', pattern:''}
+      ];
+      PRESETS.forEach(p=>{
+        const btn = mk('button');
+        btn.type = 'button';
+        btn.style.cssText = 'padding:3px 9px;border-radius:5px;border:1px dashed var(--border);background:transparent;color:var(--text3);font-size:10.5px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .12s';
+        btn.textContent = p.label;
+        btn.addEventListener('click', ()=>{
+          editBlocks[idx].day_pattern = p.pattern;
+          renderBlocks();
+        });
+        presetsRow.appendChild(btn);
+      });
+      dayBlock.appendChild(daysRow);
+      dayBlock.appendChild(presetsRow);
+      card.appendChild(dayBlock);
+
+      // Linha de horários (Início + Fim)
+      const timeRow = mk('div');
+      timeRow.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:10px';
 
       const startInp = mk('input');
       startInp.type = 'time';
@@ -42396,10 +43396,35 @@ function showEditScheduleModal(schedule){
 
       card.appendChild(timeRow);
 
-      // Linha 2: Atividade
+      // V15.12.5: Se tipo === 'custom', campo extra pra label personalizado
+      // do tipo (ex: "Igreja", "Voluntariado", "Estudo de idiomas"). Salvo em
+      // b.customTypeLabel — usado em vez do label genérico "Personalizado"
+      // quando o bloco for renderizado no grid semanal.
+      if(b.type === 'custom'){
+        const customLblInp = mk('input');
+        customLblInp.type = 'text';
+        customLblInp.placeholder = 'Ex: Igreja, Voluntariado, Idiomas...';
+        customLblInp.value = b.customTypeLabel || '';
+        customLblInp.maxLength = 30;
+        customLblInp.style.cssText = `padding:7px 10px;font-size:12.5px;border:1px solid ${meta.color}33;background:${meta.bg}`;
+        customLblInp.dataset.field = 'customTypeLabel';
+        const customField = mkField('Nome do tipo (curto)', customLblInp);
+        customField.style.marginTop = '2px';
+        card.appendChild(customField);
+
+        customLblInp.addEventListener('input', e=>{
+          editBlocks[idx].customTypeLabel = e.target.value;
+        });
+        customLblInp.addEventListener('mousedown', e=>e.stopPropagation());
+      }
+
+      // Linha "Nome da atividade"
       const actInp = mk('input');
       actInp.type = 'text';
-      actInp.placeholder = 'Ex: Português - Concordância';
+      actInp.placeholder = b.type === 'study' ? 'Ex: Português - Concordância'
+                          : b.type === 'work' ? 'Ex: Expediente'
+                          : b.type === 'exercise' ? 'Ex: Corrida 5km / Academia'
+                          : 'Ex: descrição curta da atividade';
       actInp.value = b.activity || '';
       actInp.maxLength = 50;
       actInp.style.cssText = 'padding:7px 10px;font-size:12.5px';
@@ -42462,7 +43487,10 @@ function showEditScheduleModal(schedule){
       });
 
       // Inputs de tempo/atividade/dia: atualiza editBlocks + recalcula duração
-      [dayInp, startInp, endInp, actInp].forEach(inp=>{
+      // Inputs de tempo/atividade: atualiza editBlocks + recalcula duração
+      // V15.12.5: dayInp removido — agora é handled pelos chips clicáveis
+      // que têm seu próprio handler de click acima (chama renderBlocks).
+      [startInp, endInp, actInp].forEach(inp=>{
         inp.addEventListener('change', e=>{
           const field = e.target.getAttribute('data-field');
           editBlocks[idx][field] = e.target.value;
