@@ -8063,13 +8063,9 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn){
   });
   if(!ok) return;
 
-  // V15.12.12: pré-flight ANTES do loading
-  try {
-    assertCanAfford(action_id);
-  } catch(creditsErr) {
-    handleApiError(creditsErr, {context:'explicacao'});
-    return;
-  }
+  // V15.12.14: pré-flight com refetch fresco ANTES do loading
+  try { await assertCanAffordFresh(action_id); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'explicacao'}); return; }
 
   // Loading visual imediato no botão
   let originalLabel = '';
@@ -11616,15 +11612,27 @@ const CREDITS_MODAL_DEBOUNCE_MS = 4000;
 // + QUOTA.remaining (atualizado pelo header X-Credits-Remaining).
 // Retorna {ok:true} ou {ok:false, balance, required, action_id}.
 // Usado por: prefetches, botões de geração, antes do loading.
+// V15.12.14 (CRITICAL FIX) — antes lia meta.base_credits, mas AI_COSTS armazena
+// número direto (ex: practice_question: 2). Resultado: pré-flight nunca bloqueava
+// nada, sempre retornava {ok:true}. Agora trata o valor corretamente.
 function canAffordAction(action_id, batch_size){
   if(!action_id) return {ok:true};  // sem id, deixa o backend decidir
-  const meta = (window.AI_COSTS||{})[action_id];
-  if(!meta) return {ok:true};        // ação desconhecida, backend valida
-  if(meta.is_free === true) return {ok:true};
-  const cost = (meta.base_credits || 0) * (Math.max(1, batch_size||1));
+  const cost_meta = (window.AI_COSTS||{})[action_id];
+  if(cost_meta === undefined || cost_meta === null) return {ok:true};  // ação desconhecida — backend valida
+  // Suporta dois formatos: número direto (atual) ou objeto {base_credits, is_free}
+  let base_cost;
+  if(typeof cost_meta === 'number'){
+    base_cost = cost_meta;
+  } else if(typeof cost_meta === 'object'){
+    if(cost_meta.is_free === true) return {ok:true};
+    base_cost = cost_meta.base_credits || 0;
+  } else {
+    return {ok:true};  // tipo desconhecido — backend decide
+  }
+  const cost = base_cost * Math.max(1, batch_size||1);
   if(cost === 0) return {ok:true};
   const balance = QUOTA.remaining;
-  if(balance === null || balance === undefined) return {ok:true};  // sem dado, tenta
+  if(balance === null || balance === undefined) return {ok:false, balance:0, required:cost, action_id, stale:true};
   if(balance < cost){
     return {ok:false, balance, required:cost, action_id};
   }
@@ -11646,6 +11654,50 @@ function assertCanAfford(action_id, batch_size){
       plan: QUOTA.plan
     });
   }
+}
+
+// V15.12.14 — Versão async com refetch fresco do saldo se estiver stale.
+// Use ANTES de chamar IA explicitamente (toda ação iniciada pelo user).
+// Se QUOTA.lastFetchedAt é antigo (>30s) ou null, faz fetchQuota() antes
+// de validar. Falha fechada — se não conseguir confirmar saldo, BLOQUEIA.
+//
+// Otimização: se _prefetchSuspendedUntil > now() (acabamos de receber 402),
+// sabemos que saldo é insuficiente, falha imediata sem fetch redundante.
+async function assertCanAffordFresh(action_id, batch_size){
+  const STALE_MS = 30000;  // 30s
+  const lastFetched = QUOTA.lastFetchedAt || 0;
+  const isStale = (Date.now() - lastFetched) > STALE_MS;
+  const noBalance = QUOTA.remaining === null || QUOTA.remaining === undefined;
+
+  // Atalho: se acabamos de receber 402 (suspensão ativa), bloqueia direto
+  // sem refetch. Evita disparar 5 fetches em sequência por click insistente.
+  const recentlyBlocked = (typeof _prefetchSuspendedUntil !== 'undefined') &&
+                          (Date.now() < _prefetchSuspendedUntil);
+
+  // Se saldo desconhecido OU stale OU recém-bloqueado → refetch antes de decidir
+  // (exceto recentlyBlocked: nesse caso usa o saldo local que já foi atualizado pra 0)
+  if((isStale || noBalance) && !recentlyBlocked){
+    try {
+      await fetchQuota();
+    } catch(_) {
+      // Falha de fetch — fail closed
+    }
+    // Se ainda não tem saldo após fetch, falha fechado
+    if(QUOTA.remaining === null || QUOTA.remaining === undefined){
+      throw new CreditsError({
+        error: 'Não foi possível verificar seu saldo',
+        code: 'NO_CREDITS',
+        balance: 0,
+        required: (window.AI_COSTS||{})[action_id] || 0,
+        short_by: 0,
+        action_id,
+        plan: QUOTA.plan,
+        _stale: true
+      });
+    }
+  }
+  // Agora valida com saldo fresco
+  assertCanAfford(action_id, batch_size);
 }
 
 // V15.12.13 (CRITICAL FIX): valida saldo ANTES de exibir uma questão
@@ -21399,14 +21451,9 @@ function clearPrefetchedCard(errId){
 }
 
 async function generateCardFromError(err,btn,modelOverride,ctaRow,quick){
-  // V15.12.12: pré-flight ANTES de mostrar loading. Sem isso, usuário via
-  // "Gerando..." e depois recebia erro de crédito.
-  try {
-    assertCanAfford('error_flashcard');
-  } catch(creditsErr) {
-    handleApiError(creditsErr, {context:'flashcard-erro'});
-    return;
-  }
+  // V15.12.14: pré-flight com refetch fresco ANTES de mostrar loading
+  try { await assertCanAffordFresh('error_flashcard'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'flashcard-erro'}); return; }
   const orig = btn.textContent;
   btn.disabled=true;btn.textContent='Gerando...';
   try{
@@ -23774,8 +23821,8 @@ async function turboNext(){
   }
   // question mode: fetch via practice prompt
   t.step='question';
-  // V15.12.13: pré-flight ANTES de chamar IA
-  try { assertCanAfford('practice_question'); }
+  // V15.12.14: pré-flight com refetch fresco ANTES de chamar IA
+  try { await assertCanAffordFresh('practice_question'); }
   catch(creditsErr){ t.loading=false; render(); handleApiError(creditsErr, {context:'turbo'}); return; }
   try{
     const worst = turboWorstDiscipline();
@@ -25352,7 +25399,7 @@ async function runRevgen(){
     render();return;
   }
   // V15.12.13: pré-flight ANTES do loading
-  try { assertCanAfford('reverse_engineering'); }
+  try { await assertCanAffordFresh('reverse_engineering'); }
   catch(creditsErr){ handleApiError(creditsErr, {context:'engenharia-reversa'}); return; }
   s.loading=true;s.error=null;render();
 
@@ -25837,13 +25884,9 @@ function showGenerateSeriesModal(){
       showToast('Cada caderno é limitado a 10 questões. Reduza a quantidade.', 4000);
       return;
     }
-    // V15.12.12: assertCanAfford lança CreditsError tratado pelo handleApiError
-    try {
-      assertCanAfford('series_batch', nNotebooks);
-    } catch(creditsErr) {
-      handleApiError(creditsErr, {context:'caderno-serie'});
-      return;
-    }
+    // V15.12.14: pré-flight com refetch fresco ANTES de chamar IA
+    try { await assertCanAffordFresh('series_batch', nNotebooks); }
+    catch(creditsErr){ handleApiError(creditsErr, {context:'caderno-serie'}); return; }
     // V15.12.12: usa modal customizado em vez de confirm() nativo
     const totalCredits = nNotebooks * 10;
     const ok = await confirmAction({
@@ -26891,8 +26934,8 @@ async function calibStart(container){
     render();
     return;
   }
-  // V15.12.13: pré-flight ANTES do loading
-  try { assertCanAfford('practice_question'); }
+  // V15.12.14: pré-flight com refetch fresco ANTES do loading
+  try { await assertCanAffordFresh('practice_question'); }
   catch(creditsErr){ handleApiError(creditsErr, {context:'calibracao'}); return; }
   ST.calibLoading=true;render();
   try{
@@ -27063,8 +27106,8 @@ function renderExaminer(){
   return wrap;
 }
 async function examFetch(container){
-  // V15.12.13: pré-flight ANTES do loading
-  try { assertCanAfford('examiner_review'); }
+  // V15.12.14: pré-flight com refetch fresco ANTES do loading
+  try { await assertCanAffordFresh('examiner_review'); }
   catch(creditsErr){ handleApiError(creditsErr, {context:'examinador'}); return; }
   ST.examLoading=true;ST.examStep='write';ST.examEval=null;ST.examTrap='';render();
   try{
@@ -27217,8 +27260,8 @@ async function drillStart(idx,container){
     render();
     return;
   }
-  // V15.12.13: pré-flight ANTES do loading
-  try { assertCanAfford('practice_question'); }
+  // V15.12.14: pré-flight com refetch fresco ANTES do loading
+  try { await assertCanAffordFresh('practice_question'); }
   catch(creditsErr){ handleApiError(creditsErr, {context:'drill'}); return; }
   ST.drillLoading=true;ST.drillHist=[];render();
   try{
@@ -27388,8 +27431,8 @@ function renderElaborative(){
   return wrap;
 }
 async function elabFetch(container){
-  // V15.12.13: pré-flight ANTES do loading
-  try { assertCanAfford('practice_question'); }
+  // V15.12.14: pré-flight com refetch fresco ANTES do loading
+  try { await assertCanAffordFresh('practice_question'); }
   catch(creditsErr){ handleApiError(creditsErr, {context:'elaborativa'}); return; }
   ST.elabLoading=true;ST.elabEval=null;ST.elabExplain='';render();
   try{
@@ -27651,13 +27694,9 @@ async function practStart(container){
     render();
     return;
   }
-  // V15.12.12: pré-flight ANTES do loading
-  try {
-    assertCanAfford('practice_question');
-  } catch(creditsErr) {
-    handleApiError(creditsErr, {context:'pratica'});
-    return;
-  }
+  // V15.12.14: pré-flight com refetch fresco ANTES do loading
+  try { await assertCanAffordFresh('practice_question'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'pratica'}); return; }
   ST.practLoading=true;ST.practHist=[];render();
   try{
     const seed = avoidRepeatPrompt('practice');
@@ -28021,13 +28060,9 @@ async function simGenerate(numQ,mins,container){
     showToast('Simulado limitado a 10 questões por geração. Reduza a quantidade.', 4000);
     return;
   }
-  // V15.12.12: pré-flight ANTES do loading
-  try {
-    assertCanAfford('simulado_generation', numQ);
-  } catch(creditsErr) {
-    handleApiError(creditsErr, {context:'simulado'});
-    return;
-  }
+  // V15.12.14: pré-flight com refetch fresco ANTES do loading
+  try { await assertCanAffordFresh('simulado_generation', numQ); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'simulado'}); return; }
   ST.simLoading=true;render();
   try{
     const msg = `Gere EXATAMENTE ${numQ} questões C/E variadas cobrindo diferentes tópicos e tipos de armadilha. Cada questão com campo "explanation" explicando o gabarito em 2 frases.`;
@@ -28130,8 +28165,8 @@ async function interStart(container){
     render();
     return;
   }
-  // V15.12.13: pré-flight ANTES do loading
-  try { assertCanAfford('practice_question'); }
+  // V15.12.14: pré-flight com refetch fresco ANTES do loading
+  try { await assertCanAffordFresh('practice_question'); }
   catch(creditsErr){ handleApiError(creditsErr, {context:'intercalacao'}); return; }
   ST.interLoading=true;ST.interHist=[];ST.interTopics=[];render();
   try{
@@ -29372,13 +29407,9 @@ async function srsGenerate(n,container,modelOverride){
     showToast('Geração em lote limitada a 20 flashcards por vez. Reduza a quantidade.', 4000);
     return;
   }
-  // V15.12.12: pré-flight ANTES do loading
-  try {
-    assertCanAfford('srs_batch_generate');
-  } catch(creditsErr) {
-    handleApiError(creditsErr, {context:'srs-batch'});
-    return;
-  }
+  // V15.12.14: pré-flight com refetch fresco ANTES do loading
+  try { await assertCanAffordFresh('srs_batch_generate'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'srs-batch'}); return; }
   ST.srsGenLoading=true;render();
   try{
     const gated = await callAPIWithScore('srs','flashcard',SYS_SRS_GEN,
@@ -31083,7 +31114,7 @@ REGRAS DE FORMATO:
 
 async function generateTopicProfile(disciplineId, topic, modelOverride){
   // V15.12.13: pré-flight ANTES do loading
-  try { assertCanAfford('topic_profile'); }
+  try { await assertCanAffordFresh('topic_profile'); }
   catch(creditsErr){ handleApiError(creditsErr, {context:'topic-profile'}); throw creditsErr; }
   const disc = getDiscipline(disciplineId);
   const discName = disc?disc.name:'';
@@ -31182,7 +31213,7 @@ SAÍDA: markdown completo do perfil revisado, com as 8 seções. Sem preâmbulo 
 
 async function improveTopicProfile(disciplineId, topic, instruction, modelOverride){
   // V15.12.13: pré-flight ANTES de qualquer trabalho
-  try { assertCanAfford('topic_profile'); }
+  try { await assertCanAffordFresh('topic_profile'); }
   catch(creditsErr){ handleApiError(creditsErr, {context:'topic-profile-improve'}); throw creditsErr; }
   const current = getTopicProfile(disciplineId, topic);
   if(!current)throw new Error('Perfil não existe.');
@@ -31260,7 +31291,7 @@ async function runAudioFromProfile(disciplineId, topic){
   const disc = getDiscipline(disciplineId);
 
   // V15.12.13: pré-flight ANTES de mostrar modal de loading
-  try { assertCanAfford('topic_profile_audio'); }
+  try { await assertCanAffordFresh('topic_profile_audio'); }
   catch(creditsErr){ handleApiError(creditsErr, {context:'topic-profile-audio'}); return; }
 
   // Modal de loading
@@ -31639,7 +31670,7 @@ async function generateTopicSummary(disciplineId,topic){
   const key = topicKey(disciplineId,topic);
   if(DATA.topicSummaries[key])return DATA.topicSummaries[key];
   // V15.12.13: pré-flight ANTES de qualquer trabalho
-  try { assertCanAfford('topic_summary'); }
+  try { await assertCanAffordFresh('topic_summary'); }
   catch(creditsErr){ handleApiError(creditsErr, {context:'topic-summary'}); throw creditsErr; }
   const disc = getDiscipline(disciplineId);
   const discName = disc?disc.name:'';
@@ -31801,7 +31832,7 @@ async function generateDailyInsight(forceRefresh){
     return DATA.insights[dk];
   }
   // V15.12.13: pré-flight ANTES de qualquer trabalho
-  try { assertCanAfford('insight_daily'); }
+  try { await assertCanAffordFresh('insight_daily'); }
   catch(creditsErr){ handleApiError(creditsErr, {context:'insight-diario'}); throw creditsErr; }
   const stats = computeDailyStats();
   // Very compact payload — we don't send the full content, just the metrics
@@ -39326,13 +39357,8 @@ function showCreateEditalModal(){
         return;
       }
       // Tem limite mensal — mas tem créditos?
-      try {
-        assertCanAfford('edital_synthesis');
-      } catch(creditsErr) {
-        closeModal();
-        handleApiError(creditsErr, {context:'edital'});
-        return;
-      }
+      try { await assertCanAffordFresh('edital_synthesis'); }
+      catch(creditsErr){ closeModal(); handleApiError(creditsErr, {context:'edital'}); return; }
     }
 
     // Cria o edital com status analyzing e fecha modal
@@ -43531,7 +43557,7 @@ function showAIScheduleModal(){
       return;
     }
     // V15.12.13: pré-flight ANTES do loading
-    try { assertCanAfford('schedule_generation'); }
+    try { await assertCanAffordFresh('schedule_generation'); }
     catch(creditsErr){ handleApiError(creditsErr, {context:'cronograma'}); return; }
     gen.disabled = true; gen.textContent = 'Gerando...';
     try{
@@ -48232,7 +48258,7 @@ async function generateGoalMentorFeedback(modelOverride){
   const g = DATA.goals;
   if(!g)throw new Error('Nenhuma meta ativa');
   // V15.12.13: pré-flight ANTES de qualquer trabalho
-  try { assertCanAfford('exam_analysis'); }
+  try { await assertCanAffordFresh('exam_analysis'); }
   catch(creditsErr){ handleApiError(creditsErr, {context:'mentor-meta'}); throw creditsErr; }
   const view = goalDailyView(g);
   const yearly = computeYearlyActivity();
