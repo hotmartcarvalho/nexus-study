@@ -11171,11 +11171,26 @@ async function apiGenerate(body){
     });
   }
 
-  // Trava anti-duplicata: se a mesma chamada está em andamento, retorna a promise existente
-  const key = makeCallKey(body);
-  if(_inFlightCalls.has(key)){
-    console.warn('[api] chamada duplicada bloqueada (em andamento)');
-    return _inFlightCalls.get(key);
+  // V15.12.18 (CRITICAL FIX) — Trava anti-duplicata.
+  // Bug original: 2 callers awaitando a mesma Promise<Response> tentavam
+  // ler r.json() — o segundo falhava com "resposta não é JSON válido"
+  // porque o body stream já foi consumido pelo primeiro.
+  //
+  // Cenário real: prefetch dispara → entra na trava → user clica "Praticar"
+  // antes do prefetch terminar → mesma key → segundo caller pega a Response
+  // já lida → erro.
+  //
+  // Fix: (a) prefetches (silent) NÃO entram na trava — têm lock próprio em
+  // canStartPrefetch + acquirePrefetchLock; (b) quando deduplicamos, clonamos
+  // a Response antes de retornar pra cada caller adicional poder ler o body.
+  const isSilentPrefetch = body && body._silentOn402 === true;
+  const key = isSilentPrefetch ? null : makeCallKey(body);
+  if(key && _inFlightCalls.has(key)){
+    console.warn('[api] chamada duplicada detectada — clonando Response');
+    // Retorna uma promise que resolve com Response clonada
+    return _inFlightCalls.get(key).then(r => {
+      try { return r.clone(); } catch(_) { return r; }
+    });
   }
 
   // Registra timestamp pro rate limit
@@ -11250,11 +11265,12 @@ async function apiGenerate(body){
     }
     return r;
   }).finally(() => {
-    // Libera a trava após resposta
-    _inFlightCalls.delete(key);
+    // V15.12.18: libera trava só se essa chamada estava na trava (não-silent)
+    if(key) _inFlightCalls.delete(key);
   });
 
-  _inFlightCalls.set(key, callPromise);
+  // V15.12.18: prefetches silenciosos NÃO entram na trava (têm lock próprio)
+  if(key) _inFlightCalls.set(key, callPromise);
   return callPromise;
 }
 
