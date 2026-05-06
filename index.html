@@ -7168,7 +7168,7 @@ async function preloadQuestionForSource(src){
     const seed = avoidRepeatPrompt('practice');
     const res = await timedCallAPI('practice','question',SYS_PRACT,
       [{role:'user',content:'Primeira questão.'+seed}],
-      {model:getMethodModel('practice'), action:'practice_question'});
+      {model:getMethodModel('practice'), action:'practice_question', _silentOn402:true});
     if(res && res.question){
       DATA.preloadedQuestions = DATA.preloadedQuestions || {};
       DATA.preloadedQuestions.practice = {q: res, generatedAt: Date.now(), preloadedFromSource: src.id};
@@ -8020,7 +8020,7 @@ function startPrefetchExplanation(q, model){
     : 'Você é professor de concursos. Responda SEMPRE em JSON puro, sem markdown.';
   const prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nCandidato respondeu ${userAnswered||'(em branco)'} e ${userAnswered===q.answer?'acertou':'errou'}. Explique o gabarito em 2-4 frases, identifique a armadilha (o motivo de muitos errarem) e a palavra-gatilho do enunciado. Responda em JSON:\n{"explanation":"...","trap":"...","keyword":"..."}`;
   const modelStr = model === 'sonnet' ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
-  const opts = {model: modelStr, action: action_id};
+  const opts = {model: modelStr, action: action_id, _silentOn402: true};
   const entry = {promise: null, payload: null, error: null, startedAt: Date.now()};
   entry.promise = callAPI(sys, [{role:'user', content: prompt}], opts)
     .then(res=>{
@@ -11092,6 +11092,57 @@ function makeCallKey(body){
 }
 
 async function apiGenerate(body){
+  // V15.12.16 — GATE FINAL: bloqueia ações pagas SEM saldo.
+  // Defesa em profundidade: mesmo se algum caller esquecer de chamar
+  // assertCanAffordFresh, este gate impede a chamada chegar no backend.
+  // Aplica apenas se action_id está mapeado em AI_COSTS (ações conhecidas).
+  // Não bloqueia: ações desconhecidas (deixa backend decidir),
+  // ações de custo 0 (free/admin), ou body sem action_id.
+  if(body && body.action_id && !body._silentOn402){
+    const cost_meta = (window.AI_COSTS||{})[body.action_id];
+    if(cost_meta !== undefined && cost_meta !== null){
+      let cost;
+      if(typeof cost_meta === 'number') cost = cost_meta;
+      else if(typeof cost_meta === 'object' && !cost_meta.is_free) cost = cost_meta.base_credits || 0;
+      else cost = 0;
+      const batch = (typeof body.batch_size === 'number' && body.batch_size > 0) ? body.batch_size : 1;
+      const totalCost = cost * batch;
+      if(totalCost > 0){
+        const balance = QUOTA.remaining;
+        // Se saldo é conhecido E menor que custo: bloqueia
+        if(balance !== null && balance !== undefined && balance < totalCost){
+          _logCredit('API_GATE_BLOCK', {action_id: body.action_id, balance, required: totalCost, blocked: true});
+          // Atualiza suspensão pra evitar prefetches subsequentes
+          if(typeof notifyPrefetchNoCredits === 'function') notifyPrefetchNoCredits();
+          // Mostra modal (a menos que seja chamada silenciosa)
+          if(typeof showCreditsRequiredModal === 'function'){
+            showCreditsRequiredModal({
+              error: 'Créditos insuficientes',
+              code: 'NO_CREDITS',
+              balance, required: totalCost,
+              short_by: totalCost - balance,
+              action_id: body.action_id,
+              plan: QUOTA.plan
+            });
+          }
+          // Retorna resposta sintética 402 — caller trata como CreditsError
+          return new Response(JSON.stringify({
+            error: 'Créditos insuficientes',
+            code: 'NO_CREDITS',
+            balance, required: totalCost,
+            short_by: totalCost - balance,
+            action_id: body.action_id,
+            plan: QUOTA.plan,
+            _client_blocked: true
+          }), {
+            status: 402,
+            headers: {'Content-Type': 'application/json', 'X-Credits-Remaining': String(balance)}
+          });
+        }
+      }
+    }
+  }
+
   // === V14: Validações pré-envio ===
   const rateLimitCheck = checkRateLimit();
   if(!rateLimitCheck.ok){
@@ -11612,6 +11663,18 @@ const CREDITS_MODAL_DEBOUNCE_MS = 4000;
 // + QUOTA.remaining (atualizado pelo header X-Credits-Remaining).
 // Retorna {ok:true} ou {ok:false, balance, required, action_id}.
 // Usado por: prefetches, botões de geração, antes do loading.
+// V15.12.16 — flag pra ligar/desligar logs de diagnóstico de créditos
+// Liga via Console: window.GRALIA_DEBUG_CREDITS = true
+// Desliga: window.GRALIA_DEBUG_CREDITS = false (ou recarregue a página)
+window.GRALIA_DEBUG_CREDITS = false;
+
+function _logCredit(label, payload){
+  if(!window.GRALIA_DEBUG_CREDITS) return;
+  try {
+    console.log('[credit-check] '+label, payload);
+  } catch(_) {}
+}
+
 // V15.12.14 (CRITICAL FIX) — antes lia meta.base_credits, mas AI_COSTS armazena
 // número direto (ex: practice_question: 2). Resultado: pré-flight nunca bloqueava
 // nada, sempre retornava {ok:true}. Agora trata o valor corretamente.
@@ -11622,30 +11685,43 @@ const CREDITS_MODAL_DEBOUNCE_MS = 4000;
 // não tinha sido buscado. Agora FAIL CLOSED — saldo desconhecido = bloqueia.
 // Use assertCanAffordFresh() em ações explícitas pra forçar refetch antes.
 function canAffordAction(action_id, batch_size){
-  if(!action_id) return {ok:true};  // sem id, deixa o backend decidir
+  if(!action_id){
+    _logCredit('NO_ACTION_ID', {ok:true, msg:'sem action_id, deixa backend decidir'});
+    return {ok:true};
+  }
   const cost_meta = (window.AI_COSTS||{})[action_id];
-  if(cost_meta === undefined || cost_meta === null) return {ok:true};  // ação desconhecida — backend valida
-  // Suporta dois formatos: número direto (atual) ou objeto {base_credits, is_free}
+  if(cost_meta === undefined || cost_meta === null){
+    _logCredit('UNKNOWN_ACTION', {action_id, ok:true, msg:'ação não está em AI_COSTS'});
+    return {ok:true};
+  }
   let base_cost;
   if(typeof cost_meta === 'number'){
     base_cost = cost_meta;
   } else if(typeof cost_meta === 'object'){
-    if(cost_meta.is_free === true) return {ok:true};
+    if(cost_meta.is_free === true){
+      _logCredit('IS_FREE', {action_id, ok:true});
+      return {ok:true};
+    }
     base_cost = cost_meta.base_credits || 0;
   } else {
-    return {ok:true};  // tipo desconhecido — backend decide
+    _logCredit('UNKNOWN_TYPE', {action_id, type:typeof cost_meta, ok:true});
+    return {ok:true};
   }
   const cost = base_cost * Math.max(1, batch_size||1);
-  if(cost === 0) return {ok:true};
+  if(cost === 0){
+    _logCredit('ZERO_COST', {action_id, ok:true});
+    return {ok:true};
+  }
   const balance = QUOTA.remaining;
-  // V15.12.15: FAIL CLOSED se saldo desconhecido. Antes era {ok:true, stale:true},
-  // o que permitia chamadas chegarem no backend antes do primeiro fetchQuota.
   if(balance === null || balance === undefined){
+    _logCredit('NO_BALANCE', {action_id, balance, required:cost, ok:false, blocked:true, source:'fail-closed'});
     return {ok:false, balance:0, required:cost, action_id, stale:true};
   }
   if(balance < cost){
+    _logCredit('INSUFFICIENT', {action_id, balance, required:cost, ok:false, blocked:true});
     return {ok:false, balance, required:cost, action_id};
   }
+  _logCredit('OK', {action_id, balance, required:cost, ok:true});
   return {ok:true};
 }
 
@@ -11684,16 +11760,26 @@ async function assertCanAffordFresh(action_id, batch_size){
   const recentlyBlocked = (typeof _prefetchSuspendedUntil !== 'undefined') &&
                           (Date.now() < _prefetchSuspendedUntil);
 
+  _logCredit('FRESH_CHECK_START', {
+    action_id, batch_size,
+    QUOTA_remaining: QUOTA.remaining,
+    QUOTA_lastFetchedAt: QUOTA.lastFetchedAt,
+    isStale, noBalance, recentlyBlocked
+  });
+
   // Se saldo desconhecido OU stale OU recém-bloqueado → refetch antes de decidir
   // (exceto recentlyBlocked: nesse caso usa o saldo local que já foi atualizado pra 0)
   if((isStale || noBalance) && !recentlyBlocked){
+    _logCredit('FRESH_REFETCH', {action_id, before_balance: QUOTA.remaining});
     try {
       await fetchQuota();
-    } catch(_) {
-      // Falha de fetch — fail closed
+      _logCredit('FRESH_REFETCH_OK', {action_id, after_balance: QUOTA.remaining});
+    } catch(e) {
+      _logCredit('FRESH_REFETCH_FAIL', {action_id, err: e.message});
     }
     // Se ainda não tem saldo após fetch, falha fechado
     if(QUOTA.remaining === null || QUOTA.remaining === undefined){
+      _logCredit('FRESH_BLOCKED_NO_BALANCE', {action_id, blocked:true});
       throw new CreditsError({
         error: 'Não foi possível verificar seu saldo',
         code: 'NO_CREDITS',
@@ -12061,6 +12147,10 @@ async function callAPI(system, msgs, opts){
   // V15.12.11: batch_size é validado server-side contra max_batch_size da ação
   if(opts && typeof opts.batch_size === 'number' && opts.batch_size > 0){
     body.batch_size = opts.batch_size;
+  }
+  // V15.12.16: prefetches devem passar _silentOn402 pra não disparar modal
+  if(opts && opts._silentOn402 === true){
+    body._silentOn402 = true;
   }
   let r;
   try{
@@ -21439,7 +21529,7 @@ TÓPICO: ${err.topic||''}
 Gere UM flashcard que RESOLVA a dificuldade. Escolha o tipo de card que melhor ataca este tipo de erro.`;
   const entry = {promise:null,result:null,error:null,startedAt:Date.now()};
   ST.prefetchedCards[err.id] = entry;
-  entry.promise = callAPIWithScore('srs','flashcard',SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}],{model:modelOverride, action:'error_flashcard'},75)
+  entry.promise = callAPIWithScore('srs','flashcard',SYS_CARD_FROM_ERROR,[{role:'user',content:prompt}],{model:modelOverride, action:'error_flashcard', _silentOn402:true},75)
     .then(gated=>{entry.result=gated;releasePrefetchLock(lockKey);return gated;})
     .catch(e=>{
       entry.error=e;
@@ -27693,6 +27783,12 @@ function renderPractice(){
   return wrap;
 }
 async function practStart(container){
+  _logCredit('PRACT_START_CALLED', {
+    has_prefetch: !!(DATA.preloadedQuestions?.practice?.q),
+    QUOTA_remaining: QUOTA.remaining,
+    QUOTA_lastFetchedAt: QUOTA.lastFetchedAt,
+    practLoading: ST.practLoading
+  });
   // V12: Reaproveita questão pré-carregada (de sessão anterior ou da próxima já gerada)
   // Economia de IA: usuário que sai da prática e volta não regenera questão
   // V15.12.13 (CRITICAL FIX): mesmo reaproveitando, o usuário precisa de saldo
@@ -27710,9 +27806,14 @@ async function practStart(container){
     render();
     return;
   }
-  // V15.12.14: pré-flight com refetch fresco ANTES do loading
+  // V15.12.16: pré-flight com refetch fresco ANTES do loading
   try { await assertCanAffordFresh('practice_question'); }
-  catch(creditsErr){ handleApiError(creditsErr, {context:'pratica'}); return; }
+  catch(creditsErr){
+    _logCredit('PRACT_START_BLOCKED', {reason: creditsErr.message});
+    handleApiError(creditsErr, {context:'pratica'});
+    return;
+  }
+  _logCredit('PRACT_START_PASSED', {QUOTA_remaining: QUOTA.remaining});
   ST.practLoading=true;ST.practHist=[];render();
   try{
     const seed = avoidRepeatPrompt('practice');
