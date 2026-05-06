@@ -11648,6 +11648,39 @@ function assertCanAfford(action_id, batch_size){
   }
 }
 
+// V15.12.13 (CRITICAL FIX): valida saldo ANTES de exibir uma questão
+// pré-carregada. Mesmo que o prefetch tenha sido cobrado antes, o submit
+// que vem em seguida (avaliação) PRECISA de saldo. Se não há saldo, descarta
+// o prefetch e bloqueia o fluxo com modal de créditos.
+//
+// Uso típico:
+//   if(DATA.preloadedQuestions?.X?.q){
+//     if(!consumePrefetchedQuestionSafe('X', 'practice_question_eval', ctx)) return;
+//     // ... usa o prefetch
+//   }
+//
+// Retorna: true se pode consumir; false se descartou (e modal já foi mostrado).
+function consumePrefetchedQuestionSafe(prefetchKey, evalActionId, ctx){
+  const can = canAffordAction(evalActionId);
+  if(!can.ok){
+    console.warn('[prefetch] descartando '+prefetchKey+' — saldo insuficiente para '+evalActionId);
+    if(DATA.preloadedQuestions && DATA.preloadedQuestions[prefetchKey]){
+      delete DATA.preloadedQuestions[prefetchKey];
+      save();
+    }
+    handleApiError(new CreditsError({
+      error:'Créditos insuficientes',
+      code:'NO_CREDITS',
+      balance: can.balance,
+      required: can.required,
+      action_id: evalActionId,
+      plan: QUOTA.plan
+    }), {context: ctx || prefetchKey});
+    return false;
+  }
+  return true;
+}
+
 // --- Modal bonito de créditos esgotados (Trial vs pago) ------------------
 function showCreditsRequiredModal(payload){
   // Anti-spam: se acabou de mostrar, ignora
@@ -17092,15 +17125,24 @@ function renderDashboard(){
 // logar pra garantir que está sempre alinhado com a tabela.
 const AI_COSTS = {
   // ---- 0 créditos (gratuitas/internas) ----
-  organize_import: 0,
-  extract_questions_pdf: 0,
-  classify_imported_question: 0,
-  health_check: 0,
-  practice_question_eval: 0,            // avaliação de resposta no ciclo questão→resposta
+  // ATENÇÃO: APENAS ações que NÃO chamam Anthropic OU usam conteúdo
+  // já gerado anteriormente sem nova chamada de IA podem ser custo 0.
+  // Ações que fazem nova chamada à IA pra gerar conteúdo PRECISAM custar.
+  classify_imported_question: 0,         // classificação local
+  health_check: 0,                       // teste admin
 
   // ---- 1 crédito ----
+  // V15.12.13 CRITICAL FIX: estas duas eram 0, mas FAZEM chamada à IA.
+  // organize_import: gera TOC de fonte importada via IA.
+  // extract_questions_pdf: extrai questões do texto via IA (loop por chunk).
+  organize_import: 1,
+  extract_questions_pdf: 1,
   error_flashcard: 1,
   insight_daily: 1,
+  // V15.12.13 (Fase B+ critical fix): practice_question_eval custava 0 mas
+  // FAZ NOVA CHAMADA À IA pra avaliar a resposta + gerar próxima questão.
+  // Brecha permitia prática infinita com saldo 0. Custo = 1 (regra Jean).
+  practice_question_eval: 1,
 
   // ---- 2 créditos ----
   practice_question: 2,                  // gera questão única
@@ -17142,11 +17184,11 @@ const AI_COSTS = {
 // em modais voltados ao usuário final (modal de créditos insuficientes,
 // confirmação de custo, etc). Os action_id em si NÃO devem aparecer na UI.
 const ACTION_LABELS = {
-  organize_import: 'Organizar fonte importada',
+  organize_import: 'Organizar fonte (TOC)',
   extract_questions_pdf: 'Extrair questões do PDF',
   classify_imported_question: 'Classificar questão',
   health_check: 'Teste de conexão',
-  practice_question_eval: 'Avaliar resposta',
+  practice_question_eval: 'Avaliação de resposta',
   error_flashcard: 'Flashcard a partir de erro',
   insight_daily: 'Análise diária do mentor',
   practice_question: 'Gerar questão de prática',
@@ -23732,6 +23774,9 @@ async function turboNext(){
   }
   // question mode: fetch via practice prompt
   t.step='question';
+  // V15.12.13: pré-flight ANTES de chamar IA
+  try { assertCanAfford('practice_question'); }
+  catch(creditsErr){ t.loading=false; render(); handleApiError(creditsErr, {context:'turbo'}); return; }
   try{
     const worst = turboWorstDiscipline();
     const hint = worst?` Priorize o tópico da disciplina "${worst.name}".`:'';
@@ -23740,12 +23785,16 @@ async function turboNext(){
   }catch(e){
     t.loading=false;t.error=e.message||'erro';
     render();
+    handleApiError(e, {context:'turbo'});
   }
 }
 
 async function turboSubmitAnswer(answer){
   const t = ST.turbo;
   if(t.answered||t.loading)return;
+  // V15.12.13 (CRITICAL FIX): pré-flight ANTES de chamar IA pra avaliar
+  try { assertCanAfford('practice_question_eval'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'turbo-eval'}); return; }
   t.answered=true;t.loading=true;render();
   try{
     const hist = [{role:'user',content:'Questão para revisão turbo.'},{role:'assistant',content:JSON.stringify(t.q)},{role:'user',content:'Resposta: '+answer}];
@@ -25302,6 +25351,9 @@ async function runRevgen(){
     s.error='Sem dados suficientes. Pratique mais ou troque o foco.';
     render();return;
   }
+  // V15.12.13: pré-flight ANTES do loading
+  try { assertCanAfford('reverse_engineering'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'engenharia-reversa'}); return; }
   s.loading=true;s.error=null;render();
 
   try{
@@ -26826,7 +26878,9 @@ function renderCalibration(){
 }
 async function calibStart(container){
   // V12: Reaproveita questão pré-carregada
+  // V15.12.13: valida saldo de avaliação antes de exibir prefetch
   if(DATA.preloadedQuestions?.calibration?.q){
+    if(!consumePrefetchedQuestionSafe('calibration', 'practice_question_eval', 'calibracao')) return;
     ST.calibQ = DATA.preloadedQuestions.calibration.q;
     ST.calibHist = DATA.preloadedQuestions.calibration.hist || [
       {role:'user',content:'Gere a primeira questão.'},
@@ -26837,17 +26891,23 @@ async function calibStart(container){
     render();
     return;
   }
+  // V15.12.13: pré-flight ANTES do loading
+  try { assertCanAfford('practice_question'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'calibracao'}); return; }
   ST.calibLoading=true;render();
   try{
     const seed = avoidRepeatPrompt('calibration');
     const res = await timedCallAPI('calibration','question',SYS_CALIB,[{role:'user',content:'Gere a primeira questão.'+seed}],{model:getMethodModel('calibration'), action:'practice_question'});
     ST.calibHist=[{role:'user',content:'Gere a primeira questão.'},{role:'assistant',content:JSON.stringify(res)}];
     ST.calibQ=res;saveAIQuestion('calibration',res,getMethodModel('calibration'));
-  }catch(e){handleErr(e,container);}
+  }catch(e){handleApiError(e,{context:'calibracao'});}
   ST.calibLoading=false;render();
 }
 async function calibSubmit(answer){
   if(ST.calibAnswered||ST.calibLoading||!ST.calibConf)return;
+  // V15.12.13 (CRITICAL FIX): pré-flight ANTES de chamar IA pra avaliar
+  try { assertCanAfford('practice_question_eval'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'calibracao-eval'}); return; }
   ST.calibAnswered=true;ST.calibLoading=true;render();
   const um = {role:'user',content:'Resposta: '+answer};
   const nh = [...ST.calibHist,um];
@@ -27003,15 +27063,21 @@ function renderExaminer(){
   return wrap;
 }
 async function examFetch(container){
+  // V15.12.13: pré-flight ANTES do loading
+  try { assertCanAfford('examiner_review'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'examinador'}); return; }
   ST.examLoading=true;ST.examStep='write';ST.examEval=null;ST.examTrap='';render();
   try{
     const res = await timedCallAPI('examiner','question',SYS_EXAM,[{role:'user',content:'Forneça um conceito.'}],{model:getMethodModel('examiner'), action:'examiner_review'});
     ST.examHist=[{role:'user',content:'Forneça um conceito.'},{role:'assistant',content:JSON.stringify(res)}];
     ST.examConcept=res;
-  }catch(e){handleErr(e,container);}
+  }catch(e){handleApiError(e,{context:'examinador'});}
   ST.examLoading=false;render();
 }
 async function examSubmit(container){
+  // V15.12.13 (CRITICAL FIX): pré-flight ANTES de chamar IA pra avaliar
+  try { assertCanAfford('practice_question_eval'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'examinador-eval'}); return; }
   ST.examLoading=true;render();
   const um = {role:'user',content:'Minha assertiva errada: '+ST.examTrap};
   const nh = [...ST.examHist,um];
@@ -27023,7 +27089,7 @@ async function examSubmit(container){
     // Examinador conta como questão pra meta (estrelas >= 2 = "ok")
     recordQuestionForGoal(inferDiscipline((ST.examConcept||'')), res.stars>=2);
     save();
-  }catch(e){handleErr(e,container);}
+  }catch(e){handleApiError(e,{context:'examinador-eval'});}
   ST.examLoading=false;render();
 }
 
@@ -27137,8 +27203,10 @@ function renderDrill(){
 async function drillStart(idx,container){
   ST.drillTarget=idx;ST.drillQ=null;ST.drillFb=null;ST.drillAnswered=false;
   // V12: Reaproveita questão pré-carregada se for do mesmo target
+  // V15.12.13 (CRITICAL FIX): valida saldo de avaliação antes de exibir prefetch
   const preload = DATA.preloadedQuestions?.['drill_'+idx];
   if(preload && preload.q){
+    if(!consumePrefetchedQuestionSafe('drill_'+idx, 'practice_question_eval', 'drill')) return;
     ST.drillQ = preload.q;
     ST.drillHist = preload.hist || [
       {role:'user',content:`Gere uma questão usando EXCLUSIVAMENTE o tipo ${idx} (${TRAP_TYPES[idx]}).`},
@@ -27149,17 +27217,23 @@ async function drillStart(idx,container){
     render();
     return;
   }
+  // V15.12.13: pré-flight ANTES do loading
+  try { assertCanAfford('practice_question'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'drill'}); return; }
   ST.drillLoading=true;ST.drillHist=[];render();
   try{
     const msg = `Gere uma questão usando EXCLUSIVAMENTE o tipo ${idx} (${TRAP_TYPES[idx]}).`+avoidRepeatPrompt('drill');
     const res = await timedCallAPI('drill','question',SYS_DRILL,[{role:'user',content:msg}],{model:getMethodModel('drill'), action:'practice_question'});
     ST.drillHist=[{role:'user',content:msg},{role:'assistant',content:JSON.stringify(res)}];
     ST.drillQ=res;saveAIQuestion('drill',res,getMethodModel('drill'));
-  }catch(e){handleErr(e,container);}
+  }catch(e){handleApiError(e,{context:'drill'});}
   ST.drillLoading=false;render();
 }
 async function drillSubmit(answer){
   if(ST.drillAnswered||ST.drillLoading)return;
+  // V15.12.13 (CRITICAL FIX): pré-flight ANTES de chamar IA pra avaliar
+  try { assertCanAfford('practice_question_eval'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'drill-eval'}); return; }
   ST.drillAnswered=true;ST.drillLoading=true;render();
   const um = {role:'user',content:'Resposta: '+answer};
   const nh = [...ST.drillHist,um];
@@ -27314,15 +27388,21 @@ function renderElaborative(){
   return wrap;
 }
 async function elabFetch(container){
+  // V15.12.13: pré-flight ANTES do loading
+  try { assertCanAfford('practice_question'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'elaborativa'}); return; }
   ST.elabLoading=true;ST.elabEval=null;ST.elabExplain='';render();
   try{
     const res = await timedCallAPI('elaborative','question',SYS_ELAB,[{role:'user',content:'Nova pergunta de interrogação elaborativa.'}],{model:getMethodModel('elaborative'), action:'practice_question'});
     ST.elabHist=[{role:'user',content:'Nova pergunta.'},{role:'assistant',content:JSON.stringify(res)}];
     ST.elabQ=res;
-  }catch(e){handleErr(e,container);}
+  }catch(e){handleApiError(e,{context:'elaborativa'});}
   ST.elabLoading=false;render();
 }
 async function elabSubmit(container){
+  // V15.12.13 (CRITICAL FIX): pré-flight ANTES de chamar IA pra avaliar
+  try { assertCanAfford('practice_question_eval'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'elaborativa-eval'}); return; }
   ST.elabLoading=true;render();
   const um = {role:'user',content:'Minha explicação: '+ST.elabExplain};
   const nh = [...ST.elabHist,um];
@@ -27335,7 +27415,7 @@ async function elabSubmit(container){
       recordQuestionForGoal(inferDiscipline((ST.elabQ&&ST.elabQ.topic)||''), ok);
       save();
     }
-  }catch(e){handleErr(e,container);}
+  }catch(e){handleApiError(e,{context:'elaborativa-eval'});}
   ST.elabLoading=false;render();
 }
 
@@ -27556,7 +27636,11 @@ function renderPractice(){
 async function practStart(container){
   // V12: Reaproveita questão pré-carregada (de sessão anterior ou da próxima já gerada)
   // Economia de IA: usuário que sai da prática e volta não regenera questão
+  // V15.12.13 (CRITICAL FIX): mesmo reaproveitando, o usuário precisa de saldo
+  // pra AVALIAR a resposta (practice_question_eval = 1 crédito, faz nova
+  // chamada à IA). Se ele não tem saldo, o prefetch é descartado.
   if(DATA.preloadedQuestions?.practice?.q){
+    if(!consumePrefetchedQuestionSafe('practice', 'practice_question_eval', 'pratica')) return;
     ST.practQ = DATA.preloadedQuestions.practice.q;
     ST.practHist = DATA.preloadedQuestions.practice.hist || [
       {role:'user',content:'Primeira questão.'},
@@ -27641,6 +27725,10 @@ function navigateToPreviousQuestion(){
 
 async function practSubmit(answer){
   if(ST.practAnswered||ST.practLoading)return;
+  // V15.12.13 (Fase B+ critical fix): pré-flight ANTES de chamar IA.
+  // practice_question_eval AGORA custa 1 crédito (faz nova chamada à IA).
+  try { assertCanAfford('practice_question_eval'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'pratica-eval'}); return; }
   ST.practAnswered=true;ST.practLoading=true;render();
   const um = {role:'user',content:'Resposta: '+answer};
   const nh = [...ST.practHist,um];
@@ -28028,7 +28116,9 @@ function renderInterleaving(){
 }
 async function interStart(container){
   // V12: Reaproveita questão pré-carregada
+  // V15.12.13 (CRITICAL FIX): valida saldo de avaliação antes de exibir prefetch
   if(DATA.preloadedQuestions?.interleaving?.q){
+    if(!consumePrefetchedQuestionSafe('interleaving', 'practice_question_eval', 'intercalacao')) return;
     ST.interQ = DATA.preloadedQuestions.interleaving.q;
     ST.interHist = DATA.preloadedQuestions.interleaving.hist || [
       {role:'user',content:'Primeira.'},
@@ -28040,16 +28130,22 @@ async function interStart(container){
     render();
     return;
   }
+  // V15.12.13: pré-flight ANTES do loading
+  try { assertCanAfford('practice_question'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'intercalacao'}); return; }
   ST.interLoading=true;ST.interHist=[];ST.interTopics=[];render();
   try{
     const res = await timedCallAPI('interleaving','question',SYS_INTER,[{role:'user',content:'Primeira questão. Escolha um tópico inicial.'+avoidRepeatPrompt('interleaving')}],{model:getMethodModel('interleaving'), action:'practice_question'});
     ST.interHist=[{role:'user',content:'Primeira.'},{role:'assistant',content:JSON.stringify(res)}];
     ST.interQ=res;saveAIQuestion('interleaving',res,getMethodModel('interleaving'));ST.interTopics.push(res.topic);
-  }catch(e){handleErr(e,container);}
+  }catch(e){handleApiError(e,{context:'intercalacao'});}
   ST.interLoading=false;render();
 }
 async function interSubmit(answer){
   if(ST.interAnswered||ST.interLoading)return;
+  // V15.12.13 (CRITICAL FIX): pré-flight ANTES de chamar IA pra avaliar
+  try { assertCanAfford('practice_question_eval'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'intercalacao-eval'}); return; }
   ST.interAnswered=true;ST.interLoading=true;render();
   const um = {role:'user',content:'Resposta: '+answer+'. IMPORTANTE: próxima questão DEVE ser de tópico diferente.'};
   const nh = [...ST.interHist,um];
@@ -30986,6 +31082,9 @@ REGRAS DE FORMATO:
 - Sem preâmbulo nem fecho`;
 
 async function generateTopicProfile(disciplineId, topic, modelOverride){
+  // V15.12.13: pré-flight ANTES do loading
+  try { assertCanAfford('topic_profile'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'topic-profile'}); throw creditsErr; }
   const disc = getDiscipline(disciplineId);
   const discName = disc?disc.name:'';
   const examName = DATA.config?.examName || 'concurso';
@@ -31082,6 +31181,9 @@ REGRAS RÍGIDAS:
 SAÍDA: markdown completo do perfil revisado, com as 8 seções. Sem preâmbulo nem fecho.`;
 
 async function improveTopicProfile(disciplineId, topic, instruction, modelOverride){
+  // V15.12.13: pré-flight ANTES de qualquer trabalho
+  try { assertCanAfford('topic_profile'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'topic-profile-improve'}); throw creditsErr; }
   const current = getTopicProfile(disciplineId, topic);
   if(!current)throw new Error('Perfil não existe.');
   const cooldown = getImproveCooldownInfo(disciplineId, topic);
@@ -31154,8 +31256,12 @@ SAÍDA: APENAS o roteiro. Sem preâmbulo, sem fecho, sem instruções extras.`;
 
 async function runAudioFromProfile(disciplineId, topic){
   const profile = getTopicProfile(disciplineId, topic);
-  if(!profile){alert('Perfil não encontrado.');return;}
+  if(!profile){showToast('Perfil não encontrado.', 3500);return;}
   const disc = getDiscipline(disciplineId);
+
+  // V15.12.13: pré-flight ANTES de mostrar modal de loading
+  try { assertCanAfford('topic_profile_audio'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'topic-profile-audio'}); return; }
 
   // Modal de loading
   const loadM = mk('div');
@@ -31532,6 +31638,9 @@ function formatRelativeTime(timestamp){
 async function generateTopicSummary(disciplineId,topic){
   const key = topicKey(disciplineId,topic);
   if(DATA.topicSummaries[key])return DATA.topicSummaries[key];
+  // V15.12.13: pré-flight ANTES de qualquer trabalho
+  try { assertCanAfford('topic_summary'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'topic-summary'}); throw creditsErr; }
   const disc = getDiscipline(disciplineId);
   const discName = disc?disc.name:'';
   const sys = `Professor Cebraspe. Gere um resumo breve e acionável do tópico, baseado APENAS no conteúdo do candidato.
@@ -31691,6 +31800,9 @@ async function generateDailyInsight(forceRefresh){
   if(!forceRefresh&&DATA.insights[dk]){
     return DATA.insights[dk];
   }
+  // V15.12.13: pré-flight ANTES de qualquer trabalho
+  try { assertCanAfford('insight_daily'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'insight-diario'}); throw creditsErr; }
   const stats = computeDailyStats();
   // Very compact payload — we don't send the full content, just the metrics
   const payload = {
@@ -32469,7 +32581,7 @@ function buildInsightCard(){
     const regen = mkBtn('🔄 Regerar','btn btn-sm');
     regen.addEventListener('click',async()=>{
       regen.disabled=true;regen.textContent='Regerando...';
-      try{await generateDailyInsight(true);render();}catch(e){alert('Erro: '+(e.message||e));regen.disabled=false;regen.textContent='🔄 Regerar';}
+      try{await generateDailyInsight(true);render();}catch(e){handleApiError(e, {context:'insight-diario'});regen.disabled=false;regen.textContent='🔄 Regerar';}
     });
     info.appendChild(regen);
     wrap.appendChild(info);
@@ -43410,10 +43522,17 @@ function showAIScheduleModal(){
   const cancel = mkBtn('Cancelar','btn btn-sm');
   cancel.addEventListener('click', closeModal);
   btnRow.appendChild(cancel);
-  const gen = mkBtn('⚡ Gerar (~3 créditos)','btn btn-p btn-sm');
+  const gen = mkBtn('⚡ Gerar cronograma','btn btn-p btn-sm');
+  gen.innerHTML = '⚡ Gerar cronograma → ' + aiCostBadgeHTML('schedule_generation');
   gen.addEventListener('click', async ()=>{
     const desc = ta.value.trim();
-    if(!desc || desc.length < 20){alert('Descreva com mais detalhe (mínimo 20 caracteres).');return;}
+    if(!desc || desc.length < 20){
+      showToast('Descreva com mais detalhe (mínimo 20 caracteres).', 4000);
+      return;
+    }
+    // V15.12.13: pré-flight ANTES do loading
+    try { assertCanAfford('schedule_generation'); }
+    catch(creditsErr){ handleApiError(creditsErr, {context:'cronograma'}); return; }
     gen.disabled = true; gen.textContent = 'Gerando...';
     try{
       // Chamada IA — formato JSON estruturado
@@ -43452,8 +43571,8 @@ Cubra: estudo (com pomodoros), refeições, exercício, sono. Seja realista — 
       closeModal();
       render();
     }catch(e){
-      alert('Erro: ' + (e.message||e));
-      gen.disabled = false; gen.textContent = '⚡ Gerar (~3 créditos)';
+      handleApiError(e, {context:'cronograma'});
+      gen.disabled = false; gen.innerHTML = '⚡ Gerar cronograma → ' + aiCostBadgeHTML('schedule_generation');
     }
   });
   btnRow.appendChild(gen);
@@ -48111,6 +48230,9 @@ function estimateMentorFeedbackCredits(model){
 async function generateGoalMentorFeedback(modelOverride){
   const g = DATA.goals;
   if(!g)throw new Error('Nenhuma meta ativa');
+  // V15.12.13: pré-flight ANTES de qualquer trabalho
+  try { assertCanAfford('exam_analysis'); }
+  catch(creditsErr){ handleApiError(creditsErr, {context:'mentor-meta'}); throw creditsErr; }
   const view = goalDailyView(g);
   const yearly = computeYearlyActivity();
   const distData = goalDistributionByDiscipline(g);
