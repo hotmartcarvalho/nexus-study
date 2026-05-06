@@ -11615,6 +11615,12 @@ const CREDITS_MODAL_DEBOUNCE_MS = 4000;
 // V15.12.14 (CRITICAL FIX) — antes lia meta.base_credits, mas AI_COSTS armazena
 // número direto (ex: practice_question: 2). Resultado: pré-flight nunca bloqueava
 // nada, sempre retornava {ok:true}. Agora trata o valor corretamente.
+//
+// V15.12.15 (CRITICAL FIX 2) — antes retornava {ok:true} se QUOTA.remaining
+// fosse null/undefined (saldo desconhecido). Isso permitia que prefetches
+// disparassem múltiplas chamadas paralelas no boot enquanto o saldo ainda
+// não tinha sido buscado. Agora FAIL CLOSED — saldo desconhecido = bloqueia.
+// Use assertCanAffordFresh() em ações explícitas pra forçar refetch antes.
 function canAffordAction(action_id, batch_size){
   if(!action_id) return {ok:true};  // sem id, deixa o backend decidir
   const cost_meta = (window.AI_COSTS||{})[action_id];
@@ -11632,7 +11638,11 @@ function canAffordAction(action_id, batch_size){
   const cost = base_cost * Math.max(1, batch_size||1);
   if(cost === 0) return {ok:true};
   const balance = QUOTA.remaining;
-  if(balance === null || balance === undefined) return {ok:false, balance:0, required:cost, action_id, stale:true};
+  // V15.12.15: FAIL CLOSED se saldo desconhecido. Antes era {ok:true, stale:true},
+  // o que permitia chamadas chegarem no backend antes do primeiro fetchQuota.
+  if(balance === null || balance === undefined){
+    return {ok:false, balance:0, required:cost, action_id, stale:true};
+  }
   if(balance < cost){
     return {ok:false, balance, required:cost, action_id};
   }
@@ -27475,10 +27485,16 @@ function renderPractice(){
   // V15.6: Pré-carrega próxima questão em background se ainda não tem.
   // Usuário entra na aba e quando clica "Iniciar" a questão já tá pronta.
   // Não bloqueia render — totalmente assíncrono. Falha silenciosa.
+  // V15.12.15 (CRITICAL FIX): só dispara prefetch se canStartPrefetch aprovar.
+  // Antes: a cada render, disparava 1 prefetch — gerou múltiplas chamadas
+  // 402 paralelas em sequência (8 chamadas em ~1min reportadas pelo Jean).
+  // Agora: canStartPrefetch valida saldo + lock + suspensão, evitando o spam.
   if(isAuthed() && !ST.practQ && !ST.practLoading && !DATA.preloadedQuestions?.practice && hasContent()){
     setTimeout(()=>{
       const firstActive = activeSources()[0];
-      if(firstActive && typeof preloadQuestionForSource === 'function'){
+      if(firstActive && typeof preloadQuestionForSource === 'function'
+         && typeof canStartPrefetch === 'function'
+         && canStartPrefetch('practice_question', 'preload-question-source-' + firstActive.id)){
         preloadQuestionForSource(firstActive).catch(()=>{});
       }
     }, 100);
