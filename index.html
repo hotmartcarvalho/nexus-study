@@ -14720,7 +14720,7 @@ function renderWelcome(){
 
   // Nota explicativa sobre IA vs grátis
   const featNote = mk('p','wel-feat-note');
-  featNote.innerHTML = '💡 <b>Recursos com IA</b> (geração de questões, perfis, edital, mentor, flashcards automáticos a partir de erros) consomem créditos. <b>Todo o resto</b> — flashcards SRS, importação, simulados, mapa, calibração, estatísticas — é grátis e ilimitado.';
+  featNote.innerHTML = '💡 <b>Recursos com IA</b> (geração de questões, explicações, perfis, edital, mentor, flashcards automáticos, importação inteligente de PDFs) consomem créditos. <b>Recursos sem IA</b> — flashcards SRS, simulados com importadas, mapa de tópicos, calibração visual, pomodoro, estatísticas — é grátis e ilimitado.';
   featSec.appendChild(featNote);
 
   wrap.appendChild(featSec);
@@ -24293,7 +24293,7 @@ function renderImportedImport(wrap){
   // V13: Modo IA — explica diferença vs parser TEC
   if(mode === 'pdf-ai'){
     const aiNotice = mk('div');aiNotice.style.cssText='padding:.75rem 1rem;background:rgba(128,66,250,.08);border:1px solid rgba(128,66,250,.20);border-left:3px solid var(--gralia-purple);border-radius:8px;margin-bottom:.75rem;font-size:12.5px;line-height:1.55';
-    aiNotice.innerHTML = '<b style="color:var(--gralia-purple)">✨ Extração inteligente via IA</b><br>Use pra <b>qualquer PDF</b> de prova (CESPE, FCC, FGV, FUNDATEC, provas estaduais, materiais de cursinho). A IA identifica enunciado, alternativas, gabarito, banca e disciplina automaticamente. Mais lento que o parser do TEC, mas funciona com qualquer formato. <b>Custo zero pra você</b> — importação é sempre grátis.';
+    aiNotice.innerHTML = '<b style="color:var(--gralia-purple)">✨ Extração inteligente via IA</b><br>Use pra <b>qualquer PDF</b> de prova (CESPE, FCC, FGV, FUNDATEC, provas estaduais, materiais de cursinho). A IA identifica enunciado, alternativas, gabarito, banca e disciplina automaticamente. Mais lento que o parser do TEC, mas funciona com qualquer formato. <b>Consome 1 crédito por trecho do PDF</b> processado.';
     card.appendChild(aiNotice);
 
     const pdfArea = mk('div','pdf-import-area');
@@ -30417,7 +30417,7 @@ ${sample}`;
   const result = await callAPI(SYSTEM, [{role:'user', content: PROMPT}], {
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 2000,
-    action: 'organize_import'  // V15.12.10: TOC de fonte é parte da importação - grátis
+    action: 'organize_import'  // V15.12.13: TOC via IA — agora custa 1 crédito (era 0)
   });
 
   if(!result || !Array.isArray(result.toc)) return null;
@@ -44918,7 +44918,8 @@ function renderUpgrade(){
     ['Modelo Sonnet 4.6 (premium)', '❌', '✅ Pro'],
     ['Top-up avulso de créditos', '❌', '✅'],
     ['Cards e flashcards revisáveis', '✅', '✅ (sempre grátis)'],
-    ['Importar fontes e PDFs', '✅', '✅ (sempre grátis)']
+    ['Importar fontes (texto colado)', '✅', '✅ (sempre grátis)'],
+    ['Extrair questões de PDF com IA', 'Custa 1 créd/trecho', 'Custa 1 créd/trecho']
   ];
   const tbl = mk('table');
   tbl.style.cssText='width:100%;border-collapse:collapse;font-size:12.5px';
