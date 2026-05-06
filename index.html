@@ -17332,6 +17332,14 @@ const AI_COSTS = {
   exam_analysis_premium: 50
 };
 
+// V15.12.17 (CRITICAL FIX) — `const` no escopo do script NÃO fica em window.
+// canAffordAction() lia de `window.AI_COSTS` mas a const acima é local ao
+// script, não global. Resultado: window.AI_COSTS era undefined, e toda
+// ação era classificada como "UNKNOWN_ACTION" — passava sem bloquear.
+// Diagnóstico: console mostrava `[credit-check] UNKNOWN_ACTION ...`.
+// Fix: expor explicitamente em window.
+window.AI_COSTS = AI_COSTS;
+
 // V15.12.13 (Fase B+): rótulos amigáveis para cada action_id, exibidos
 // em modais voltados ao usuário final (modal de créditos insuficientes,
 // confirmação de custo, etc). Os action_id em si NÃO devem aparecer na UI.
