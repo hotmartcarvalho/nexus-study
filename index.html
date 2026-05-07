@@ -1946,45 +1946,62 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .dash-greet-row .dash-greeting{margin-bottom:0;flex:1;min-width:0}
 .dash-mascot{flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;animation:route-in .55s ease both;animation-delay:.1s;position:relative}
 
-/* V15.12.24 (V3.13) — Vídeo do mascote.
-   Mesmas dimensões da imagem estática pra trocar sem layout shift.
-   background:transparent + object-fit:contain preservam alpha do WebM. */
+/* V15.12.25 (V3.14) — REESCRITA da regra de exibição do mascote.
+   Bug anterior: no tema escuro, vídeo e imagem fallback apareciam lado a lado
+   porque `:root[data-theme="dark"] .dash-mascot-dark{display:block}` (regra
+   genérica) tinha mais especificidade que `.dash-mascot .dash-mascot-fallback
+   {display:none}` e forçava fallback dark a aparecer mesmo com vídeo ativo.
+
+   Nova abordagem: 3 estados mutuamente exclusivos no container .dash-mascot:
+   1) "video"   → vídeo visível, todas as imgs ocultas (default ao montar)
+   2) "static"  → vídeo oculto, img estática do tema atual visível
+                  (setado por JS quando vídeo termina, falha, ou prefers-reduced-motion)
+   3) (sem video — modo legado puro) → img estática do tema atual visível
+
+   Em todos os modos, NUNCA mais que UM elemento visível por vez.
+   Regra base: TUDO oculto. Cada estado revela explicitamente o que precisa.
+*/
+.dash-mascot-video,
+.dash-mascot-img{display:none}
+
+/* Dimensões e estilo (aplica mesmo quando display:none, pra evitar flash quando
+   troca pra display:block) */
 .dash-mascot-video{
   height:96px;width:auto;max-width:120px;object-fit:contain;
   background:transparent;
   opacity:.95;transition:transform .35s ease, opacity .15s;
   user-select:none;pointer-events:none;
-  display:block;
 }
-.dash-mascot-img{height:96px;width:auto;max-width:120px;object-fit:contain;opacity:.95;transition:transform .35s ease, opacity .15s;user-select:none;-webkit-user-drag:none;cursor:default}
+.dash-mascot-img{
+  height:96px;width:auto;max-width:120px;object-fit:contain;
+  opacity:.95;transition:transform .35s ease, opacity .15s;
+  user-select:none;-webkit-user-drag:none;cursor:default;
+}
 
-/* Fallback estático: por padrão escondido quando há vídeo. Só aparece se
-   o vídeo falhar (.dash-mascot-static é setado via JS) ou se o componente
-   foi montado em modo estático (prefers-reduced-motion). */
-.dash-mascot .dash-mascot-fallback{display:none}
-.dash-mascot.dash-mascot-static .dash-mascot-video{display:none}
-.dash-mascot.dash-mascot-static .dash-mascot-fallback.dash-mascot-light{display:block}
-:root[data-theme="dark"] .dash-mascot.dash-mascot-static .dash-mascot-fallback.dash-mascot-light{display:none}
-:root[data-theme="dark"] .dash-mascot.dash-mascot-static .dash-mascot-fallback.dash-mascot-dark{display:block}
+/* === Estado 1: VIDEO (default quando container tem .dash-mascot-video filho) === */
+.dash-mascot:not(.dash-mascot-static):has(.dash-mascot-video) .dash-mascot-video{display:block}
 
-/* Hover suave no container (não no vídeo, que tem pointer-events:none) */
-.dash-mascot:hover .dash-mascot-img,
-.dash-mascot:hover .dash-mascot-video{transform:translateY(-3px) rotate(-3deg);opacity:1}
+/* Fallback pra navegadores sem :has() — força via JS adicionar .dash-mascot-playing
+   no momento da montagem do vídeo */
+.dash-mascot.dash-mascot-playing:not(.dash-mascot-static) .dash-mascot-video{display:block}
 
-/* Versão estática original (modo sem vídeo) — mantém comportamento legado de tema */
-.dash-mascot:not(.dash-mascot-static) .dash-mascot-img:not(.dash-mascot-fallback){display:none}
-.dash-mascot-dark{display:none}
-:root[data-theme="dark"] .dash-mascot-light{display:none}
-:root[data-theme="dark"] .dash-mascot-dark{display:block}
+/* === Estado 2 e 3: STATIC (vídeo terminou, falhou, ou modo legado puro) ===
+   Mostra a img do tema ATUAL e nada mais. */
+.dash-mascot.dash-mascot-static .dash-mascot-light{display:block}
+:root[data-theme="dark"] .dash-mascot.dash-mascot-static .dash-mascot-light{display:none}
+:root[data-theme="dark"] .dash-mascot.dash-mascot-static .dash-mascot-dark{display:block}
 
-/* Defesa adicional pra prefers-reduced-motion no nível do CSS:
-   se por algum motivo o JS não detectou (ex: usuário ativou DEPOIS de
-   carregar a página), o vídeo é ocultado e fallback aparece. */
+/* Hover suave (no elemento atualmente visível) */
+.dash-mascot:hover .dash-mascot-video,
+.dash-mascot:hover .dash-mascot-img{transform:translateY(-3px) rotate(-3deg);opacity:1}
+
+/* === prefers-reduced-motion === defesa em CSS (caso JS não tenha pego) === */
 @media (prefers-reduced-motion: reduce){
   .dash-mascot-video{display:none !important}
-  .dash-mascot .dash-mascot-fallback.dash-mascot-light{display:block}
-  :root[data-theme="dark"] .dash-mascot .dash-mascot-fallback.dash-mascot-light{display:none}
-  :root[data-theme="dark"] .dash-mascot .dash-mascot-fallback.dash-mascot-dark{display:block}
+  /* Força modo static visualmente, sem precisar do JS */
+  .dash-mascot .dash-mascot-light{display:block}
+  :root[data-theme="dark"] .dash-mascot .dash-mascot-light{display:none}
+  :root[data-theme="dark"] .dash-mascot .dash-mascot-dark{display:block}
   .dash-mascot:hover .dash-mascot-img,
   .dash-mascot:hover .dash-mascot-video{transform:none}
 }
@@ -17141,11 +17158,14 @@ function renderDashboard(){
   },10);
 
   // V15.12.23 — Mascote da gralha-azul ao lado da saudação.
-  // V15.12.24 (V3.13) — Agora usa <video> WebM autoplay/muted/loop com
-  // fallback automático pra <img> estática se:
+  // V15.12.24 (V3.13) — Substituído por <video> WebM com fallback estático.
+  // V15.12.25 (V3.14) — Sem loop: toca uma vez, depois troca pro mascote
+  // estático (estado final). Evita ficar chamando atenção em loop infinito.
+  // Comportamento de fallback (mostra estática em vez de vídeo) se:
   //   1) o navegador não suportar WebM
   //   2) o arquivo falhar ao carregar
   //   3) prefers-reduced-motion estiver ativo
+  //   4) o vídeo terminar de tocar (estado final = imagem estática)
   // Em mobile (<700px) some via CSS pra preservar espaço.
   const greetRow = mk('div','dash-greet-row');
   greetRow.appendChild(greeting);
@@ -17160,32 +17180,41 @@ function renderDashboard(){
       <img src="${BRAND.mascotLogoDark}" alt="" class="dash-mascot-img dash-mascot-dark">
     `;
   } else {
-    // Vídeo + imagens estáticas (escondidas via CSS por padrão; aparecem se vídeo falhar)
+    // Vídeo + imagens estáticas (ocultas via CSS por padrão; aparecem se vídeo
+    // terminar, falhar, ou em modo reduced-motion ativado tardiamente).
+    // V15.12.25: SEM loop — vídeo toca uma vez e o handler 'ended' troca
+    // pra estado static (imagem estática do tema atual).
+    // .dash-mascot-playing é a classe que ativa o display do vídeo (compat
+    // sem :has()). Removida no estado final.
+    mascot.classList.add('dash-mascot-playing');
     mascot.innerHTML = `
-      <video class="dash-mascot-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
+      <video class="dash-mascot-video" autoplay muted playsinline preload="metadata" aria-hidden="true">
         <source src="${BRAND.mascotVideo}" type="video/webm">
       </video>
-      <img src="${BRAND.mascotLogo}" alt="" class="dash-mascot-img dash-mascot-fallback dash-mascot-light">
-      <img src="${BRAND.mascotLogoDark}" alt="" class="dash-mascot-img dash-mascot-fallback dash-mascot-dark">
+      <img src="${BRAND.mascotLogo}" alt="" class="dash-mascot-img dash-mascot-light">
+      <img src="${BRAND.mascotLogoDark}" alt="" class="dash-mascot-img dash-mascot-dark">
     `;
-    // Hook: se vídeo falhar (404, codec não suportado, etc), revela fallback estático
     setTimeout(()=>{
       const v = mascot.querySelector('.dash-mascot-video');
       if(!v) return;
-      const showFallback = ()=>{
+      // Helper: troca pra estado final (imagem estática do tema atual).
+      // Usado por: erro de carregamento, erro do source, duração inválida,
+      // ou término natural do vídeo (evento 'ended').
+      const switchToStatic = ()=>{
         try{
+          mascot.classList.remove('dash-mascot-playing');
           mascot.classList.add('dash-mascot-static');
-          v.style.display = 'none';
           v.pause && v.pause();
+          // Remove o vídeo do DOM pra liberar recursos (não vai ser usado mais)
+          v.style.display = 'none';
         }catch(_){}
       };
-      v.addEventListener('error', showFallback);
-      // Source também emite error individual em alguns navegadores
+      v.addEventListener('error', switchToStatic);
+      v.addEventListener('ended', switchToStatic);  // V15.12.25: troca quando termina
       const src = v.querySelector('source');
-      if(src) src.addEventListener('error', showFallback);
-      // Se o vídeo carregar mas tiver duração 0 (arquivo corrompido), também faz fallback
+      if(src) src.addEventListener('error', switchToStatic);
       v.addEventListener('loadedmetadata', ()=>{
-        if(!v.duration || isNaN(v.duration) || v.duration === 0) showFallback();
+        if(!v.duration || isNaN(v.duration) || v.duration === 0) switchToStatic();
       });
     }, 0);
   }
