@@ -1935,11 +1935,146 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .revgen-model-tag .rmt-icon{font-size:13px}
 
 /* Dashboard greeting — saudação personalizada */
+/* V15.12.26 (Rodada 1): saudação mais imponente. Antes 22/24px parecia tímida
+   pra um "Bom dia, Jean" que é o primeiro elemento do painel. Agora 26/30px,
+   line-height ajustado, gradiente do nome mais visível. */
 .dash-greeting{margin-bottom:1.25rem;animation:route-in .35s ease}
-.dash-greeting .dg-time{font-size:22px;font-weight:400;color:var(--text2);letter-spacing:-.5px}
-.dash-greeting b{font-size:24px;font-weight:700;letter-spacing:-.5px;background:var(--gralia-gradient);background-clip:text;-webkit-background-clip:text;color:transparent}
+.dash-greeting .dg-time{font-size:26px;font-weight:400;color:var(--text2);letter-spacing:-.6px;line-height:1.2}
+.dash-greeting b{font-size:30px;font-weight:800;letter-spacing:-1px;background:var(--gralia-gradient);background-clip:text;-webkit-background-clip:text;color:transparent;line-height:1.2}
 .dash-greeting .dg-prompt{font-size:13px;color:var(--text3);font-weight:400;margin-left:6px}
 .dash-greeting .dg-link{color:var(--accent);text-decoration:underline;font-weight:600}
+@media(max-width:540px){
+  .dash-greeting .dg-time{font-size:22px}
+  .dash-greeting b{font-size:25px}
+}
+
+/* V15.12.27 (Rodada 2): Heatmap calendar-style (estilo GitHub contributions).
+   Substitui o antigo de barras horizontais por uma matriz 7×5 (35 dias).
+   Mais denso em informação, mais "premium", mantém compactness. */
+.heatmap-card{padding:1rem 1.125rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:1.25rem}
+.heatmap-head{display:flex;align-items:center;justify-content:space-between;gap:.625rem;margin-bottom:.875rem}
+.heatmap-title{margin:0;font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.01em;display:flex;align-items:center;gap:6px}
+.heatmap-title .svg-icon{color:var(--text2)}
+.heatmap-sub{font-size:10.5px;color:var(--text3);font-weight:600;font-variant-numeric:tabular-nums}
+
+.heatmap-grid-wrap{display:flex;gap:6px;align-items:flex-end;padding:4px 0}
+
+/* Coluna lateral de labels (Dom, Seg, Ter, ...) — só mostra Seg/Qua/Sex */
+.heatmap-day-labels{display:flex;flex-direction:column;gap:3px;padding-top:18px;flex-shrink:0}
+.heatmap-day-label{font-size:9.5px;color:var(--text3);font-weight:600;line-height:14px;height:14px;width:24px;text-align:right;padding-right:4px}
+
+/* Grid: 5 colunas (semanas), cada coluna tem header (mês) + 7 células */
+.heatmap-grid{display:flex;gap:3px;flex:1;justify-content:space-between}
+.heatmap-col{display:flex;flex-direction:column;gap:3px;flex:1;max-width:60px}
+.heatmap-col-head{font-size:9.5px;color:var(--text3);font-weight:600;height:15px;line-height:15px;text-align:left}
+
+/* Células */
+.heatmap-cell{
+  height:14px;
+  width:100%;
+  border-radius:3px;
+  background:var(--surface2);
+  border:1px solid transparent;
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+  cursor:default;
+}
+.heatmap-cell:hover{transform:scale(1.25);box-shadow:0 0 0 2px var(--surface),0 2px 6px rgba(0,0,0,.15);position:relative;z-index:2;border-color:var(--border2)}
+.heatmap-cell-future{background:transparent;border:1px dashed var(--border);opacity:.5;pointer-events:none}
+.heatmap-cell-today{box-shadow:0 0 0 1.5px var(--gralia-purple)}
+
+/* 5 níveis de intensidade — usando tons de roxo Gralia */
+.heatmap-cell-level-0{background:var(--surface2)}
+.heatmap-cell-level-1{background:rgba(124,92,255,.18)}
+.heatmap-cell-level-2{background:rgba(124,92,255,.40)}
+.heatmap-cell-level-3{background:rgba(124,92,255,.65)}
+.heatmap-cell-level-4{background:var(--gralia-purple)}
+
+/* Dark mode: nível 0 mais visível, demais inalterados (rgba já se adapta visualmente) */
+:root[data-theme="dark"] .heatmap-cell-level-0{background:rgba(255,255,255,.04)}
+:root[data-theme="dark"] .heatmap-cell-level-1{background:rgba(154,127,255,.22)}
+:root[data-theme="dark"] .heatmap-cell-level-2{background:rgba(154,127,255,.45)}
+:root[data-theme="dark"] .heatmap-cell-level-3{background:rgba(154,127,255,.68)}
+:root[data-theme="dark"] .heatmap-cell-level-4{background:var(--gralia-purple)}
+
+/* Legenda "Menos [□][▢][▣][▤][▥] Mais" */
+.heatmap-legend{display:flex;align-items:center;justify-content:flex-end;gap:5px;margin-top:.75rem;font-size:10px;color:var(--text3);font-weight:500}
+.heatmap-legend-lbl{font-size:10px;color:var(--text3);font-weight:500}
+.heatmap-legend-cell{height:10px;width:10px;border-radius:2px}
+
+/* Mobile: células um pouco menores, labels mais compactos */
+@media(max-width:540px){
+  .heatmap-day-label{font-size:9px;width:20px}
+  .heatmap-cell{height:12px}
+  .heatmap-col-head{font-size:9px}
+}
+
+
+.svg-icon{display:inline-block;vertical-align:-2px;flex-shrink:0;stroke:currentColor;fill:none}
+.svg-icon-baseline{vertical-align:baseline}
+
+/* V15.12.27 (Rodada 2): Card de meta refatorado.
+   Antes era 1300+ chars de style.cssText hardcoded inline. Agora classes CSS
+   limpas, manuteníveis, respeitando tema claro/escuro automaticamente.
+   Estrutura visual idêntica à anterior — só extração. */
+.dash-meta-goal{
+  cursor:pointer;
+  border:1px solid rgba(124,92,255,.30);
+  background:linear-gradient(135deg,rgba(124,92,255,.06),var(--surface));
+  font-family:inherit;
+  text-align:left;
+  border-radius:14px;
+  padding:14px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  min-width:240px;
+  flex:1;
+  transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.dash-meta-goal:hover{
+  transform:translateY(-1px);
+  border-color:rgba(124,92,255,.45);
+  box-shadow:var(--shadow-md);
+}
+.dmg-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dmg-period{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+.dmg-status{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--text2)}
+.dmg-status .svg-icon{width:13px;height:13px}
+.dmg-status-neutral{color:var(--text2)}
+.dmg-status-ahead{color:var(--accent-text)}
+.dmg-status-behind{color:var(--amber-text)}
+.dmg-pct-row{display:flex;align-items:baseline;gap:8px}
+.dmg-pct{font-size:26px;font-weight:800;color:var(--gralia-purple);line-height:1;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.dmg-pct-lbl{font-size:11.5px;color:var(--text3)}
+.dmg-stats{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text2)}
+.dmg-stat-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.dmg-stat-lbl{display:inline-flex;align-items:center;gap:5px}
+.dmg-stat-lbl .svg-icon{color:var(--text3)}
+.dmg-stat-val{font-variant-numeric:tabular-nums}
+.dmg-stat-val b{color:var(--text);font-weight:700}
+.dmg-stat-pct{color:var(--text3)}
+.dmg-stat-divider{border-top:1px solid var(--border);padding-top:5px;margin-top:2px}
+
+/* V15.12.26 (Rodada 1): Card "Hoje" reforçado — é a INTELIGÊNCIA principal
+   do painel (próxima ação recomendada). Antes parecia mais um card no meio
+   de muitos. Agora tem:
+   - faixa lateral roxa (3px) que sinaliza "destaque"
+   - sombra suave dando elevação leve
+   - hover do header com ::before pulsando discretamente
+   - title 18px (era 16px) — mais peso na hierarquia.
+   O conteúdo interno (próxima ação, stats) é controlado pelo JS via inline,
+   intocado nesta rodada. */
+.today-card{
+  position:relative;
+  border-left:3px solid var(--gralia-purple) !important;
+  box-shadow:var(--shadow-sm);
+  transition:box-shadow .2s ease;
+}
+.today-card:hover{box-shadow:var(--shadow-md)}
+.today-card h3{font-size:18px !important;letter-spacing:-.3px !important}
+@media(max-width:540px){
+  .today-card h3{font-size:16px !important}
+}
 
 /* V15.12.23 — Linha greeting + mascote */
 .dash-greet-row{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:0}
@@ -1974,8 +2109,17 @@ html.dark .wfb-tag-ai{color:#b08aff}
 }
 .dash-mascot-img{
   height:96px;width:auto;max-width:120px;object-fit:contain;
-  opacity:.95;transition:transform .35s ease, opacity .15s;
+  opacity:.95;transition:transform .35s ease, opacity .15s, height .35s ease, max-width .35s ease;
   user-select:none;-webkit-user-drag:none;cursor:default;
+}
+
+/* V15.12.26 (Rodada 1): mascote ESTÁTICO menor que o animado.
+   Animação 96px chama atenção (correto pra abertura). Estado final 72px é
+   harmonioso, fica como decoração permanente sem competir com o card "Hoje". */
+.dash-mascot.dash-mascot-static .dash-mascot-img{
+  height:72px;
+  max-width:90px;
+  opacity:.85;
 }
 
 /* === Estado 1: VIDEO (default quando container tem .dash-mascot-video filho) === */
@@ -2205,9 +2349,18 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 .g3{grid-template-columns:repeat(3,1fr)}
 .g4{grid-template-columns:repeat(4,1fr)}
 
-.scard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:.875rem 1.125rem;text-align:center}
-.scard-v{font-size:22px;font-weight:700;line-height:1.1;color:var(--text)}
-.scard-l{font-size:11.5px;color:var(--text2);margin-top:4px;font-weight:500}
+/* V15.12.26 (Rodada 1): KPIs mais premium — números maiores, padding maior,
+   labels mais sutis, hover suave. Antes os números eram 22px (tímidos pra
+   um dashboard premium). Agora 32px com letter-spacing apertado, label
+   uppercase pequeno e elegante. */
+.scard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1rem;text-align:center;transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease}
+.scard:hover{transform:translateY(-1px);box-shadow:var(--shadow-md);border-color:var(--border2)}
+.scard-v{font-size:32px;font-weight:800;line-height:1;color:var(--text);letter-spacing:-1.2px;font-variant-numeric:tabular-nums}
+.scard-l{font-size:10.5px;color:var(--text3);margin-top:8px;font-weight:600;text-transform:uppercase;letter-spacing:.6px}
+@media(max-width:540px){
+  .scard{padding:1rem .75rem}
+  .scard-v{font-size:26px;letter-spacing:-1px}
+}
 
 .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
 .b-ok{background:var(--accent-light);color:var(--accent-text)}
@@ -3922,9 +4075,41 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 /* Compact summary grid */
 .summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
 @media(max-width:540px){.summary-grid{grid-template-columns:repeat(2,1fr)}}
-/* V15.12: Quick-access-card — grid 3 col em desktop, quebra em mobile */
-@media(max-width:820px){.quick-access-card{grid-template-columns:repeat(2,1fr) !important}}
-@media(max-width:520px){.quick-access-card{grid-template-columns:1fr !important}}
+/* V15.12.27 (Rodada 2): Quick Access redesenhado pra 5 primários + 4 secundários
+   (toggle "Ver todos os métodos"). Responsivo:
+   - >900px: 5 colunas primário, 4 colunas secundário
+   - 700-900px: 3 colunas (primário e secundário)
+   - 520-700px: 2 colunas
+   - <520px: 1 coluna
+   Ícones: SVG Lucide (não emoji). Cor: --gralia-purple (acento da marca). */
+.qa-icon{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:36px;
+  background:rgba(124,92,255,.10);
+  border-radius:8px;
+  flex-shrink:0;
+  color:var(--gralia-purple);
+  transition:background .15s, color .15s, transform .15s;
+}
+.quick-access-btn:hover .qa-icon{
+  background:rgba(124,92,255,.18);
+  transform:scale(1.05);
+}
+:root[data-theme="dark"] .qa-icon{background:rgba(154,127,255,.12)}
+:root[data-theme="dark"] .quick-access-btn:hover .qa-icon{background:rgba(154,127,255,.22)}
+
+@media(max-width:900px){
+  .quick-access-card{grid-template-columns:repeat(3,1fr) !important}
+  .quick-access-secondary{grid-template-columns:repeat(3,1fr) !important}
+}
+@media(max-width:700px){
+  .quick-access-card{grid-template-columns:repeat(2,1fr) !important}
+  .quick-access-secondary{grid-template-columns:repeat(2,1fr) !important}
+}
+@media(max-width:520px){
+  .quick-access-card{grid-template-columns:1fr !important}
+  .quick-access-secondary{grid-template-columns:1fr !important}
+}
 
 /* Quick access row — slim buttons */
 .quick-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
@@ -8767,6 +8952,55 @@ const BRAND = {
 const STORAGE_KEY = 'nexus_pl_v4';
 const REFERRAL_KEY = 'gralia_referral';
 const REFERRAL_TTL_DAYS = 30;
+
+// V15.12.27 (Rodada 2) — svgIcon helper.
+// Retorna string SVG inline (Lucide-style: outline, stroke=currentColor, 1.75px).
+// USO: svgIcon('check', 16) → '<svg ...></svg>'.
+// Por que SVG inline: (a) herda cor via currentColor, (b) sem dependências
+// externas, (c) funciona em qualquer tema, (d) substitui emojis nativos
+// que ficam diferentes em cada SO (Apple/Windows/Linux).
+//
+// IMPORTANTE: este helper foi adicionado para uso PROGRESSIVO no Painel.
+// Não substitui automaticamente emojis em outros lugares do app — apenas
+// fornece a infra. Cada chamada explícita escolhe usar SVG ou manter emoji.
+const _SVG_ICONS = {
+  // Stroke linecap/linejoin "round" pro look Lucide-clean.
+  'check':           '<polyline points="20 6 9 17 4 12"/>',
+  'arrow-right':     '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',
+  'sun':             '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>',
+  'sunrise':         '<path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><line x1="23" y1="22" x2="1" y2="22"/><polyline points="8 6 12 2 16 6"/>',
+  'calendar':        '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  'calendar-clock':  '<rect x="3" y="4" width="18" height="13" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="17" cy="18" r="4"/><polyline points="17 16 17 18 19 19"/>',
+  'target':          '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  'lightbulb':       '<path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c1 1 1.5 2 1.5 3.3h5c0-1.3.5-2.3 1.5-3.3A7 7 0 0 0 12 2z"/>',
+  'bar-chart':       '<line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/>',
+  'trending-up':     '<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+  'hourglass':       '<path d="M5 22h14M5 2h14M17 22v-4.17a4 4 0 0 0-1.17-2.83L12 11.17 8.17 15a4 4 0 0 0-1.17 2.83V22M7 2v4.17a4 4 0 0 0 1.17 2.83L12 12.83 15.83 9A4 4 0 0 0 17 6.17V2"/>',
+  'scale':           '<path d="M3 18h18M5 6h14M9 6l-3 12M15 6l3 12M12 2v4"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>',
+  'file-text':       '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>',
+  'timer':           '<line x1="10" y1="2" x2="14" y2="2"/><line x1="12" y1="14" x2="15" y2="11"/><circle cx="12" cy="14" r="8"/>',
+  'zap':             '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+  'layers':          '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
+  'history':         '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><polyline points="3 3 3 8 8 8"/><polyline points="12 7 12 12 15 14"/>',
+  'dna':             '<path d="M2 15c6.667-6 13.333 0 20-6"/><path d="M9 22c1.798-1.998 2.518-3.995 2.807-5.993"/><path d="M15 2c-1.798 1.998-2.518 3.995-2.807 5.993"/><path d="m17 6-2.5-2.5"/><path d="m14 8-1-1"/><path d="m7 18 2.5 2.5"/><path d="m3.5 14.5.5.5"/><path d="m20 9 .5.5"/><path d="m6.5 12.5 1 1"/><path d="m16.5 10.5 1 1"/><path d="m10 16 1.5 1.5"/>',
+  'shuffle':         '<polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/>',
+  'clipboard-check': '<rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><polyline points="9 14 11 16 15 12"/>',
+  'inbox':           '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  'sparkles':        '<path d="M12 3l1.9 4.4 4.6.4-3.5 3.1 1 4.5L12 13l-4 2.4 1-4.5L5.5 7.8l4.6-.4z"/>',
+  'flag':            '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
+  'trophy':          '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
+  'rss':             '<path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/>'
+};
+function svgIcon(name, size){
+  const path = _SVG_ICONS[name];
+  if(!path){
+    // Icon não encontrado — fallback silencioso (string vazia, evita poluir UI)
+    return '';
+  }
+  const s = size || 16;
+  // strokeWidth 1.75 = "Lucide medium" (entre 1.5 e 2). Mais legível em sizes pequenos.
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="svg-icon" aria-hidden="true">${path}</svg>`;
+}
 
 // V13: Captura código de afiliado da URL (?ref=xyz) e salva em localStorage.
 // Usado depois no signup pra creditar o afiliado.
@@ -16436,8 +16670,9 @@ function buildOnboardingChecklist(){
   // Header
   const head = mk('div');head.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:.875rem';
   const headLeft = mk('div');
-  const title = mk('h2');title.style.cssText='margin:0 0 2px;font-size:16px;font-weight:700';
-  title.innerHTML = '🚀 Comece por aqui';
+  const title = mk('h2');title.style.cssText='margin:0 0 2px;font-size:16px;font-weight:700;display:inline-flex;align-items:center;gap:6px';
+  // V15.12.27 (Rodada 2): emoji 🚀 substituído por SVG sparkles (Lucide)
+  title.innerHTML = svgIcon('sparkles',16) + '<span>Comece por aqui</span>';
   const sub = mk('p');sub.style.cssText='margin:0;font-size:12px;color:var(--text3);font-weight:500';
   sub.textContent = `${doneCount}/${steps.length} passos concluídos · 5 minutos pra explorar o essencial`;
   headLeft.appendChild(title);headLeft.appendChild(sub);
@@ -17224,10 +17459,9 @@ function renderDashboard(){
 
   // V12: Checklist de primeiros passos — aparece pra usuários novos.
   // Some automaticamente quando todos os passos estão completos.
-  // Razão: usuário novo precisa saber o que fazer primeiro pra extrair valor.
-  // Antes: só tinha um toast de boas-vindas — efêmero, fácil de perder.
+  // V15.12.26 (Rodada 1): em var. AppendChild centralizado lá embaixo.
   const onboardingCard = buildOnboardingChecklist();
-  if(onboardingCard) wrap.appendChild(onboardingCard);
+  // (appendChild movido pra ordem nova de blocos no fim de renderDashboard)
 
   // ===== HERO — countdown + exam info =====
   const hero = mk('div','dash-hero');
@@ -17311,11 +17545,13 @@ function renderDashboard(){
     if(maybeRenewGoalPeriod(g))save();
     const view = goalDailyView(g);
     const periodLbl = g.period === 'weekly' ? 'Meta semanal' : 'Meta mensal';
-    let goalEmoji = '⚖️';
+    // V15.12.27 (Rodada 2): emojis trocados por SVGs Lucide (icon helper).
+    // Status icon: scale=neutro, trending-up=ahead, hourglass=behind.
+    let statusIcon = svgIcon('scale', 13);
     let statusTxt = 'No ritmo';
-    let statusColor = 'var(--text2)';
-    if(view.status === 'ahead'){ goalEmoji = '🚀'; statusTxt = 'Adiantado'; statusColor = 'var(--accent-text)'; }
-    else if(view.status === 'behind'){ goalEmoji = '⏳'; statusTxt = 'Atrasado'; statusColor = 'var(--amber-text)'; }
+    let statusClass = 'dmg-status-neutral';
+    if(view.status === 'ahead'){ statusIcon = svgIcon('trending-up', 13); statusTxt = 'Adiantado'; statusClass = 'dmg-status-ahead'; }
+    else if(view.status === 'behind'){ statusIcon = svgIcon('hourglass', 13); statusTxt = 'Atrasado'; statusClass = 'dmg-status-behind'; }
     const totalPct = Math.round(((view.pctQ||0) + (view.pctP||0))/2);
 
     // Calcula dias restantes do período
@@ -17325,39 +17561,46 @@ function renderDashboard(){
       daysLeft = Math.max(0, Math.ceil(ms / (24*3600*1000)));
     }
 
-    const cell = mk('button','dash-hero-goal-card');
+    // V15.12.27 (Rodada 2): card de meta refatorado — antes usava style.cssText
+    // gigante (~1300 chars) hardcoded inline. Agora usa classe .dash-meta-goal
+    // + sub-classes .dmg-*. CSS centralizado é mais fácil de manter e respeita
+    // tema claro/escuro automaticamente. Comportamento e dados intactos.
+    const cell = mk('button','dash-meta-goal');
     cell.type = 'button';
-    cell.style.cssText = 'cursor:pointer;border:1px solid rgba(128,66,250,.30);background:linear-gradient(135deg,rgba(128,66,250,.06),var(--surface));font-family:inherit;text-align:left;border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-width:240px;flex:1';
     cell.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-        <span style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">${periodLbl}</span>
-        <span style="font-size:11px;font-weight:700;color:${statusColor}">${goalEmoji} ${statusTxt}</span>
+      <div class="dmg-head">
+        <span class="dmg-period">${periodLbl}</span>
+        <span class="dmg-status ${statusClass}">${statusIcon}<span>${statusTxt}</span></span>
       </div>
-      <div style="display:flex;align-items:baseline;gap:8px">
-        <span style="font-size:26px;font-weight:800;color:var(--gralia-purple);line-height:1">${totalPct}%</span>
-        <span style="font-size:11.5px;color:var(--text3)">progresso geral</span>
+      <div class="dmg-pct-row">
+        <span class="dmg-pct">${totalPct}%</span>
+        <span class="dmg-pct-lbl">progresso geral</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text2)">
-        <div style="display:flex;justify-content:space-between;gap:8px"><span>📝 Questões</span><span><b>${view.doneQ}</b>/${g.questionsTarget} <span style="color:var(--text3)">(${view.pctQ}%)</span></span></div>
-        <div style="display:flex;justify-content:space-between;gap:8px"><span>🍅 Pomodoros</span><span><b>${view.donePomos}</b>/${g.pomosTarget} <span style="color:var(--text3)">(${view.pctP}%)</span></span></div>
-        ${daysLeft !== null ? `<div style="display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--border);padding-top:5px;margin-top:2px"><span>⏰ Dias restantes</span><span><b>${daysLeft}</b> ${daysLeft===1?'dia':'dias'}</span></div>` : ''}
+      <div class="dmg-stats">
+        <div class="dmg-stat-row"><span class="dmg-stat-lbl">${svgIcon('file-text',13)}<span>Questões</span></span><span class="dmg-stat-val"><b>${view.doneQ}</b>/${g.questionsTarget} <span class="dmg-stat-pct">(${view.pctQ}%)</span></span></div>
+        <div class="dmg-stat-row"><span class="dmg-stat-lbl">${svgIcon('timer',13)}<span>Pomodoros</span></span><span class="dmg-stat-val"><b>${view.donePomos}</b>/${g.pomosTarget} <span class="dmg-stat-pct">(${view.pctP}%)</span></span></div>
+        ${daysLeft !== null ? `<div class="dmg-stat-row dmg-stat-divider"><span class="dmg-stat-lbl">${svgIcon('calendar-clock',13)}<span>Dias restantes</span></span><span class="dmg-stat-val"><b>${daysLeft}</b> ${daysLeft===1?'dia':'dias'}</span></div>` : ''}
       </div>
     `;
     cell.addEventListener('click',()=>{ navigateTo('goals',{label:viewLabel(ST.view)}); });
     heroRight.appendChild(cell);
   }
   hero.appendChild(heroRight);
-  wrap.appendChild(hero);
+  // V15.12.26 (Rodada 1): NÃO appenda hero direto aqui — guarda na var pra
+  // reordenar lá embaixo (nova ordem prioriza Card "Hoje" antes do hero).
+  const _heroBlock = hero;
 
   // V15.2: Card de acesso rápido sempre visível (sem busca, sem ícone toggle)
+  // V15.12.26 (Rodada 1): guardado em var pra reordenar (vai pra DEPOIS do hero)
   const quickAccess = buildQuickAccessCard();
-  if(quickAccess) wrap.appendChild(quickAccess);
+  const _quickAccessBlock = quickAccess;
 
   // ===== SUMMARY NUMBERS — V12: agora logo após o hero (era no rodapé do painel)
   // Item 14 do feedback: Jean queria os 4 cards de estatísticas mais visíveis.
   // (Variáveis pct e s ficam definidas mais abaixo no fluxo — recalculadas aqui rapidamente)
   const _s = DATA.session || {total:0, correct:0};
   const _pct = _s.total ? Math.round(_s.correct/_s.total*100) : 0;
+  let _summaryBlock = null;
   if(_s.total>0||DATA.srs.cards.length>0||weekFocusMin>0){
     const sg = mk('div','summary-grid');
     const items = [
@@ -17373,30 +17616,28 @@ function renderDashboard(){
       const sl = mk('div','scard-l');sl.textContent=l;
       sc.appendChild(sv);sc.appendChild(sl);sg.appendChild(sc);
     });
-    wrap.appendChild(sg);
+    _summaryBlock = sg;  // V15.12.26 (Rodada 1): em var, appendChild lá embaixo
   }
 
   // V15.10: Card "Dica do dia" reposicionado — Jean pediu pra ficar logo após os
-  // 4 cards de stats e ANTES da frase explicativa do heatmap. Antes ficava no
-  // topo do dashboard (após o hero), agora aparece na primeira dobra junto dos
-  // dados de desempenho.
-  // V15.12.4: margin-bottom maior pra não colar com o gráfico de atividade.
+  // 4 cards de stats e ANTES da frase explicativa do heatmap.
+  // V15.12.26 (Rodada 1): em var pra reordenar.
   const tipCardInline = (typeof buildTipOfTheDayCard === 'function') ? buildTipOfTheDayCard() : null;
   if(tipCardInline){
     tipCardInline.style.margin = '1rem 0 1.25rem';
-    wrap.appendChild(tipCardInline);
   }
+  const _tipBlock = tipCardInline;
 
-  // V15.12.4: Card "Bloco atual" do cronograma reposicionado — Jean pediu
-  // pra ficar logo abaixo da dica do dia e ACIMA do gráfico "Atividade por
-  // dia da semana". Antes ficava bem mais embaixo (depois das warnings).
+  // V15.12.4: Card "Bloco atual" do cronograma reposicionado.
+  // V15.12.26 (Rodada 1): em var pra reordenar (vai pra DEPOIS dos KPIs)
+  let _scheduleBlock = null;
   if(SCHEDULE.data && SCHEDULE.data.blocks && SCHEDULE.data.blocks.length > 0){
     const ctx = getCurrentScheduleContext(SCHEDULE.data.blocks);
     if(ctx.current || ctx.next){
       const blockCard = buildDashboardScheduleCard(ctx);
       if(blockCard){
         blockCard.style.marginBottom = '1.25rem';
-        wrap.appendChild(blockCard);
+        _scheduleBlock = blockCard;
       }
       setupScheduleAutoRefresh();
     }
@@ -17413,53 +17654,39 @@ function renderDashboard(){
   // buildHeatmapTip).
 
   // V12: Gráfico de performance — heatmap por dia da semana × hora
-  // Mostra quando você tá rendendo melhor (acertos / erros / tempo focado)
-  // Insights interessantes: "você acerta mais à noite", "domingo é o dia mais produtivo", etc.
-  const perfChart = buildPerformanceHeatmap();
-  if(perfChart) wrap.appendChild(perfChart);
-
+  // V15.12.26 (Rodada 1): em var pra reordenar
+  const _perfChart = buildPerformanceHeatmap();
   // V15.12: Tip do heatmap APÓS o gráfico
-  const heatmapTip = buildHeatmapTip();
-  if(heatmapTip) wrap.appendChild(heatmapTip);
+  const _heatmapTip = buildHeatmapTip();
 
-  // ===== Mini-card de meta (resumo) =====
-  // V15.12.4: REMOVIDO daqui — o card grande de meta foi movido pro hero
-  // (linhas acima, junto do "dias até prova"), agora com mais info detalhada.
-  // Antes ficava DUPLICADO: mini-card no hero + card grande aqui — visualmente
-  // redundante. Mantido apenas o "convite a criar meta" (empty state) pra
-  // usuários que ainda não definiram meta.
+  // ===== Mini-card de meta (resumo) — empty state =====
+  // V15.12.26 (Rodada 1): em var pra reordenar
+  let _goalEmptyBlock = null;
   if(!DATA.goals){
     const goalEmpty = mk('button','dash-goal-empty');
     goalEmpty.type='button';
     goalEmpty.style.marginTop='12px';
     goalEmpty.innerHTML = `
-      <div class="dge-icon">🎯</div>
+      <div class="dge-icon">${svgIcon('target',24)}</div>
       <div class="dge-text">Defina <b>uma meta</b> e o Gralia faseia automaticamente entre semanas e dias.</div>
-      <div class="dge-arrow">→</div>
+      <div class="dge-arrow">${svgIcon('arrow-right',18)}</div>
     `;
     goalEmpty.addEventListener('click',()=>{
       navigateTo('goals',{label:viewLabel(ST.view)});
     });
-    wrap.appendChild(goalEmpty);
+    _goalEmptyBlock = goalEmpty;
   }
 
-  // ===== Streak contemplativo (REMOVIDO em V15.12) =====
-  // Jean pediu pra remover o card "X dias em sequência" — estava poluindo
-  // o painel e a info já aparece via Pinhal/Marcos. O cálculo de streak
-  // continua sendo usado em outros lugares (mentor IA, planta de árvores).
-
-  // ===== Feed de marcos sociais — V12: agora dentro da seção "Acompanhar" =====
-  // (Removido daqui — foi movido pra tabs em buildAccompanyingSection)
-
   // ===== WARNINGS — empty state or missing config =====
+  // V15.12.26 (Rodada 1): em vars pra reordenar (vão pro fim agora)
+  let _warningNoContent = null;
+  let _warningNoApiKey = null;
   if(!hasContent()){
-    const w = warnBox('⚠ <b>Nenhum conteúdo foi adicionado ainda.</b> Vá para <a href="#" id="goSrc">Fontes</a> e cole seu material para ativar os métodos.');
-    wrap.appendChild(w);
+    _warningNoContent = warnBox('⚠ <b>Nenhum conteúdo foi adicionado ainda.</b> Vá para <a href="#" id="goSrc">Fontes</a> e cole seu material para ativar os métodos.');
     setTimeout(()=>{const l=$('goSrc');if(l)l.addEventListener('click',e=>{e.preventDefault();ST.view='sources';render();});},0);
   }
   if(needsAPIKey()){
-    const w = errorBox('⚠ <b>Chave API não configurada.</b> Os métodos com IA não funcionarão sem ela. <a href="#" id="goConf">Configurar agora</a>');
-    wrap.appendChild(w);
+    _warningNoApiKey = errorBox('⚠ <b>Chave API não configurada.</b> Os métodos com IA não funcionarão sem ela. <a href="#" id="goConf">Configurar agora</a>');
     setTimeout(()=>{const l=$('goConf');if(l)l.addEventListener('click',e=>{e.preventDefault();ST.view='settings';render();});},0);
   }
 
@@ -17472,25 +17699,13 @@ function renderDashboard(){
   // heatmap agora). Bloco original ficava aqui, depois das warnings.
 
   // ===== HOJE — V15: card consolidado com Próxima Ação + Insights de hoje =====
-  // Antes eram 2 cards separados ("Próxima ação prioritária" e "Insight de hoje").
-  // Jean pediu pra unificar num único card coerente. Estrutura:
-  //   1. Header "Hoje" + data
-  //   2. Próxima ação prioritária (em destaque)
-  //   3. Stats rápidas do dia (erros / cards / foco)
-  //   4. Outras recomendações
-  //   5. (Opcional) Análise do mentor com IA
+  // V15.12.26 (Rodada 1): em var pra reordenar (vai LOGO APÓS a saudação,
+  // pra responder rápido "o que devo fazer agora?")
   const todayCard = buildTodayCard(dueSrs, errorsNoCard, overconf, s);
-  if(todayCard) wrap.appendChild(todayCard);
-
-  // V14: Card de Uso de IA REMOVIDO do painel — disponível só em Conta → Uso (item 24).
-  // Antes aparecia pra admin e poluía o painel. Agora fica em /usage.
 
   // ===== SEÇÃO COMBINADA — Acompanhar atividade + Disciplinas (V12) =====
-  // Só renderiza se tiver conteúdo em alguma aba.
-  // Reduz poluição visual juntando timeline + erros por disciplina + (opcionalmente) feed
-  // numa interface com abas. Iniciante vê 1 card, não 3 cards empilhados.
+  // Em var pra reordenar (vai pro fim agora — é histórico, não prioridade)
   const tabbedSec = buildAccompanyingSection();
-  if(tabbedSec) wrap.appendChild(tabbedSec);
 
   // ===== PROGRESS BY DISCIPLINE — V12: agora dentro da seção tabbed acima.
   // Mantemos a coleta de dados aqui só por não causar regressão se outras
@@ -17508,17 +17723,46 @@ function renderDashboard(){
   const discWithErr = DATA.disciplines.filter(d=>byD[d.id].total>0)
     .sort((a,b)=>byD[b.id].score-byD[a.id].score);
 
-  // Card antigo removido — agora aparece em "Acompanhar > Disciplinas" no topo.
-  // (deixado vazio aqui por segurança; remover bloco completamente seria outra mudança)
-
-  // ===== CALIBRATION WARNING — sits compactly =====
+  // ===== CALIBRATION WARNING =====
+  // V15.12.26 (Rodada 1): em var pra reordenar (vai pro fim com outros warnings)
+  let _calibWarning = null;
   if(overconf!==null&&overconf>25){
-    wrap.appendChild(errorBox(`⚠ <b>Atenção:</b> você erra ${overconf}% dos "tenho certeza". Esse padrão custa pontos. Treine Calibração.`));
+    _calibWarning = errorBox(`⚠ <b>Atenção:</b> você erra ${overconf}% dos "tenho certeza". Esse padrão custa pontos. Treine Calibração.`);
   }
 
-  // ===== SUMMARY NUMBERS — movido pra logo após o hero (item 14 do feedback)
-
-  // (Cards de "Acesso rápido" removidos — funcionalidade já presente no menu superior)
+  // ============================================================================
+  // V15.12.26 (Rodada 1) — NOVA ORDEM DE BLOCOS NO PAINEL.
+  // Princípio: o usuário deve responder rapidamente "o que devo fazer agora?"
+  //
+  // Antes:
+  //   Saudação+Mascote → Onboarding → Hero → QuickAccess → KPIs → Tip → Cronograma
+  //   → Heatmap → HeatmapTip → GoalEmpty → Warnings → CardHoje → Tabs → CalibWarning
+  //
+  // Agora (usuário ativo):
+  //   Saudação+Mascote → CardHoje → Hero(compacto) → KPIs → QuickAccess → Cronograma
+  //   → Tip → Heatmap → HeatmapTip → Tabs → GoalEmpty → Warnings → CalibWarning
+  //
+  // Por quê: Card "Hoje" é a inteligência principal — sobe pra logo após a
+  // saudação. Hero (countdown + meta) vira contexto, não foco. KPIs antes do
+  // Quick Access (números informam, ações executam). Histórico (heatmap, tabs)
+  // fica embaixo. Warnings sempre por último (não competem com o foco).
+  // Onboarding aparece logo após saudação SE o usuário é novo (já tratado pelo
+  // próprio buildOnboardingChecklist que retorna null quando completo).
+  // ============================================================================
+  if(onboardingCard) wrap.appendChild(onboardingCard);
+  if(todayCard) wrap.appendChild(todayCard);
+  wrap.appendChild(_heroBlock);
+  if(_summaryBlock) wrap.appendChild(_summaryBlock);
+  if(_quickAccessBlock) wrap.appendChild(_quickAccessBlock);
+  if(_scheduleBlock) wrap.appendChild(_scheduleBlock);
+  if(_tipBlock) wrap.appendChild(_tipBlock);
+  if(_perfChart) wrap.appendChild(_perfChart);
+  if(_heatmapTip) wrap.appendChild(_heatmapTip);
+  if(tabbedSec) wrap.appendChild(tabbedSec);
+  if(_goalEmptyBlock) wrap.appendChild(_goalEmptyBlock);
+  if(_warningNoContent) wrap.appendChild(_warningNoContent);
+  if(_warningNoApiKey) wrap.appendChild(_warningNoApiKey);
+  if(_calibWarning) wrap.appendChild(_calibWarning);
 
   return wrap;
 }
@@ -17731,7 +17975,8 @@ function buildTodayCard(dueSrs, errorsNoCard, overconf, sess){
   head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)';
   const title = mk('h3');
   title.style.cssText = 'margin:0;font-size:16px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:6px';
-  title.innerHTML = '🌅 <span>Hoje</span>';
+  // V15.12.27 (Rodada 2): emoji 🌅 substituído por SVG sun (Lucide)
+  title.innerHTML = svgIcon('sun',16) + '<span>Hoje</span>';
   head.appendChild(title);
   const today = new Date();
   const pad = n => String(n).padStart(2,'0');
@@ -17754,8 +17999,9 @@ function buildTodayCard(dueSrs, errorsNoCard, overconf, sess){
     const textCol = mk('div');
     textCol.style.cssText = 'flex:1;min-width:0';
     const lbl = mk('div');
-    lbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px';
-    lbl.textContent = '🎯 Próxima ação prioritária';
+    lbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;display:inline-flex;align-items:center;gap:5px';
+    // V15.12.27 (Rodada 2): emoji 🎯 substituído por SVG target (Lucide)
+    lbl.innerHTML = svgIcon('target',12) + '<span>Próxima ação prioritária</span>';
     textCol.appendChild(lbl);
     const recTitle = mk('div');
     recTitle.style.cssText = 'font-size:14.5px;font-weight:700;color:var(--text);line-height:1.35;margin-bottom:3px';
@@ -17997,86 +18243,176 @@ function buildNextActionCard(dueSrs,errorsNoCard,overconf,sess){
 }
 
 // V12: Heatmap de performance — quando você tá rendendo mais
-// Cruza dia da semana × hora com #acertos pra mostrar padrões temporais.
-// Inspirado em GitHub contribution graph + heatmap de produtividade.
 // V15.2: Substituído heatmap grande (7 dias × 8 horas) por barras simples por dia da semana.
-// Jean pediu: "Troque o gráfico de produtividade por outro mais sutil e pequeno".
-// Mostra só a contagem de eventos (erros + cards revisados) por dia, em barras horizontais.
+// V15.12.27 (Rodada 2): NOVO REDESIGN — calendar-style estilo GitHub contributions.
+// 7 dias × 5 semanas (35 células) mostrando atividade dia a dia dos últimos 35 dias.
+// Cores: 5 níveis de intensidade (0=neutro, 1-4=roxo crescente). Hover mostra tooltip
+// com data + contagem. Mais denso em informação que as barras anteriores, mas
+// continua compacto (altura ~140px). Acessibilidade: aria-label por célula,
+// title nativo pra hover. Mantém dados/coleta intactos.
 function buildPerformanceHeatmap(){
   const now = Date.now();
-  const THIRTY_DAYS = 30*24*60*60*1000;
-  const errors = (DATA.errors||[]).filter(e => e.date && (now-e.date) <= THIRTY_DAYS);
+  const DAY_MS = 24*60*60*1000;
+  const WEEKS = 5;            // últimas 5 semanas (35 dias)
+  const TOTAL_DAYS = WEEKS * 7;
+  const RANGE_MS = TOTAL_DAYS * DAY_MS;
+
+  const errors = (DATA.errors||[]).filter(e => e.date && (now - e.date) <= RANGE_MS);
   const cardsReviewed = (DATA.srs?.cards||[])
     .flatMap(c => (c.reviews||[]))
-    .filter(r => r.at && (now-r.at) <= THIRTY_DAYS);
+    .filter(r => r.at && (now - r.at) <= RANGE_MS);
   const totalEvents = errors.length + cardsReviewed.length;
 
   if(totalEvents < 5) return null;
 
-  const dayLabels = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-  const counts = new Array(7).fill(0);
-  const correct = new Array(7).fill(0);
-
+  // ===== Agrega eventos por dia (chave: yyyy-mm-dd local) =====
+  // Cada célula soma eventos do dia. correctRatio só contabiliza se houver
+  // dados suficientes (>=3 eventos no dia) — evita ruído estatístico.
+  const dayKey = (ts) => {
+    const d = new Date(ts);
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  };
+  const byDay = {}; // {dateKey: {count, correct}}
   errors.forEach(e => {
-    const dow = new Date(e.date).getDay();
-    counts[dow]++;
+    const k = dayKey(e.date);
+    if(!byDay[k]) byDay[k] = {count:0, correct:0};
+    byDay[k].count++;
   });
   cardsReviewed.forEach(r => {
-    const dow = new Date(r.at).getDay();
-    counts[dow]++;
-    if(r.rating === 'good' || r.rating === 'easy') correct[dow]++;
+    const k = dayKey(r.at);
+    if(!byDay[k]) byDay[k] = {count:0, correct:0};
+    byDay[k].count++;
+    if(r.rating === 'good' || r.rating === 'easy') byDay[k].correct++;
   });
 
-  const maxCount = Math.max(...counts, 1);
+  // Encontra max pra escala de intensidade
+  let maxDay = 0;
+  Object.values(byDay).forEach(d => { if(d.count > maxDay) maxDay = d.count; });
+  if(maxDay === 0) maxDay = 1;
 
-  const card = mk('div','chart-card');
-  card.style.cssText = 'padding:1rem 1.125rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:1.25rem';
+  // Função que retorna nível 0-4 dado o count
+  const intensityLevel = (count) => {
+    if(count === 0) return 0;
+    const ratio = count / maxDay;
+    if(ratio >= 0.75) return 4;
+    if(ratio >= 0.50) return 3;
+    if(ratio >= 0.25) return 2;
+    return 1;
+  };
 
-  // Header compacto
-  const head = mk('div');
-  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:.625rem;margin-bottom:.75rem';
-  const title = mk('h3');
-  title.style.cssText = 'margin:0;font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.01em;display:flex;align-items:center;gap:5px';
-  title.innerHTML = '📈 <span>Atividade por dia da semana</span>';
+  // ===== Constrói grid: 5 colunas (semanas) × 7 linhas (dias) =====
+  // Coluna mais recente à direita (estilo GitHub).
+  // Começa do início da semana atual (domingo local) e volta WEEKS-1 semanas.
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  // Domingo desta semana (dow=0)
+  const startOfThisWeek = new Date(today);
+  startOfThisWeek.setDate(today.getDate() - today.getDay());
+  // Início do range: WEEKS-1 semanas atrás (segunda da primeira coluna)
+  const gridStart = new Date(startOfThisWeek);
+  gridStart.setDate(startOfThisWeek.getDate() - (WEEKS-1)*7);
+
+  const dayLabels = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const monthLabels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  // ===== Card container =====
+  const card = mk('div','chart-card heatmap-card');
+
+  // Header: título + sub
+  const head = mk('div','heatmap-head');
+  const title = mk('h3','heatmap-title');
+  title.innerHTML = `${svgIcon('bar-chart',15)}<span>Atividade dos últimos 35 dias</span>`;
   head.appendChild(title);
-  const sub = mk('span');
-  sub.style.cssText = 'font-size:10.5px;color:var(--text3);font-weight:500';
-  sub.textContent = 'últimos 30 dias';
+  const sub = mk('span','heatmap-sub');
+  sub.textContent = `${totalEvents} eventos`;
   head.appendChild(sub);
   card.appendChild(head);
 
-  // Barras horizontais simples
-  const list = mk('div');
-  list.style.cssText = 'display:flex;flex-direction:column;gap:.375rem';
+  // Wrapper do grid (com labels de dias da semana à esquerda)
+  const gridWrap = mk('div','heatmap-grid-wrap');
+
+  // Coluna de labels de dias (Dom-Sáb)
+  const dayLabelsCol = mk('div','heatmap-day-labels');
+  // Mostramos apenas Seg/Qua/Sex pra não poluir (estilo GitHub)
   for(let i = 0; i < 7; i++){
-    const row = mk('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:.625rem;font-size:11.5px';
-
-    const lbl = mk('span');
-    lbl.style.cssText = 'min-width:32px;color:var(--text2);font-weight:600;font-size:11px';
-    lbl.textContent = dayLabels[i];
-    row.appendChild(lbl);
-
-    const barWrap = mk('div');
-    barWrap.style.cssText = 'flex:1;height:14px;background:var(--surface2);border-radius:4px;overflow:hidden;position:relative';
-    const bar = mk('div');
-    const pct = (counts[i] / maxCount) * 100;
-    const acc = counts[i] >= 3 ? correct[i] / counts[i] : 0;
-    let barColor = 'var(--gralia-purple)';
-    if(counts[i] >= 3 && acc >= 0.7) barColor = 'rgb(73,197,137)';
-    else if(counts[i] >= 3 && acc < 0.5) barColor = 'rgb(232,76,76)';
-    bar.style.cssText = `height:100%;width:${pct}%;background:${barColor};border-radius:4px;transition:width .4s ease;min-width:${counts[i]>0?'4px':'0'}`;
-    barWrap.appendChild(bar);
-    row.appendChild(barWrap);
-
-    const num = mk('span');
-    num.style.cssText = 'min-width:28px;text-align:right;color:var(--text);font-weight:700;font-size:11.5px;font-variant-numeric:tabular-nums';
-    num.textContent = counts[i] || '—';
-    row.appendChild(num);
-
-    list.appendChild(row);
+    const lbl = mk('span','heatmap-day-label');
+    if(i === 1 || i === 3 || i === 5){
+      lbl.textContent = dayLabels[i];
+    } else {
+      lbl.innerHTML = '&nbsp;';
+    }
+    dayLabelsCol.appendChild(lbl);
   }
-  card.appendChild(list);
+  gridWrap.appendChild(dayLabelsCol);
+
+  // Grid de células: 5 colunas × 7 linhas
+  // Iteramos por semana (coluna), depois por dia da semana (linha)
+  const grid = mk('div','heatmap-grid');
+  let monthsShown = new Set();
+  for(let w = 0; w < WEEKS; w++){
+    const col = mk('div','heatmap-col');
+
+    // Header da coluna: mês (mostra só quando muda)
+    const colHead = mk('div','heatmap-col-head');
+    const colDate = new Date(gridStart);
+    colDate.setDate(gridStart.getDate() + w*7);
+    const monthIdx = colDate.getMonth();
+    if(!monthsShown.has(monthIdx) || w === 0){
+      colHead.textContent = monthLabels[monthIdx];
+      monthsShown.add(monthIdx);
+    }
+    col.appendChild(colHead);
+
+    // 7 células da coluna (dom→sáb)
+    for(let d = 0; d < 7; d++){
+      const cellDate = new Date(gridStart);
+      cellDate.setDate(gridStart.getDate() + w*7 + d);
+
+      const cell = mk('div','heatmap-cell');
+      // Se a data é futura, célula fica neutra (não há dado possível)
+      if(cellDate.getTime() > today.getTime()){
+        cell.classList.add('heatmap-cell-future');
+      } else {
+        const k = dayKey(cellDate);
+        const day = byDay[k] || {count:0, correct:0};
+        const level = intensityLevel(day.count);
+        cell.classList.add('heatmap-cell-level-' + level);
+
+        // Tooltip com data + contagem
+        const dStr = `${String(cellDate.getDate()).padStart(2,'0')}/${String(cellDate.getMonth()+1).padStart(2,'0')}`;
+        if(day.count === 0){
+          cell.title = `${dayLabels[d]} ${dStr} — sem atividade`;
+        } else {
+          cell.title = `${dayLabels[d]} ${dStr} — ${day.count} ${day.count===1?'evento':'eventos'}`;
+        }
+
+        // Cor especial pra hoje (border destacado)
+        if(cellDate.getTime() === today.getTime()){
+          cell.classList.add('heatmap-cell-today');
+        }
+      }
+      col.appendChild(cell);
+    }
+
+    grid.appendChild(col);
+  }
+  gridWrap.appendChild(grid);
+  card.appendChild(gridWrap);
+
+  // Legenda: "Menos [□][▢][▣][▤][▥] Mais"
+  const legend = mk('div','heatmap-legend');
+  const legendLess = mk('span','heatmap-legend-lbl');
+  legendLess.textContent = 'Menos';
+  legend.appendChild(legendLess);
+  for(let i = 0; i < 5; i++){
+    const sq = mk('div','heatmap-legend-cell heatmap-cell-level-'+i);
+    legend.appendChild(sq);
+  }
+  const legendMore = mk('span','heatmap-legend-lbl');
+  legendMore.textContent = 'Mais';
+  legend.appendChild(legendMore);
+  card.appendChild(legend);
 
   return card;
 }
@@ -18094,35 +18430,35 @@ function buildQuickAccessCard(){
   const dueSrsCount = (DATA.srs.cards||[]).filter(c=>(c.nextReview||0)<=Date.now() && c.active!==false).length;
   const errorsCount = (DATA.errors||[]).filter(e=>!e.hasCard).length;
 
-  // V15.12: Reorganização das 3 fileiras (Jean pediu ordem específica):
-  //   Fileira 1: Prática com IA, Prática histórica, Criar caderno (mantida)
-  //   Fileira 2: Revisar flashcards, Erros recentes, Drill DNA
-  //   Fileira 3: Calibrar confiança, Intercalação, Simulado Gralia
-  // Drill DNA: descrição reformulada pra mencionar armadilhas (Jean pediu).
-  const actions = [
-    // Fileira 1
-    {icon:'⚡', label:'Prática com IA', desc:'Questões geradas das fontes', view:'practice'},
-    {icon:'📥', label:'Prática histórica', desc:'Questões importadas reais', view:'imported'},
-    {icon:'📋', label:'Criar caderno', desc:'Selecione questões e pratique', view:'imported'},
-    // Fileira 2
-    {icon:'🎴', label:'Revisar flashcards', desc:dueSrsCount > 0 ? `${dueSrsCount} pendentes` : 'Repetição espaçada', badge:dueSrsCount, view:'srs'},
-    {icon:'📜', label:'Erros recentes', desc:errorsCount > 0 ? `${errorsCount} sem flashcard` : 'Pontos fracos', badge:errorsCount, view:'history'},
-    {icon:'🧬', label:'Drill DNA', desc:'Treino focado nas armadilhas que você cai mais', view:'drill'},
-    // Fileira 3
-    {icon:'🎯', label:'Calibrar confiança', desc:'Mede acurácia × certeza', view:'calibration'},
-    {icon:'🔀', label:'Intercalação', desc:'Mistura disciplinas', view:'interleaving'},
-    {icon:'📊', label:'Simulado Gralia', desc:'Prova completa cronometrada', view:'simulado'}
+  // V15.12.26 (Rodada 1) — Quick Access REDUZIDO de 9 pra 5 botões principais
+  // + botão "Ver todos os métodos" que expande os 4 secundários inline.
+  // Princípio: foco nos métodos mais usados; secundários acessíveis sem
+  // poluir o painel acima da dobra.
+  // Primários (sempre visíveis): Prática IA, Revisar flashcards, Erros recentes,
+  //                              Drill DNA, Simulado.
+  // Secundários (dentro de "Ver todos"): Prática histórica, Criar caderno,
+  //                                       Calibrar confiança, Intercalação.
+  // V15.12.27 (Rodada 2): emojis substituídos por SVG icons (Lucide).
+  // Mapping: ⚡→zap, 🎴→layers, 📜→history, 🧬→dna, 📊→bar-chart,
+  //          📥→inbox, 📋→clipboard-check, 🎯→target, 🔀→shuffle.
+  // Cor dos ícones: --gralia-purple (acento da marca).
+  const primaryActions = [
+    {iconKey:'zap',           label:'Prática com IA', desc:'Questões geradas das fontes', view:'practice'},
+    {iconKey:'layers',        label:'Revisar flashcards', desc:dueSrsCount > 0 ? `${dueSrsCount} pendentes` : 'Repetição espaçada', badge:dueSrsCount, view:'srs'},
+    {iconKey:'history',       label:'Erros recentes', desc:errorsCount > 0 ? `${errorsCount} sem flashcard` : 'Pontos fracos', badge:errorsCount, view:'history'},
+    {iconKey:'dna',           label:'Drill DNA', desc:'Treino focado nas armadilhas', view:'drill'},
+    {iconKey:'bar-chart',     label:'Simulado Gralia', desc:'Prova completa cronometrada', view:'simulado'}
+  ];
+  const secondaryActions = [
+    {iconKey:'inbox',           label:'Prática histórica', desc:'Questões importadas reais', view:'imported'},
+    {iconKey:'clipboard-check', label:'Criar caderno', desc:'Selecione questões e pratique', view:'imported'},
+    {iconKey:'target',          label:'Calibrar confiança', desc:'Mede acurácia × certeza', view:'calibration'},
+    {iconKey:'shuffle',         label:'Intercalação', desc:'Mistura disciplinas', view:'interleaving'}
   ];
 
-  // V15.12: grid fixo de 3 colunas pra garantir a ordem por fileira.
-  // Antes era auto-fit que mudava a ordem visual conforme largura.
-  const card = mk('div','quick-access-card');
-  card.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.25rem';
-  // Em mobile: 1 coluna empilhada (responde ao @media abaixo)
-  // Em telas estreitas (sub-820px), o CSS quebra pra 1 coluna.
-
-  actions.forEach(a => {
-    const btn = mk('button');
+  // Helper pra criar um botão de ação
+  function _mkActionBtn(a){
+    const btn = mk('button','quick-access-btn');
     btn.type = 'button';
     btn.style.cssText = 'display:flex;align-items:center;gap:.75rem;padding:.875rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s;position:relative;min-height:60px';
     btn.addEventListener('mouseenter', ()=>{
@@ -18135,16 +18471,13 @@ function buildQuickAccessCard(){
       btn.style.background = 'var(--surface)';
       btn.style.transform = 'none';
     });
-
-    const ico = mk('span');
-    ico.style.cssText = 'font-size:22px;line-height:1;flex-shrink:0';
-    ico.textContent = a.icon;
+    // V15.12.27: ícone SVG em vez de emoji. Cor herda do .qa-icon (CSS).
+    const ico = mk('span','qa-icon');
+    ico.innerHTML = svgIcon(a.iconKey, 22);
     btn.appendChild(ico);
-
     const body = mk('div');
     body.style.cssText = 'flex:1;min-width:0';
     const lbl = mk('div');
-    // Sem nowrap/ellipsis — deixa texto completo aparecer
     lbl.style.cssText = 'font-size:13px;font-weight:600;color:var(--text);line-height:1.25';
     lbl.textContent = a.label;
     body.appendChild(lbl);
@@ -18153,22 +18486,65 @@ function buildQuickAccessCard(){
     dsc.textContent = a.desc;
     body.appendChild(dsc);
     btn.appendChild(body);
-
     if(a.badge && a.badge > 0){
       const b = mk('span');
       b.style.cssText = 'background:var(--gralia-purple);color:#fff;border-radius:999px;font-size:10.5px;font-weight:700;padding:2px 7px;min-width:20px;text-align:center;flex-shrink:0';
       b.textContent = a.badge > 99 ? '99+' : a.badge;
       btn.appendChild(b);
     }
-
     btn.addEventListener('click', ()=>{
       ST.view = a.view;
       render();
     });
-    card.appendChild(btn);
-  });
+    return btn;
+  }
 
-  return card;
+  // Container externo (não mais grid puro — agora tem header + grid + toggle)
+  const wrapper = mk('div','quick-access-wrapper');
+  wrapper.style.cssText = 'margin-bottom:1.25rem';
+
+  // Grid de primários (5 colunas em desktop, quebra em mobile via CSS)
+  const card = mk('div','quick-access-card');
+  card.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:.625rem;margin-bottom:0';
+  primaryActions.forEach(a => card.appendChild(_mkActionBtn(a)));
+  wrapper.appendChild(card);
+
+  // Container dos secundários (oculto por padrão)
+  const secondaryWrap = mk('div','quick-access-secondary');
+  secondaryWrap.style.cssText = 'display:none;grid-template-columns:repeat(4,1fr);gap:.625rem;margin-top:.625rem';
+  secondaryActions.forEach(a => secondaryWrap.appendChild(_mkActionBtn(a)));
+  wrapper.appendChild(secondaryWrap);
+
+  // Botão "Ver todos os métodos" — expande/colapsa secundários
+  const toggleRow = mk('div');
+  toggleRow.style.cssText = 'display:flex;justify-content:center;margin-top:.5rem';
+  const toggleBtn = mk('button','quick-access-toggle');
+  toggleBtn.type = 'button';
+  toggleBtn.style.cssText = 'background:transparent;border:none;color:var(--text3);font-size:12px;font-weight:600;cursor:pointer;padding:.375rem .75rem;border-radius:6px;transition:color .15s,background .15s;font-family:inherit;display:inline-flex;align-items:center;gap:6px';
+  let _expanded = false;
+  const _setLabel = ()=>{
+    toggleBtn.innerHTML = _expanded
+      ? '▴ Ocultar métodos secundários'
+      : '▾ Ver todos os métodos (+' + secondaryActions.length + ')';
+  };
+  _setLabel();
+  toggleBtn.addEventListener('mouseenter', ()=>{
+    toggleBtn.style.color = 'var(--gralia-purple)';
+    toggleBtn.style.background = 'rgba(124,92,255,.06)';
+  });
+  toggleBtn.addEventListener('mouseleave', ()=>{
+    toggleBtn.style.color = 'var(--text3)';
+    toggleBtn.style.background = 'transparent';
+  });
+  toggleBtn.addEventListener('click', ()=>{
+    _expanded = !_expanded;
+    secondaryWrap.style.display = _expanded ? 'grid' : 'none';
+    _setLabel();
+  });
+  toggleRow.appendChild(toggleBtn);
+  wrapper.appendChild(toggleRow);
+
+  return wrapper;
 }
 
 function buildHeatmapTip(){
@@ -18282,17 +18658,19 @@ function buildAccompanyingSection(){
 
   // Tabs
   const tabs = mk('div','dasha-tabs');
+  // V15.12.27 (Rodada 2): emojis dos tabs substituídos por SVG (Lucide).
+  // 🕐→history, 🏆→trophy, 📡→rss
   const tabDefs = [];
-  if(hasTimeline) tabDefs.push({key:'timeline', label:'Linha do tempo', icon:'🕐'});
-  if(hasMilestones) tabDefs.push({key:'milestones', label:'Marcos do usuário', icon:'🏆'});
-  if(canHaveFeed) tabDefs.push({key:'feed', label:'Feed dos seguidos', icon:'📡'});
+  if(hasTimeline) tabDefs.push({key:'timeline', label:'Linha do tempo', iconKey:'history'});
+  if(hasMilestones) tabDefs.push({key:'milestones', label:'Marcos do usuário', iconKey:'trophy'});
+  if(canHaveFeed) tabDefs.push({key:'feed', label:'Feed dos seguidos', iconKey:'rss'});
 
   // Se só tem 1 aba, não mostra a barra de tabs (vai direto pro conteúdo)
   if(tabDefs.length > 1){
     tabDefs.forEach(t=>{
       const btn = mk('button','dasha-tab' + (ST.dashTabActive === t.key ? ' active' : ''));
       btn.type = 'button';
-      btn.innerHTML = `<span>${t.icon}</span><span>${t.label}</span>`;
+      btn.innerHTML = `${svgIcon(t.iconKey,13)}<span>${t.label}</span>`;
       btn.addEventListener('click', ()=>{
         ST.dashTabActive = t.key;
         render();
