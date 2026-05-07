@@ -4908,6 +4908,8 @@ body.pomo-float-visible .faq-floating-btn{display:none !important}
 .credits-chip::before{content:'⚡';font-size:10px;flex-shrink:0}
 .credits-chip.low{color:var(--amber);background:rgba(245,158,11,.12);border-color:var(--amber)}
 .credits-chip.empty{color:var(--red-text);background:var(--red-light);border-color:var(--red);animation:credit-pulse 2s ease-in-out infinite}
+.credits-chip.processing{color:var(--accent-text);background:var(--accent-light);border-color:var(--accent);opacity:.85}
+@keyframes chip-pulse{0%,100%{opacity:.4;transform:scale(.85)}50%{opacity:1;transform:scale(1.1)}}
 @keyframes credit-pulse{0%,100%{opacity:1}50%{opacity:.65}}
 
 /* V15.10: Divisor sutil entre grupos de items na topbar direita */
@@ -7033,11 +7035,9 @@ async function importSourceToLocal(resourceId, targetDisciplineId){
   }catch(e){
     console.warn('[import] falha ao registrar:', e);
   }
-  // V12: Pré-carrega 1 questão em background pra agilizar o primeiro uso
-  // O usuário não espera — quando clicar em "Praticar" depois, a questão já estará pronta
-  preloadQuestionForSource(newSource).catch(err=>{
-    console.warn('[preload] falhou silenciosamente:', err.message);
-  });
+  // V15.12.20: prefetch automático após import REMOVIDO.
+  // Antes cobrava 2 créditos de practice_question sem clique do user.
+  // A questão é gerada quando o user clicar em "Praticar".
   return {source: newSource};
 }
 
@@ -10363,7 +10363,15 @@ ${CEBRASPE_RULES}
 
 SAÍDA: retorne APENAS o JSON, sem markdown, sem backticks, sem comentários, sem texto antes ou depois. Sua resposta deve começar com { e terminar com }.
 Questão nova: {"type":"question","topic":"tópico curto","question":"enunciado","correct_answer":"C|E","trap_type":0-5}
-Feedback+próxima: {"type":"feedback","is_correct":true,"trap_type":0-5,"explanation":"2 frases objetivas","trap":"qual armadilha foi usada (se errada)","keyword":"palavra-gatilho que denuncia","next":{"topic":"...","question":"...","correct_answer":"E","trap_type":1}}`;
+Feedback+próxima:
+{"type":"feedback","is_correct":true,"trap_type":0-5,"explanation":"2 frases objetivas","trap":"qual armadilha foi usada (se errada)","keyword":"palavra-gatilho que denuncia","next":{"topic":"...","question":"...","correct_answer":"E","trap_type":1},"suggested_flashcard":{"front":"pergunta curta sobre o conceito","back":"resposta concisa, 1-2 frases"}}
+
+REGRA suggested_flashcard:
+- Inclua o campo "suggested_flashcard" APENAS quando is_correct=false (usuário errou).
+- Quando is_correct=true, OMITA o campo.
+- O flashcard deve focar no CONCEITO que o usuário errou, não na questão específica.
+- front: pergunta curta e direta sobre o conceito (ex: "Quando o prazo X aplica-se a Y?")
+- back: resposta concisa, 1-2 frases, que ajude a memorizar a regra.`;
 
 // VERSÃO COMPLETA — usada em SYS_SRS_GEN e SYS_CARD_FROM_ERROR
 // Com auto-avaliação e score
@@ -11213,6 +11221,11 @@ async function apiGenerate(body){
   const cleanBody = Object.assign({}, body);
   delete cleanBody._idempotencyKey;
 
+  // V15.12.20: indica visualmente que há chamada em andamento (chip mostra "...")
+  // Apenas pra chamadas explícitas — prefetches silentes não afetam o chip.
+  const isExplicit = !cleanBody._silentOn402;
+  if(isExplicit) setChipProcessing(+1);
+
   const callPromise = fetch('/api/generate',{
     method:'POST',
     headers,
@@ -11267,6 +11280,8 @@ async function apiGenerate(body){
   }).finally(() => {
     // V15.12.18: libera trava só se essa chamada estava na trava (não-silent)
     if(key) _inFlightCalls.delete(key);
+    // V15.12.20: libera indicador visual de processamento
+    if(isExplicit) setChipProcessing(-1);
   });
 
   // V15.12.18: prefetches silenciosos NÃO entram na trava (têm lock próprio)
@@ -11288,6 +11303,17 @@ function getApiUsageStats(){
 }
 
 // Update the credits chip in the topbar based on QUOTA state
+// V15.12.20 — estado de processamento: enquanto chamada de IA está em
+// andamento, chip mostra "..." pra evitar a sensação de "saldo dança"
+// quando há cobrança + estorno. _chipProcessing é incrementado/decrementado
+// em apiGenerate (cada chamada explícita).
+let _chipProcessing = 0;
+function setChipProcessing(delta){
+  _chipProcessing = Math.max(0, _chipProcessing + delta);
+  const chip = document.getElementById('credits-chip');
+  if(chip) updateCreditsChip(chip);
+}
+
 function updateCreditsChip(chip){
   if(!chip)return;
   if(QUOTA.remaining===null){
@@ -11295,7 +11321,16 @@ function updateCreditsChip(chip){
     chip.className='credits-chip';
     return;
   }
+  // V15.12.20: durante chamadas in-flight, congela visual mostrando
+  // saldo atual + indicador sutil de processamento (bolinha animada).
+  // Evita o "saldo dança" durante cobrança/estorno.
   const r = QUOTA.remaining;
+  if(_chipProcessing > 0){
+    chip.innerHTML = `${r} créd. <span class="chip-dot-processing" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-left:3px;opacity:.7;animation:chip-pulse 1.2s ease-in-out infinite"></span>`;
+    chip.className = 'credits-chip processing';
+    chip.title = 'Processando...';
+    return;
+  }
   chip.textContent = r+' créd.';
   chip.className = 'credits-chip';
   if(r===0)chip.classList.add('empty');
@@ -19670,10 +19705,9 @@ function renderSourceAdd(wrap){
       // V14 fix: muda automaticamente pra aba "Minhas fontes" pra mostrar a fonte recém-criada (item 41)
       // Antes: ficava na aba "Adicionar" e usuário pensava que não tinha sido salva.
       ST.srcSubview = 'list';
-      // V12: Pré-carrega 1 questão em background pra agilizar primeiro uso
-      if(typeof preloadQuestionForSource === 'function'){
-        preloadQuestionForSource(newSrc).catch(()=>{});
-      }
+      // V15.12.20: prefetch automático após salvar fonte REMOVIDO.
+      // Antes cobrava 2 créditos de practice_question sem clique do user.
+      // Agora a primeira questão é gerada quando o user clicar em "Praticar".
       // V15.9: Auto-publica em background como pendente de moderação.
       // Toda fonte criada vira candidata pra comunidade. Ficará visível só
       // pra moderadores até ser validada. Falha silenciosa.
@@ -20546,6 +20580,69 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →'){
   // Haiku/explicação. Se não entender, gera flashcard. Se gerar com Sonnet e
   // ainda não entender, aí sim pede ajuda específica via "Não entendi".
 
+  // V15.12.20 — Flashcard sugerido pela IA (vem embutido no eval, sem custo extra).
+  // Aparece APENAS quando o usuário errou e a IA retornou suggested_flashcard.
+  if(!ok && fb.suggestedFlashcard && !fb._suggestedAdded){
+    const sf = fb.suggestedFlashcard;
+    const sugCard = mk('div');
+    sugCard.style.cssText='margin-bottom:.875rem;padding:.875rem 1rem;background:rgba(128,66,250,.06);border-left:3px solid var(--accent);border-radius:0 8px 8px 0';
+    const sugHead = mk('div');
+    sugHead.style.cssText='font-size:11.5px;font-weight:700;color:var(--accent-text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px';
+    sugHead.innerHTML = '✨ <span>Flashcard sugerido</span> <span style="font-size:10px;font-weight:600;background:rgba(34,197,94,.15);color:var(--green-text,#15803d);padding:2px 6px;border-radius:4px;letter-spacing:0;text-transform:none">grátis</span>';
+    sugCard.appendChild(sugHead);
+    const sugFront = mk('div');
+    sugFront.style.cssText='font-size:13.5px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.5';
+    sugFront.textContent = sf.front;
+    sugCard.appendChild(sugFront);
+    const sugBack = mk('div');
+    sugBack.style.cssText='font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:10px';
+    sugBack.textContent = sf.back;
+    sugCard.appendChild(sugBack);
+    const sugActions = mk('div');
+    sugActions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+    const addBtn = mkBtn('+ Adicionar ao deck','btn btn-sm');
+    addBtn.style.cssText='border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
+    addBtn.addEventListener('click',()=>{
+      try {
+        // Adiciona ao deck SRS sem nova chamada de IA
+        const newCard = {
+          id: 'card-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),
+          front: sf.front,
+          back: sf.back,
+          disciplineId: errCtx ? errCtx.disciplineId : null,
+          topic: errCtx ? errCtx.topic : (ST.practQ?.topic || ''),
+          createdAt: Date.now(),
+          source: 'suggested',
+          // SRS state (igual ao default de novos cards)
+          interval: 1,
+          repetitions: 0,
+          easeFactor: 2.5,
+          nextReview: Date.now()
+        };
+        DATA.cards = DATA.cards || [];
+        DATA.cards.push(newCard);
+        // Marca o errCtx como tendo card (pra esconder o botão "Criar flashcard")
+        if(errCtx){
+          errCtx.hasCard = true;
+          errCtx.cardId = newCard.id;
+        }
+        fb._suggestedAdded = true;
+        save();
+        addBtn.textContent = '✓ Adicionado';
+        addBtn.disabled = true;
+        addBtn.style.opacity = '.7';
+        addBtn.style.cursor = 'default';
+        showToast('Flashcard adicionado ao deck (sem custo)', 3000);
+      } catch(e){
+        console.warn('[suggested-card] erro ao adicionar:', e);
+        showToast('Erro ao adicionar flashcard. Tente novamente.', 4000);
+      }
+    });
+    sugActions.appendChild(addBtn);
+    sugCard.appendChild(sugActions);
+    card.appendChild(sugCard);
+  }
+
   // Create flashcard button on errors — only if not already created
   if(!ok&&errCtx){
     const ctaRow = mk('div');ctaRow.style.cssText='margin-bottom:.875rem;display:flex;gap:8px;flex-wrap:wrap;align-items:center';
@@ -20555,7 +20652,10 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →'){
       done.innerHTML='✓ <b>Flashcard criado e adicionado ao deck.</b> Aparecerá para revisão.';
       ctaRow.appendChild(done);
     } else {
-      const genBtn = mkBtn('🎴 Criar flashcard deste erro','btn');
+      const genBtn = mkBtn('🎴 Gerar outro flashcard com IA','btn');
+      // V15.12.20: deixa claro que esta opção CRIA OUTRO flashcard (cobrando 1
+      // crédito adicional). O sugerido grátis aparece acima, se a IA retornou.
+      genBtn.innerHTML = '🎴 Gerar outro flashcard com IA → ' + aiCostBadgeHTML('error_flashcard');
       genBtn.style.cssText='border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
       genBtn.addEventListener('click',()=>generateCardFromError(errCtx,genBtn,null,ctaRow));
       ctaRow.appendChild(genBtn);
@@ -21034,14 +21134,12 @@ function logError(ctx){
   DATA.errors.push(err);
   if(DATA.errors.length>150)DATA.errors=DATA.errors.slice(-150);
   save();
-  // Start prefetching flashcard in background (fires and forgets).
-  // When user clicks "Criar flashcard", it'll be ready. If they don't click,
-  // the cache entry is discarded on next error or page navigation.
-  try{
-    if(err.explanation&&err.correctAnswer){
-      prefetchErrorCard(err);
-    }
-  }catch(e){/* swallow — prefetch is best-effort */}
+  // V15.12.20 — Prefetch automático de flashcard REMOVIDO.
+  // Antes: prefetchErrorCard(err) disparava ao registrar um erro,
+  // cobrando 1 crédito de error_flashcard sem clique do usuário.
+  // Decisão Jean: nenhum crédito pode ser consumido antes de ação explícita.
+  // O usuário cria flashcard manualmente OU usa o suggested_flashcard
+  // que vem embutido na resposta da avaliação (sem custo extra).
   return err;
 }
 
@@ -27596,23 +27694,13 @@ function renderPractice(){
   const s = DATA.session;
   const wrap = mk('div','fade');
 
-  // V15.6: Pré-carrega próxima questão em background se ainda não tem.
-  // Usuário entra na aba e quando clica "Iniciar" a questão já tá pronta.
-  // Não bloqueia render — totalmente assíncrono. Falha silenciosa.
-  // V15.12.15 (CRITICAL FIX): só dispara prefetch se canStartPrefetch aprovar.
-  // Antes: a cada render, disparava 1 prefetch — gerou múltiplas chamadas
-  // 402 paralelas em sequência (8 chamadas em ~1min reportadas pelo Jean).
-  // Agora: canStartPrefetch valida saldo + lock + suspensão, evitando o spam.
-  if(isAuthed() && !ST.practQ && !ST.practLoading && !DATA.preloadedQuestions?.practice && hasContent()){
-    setTimeout(()=>{
-      const firstActive = activeSources()[0];
-      if(firstActive && typeof preloadQuestionForSource === 'function'
-         && typeof canStartPrefetch === 'function'
-         && canStartPrefetch('practice_question', 'preload-question-source-' + firstActive.id)){
-        preloadQuestionForSource(firstActive).catch(()=>{});
-      }
-    }, 100);
-  }
+  // V15.12.20 — Prefetch automático REMOVIDO.
+  // Antes (V15.6 a V15.12.15): a cada render da view de Prática, disparava
+  // setTimeout(preloadQuestionForSource, 100ms) que cobrava 2 créditos antes
+  // do usuário clicar em qualquer coisa. Causava "saldo dança" e desconto
+  // invisível ("entro na tela e perco 2 créditos sem fazer nada").
+  // Decisão Jean: nenhum crédito pode ser consumido antes de ação explícita.
+  // Mantemos res.next no practSubmit (esse nasce de ação explícita do user).
 
   // Custom back button that resets practice state
   const backB = mkBtn('← Voltar aos métodos','back-btn');
@@ -27661,6 +27749,27 @@ function renderPractice(){
     // Modo IA — CTA grande no topo
     const lastBadge = buildLastGenBadge('practice','question');
     if(lastBadge){lastBadge.style.marginBottom='.75rem';wrap.appendChild(lastBadge);}
+
+    // V15.12.20 — Explicação clara do modelo de cobrança (modo contínuo)
+    // Antes o usuário não entendia por que o saldo descia 2-3 na primeira
+    // ação e depois 1 a cada questão. Agora o card abaixo explica.
+    const costInfo = mk('div');
+    costInfo.style.cssText='background:var(--surface2);border:1px solid var(--border);border-radius:11px;padding:.75rem 1rem;margin-bottom:1rem;font-size:12.5px;line-height:1.6;color:var(--text2)';
+    costInfo.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem">
+        <span style="font-size:14px">💡</span>
+        <span style="font-weight:700;color:var(--text);font-size:12.5px">Como funcionam os créditos na Prática</span>
+      </div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:baseline">
+        <span style="font-weight:700;color:var(--accent-text)">2 créd.</span>
+        <span>Primeira questão da sessão</span>
+        <span style="font-weight:700;color:var(--accent-text)">1 créd.</span>
+        <span>Corrigir resposta com explicação</span>
+      </div>
+      <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border);font-size:11.5px;color:var(--text3);line-height:1.5">
+        <b>Modo contínuo:</b> a correção da questão já prepara a próxima no mesmo processamento, sem cobrança extra.
+      </div>`;
+    wrap.appendChild(costInfo);
 
     const ctaCard = mk('div');
     ctaCard.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.5rem 1.5rem;margin-bottom:1rem;text-align:center';
@@ -27936,7 +28045,20 @@ async function practSubmit(answer){
     if(!ok){
       errCtx=logError({question:ST.practQ.question,correct_answer:ST.practQ.correct_answer,explanation:res.explanation,trap:res.trap,keyword:res.keyword,trap_type:res.trap_type,topic:ST.practQ.topic,method:'practice'});
     }
-    ST.practFb={ok,explanation:res.explanation,trap:res.trap,keyword:res.keyword,next:res.next,errCtx};
+    // V15.12.20: suggested_flashcard vem embutido na resposta da avaliação
+    // quando o usuário erra. Sem custo extra (já está no eval que custou 1).
+    // O usuário clica "Adicionar ao deck" pra incorporar, ou ignora.
+    ST.practFb={
+      ok,
+      explanation:res.explanation,
+      trap:res.trap,
+      keyword:res.keyword,
+      next:res.next,
+      errCtx,
+      suggestedFlashcard: (!ok && res.suggested_flashcard && res.suggested_flashcard.front && res.suggested_flashcard.back)
+        ? res.suggested_flashcard
+        : null
+    };
     // V12: Persiste no histórico recente (últimas 24h) pra usuário poder voltar via atalho B.
     addToRecentPractice({
       q: ST.practQ,
