@@ -2287,6 +2287,13 @@ html.dark .wfb-tag-ai{color:#b08aff}
   transition:height .35s ease, max-width .35s ease, opacity .35s ease;
 }
 
+/* V15.12.30: dica visual de interatividade quando o mascote está congelado.
+   Cursor:pointer indica que dá pra interagir; opacity volta pra 1 no hover
+   pra reforçar feedback visual antes de o vídeo replayar. Quando playing,
+   cursor é default (não interromper a animação inicial). */
+.dash-mascot.dash-mascot-frozen{cursor:pointer}
+.dash-mascot.dash-mascot-frozen:hover .dash-mascot-video{opacity:1}
+
 /* === Estado 1: VIDEO (default quando container tem .dash-mascot-video filho) === */
 .dash-mascot:not(.dash-mascot-static):has(.dash-mascot-video) .dash-mascot-video{display:block}
 
@@ -2303,6 +2310,13 @@ html.dark .wfb-tag-ai{color:#b08aff}
 /* Hover suave (no elemento atualmente visível) */
 .dash-mascot:hover .dash-mascot-video,
 .dash-mascot:hover .dash-mascot-img{transform:translateY(-3px) rotate(-3deg);opacity:1}
+
+/* V15.12.30: durante o REPLAY (estado playing reativado por hover), NÃO
+   aplicar transform de tilt — fica esquisito ver o vídeo tocando inclinado
+   e deslocado. O lift só faz sentido no estado parado (frozen ou static). */
+.dash-mascot.dash-mascot-playing:hover .dash-mascot-video{
+  transform:none;
+}
 
 /* === prefers-reduced-motion === defesa em CSS (caso JS não tenha pego) === */
 @media (prefers-reduced-motion: reduce){
@@ -8288,10 +8302,13 @@ async function renderSharedExplanationsBody(container, q){
   const genRow = mk('div','shexpl-gen-row');
   const haveHaiku = items.some(i=>i.model==='haiku' && i.author_id===AUTH.user.id);
   const haveSonnet = items.some(i=>i.model==='sonnet' && i.author_id===AUTH.user.id);
-  const haikuBtn = mkBtn(haveHaiku?'🤖 Atualizar minha (Haiku)':'🤖 Gerar (Haiku) · ~1-2 créd.','btn btn-sm');
+  // V15.12.31: labels com custo REAL (do AI_COSTS), não estimativa "~X-Y".
+  // imported_question_explanation = 2 créd (Haiku)
+  // imported_question_explanation_premium = 5 créd (Sonnet)
+  const haikuBtn = mkBtn(haveHaiku?'🤖 Atualizar minha (Haiku)':'🤖 Gerar (Haiku) · 2 créd','btn btn-sm');
   haikuBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'haiku', container, haikuBtn));
   genRow.appendChild(haikuBtn);
-  const sonnetBtn = mkBtn(haveSonnet?'⚡ Atualizar minha (Sonnet)':'⚡ Gerar com Sonnet (mais profundo) · ~5-8 créd.','btn btn-sm');
+  const sonnetBtn = mkBtn(haveSonnet?'⚡ Atualizar minha (Sonnet)':'⚡ Gerar com Sonnet (mais profundo) · 5 créd','btn btn-sm');
   sonnetBtn.style.borderColor = 'var(--gralia-purple)';
   sonnetBtn.style.color = 'var(--gralia-purple)';
   sonnetBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'sonnet', container, sonnetBtn));
@@ -8309,10 +8326,12 @@ async function renderSharedExplanationsBody(container, q){
   }
   // Botão de gerar flashcard novo (sempre disponível)
   const fcGenRow = mk('div','shexpl-gen-row');fcGenRow.style.marginTop='.5rem';
-  const fcHaiku = mkBtn('🎴 Gerar flashcard (Haiku) · ~1 créd.','btn btn-sm');
+  // V15.12.31: ambos usam action_id=error_flashcard = 1 crédito (independente
+  // do modelo). O Sonnet só muda a qualidade da geração, não o custo.
+  const fcHaiku = mkBtn('🎴 Gerar flashcard (Haiku) · 1 créd','btn btn-sm');
   fcHaiku.addEventListener('click',()=>generateAndSaveFlashcard(q, 'haiku', container, fcHaiku));
   fcGenRow.appendChild(fcHaiku);
-  const fcSonnet = mkBtn('🎴 Gerar com Sonnet · ~3-5 créd.','btn btn-sm');
+  const fcSonnet = mkBtn('🎴 Gerar com Sonnet (mais profundo) · 1 créd','btn btn-sm');
   fcSonnet.style.borderColor = 'var(--gralia-purple)';
   fcSonnet.style.color = 'var(--gralia-purple)';
   fcSonnet.addEventListener('click',()=>generateAndSaveFlashcard(q, 'sonnet', container, fcSonnet));
@@ -8511,9 +8530,31 @@ function clearPrefetchedShared(q, kind, model){
   delete SHARED_PREFETCH[key];
 }
 
-// Inicia geração em background — pode ser chamada antes de o usuário clicar no botão
-// Não confirma custo aqui — só chame se a confirmação já foi feita ou se for "implícita"
+// V15.12.31 — DESATIVADO. Antes essa função podia gerar explicação em background
+// consumindo créditos. Hoje não há call sites (verificado em grep), mas mantemos
+// a função pra compatibilidade caso algum código antigo tente chamar — porém
+// agora ela retorna null imediatamente sem chamar IA.
+//
+// Política Jean: nenhum crédito pode ser consumido sem clique explícito do
+// usuário. Geração de explicação só acontece via generateAndSaveExplanation,
+// que mostra modal de confirmação antes (confirmAction com costAction).
+//
+// Se algum dia alguém quiser reativar prefetch, deve ser explicitamente
+// "leitura de cache compartilhado" (sem chamar IA), não geração nova.
 function startPrefetchExplanation(q, model){
+  // Bail-out de segurança — evita débito acidental.
+  // Se você está vendo esse log no console, alguma chamada ressuscitou o
+  // prefetch pago. Verifique se realmente é necessário ou se deve ler
+  // cache compartilhado direto via listExplanationsForQuestion.
+  if(typeof console !== 'undefined' && console.warn){
+    console.warn('[prefetch] startPrefetchExplanation foi chamado mas está DESATIVADO (V15.12.31). Use generateAndSaveExplanation com clique explícito do usuário.');
+  }
+  return null;
+}
+
+// Implementação ORIGINAL preservada como referência morta — não é executada.
+// Renomeada com _DEPRECATED pra impedir que algum import dinâmico recupere.
+function _DEPRECATED_startPrefetchExplanation(q, model){
   const key = _prefetchKey(q, 'explicacao', model);
   if(SHARED_PREFETCH[key]) return SHARED_PREFETCH[key];
 
@@ -8669,10 +8710,19 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn){
 
 // Gera FLASHCARD novo a partir da questão + salva no cache compartilhado + adiciona ao deck
 async function generateAndSaveFlashcard(q, model, container, triggerBtn){
-  const costMsg = model === 'sonnet'
-    ? 'Gerar flashcard com Sonnet 4.5 custa ~3-5 créditos. O flashcard será adicionado ao seu deck E ficará disponível pra outros usuários.\n\nContinuar?'
-    : 'Gerar flashcard com Haiku custa ~1 crédito. O flashcard será adicionado ao seu deck E ficará disponível pra outros usuários.\n\nContinuar?';
-  if(!confirm(costMsg)) return;
+  // V15.12.31: substitui confirm() nativo por confirmAction (modal customizado).
+  // Custo real: error_flashcard = 1 crédito (igual em Haiku e Sonnet — a diferença
+  // é qualidade, não custo). Antes dizia "~3-5 créditos" pra Sonnet, o que era
+  // enganoso.
+  const ok = await confirmAction({
+    title: model === 'sonnet' ? '⚡ Gerar flashcard com Sonnet' : '🎴 Gerar flashcard com Haiku',
+    body: model === 'sonnet'
+      ? 'Análise mais profunda com Sonnet 4.5. O flashcard será adicionado ao seu deck E ficará disponível pra outros usuários.'
+      : 'Geração rápida com Haiku. O flashcard será adicionado ao seu deck E ficará disponível pra outros usuários.',
+    costAction: 'error_flashcard',
+    confirmLabel: 'Gerar flashcard'
+  });
+  if(!ok) return;
 
   // Loading visual no botão
   let originalLabel = '';
@@ -17788,9 +17838,61 @@ function renderDashboard(){
       v.addEventListener('loadedmetadata', ()=>{
         if(!v.duration || isNaN(v.duration) || v.duration === 0) switchToStaticImage();
       });
+
+      // V15.12.30 — REPLAY no hover.
+      // Quando o vídeo está congelado no último frame, hover do mouse no
+      // container reinicia a animação do começo (uma vez). Útil pra usuários
+      // que querem rever a animação do mascote.
+      // Regras:
+      //   - Só funciona no estado 'frozen' (animação já terminou). Durante
+      //     'playing' (primeira execução), hover é ignorado pra não cortar.
+      //   - Só funciona se o vídeo está acessível (não foi pra fallback img
+      //     por erro). Em estado 'static', não há replay possível.
+      //   - Reduced-motion: respeitamos — sem replay (mascote fica como imagem).
+      //   - Lock interno (_replaying) impede reentrada se o usuário entra-sai-
+      //     entra rápido durante a animação. Liberado quando 'ended' dispara.
+      //   - Visual: cursor:pointer quando frozen (CSS), tooltip atualizado.
+      let _replaying = false;
+      mascot.addEventListener('mouseenter', ()=>{
+        // Só replaya se está congelado (animação inicial já terminou).
+        if(!mascot.classList.contains('dash-mascot-frozen')) return;
+        if(_replaying) return;
+        if(mascot.classList.contains('dash-mascot-static')) return;
+        // Reduced-motion: ignora — mascote é imagem estática nesse caso.
+        const reducedMotion = (typeof window.matchMedia === 'function')
+          && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if(reducedMotion) return;
+
+        try{
+          _replaying = true;
+          // Volta ao início e toca de novo
+          mascot.classList.remove('dash-mascot-frozen');
+          mascot.classList.add('dash-mascot-playing');
+          v.currentTime = 0;
+          // play() retorna Promise — captura erros silenciosamente
+          // (ex: navegador bloqueando autoplay sem gesture, embora aqui já
+          //  tenha o gesto do mouseenter, então deve passar normalmente).
+          const p = v.play();
+          if(p && typeof p.then === 'function'){
+            p.catch(()=>{
+              // Falhou: volta pro estado frozen
+              _replaying = false;
+              freezeOnLastFrame();
+            });
+          }
+        }catch(_){
+          _replaying = false;
+        }
+      });
+      // Quando termina o replay, libera o lock e congela de novo.
+      // (freezeOnLastFrame já é chamado pelo handler 'ended' acima — só
+      // precisamos liberar o lock pra próximo hover funcionar.)
+      v.addEventListener('ended', ()=>{
+        _replaying = false;
+      });
     }, 0);
   }
-  mascot.title = 'Gralha-azul — ave do Paraná, mascote do Gralia';
+  mascot.title = 'Gralha-azul — passe o mouse pra ver a animação novamente';
   greetRow.appendChild(mascot);
   wrap.appendChild(greetRow);
 
@@ -22223,9 +22325,73 @@ function cleanTecPdfText(text){
 // Diferente de parseImportedQuestions (regex específico do TEC), funciona com QUALQUER PDF.
 // Identifica banca, matéria, enunciado, alternativas, gabarito automaticamente.
 // Quebra texto longo em chunks e processa em paralelo até max 10k+ questões.
+
+// V15.12.31 — Helpers extraídos pra suportar estimativa de custo prévia.
+// Tamanho de chunk usado pelo extractQuestionsWithAI. Exportado pra reuso.
+const PDF_AI_CHUNK_SIZE = 3500;
+
+// V15.12.31 — Calcula chunks que serão gerados a partir de um texto.
+// Lógica idêntica ao loop interno do extractQuestionsWithAI mas APENAS conta
+// (não gera array dos textos). Usado pra estimativa antes da execução.
+function countPdfImportChunks(rawText){
+  if(!rawText || typeof rawText !== 'string') return 0;
+  let count = 0;
+  let remaining = rawText;
+  const CHUNK_SIZE = PDF_AI_CHUNK_SIZE;
+  while(remaining.length > 0){
+    if(remaining.length <= CHUNK_SIZE){ count++; break; }
+    let cutPoint = CHUNK_SIZE;
+    const slice = remaining.substring(0, CHUNK_SIZE + 500);
+    const naturalCut = slice.search(/\n\n(QUEST[ÃA]O\s+\d+|\d+\.\s|Q\.\s*\d+)/i);
+    if(naturalCut > CHUNK_SIZE * 0.5){
+      cutPoint = naturalCut;
+    } else {
+      const lastDot = slice.lastIndexOf('.', CHUNK_SIZE);
+      if(lastDot > CHUNK_SIZE * 0.7) cutPoint = lastDot + 1;
+    }
+    count++;
+    remaining = remaining.substring(cutPoint).trimStart();
+  }
+  return count;
+}
+
+// V15.12.31 — Estima custo de importação por IA.
+// Retorna {chars, chunks, costPerChunk, totalCost, balance, hasEnough, shortBy}.
+// costPerChunk vem do AI_COSTS atual (default 1 — alinhado com extract_questions_pdf).
+function estimatePdfImportCost(rawText){
+  const chars = (rawText||'').length;
+  const chunks = countPdfImportChunks(rawText||'');
+  const costPerChunk = (typeof AI_COSTS === 'object' && AI_COSTS.extract_questions_pdf != null)
+    ? AI_COSTS.extract_questions_pdf : 1;
+  const totalCost = chunks * costPerChunk;
+  const balance = (typeof QUOTA === 'object' && QUOTA.remaining != null) ? QUOTA.remaining : null;
+  const hasEnough = balance == null ? null : (balance >= totalCost);
+  const shortBy = (balance != null && balance < totalCost) ? (totalCost - balance) : 0;
+  return { chars, chunks, costPerChunk, totalCost, balance, hasEnough, shortBy };
+}
+
+// V15.12.31 — Cache anti-reprocessamento por arquivo.
+// Key: nome+tamanho+modificação do file. Value: { rawText, parsedLocal, aiResult? }.
+// Em memória (zera ao recarregar a aba) — suficiente pra evitar clique duplicado
+// que cobra crédito de novo. Se quiser persistência cross-session, fica pra
+// outra rodada (precisa cuidar de TTL e invalidação).
+const _pdfImportCache = new Map();
+function _pdfFingerprint(file){
+  if(!file || !file.name) return null;
+  return file.name + '|' + (file.size||0) + '|' + (file.lastModified||0);
+}
+
 async function extractQuestionsWithAI(rawText, opts){
   opts = opts || {};
   const onProgress = opts.onProgress || (()=>{});
+  // V15.12.31 — Suporte a limite de créditos e cancelamento.
+  // - opts.maxCredits: pára após N chunks (cada chunk = 1 crédito por padrão).
+  // - opts.shouldCancel: função que retorna true pra interromper entre chunks.
+  // Default: sem limite (compatível com chamadas existentes).
+  const maxCredits = (typeof opts.maxCredits === 'number' && opts.maxCredits > 0) ? opts.maxCredits : null;
+  const shouldCancel = typeof opts.shouldCancel === 'function' ? opts.shouldCancel : ()=>false;
+  const costPerChunk = (typeof AI_COSTS === 'object' && AI_COSTS.extract_questions_pdf != null)
+    ? AI_COSTS.extract_questions_pdf : 1;
 
   // Estimativa de chunks: ~3500 chars por chunk = ~7-10 questões por chunk típico
   const CHUNK_SIZE = 3500;
@@ -22287,7 +22453,17 @@ SAÍDA — array JSON puro, SEM markdown:
 Se NÃO encontrar nenhuma questão neste trecho, retorne []`;
 
   for(let i = 0; i < chunks.length; i++){
-    onProgress({phase:'extracting', totalChunks: chunks.length, processedChunks: i, questionsFound: allQuestions.length});
+    // V15.12.31 — checa cancelamento antes de cada chunk
+    if(shouldCancel()){
+      onProgress({phase:'cancelled', totalChunks: chunks.length, processedChunks: i, questionsFound: allQuestions.length, creditsUsed: i * costPerChunk});
+      return allQuestions;  // retorna parcial — chamador decide o que fazer
+    }
+    // V15.12.31 — pára se atingiu limite de créditos definido pelo usuário
+    if(maxCredits !== null && (i * costPerChunk) >= maxCredits){
+      onProgress({phase:'limit-reached', totalChunks: chunks.length, processedChunks: i, questionsFound: allQuestions.length, creditsUsed: i * costPerChunk, limit: maxCredits});
+      return allQuestions;
+    }
+    onProgress({phase:'extracting', totalChunks: chunks.length, processedChunks: i, questionsFound: allQuestions.length, creditsUsed: i * costPerChunk});
     try{
       const body = {
         model: DATA.config.model || 'claude-haiku-4-5-20251001',
@@ -22331,9 +22507,178 @@ Se NÃO encontrar nenhuma questão neste trecho, retorne []`;
     }
   }
 
-  onProgress({phase:'done', totalChunks: chunks.length, processedChunks: chunks.length, questionsFound: allQuestions.length});
+  onProgress({phase:'done', totalChunks: chunks.length, processedChunks: chunks.length, questionsFound: allQuestions.length, creditsUsed: chunks.length * costPerChunk});
 
   return allQuestions;
+}
+
+// V15.12.31 — Modal de confirmação de custo ANTES de processar PDF com IA.
+// Retorna Promise que resolve com:
+//   - { action: 'ai-full', maxCredits: N }  → processa via IA com limite N
+//   - { action: 'parser-first' }            → tenta parser local primeiro
+//   - { action: 'cancel' }                  → não processa
+//   - null se modal foi fechado por background click
+//
+// Parâmetros:
+//   { estimate, parserResult, fileName }
+//   estimate: retorno de estimatePdfImportCost
+//   parserResult: { count, withGabarito } — resultado do parser local (se já rodou)
+//   fileName: nome do arquivo (display)
+function showImportCostModal({ estimate, parserResult, fileName }){
+  return new Promise((resolve)=>{
+    const m = mk('div','import-cost-modal');
+    m.style.cssText = 'max-width:520px';
+
+    // Header
+    const h = mk('h3');
+    h.style.cssText = 'margin:0 0 .375rem;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px';
+    h.innerHTML = svgIcon('sparkles',18) + '<span>Confirmar importação por IA</span>';
+    m.appendChild(h);
+    if(fileName){
+      const fn = mk('p','txt3');
+      fn.style.cssText = 'margin:0 0 1rem;font-size:12px';
+      fn.textContent = '📄 ' + fileName;
+      m.appendChild(fn);
+    }
+
+    // ===== Bloco do parser local (se aplicável) =====
+    // Se o parser local achou questões úteis (>=5 com >=70% gabarito), recomenda
+    // usar resultado grátis primeiro e oferecer botão de destaque.
+    let parserRecommended = false;
+    if(parserResult && parserResult.count >= 5){
+      const ratio = parserResult.withGabarito / parserResult.count;
+      parserRecommended = ratio >= 0.7;
+    }
+
+    if(parserResult && parserResult.count > 0){
+      const parserBox = mk('div','icm-parser-box');
+      parserBox.style.cssText = parserRecommended
+        ? 'padding:.875rem 1rem;background:linear-gradient(135deg,rgba(16,185,129,.08),var(--surface));border:1px solid rgba(16,185,129,.30);border-left:3px solid var(--accent);border-radius:9px;margin-bottom:1rem'
+        : 'padding:.875rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:1rem';
+      parserBox.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          ${svgIcon(parserRecommended?'check':'file-text',16)}
+          <b style="font-size:13.5px;color:${parserRecommended?'var(--accent-text)':'var(--text)'}">
+            ${parserRecommended?'Importação grátis disponível':'Parser local detectou algumas questões'}
+          </b>
+        </div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.5">
+          O parser local detectou <b>${parserResult.count}</b> ${parserResult.count===1?'questão':'questões'},
+          <b>${parserResult.withGabarito}</b> com gabarito (${Math.round((parserResult.withGabarito/parserResult.count)*100)}%).
+          ${parserRecommended ? '<br>Você pode salvar essas questões <b>sem gastar créditos</b>.' : ''}
+        </div>
+      `;
+      m.appendChild(parserBox);
+    }
+
+    // ===== Bloco de estimativa de IA =====
+    const estBox = mk('div','icm-est-box');
+    estBox.style.cssText = 'padding:.875rem 1rem;background:rgba(124,92,255,.05);border:1px solid rgba(124,92,255,.20);border-left:3px solid var(--gralia-purple);border-radius:9px;margin-bottom:1rem';
+
+    const insufBalance = (estimate.balance != null && estimate.balance < estimate.totalCost);
+    const balanceLine = estimate.balance == null
+      ? `<div style="font-size:12px;color:var(--text3);margin-top:6px">Saldo não disponível</div>`
+      : `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+           <span style="font-size:12px;color:var(--text2)">Seu saldo atual</span>
+           <b style="font-size:13px;color:${insufBalance?'var(--red)':'var(--accent-text)'};font-variant-numeric:tabular-nums">${estimate.balance} créd</b>
+         </div>`;
+
+    estBox.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        ${svgIcon('sparkles',16)}
+        <b style="font-size:13.5px;color:var(--gralia-purple)">Processar com IA (estimativa)</b>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:6px 16px;font-size:12.5px;color:var(--text2)">
+        <span>Texto extraído</span><b style="color:var(--text);font-variant-numeric:tabular-nums">${estimate.chars.toLocaleString('pt-BR')} caracteres</b>
+        <span>Trechos a processar</span><b style="color:var(--text);font-variant-numeric:tabular-nums">${estimate.chunks}</b>
+        <span>Custo por trecho</span><b style="color:var(--text);font-variant-numeric:tabular-nums">${estimate.costPerChunk} créd</b>
+        <span style="font-weight:600">Custo estimado</span><b style="color:var(--gralia-purple);font-variant-numeric:tabular-nums;font-size:14px">${estimate.totalCost} créd</b>
+      </div>
+      ${balanceLine}
+    `;
+    m.appendChild(estBox);
+
+    // ===== Limite de créditos =====
+    const defaultLimit = estimate.balance != null
+      ? Math.max(1, Math.min(estimate.totalCost, estimate.balance))
+      : estimate.totalCost;
+
+    const limitBox = mk('div','icm-limit-box');
+    limitBox.style.cssText = 'padding:.75rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:1rem';
+    limitBox.innerHTML = `
+      <label for="icm-limit" style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:6px">
+        Limite máximo de créditos para esta importação
+      </label>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input id="icm-limit" type="number" min="1" max="999" value="${defaultLimit}"
+               style="flex:1;padding:.5rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums">
+        <span style="font-size:12px;color:var(--text3)">créd</span>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.4">
+        A IA pára de processar ao atingir esse limite. Você fica com o que já foi extraído.
+      </div>
+    `;
+    m.appendChild(limitBox);
+
+    // ===== Aviso de saldo insuficiente =====
+    if(insufBalance){
+      const warn = mk('div');
+      warn.style.cssText = 'padding:.75rem 1rem;background:rgba(232,76,76,.06);border:1px solid rgba(232,76,76,.30);border-left:3px solid var(--red);border-radius:9px;margin-bottom:1rem;font-size:12.5px;color:var(--red-text);line-height:1.5';
+      warn.innerHTML = `<b>⚠ Saldo insuficiente.</b> Faltam <b>${estimate.shortBy} créditos</b> para processar tudo. Reduza o limite acima para o seu saldo (${estimate.balance}) ou recarregue créditos. Você ainda pode salvar o que já foi parseado localmente.`;
+      m.appendChild(warn);
+    }
+
+    // ===== Botões =====
+    const btnRow = mk('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:1.25rem';
+
+    const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+    cancelBtn.addEventListener('click',()=>{ closeModal(); resolve({ action:'cancel' }); });
+    btnRow.appendChild(cancelBtn);
+
+    if(parserResult && parserResult.count > 0){
+      const parserBtn = mkBtn(
+        parserRecommended ? '✓ Usar resultado grátis' : 'Tentar grátis primeiro',
+        parserRecommended ? 'btn btn-sm btn-p' : 'btn btn-sm'
+      );
+      if(parserRecommended){
+        parserBtn.style.background = 'var(--accent)';
+        parserBtn.style.borderColor = 'var(--accent)';
+      }
+      parserBtn.addEventListener('click',()=>{ closeModal(); resolve({ action:'parser-first' }); });
+      btnRow.appendChild(parserBtn);
+    }
+
+    const aiBtn = mkBtn('Processar com IA','btn btn-sm' + (parserRecommended ? '' : ' btn-p'));
+    if(insufBalance) aiBtn.disabled = true;
+    aiBtn.addEventListener('click',()=>{
+      const limitInput = document.getElementById('icm-limit');
+      const limit = Math.max(1, parseInt(limitInput?.value || defaultLimit, 10));
+      // Bloqueia se limite > saldo (se saldo conhecido)
+      if(estimate.balance != null && limit > estimate.balance){
+        alert(`Limite (${limit}) maior que seu saldo (${estimate.balance}). Reduza o limite ou recarregue créditos.`);
+        return;
+      }
+      closeModal();
+      resolve({ action:'ai-full', maxCredits: limit });
+    });
+    btnRow.appendChild(aiBtn);
+
+    m.appendChild(btnRow);
+
+    showModal(m);
+    // Se o usuário fechar o modal clicando fora, resolve com cancel
+    // (closeModal não dispara nada — precisamos de um observer simples)
+    // Hack: monitora ST.modal — se ele virar null sem nossa interação, é fechamento externo.
+    const _interval = setInterval(()=>{
+      if(!ST.modal){
+        clearInterval(_interval);
+        // Resolve só se ainda não foi resolvido por um botão
+        // (Promise resolve uma vez só, segunda chamada é no-op)
+        resolve({ action:'cancel' });
+      }
+    }, 200);
+  });
 }
 
 function parseImportedQuestions(raw){
@@ -25518,29 +25863,80 @@ function renderImportedImport(wrap){
   // V13: Modo IA — explica diferença vs parser TEC
   if(mode === 'pdf-ai'){
     const aiNotice = mk('div');aiNotice.style.cssText='padding:.75rem 1rem;background:rgba(128,66,250,.08);border:1px solid rgba(128,66,250,.20);border-left:3px solid var(--gralia-purple);border-radius:8px;margin-bottom:.75rem;font-size:12.5px;line-height:1.55';
-    aiNotice.innerHTML = '<b style="color:var(--gralia-purple)">✨ Extração inteligente via IA</b><br>Use pra <b>qualquer PDF</b> de prova (CESPE, FCC, FGV, FUNDATEC, provas estaduais, materiais de cursinho). A IA identifica enunciado, alternativas, gabarito, banca e disciplina automaticamente. Mais lento que o parser do TEC, mas funciona com qualquer formato. <b>Consome 1 crédito por trecho do PDF</b> processado.';
+    aiNotice.innerHTML = '<b style="color:var(--gralia-purple)">✨ Extração inteligente via IA</b><br>Use pra <b>qualquer PDF</b> de prova (CESPE, FCC, FGV, FUNDATEC, provas estaduais, materiais de cursinho). A IA identifica enunciado, alternativas, gabarito, banca e disciplina automaticamente. <b>Custo: 1 crédito por trecho processado pela IA</b> (~3.500 caracteres por trecho). Antes de cobrar, mostramos a estimativa e tentamos parser local grátis se for possível.';
     card.appendChild(aiNotice);
 
     const pdfArea = mk('div','pdf-import-area');
     if(ST.importPdfLoading){
+      // V15.12.31: loading com botão de "Parar após este trecho".
+      // Só faz sentido durante a fase de extração da IA (não durante leitura do PDF).
       const progressMsg = ST.importPdfProgress || 'Processando...';
-      pdfArea.innerHTML = `<div class="loading-row"><span class="spinner"></span> <span id="pdf-import-progress">${escapeHTML(progressMsg)}</span></div>`;
+      const wrapDiv = mk('div');
+      wrapDiv.style.cssText = 'display:flex;flex-direction:column;gap:.75rem';
+
+      const row = mk('div','loading-row');
+      row.innerHTML = `<span class="spinner"></span> <span id="pdf-import-progress">${progressMsg}</span>`;
+      wrapDiv.appendChild(row);
+
+      // Botão de cancelar — só aparece quando a IA já começou (mensagem contém "IA processando" ou similar)
+      // Heurística simples: se a mensagem indica que estamos na fase IA, mostra cancel.
+      // Se ainda está "Lendo página X/Y...", não mostra (extração de PDF é client-side, rápido).
+      if(/IA |limite|trechos/i.test(progressMsg)){
+        const stopBtn = mkBtn('⏹ Parar após este trecho','btn btn-sm');
+        stopBtn.style.cssText = 'align-self:flex-start;color:var(--red);border-color:var(--red)';
+        stopBtn.addEventListener('click',()=>{
+          if(ST.importCancelRequested) return;
+          ST.importCancelRequested = true;
+          stopBtn.disabled = true;
+          stopBtn.textContent = '⏳ Parando após chunk atual...';
+        });
+        wrapDiv.appendChild(stopBtn);
+      }
+
+      pdfArea.appendChild(wrapDiv);
     } else {
       const uploadLbl = mk('label','pdf-upload-btn');
       uploadLbl.innerHTML = '<span class="sib-icon">✨</span><span class="sib-body"><b>Selecionar PDF (qualquer banca)</b><span>IA identifica questões, alternativas, gabaritos automaticamente</span></span>';
       const pdfInp = mk('input');pdfInp.type='file';pdfInp.accept='.pdf,application/pdf';pdfInp.style.display='none';
       pdfInp.addEventListener('change', async e=>{
         const file = e.target.files[0]; if(!file) return;
+        // V15.12.31: validações de segurança e clareza ANTES de qualquer processamento.
         if(file.size > 80 * 1024 * 1024){
           alert('PDF muito grande (>80MB). Divida em partes menores.');
           return;
         }
+
+        // ---------- ETAPA 0: Cache anti-reprocessamento ----------
+        // V15.12.31: se o usuário já processou ESTE arquivo nesta sessão, não
+        // gasta crédito de novo. Pergunta se quer reusar resultado anterior.
+        const fp = _pdfFingerprint(file);
+        const cached = fp ? _pdfImportCache.get(fp) : null;
+        if(cached && cached.aiQuestions && cached.aiQuestions.length > 0){
+          const reuse = confirm(
+            `Esse PDF parece já ter sido processado nesta sessão (${cached.aiQuestions.length} questões extraídas).\n\n` +
+            `OK = reusar resultado (sem gastar créditos)\n` +
+            `Cancelar = processar de novo (vai gastar créditos)`
+          );
+          if(reuse){
+            ST.importInput.text = '';
+            ST.importAiExtractedCount = cached.aiQuestions.length;
+            ST.importPreview = cached.aiQuestions.slice();
+            const withGab = ST.importPreview.filter(q=>q.answer).length;
+            showToast(`✓ ${cached.aiQuestions.length} questões reutilizadas (cache local) · ${withGab} com gabarito.`);
+            render();
+            return;
+          }
+          // Se cancelar, segue fluxo normal (vai cobrar de novo)
+        }
+
         ST.importPdfLoading = true;
         ST.importPdfProgress = 'Lendo PDF...';
         render();
+
+        let text = null;
         try{
-          // Passo 1: Extrai texto
-          const text = await extractPdfText(file, (curr,total)=>{
+          // ---------- ETAPA 1: Extrai texto (sem IA, grátis) ----------
+          text = await extractPdfText(file, (curr,total)=>{
             ST.importPdfProgress = `Lendo página ${curr}/${total}...`;
             const progEl = document.getElementById('pdf-import-progress');
             if(progEl) progEl.textContent = ST.importPdfProgress;
@@ -25548,31 +25944,114 @@ function renderImportedImport(wrap){
           if(!text || text.length < 50){
             throw new Error('Texto extraído muito curto. PDF pode ser escaneado (sem OCR).');
           }
-          ST.importPdfProgress = `Texto extraído (${text.length.toLocaleString('pt-BR')} caracteres). Iniciando IA...`;
-          const progEl = document.getElementById('pdf-import-progress');
-          if(progEl) progEl.textContent = ST.importPdfProgress;
+        }catch(err){
+          ST.importPdfLoading = false;
+          ST.importPdfProgress = null;
+          alert('Erro ao ler PDF: ' + (err.message || err));
+          render();
+          return;
+        }
 
-          // Passo 2: IA extrai questões em chunks
-          const aiQuestions = await extractQuestionsWithAI(text, {
+        // ---------- ETAPA 2: Tenta parser LOCAL (grátis) primeiro ----------
+        // V15.12.31: pipeline parser-first. Se for TEC ou padrão reconhecível,
+        // pode salvar tudo SEM gastar crédito.
+        let parserResult = null;
+        try{
+          // Se detecta TEC, limpa cabeçalhos antes
+          const hasTec = /tecconcursos\.com\.br\/questoes\/\d+/i.test(text);
+          const cleanText = hasTec ? cleanTecPdfText(text) : text;
+          const localQs = parseImportedQuestions(cleanText);
+          const withGab = (localQs||[]).filter(q=>q.answer).length;
+          parserResult = {
+            count: (localQs||[]).length,
+            withGabarito: withGab,
+            questions: localQs || [],
+            cleanText
+          };
+        }catch(_){
+          parserResult = { count: 0, withGabarito: 0, questions: [], cleanText: text };
+        }
+
+        // ---------- ETAPA 3: Estimativa de custo IA ----------
+        // Usa o texto LIMPO se vem do TEC, senão o original
+        const textForAi = parserResult.cleanText || text;
+        const estimate = estimatePdfImportCost(textForAi);
+
+        // ---------- ETAPA 4: Modal de confirmação ----------
+        // Tira o loading temporariamente pra mostrar o modal
+        ST.importPdfLoading = false;
+        ST.importPdfProgress = null;
+        render();
+
+        const decision = await showImportCostModal({
+          estimate,
+          parserResult: parserResult.count > 0 ? parserResult : null,
+          fileName: file.name
+        });
+
+        // ---------- ETAPA 5: Executar conforme decisão ----------
+        if(!decision || decision.action === 'cancel'){
+          // Usuário cancelou — não faz nada
+          return;
+        }
+
+        if(decision.action === 'parser-first'){
+          // Salva resultado do parser local SEM gastar crédito
+          ST.importInput.text = '';
+          ST.importAiExtractedCount = 0;
+          ST.importPreview = parserResult.questions.map(q=>({
+            enunciado: q.enunciado,
+            kind: q.kind || 'CE',
+            alternatives: q.alternatives || [],
+            answer: q.answer || null,
+            meta: q.meta || null,
+            sourceUrl: q.source || null,
+            topicHint: q.topic || null,
+            needsAnswer: q.needsAnswer || false
+          }));
+          // Cacheia (parser-first não consome IA, mas evita re-rodar parser)
+          if(fp) _pdfImportCache.set(fp, { rawText: text, parsedLocal: ST.importPreview.slice(), aiQuestions: null });
+          const withGab = ST.importPreview.filter(q=>q.answer).length;
+          showToast(`✓ ${parserResult.count} questões extraídas pelo parser local (grátis) · ${withGab} com gabarito.`);
+          render();
+          return;
+        }
+
+        // decision.action === 'ai-full'
+        const maxCredits = decision.maxCredits;
+        // Re-checa saldo agorinha (pode ter mudado entre modal e click)
+        if(QUOTA.remaining != null && QUOTA.remaining < maxCredits){
+          alert(`Saldo atual (${QUOTA.remaining}) menor que o limite (${maxCredits}). Recarregue créditos ou reduza o limite.`);
+          return;
+        }
+
+        ST.importPdfLoading = true;
+        ST.importPdfProgress = `Iniciando IA (limite: ${maxCredits} créd)...`;
+        ST.importCancelRequested = false;  // reset
+        render();
+
+        try{
+          const aiQuestions = await extractQuestionsWithAI(textForAi, {
+            maxCredits,
+            shouldCancel: ()=> !!ST.importCancelRequested,
             onProgress: (p)=>{
               const el = document.getElementById('pdf-import-progress');
-              if(el){
-                if(p.phase === 'extracting'){
-                  el.textContent = `IA processando... ${p.processedChunks}/${p.totalChunks} chunks · ${p.questionsFound} questões encontradas`;
-                } else if(p.phase === 'done'){
-                  el.textContent = `✓ ${p.questionsFound} questões extraídas`;
-                }
+              if(!el) return;
+              if(p.phase === 'extracting'){
+                el.innerHTML = `IA processando... <b>${p.processedChunks}/${p.totalChunks}</b> trechos · <b>${p.questionsFound}</b> questões · <b>${p.creditsUsed||0}/${maxCredits}</b> créd`;
+              } else if(p.phase === 'cancelled'){
+                el.innerHTML = `⏹ Cancelado em ${p.processedChunks}/${p.totalChunks} · <b>${p.questionsFound}</b> questões salvas`;
+              } else if(p.phase === 'limit-reached'){
+                el.innerHTML = `⚠ Limite de ${p.limit} créditos atingido em ${p.processedChunks}/${p.totalChunks} · <b>${p.questionsFound}</b> questões salvas`;
+              } else if(p.phase === 'done'){
+                el.innerHTML = `✓ <b>${p.questionsFound}</b> questões extraídas (${p.creditsUsed||0} créd)`;
               }
             }
           });
 
-          // Passo 3: Converte pra formato local e adiciona ao preview
-          // V14 fix: NÃO sobrescrever ST.importInput.text com texto fake — isso causava
-          // re-parse via parseImportedQuestions(...) que retornava [] e zerava o preview.
-          // Em vez disso, marca uma flag pra mostrar mensagem de status no lugar do textarea.
+          // Mapeia pra formato local
           ST.importInput.text = '';
           ST.importAiExtractedCount = aiQuestions.length;
-          // Mapeia pra estrutura usada pelo preview/save
           ST.importPreview = aiQuestions.map(q => ({
             enunciado: q.enunciado,
             kind: q.kind || 'CE',
@@ -25583,8 +26062,13 @@ function renderImportedImport(wrap){
             topicHint: q.topico
           }));
 
+          // Cacheia resultado pra evitar reprocessamento acidental do mesmo arquivo
+          if(fp) _pdfImportCache.set(fp, { rawText: text, parsedLocal: null, aiQuestions: ST.importPreview.slice() });
+
           ST.importPdfLoading = false;
           ST.importPdfProgress = null;
+          ST.importCancelRequested = false;
+
           const withGabarito = ST.importPreview.filter(q=>q.answer).length;
           if(aiQuestions.length === 0){
             showToast('⚠ A IA não encontrou questões neste PDF. Pode não ser um documento de prova.');
@@ -25595,6 +26079,7 @@ function renderImportedImport(wrap){
         }catch(err){
           ST.importPdfLoading = false;
           ST.importPdfProgress = null;
+          ST.importCancelRequested = false;
           alert('Erro: ' + (err.message || err));
           render();
         }
