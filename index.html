@@ -22280,43 +22280,64 @@ function notebooksContaining(questionId){
 }
 
 // Clean TEC Concursos PDF export artifacts.
-// The PDF has: title line, QR code (appears as noisy chars), folder name, URL,
-// "Ordenação: ..." line, then questions. Questions have URL prefix
-// "www.tecconcursos.com.br/questoes/XXXX" — we anchor on that.
+// V15.12.32 — REESCRITA pra cobrir todos os padrões reportados pelo Jean:
+//   - Cabeçalho "Tec Concursos - Questões para concursos, provas, editais, simulados."
+//   - Datas/horas (formato BR e ISO)
+//   - URLs de impressão "/cadernos/.../imprimir"
+//   - Paginação "1/5", "2/5", "Página X de Y"
+//   - QR codes / shortlinks "/s/ABC123"
+//   - Cabeçalhos repetidos a cada virada de página
+// O método: aplica TODAS as regras em TODO o texto (não só no header). Antes
+// só limpava o header inicial — bug crítico, pois cabeçalhos repetiam a cada
+// página e poluíam o corpo das questões a partir da pág 2.
 function cleanTecPdfText(text){
   if(!text)return '';
   let t = text;
-  // Normalize whitespace — collapse weird unicode spaces and multiple blanks
+  // Normaliza whitespace - colapsa unicode raro
   t = t.replace(/[\u00a0\u2000-\u200b\ufeff]/g,' ');
-  // Remove lines that look like header noise (before the first question URL)
-  const firstQIdx = t.search(/(?:www\.)?tecconcursos\.com\.br\/questoes\/\d+/i);
-  let header = '', body = t;
-  if(firstQIdx>0){
-    header = t.slice(0,firstQIdx);
-    body = t.slice(firstQIdx);
-  }
-  // Strip obvious header lines from the header region
-  const headerKill = [
-    /Crimin\.?\s*\|?.*$/gmi,          // folder name e.g. "Crimin. | Balística Forense"
-    /https?:\/\/www\.tecconcursos\.com\.br\/s\/[A-Za-z0-9]+/gi,
-    /Ordenação:.*$/gmi,
-    /tecconcursos/gi,
-    /^\s*[\|\u2502]+\s*$/gm,           // lone pipe chars
-  ];
-  headerKill.forEach(re=>{header=header.replace(re,'');});
-  // Clean body: remove repeated TEC branding lines that sometimes appear between questions
-  const bodyKill = [
-    /Ordenação:\s*Por Matéria e Assunto/gi,
+
+  // === REGRAS DE LIMPEZA — aplicadas em TODO o texto ===
+  // V15.12.32 padrões expandidos (cobrem cabeçalho/rodapé que repete por página)
+  const KILL_PATTERNS = [
+    // Cabeçalho institucional repetido
+    /^.*Tec\s*Concursos\s*-\s*Quest(?:õ|o)es\s+para\s+concursos.*$/gmi,
+    /^.*tecconcursos\.com\.br\s*$/gmi,
     /^\s*tecconcursos\s*$/gmi,
-    /^\s*Página \d+ de \d+\s*$/gmi,
-    /https?:\/\/www\.tecconcursos\.com\.br\/s\/[A-Za-z0-9]+/gi,
+
+    // URLs de impressão e shortlinks
+    /https?:\/\/(?:www\.)?tecconcursos\.com\.br\/(?:cadernos|c|s)\/[^\s]+/gi,
+
+    // Paginação: "1/5", "23/45" (linha inteira ou no fim de linha)
+    /^\s*\d{1,3}\s*\/\s*\d{1,3}\s*$/gm,
+    /^\s*Página\s+\d+\s+de\s+\d+\s*$/gmi,
+    /^\s*P[áa]g\.\s*\d+(?:\s*de\s*\d+)?\s*$/gmi,
+
+    // Datas e horários comuns no rodapé do TEC
+    // BR: "12/05/2024", "12/05/2024 14:30", "12/05/2024 14:30:00"
+    /^\s*\d{1,2}\/\d{1,2}\/\d{2,4}(?:[\s,]+\d{1,2}:\d{2}(?::\d{2})?)?\s*$/gm,
+    // ISO: "2024-05-12 14:30"
+    /^\s*\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2}(?::\d{2})?)?\s*$/gm,
+
+    // Cabeçalho "Crimin. | Balística Forense" e variações de pasta
+    /^[A-Z][a-zçãéõ.]+\s*\|\s*[A-Z].*$/gm,
+
+    // Linhas com apenas pipes/separadores
+    /^\s*[\|\u2502\u2500\u2014_-]+\s*$/gm,
+
+    // "Ordenação:" residual
+    /^.*Ordenação\s*:.*$/gmi,
+
+    // QR code residue (sequências de chars não-alfanuméricos isolados)
+    /^[^a-zA-Z0-9çÇãÃõÕéÉáÁíÍóÓúÚâÂêÊîÎôÔûÛàÀèÈìÌòÒùÙ\s.,()\[\]:?!"'\/-]{3,}$/gm,
   ];
-  bodyKill.forEach(re=>{body=body.replace(re,'');});
-  // Collapse 3+ blank lines to 2
-  let cleaned = (header + body).replace(/\n{3,}/g,'\n\n');
-  // Trim spaces on each line
+
+  KILL_PATTERNS.forEach(re=>{ t = t.replace(re, ''); });
+
+  // Colapsa 3+ linhas em branco em 2
+  let cleaned = t.replace(/\n{3,}/g,'\n\n');
+  // Trim spaces em cada linha
   cleaned = cleaned.split('\n').map(l=>l.replace(/[ \t]+/g,' ').trim()).join('\n');
-  // Remove leading/trailing blank lines
+  // Remove linhas em branco do começo/fim
   cleaned = cleaned.replace(/^\s+|\s+$/g,'');
   return cleaned;
 }
@@ -22512,6 +22533,117 @@ Se NÃO encontrar nenhuma questão neste trecho, retorne []`;
   return allQuestions;
 }
 
+// V15.12.32 — Processa APENAS blocos faltantes (missingBlocks) com IA.
+// Usado quando parser local funcionou pra maioria mas alguns blocos ficaram
+// problemáticos. Cobra 1 crédito por bloco (action_id mesma do extract padrão),
+// mas é MUITO mais barato que rodar o PDF inteiro.
+//
+// Cada bloco é processado individualmente, com prompt focado em extrair UMA
+// questão (não múltiplas), pra reduzir custo e melhorar precisão.
+//
+// missingBlocks: [{url, rawText, index}]
+// opts: { maxCredits, shouldCancel, onProgress }
+// Retorna: array de questões extraídas (com {questionId, source} pra rastreio)
+async function extractMissingBlocksWithAI(missingBlocks, opts){
+  opts = opts || {};
+  const onProgress = opts.onProgress || (()=>{});
+  const maxCredits = (typeof opts.maxCredits === 'number' && opts.maxCredits > 0) ? opts.maxCredits : null;
+  const shouldCancel = typeof opts.shouldCancel === 'function' ? opts.shouldCancel : ()=>false;
+  const costPerBlock = (typeof AI_COSTS === 'object' && AI_COSTS.extract_questions_pdf != null)
+    ? AI_COSTS.extract_questions_pdf : 1;
+
+  if(!Array.isArray(missingBlocks) || missingBlocks.length === 0){
+    onProgress({phase:'done', total:0, processed:0, questionsFound:0, creditsUsed:0});
+    return [];
+  }
+
+  const sys = `Você recebe UM bloco de texto bruto de uma questão de concurso público (TEC Concursos).
+O bloco pode estar parcialmente cortado por quebra de página, com cabeçalhos/rodapés misturados.
+
+REGRAS:
+- Identifique APENAS UMA questão neste bloco (a mais provável)
+- Limpe ruídos: cabeçalhos "Tec Concursos", URLs, datas, paginação
+- Extraia: enunciado completo (mesmo se precisar reconstruir), alternativas (se MC), gabarito (letra ou C/E)
+- Tipo: 'CE' ou 'MC'
+- Se NÃO conseguir identificar uma questão clara, retorne null
+
+SAÍDA — JSON puro, SEM markdown:
+{
+  "enunciado": "texto completo da questão",
+  "kind": "CE" ou "MC",
+  "alternatives": [{"letter":"A","text":"..."}],  // só pra MC
+  "answer": "C" ou "A" ou null,
+  "banca": "..." ou null,
+  "ano": 2024 ou null,
+  "cargo": "..." ou null,
+  "disciplina": "..." ou null,
+  "topico": "..." ou null
+}
+
+Se NÃO conseguir extrair nada, retorne literalmente: null`;
+
+  const recovered = [];
+  const total = missingBlocks.length;
+
+  for(let i = 0; i < total; i++){
+    if(shouldCancel()){
+      onProgress({phase:'cancelled', total, processed:i, questionsFound:recovered.length, creditsUsed: i * costPerBlock});
+      return recovered;
+    }
+    if(maxCredits !== null && (i * costPerBlock) >= maxCredits){
+      onProgress({phase:'limit-reached', total, processed:i, questionsFound:recovered.length, creditsUsed: i * costPerBlock, limit: maxCredits});
+      return recovered;
+    }
+
+    onProgress({phase:'extracting', total, processed:i, questionsFound:recovered.length, creditsUsed: i * costPerBlock});
+
+    const block = missingBlocks[i];
+    try{
+      const body = {
+        model: DATA.config.model || 'claude-haiku-4-5-20251001',
+        max_tokens: 2000,
+        system: sys,
+        messages: [{role:'user', content: 'Extraia a questão deste bloco:\n\n' + block.rawText}],
+        action_id: 'extract_questions_pdf',
+        free_action: 'extract_questions_pdf'
+      };
+      const r = await apiGenerate(body);
+      if(!r.ok) throw await apiRespToError(r);
+      const d = await r.json();
+      if(d.usage){
+        logUsage({
+          model: body.model, kind:'extract', action:'extract_questions_pdf',
+          input: d.usage.input_tokens||0, output: d.usage.output_tokens||0,
+          cacheRead: d.usage.cache_read_input_tokens||0,
+          cacheCreation: d.usage.cache_creation_input_tokens||0
+        });
+      }
+      const txt = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+      const clean = txt.replace(/```json\n?|\n?```/g,'').trim();
+      if(clean === 'null' || clean === '') continue;
+      try{
+        const parsed = JSON.parse(clean);
+        if(parsed && parsed.enunciado){
+          // Adiciona metadata do bloco original
+          parsed.source = block.url;
+          const idMatch = (block.url||'').match(/\/questoes\/(\d+)/i);
+          if(idMatch) parsed.questionId = idMatch[1];
+          parsed._recoveredByAi = true;  // marca como recuperado por IA
+          recovered.push(parsed);
+        }
+      }catch(parseErr){
+        console.warn('[extract-missing] block '+i+' parse failed:', parseErr.message);
+      }
+    }catch(err){
+      console.warn('[extract-missing] block '+i+' failed:', err.message);
+      // Continua com próximos
+    }
+  }
+
+  onProgress({phase:'done', total, processed:total, questionsFound:recovered.length, creditsUsed: total * costPerBlock});
+  return recovered;
+}
+
 // V15.12.31 — Modal de confirmação de custo ANTES de processar PDF com IA.
 // Retorna Promise que resolve com:
 //   - { action: 'ai-full', maxCredits: N }  → processa via IA com limite N
@@ -22555,20 +22687,58 @@ function showImportCostModal({ estimate, parserResult, fileName }){
       parserBox.style.cssText = parserRecommended
         ? 'padding:.875rem 1rem;background:linear-gradient(135deg,rgba(16,185,129,.08),var(--surface));border:1px solid rgba(16,185,129,.30);border-left:3px solid var(--accent);border-radius:9px;margin-bottom:1rem'
         : 'padding:.875rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:1rem';
+
+      // V15.12.32 — Mostra comparação esperado/importado quando vem do TEC
+      // (parserResult agora pode ter totalUrls e suspiciousCount).
+      const totalUrls = parserResult.totalUrls || 0;
+      const suspicious = parserResult.suspiciousCount || 0;
+      const missingCount = parserResult.missingBlocks ? parserResult.missingBlocks.length : 0;
+      const allOk = totalUrls > 0 && parserResult.count === totalUrls && suspicious === 0;
+
+      let detailHtml = `O parser local detectou <b>${parserResult.count}</b> ${parserResult.count===1?'questão':'questões'}, <b>${parserResult.withGabarito}</b> com gabarito (${Math.round((parserResult.withGabarito/parserResult.count)*100)}%).`;
+
+      if(totalUrls > 0 && totalUrls > parserResult.count){
+        // Houve perda — sinaliza claramente
+        detailHtml = `<span style="color:var(--amber-text);font-weight:600">⚠ ${totalUrls} questões detectadas no PDF, ${parserResult.count} importadas com segurança</span> · <b>${missingCount}</b> ${missingCount===1?'precisa':'precisam'} de revisão ou IA.<br>Das ${parserResult.count} importadas, <b>${parserResult.withGabarito}</b> têm gabarito (${Math.round((parserResult.withGabarito/parserResult.count)*100)}%).`;
+      } else if(suspicious > 0){
+        detailHtml += `<br><span style="color:var(--amber-text)">⚠ ${suspicious} ${suspicious===1?'questão':'questões'} marcada${suspicious===1?'':'s'} como suspeita${suspicious===1?'':'s'} (precisa${suspicious===1?'':'m'} de revisão).</span>`;
+      } else if(parserRecommended){
+        detailHtml += '<br>Você pode salvar essas questões <b>sem gastar créditos</b>.';
+      }
+
       parserBox.innerHTML = `
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          ${svgIcon(parserRecommended?'check':'file-text',16)}
-          <b style="font-size:13.5px;color:${parserRecommended?'var(--accent-text)':'var(--text)'}">
-            ${parserRecommended?'Importação grátis disponível':'Parser local detectou algumas questões'}
+          ${svgIcon(allOk?'check':(missingCount>0?'flag':'file-text'),16)}
+          <b style="font-size:13.5px;color:${allOk?'var(--accent-text)':'var(--text)'}">
+            ${allOk?'Importação grátis disponível':(missingCount>0?'Parser local + IA seletiva':'Parser local detectou algumas questões')}
           </b>
         </div>
-        <div style="font-size:12.5px;color:var(--text2);line-height:1.5">
-          O parser local detectou <b>${parserResult.count}</b> ${parserResult.count===1?'questão':'questões'},
-          <b>${parserResult.withGabarito}</b> com gabarito (${Math.round((parserResult.withGabarito/parserResult.count)*100)}%).
-          ${parserRecommended ? '<br>Você pode salvar essas questões <b>sem gastar créditos</b>.' : ''}
-        </div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.55">${detailHtml}</div>
       `;
       m.appendChild(parserBox);
+
+      // V15.12.32 — Bloco DEDICADO de "IA seletiva" quando há blocos faltantes.
+      // Custo MUITO menor que rodar PDF inteiro.
+      if(missingCount > 0){
+        const seletivaBox = mk('div','icm-seletiva-box');
+        const costPerBlock = (typeof AI_COSTS === 'object' && AI_COSTS.extract_questions_pdf != null) ? AI_COSTS.extract_questions_pdf : 1;
+        const seletivaCost = missingCount * costPerBlock;
+        const balance = estimate.balance;
+        const seletivaInsuf = (balance != null && balance < seletivaCost);
+        seletivaBox.style.cssText = 'padding:.75rem 1rem;background:linear-gradient(135deg,rgba(124,92,255,.06),var(--surface));border:1px solid rgba(124,92,255,.25);border-left:3px solid var(--gralia-purple);border-radius:9px;margin-bottom:1rem';
+        seletivaBox.innerHTML = `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            ${svgIcon('sparkles',16)}
+            <b style="font-size:13px;color:var(--gralia-purple)">IA seletiva — só os trechos problemáticos</b>
+          </div>
+          <div style="font-size:12.5px;color:var(--text2);line-height:1.55">
+            Recuperar <b>${missingCount}</b> ${missingCount===1?'trecho':'trechos'} via IA (1 créd cada).
+            <b style="color:${seletivaInsuf?'var(--red)':'var(--gralia-purple)'}">Custo total: ${seletivaCost} créd</b>.
+            Mais barato que rodar IA no PDF inteiro (${estimate.totalCost} créd).
+          </div>
+        `;
+        m.appendChild(seletivaBox);
+      }
     }
 
     // ===== Bloco de estimativa de IA =====
@@ -22647,6 +22817,27 @@ function showImportCostModal({ estimate, parserResult, fileName }){
       }
       parserBtn.addEventListener('click',()=>{ closeModal(); resolve({ action:'parser-first' }); });
       btnRow.appendChild(parserBtn);
+
+      // V15.12.32 — Botão "IA seletiva" só pros missingBlocks
+      const missingCount = parserResult.missingBlocks ? parserResult.missingBlocks.length : 0;
+      if(missingCount > 0){
+        const costPerBlock = (typeof AI_COSTS === 'object' && AI_COSTS.extract_questions_pdf != null) ? AI_COSTS.extract_questions_pdf : 1;
+        const seletivaCost = missingCount * costPerBlock;
+        const balance = estimate.balance;
+        const seletivaInsuf = (balance != null && balance < seletivaCost);
+        const seletivaBtn = mkBtn(`✨ Salvar grátis + IA nos ${missingCount} faltantes (${seletivaCost} créd)`,'btn btn-sm btn-p');
+        seletivaBtn.style.background = 'var(--gralia-purple)';
+        seletivaBtn.style.borderColor = 'var(--gralia-purple)';
+        if(seletivaInsuf){
+          seletivaBtn.disabled = true;
+          seletivaBtn.title = 'Saldo insuficiente pra IA seletiva';
+        }
+        seletivaBtn.addEventListener('click',()=>{
+          closeModal();
+          resolve({ action:'parser-plus-ai-missing', maxCredits: seletivaCost });
+        });
+        btnRow.appendChild(seletivaBtn);
+      }
     }
 
     const aiBtn = mkBtn('Processar com IA','btn btn-sm' + (parserRecommended ? '' : ' btn-p'));
@@ -22689,110 +22880,294 @@ function parseImportedQuestions(raw){
   const hasTecUrls = /tecconcursos\.com\.br\/questoes\/\d+/i.test(text);
 
   if(hasTecUrls){
-    return parseTecFormat(text);
+    // V15.12.32: parseTecFormat agora retorna objeto {questions, totalUrls, ...}.
+    // Desempacota pra manter compatibilidade com callers antigos que esperam array.
+    const result = parseTecFormat(text);
+    return Array.isArray(result) ? result : (result.questions || []);
   }
   return parseSimpleFormat(text);
 }
 
+// V15.12.32 — Versão "rica" do parseImportedQuestions que retorna metadata.
+// Usada pelo handler de PDF do TEC pra mostrar "X/Y detectadas" e oferecer
+// IA pros blocos faltantes.
+function parseImportedQuestionsRich(raw){
+  if(!raw || !raw.trim()){
+    return { questions: [], totalUrls: 0, parsedCount: 0, missingBlocks: [] };
+  }
+  const text = raw.replace(/\r\n/g,'\n').trim();
+  const hasTecUrls = /tecconcursos\.com\.br\/questoes\/\d+/i.test(text);
+  if(hasTecUrls){
+    const result = parseTecFormat(text);
+    if(Array.isArray(result)){
+      return { questions: result, totalUrls: result.length, parsedCount: result.length, missingBlocks: [] };
+    }
+    return result;
+  }
+  // Formato simples: assume contagem = parsed (sem total esperado)
+  const qs = parseSimpleFormat(text);
+  return { questions: qs, totalUrls: qs.length, parsedCount: qs.length, missingBlocks: [] };
+}
+
 function parseTecFormat(text){
-  // Split by URLs — each URL starts a new question block
+  // V15.12.32 — REESCRITA pra retornar METADATA além das questões.
+  // Antes retornava só array de questões. Agora retorna estrutura:
+  //   { questions: [...], totalUrls: N, parsedCount: N, missingBlocks: [...] }
+  // Necessária pra UI poder dizer "25 detectadas, 21 parseadas com sucesso, 4 falharam".
+  // Compatibilidade: parseImportedQuestions desempacota e retorna só array
+  // (não quebra outros callers).
   const URL_RE = /(?:https?:\/\/)?(?:www\.)?tecconcursos\.com\.br\/questoes\/\d+/gi;
-  // Find all URL positions
   const matches = [];
   let m;
   while((m = URL_RE.exec(text)) !== null){
-    matches.push({start:m.index,end:m.index+m[0].length,url:m[0]});
+    matches.push({start: m.index, end: m.index + m[0].length, url: m[0]});
   }
-  if(matches.length===0)return parseSimpleFormat(text);
+  if(matches.length === 0){
+    // Fallback: sem URL → tenta parser simples
+    return { questions: parseSimpleFormat(text), totalUrls: 0, parsedCount: 0, missingBlocks: [] };
+  }
 
-  const out = [];
-  for(let i=0;i<matches.length;i++){
+  const questions = [];
+  const missingBlocks = [];  // blocos onde parseTecBlock retornou null
+  for(let i = 0; i < matches.length; i++){
     const blockStart = matches[i].end;
-    const blockEnd = i<matches.length-1 ? matches[i+1].start : text.length;
-    const block = text.slice(blockStart,blockEnd).trim();
-    const parsed = parseTecBlock(block, matches[i].url);
-    if(parsed)out.push(parsed);
+    const blockEnd = i < matches.length - 1 ? matches[i+1].start : text.length;
+    const blockRaw = text.slice(blockStart, blockEnd).trim();
+    const parsed = parseTecBlock(blockRaw, matches[i].url);
+    if(parsed){
+      // V15.12.32 — atribui flags de qualidade
+      parsed.quality = assessQuestionQuality(parsed);
+      questions.push(parsed);
+    } else {
+      // Bloco não parseado — salva pra UI poder oferecer "tentar IA neste"
+      missingBlocks.push({
+        url: matches[i].url,
+        rawText: blockRaw,
+        index: i  // posição original
+      });
+    }
   }
-  return out;
+
+  return {
+    questions,
+    totalUrls: matches.length,
+    parsedCount: questions.length,
+    missingBlocks
+  };
+}
+
+// V15.12.32 — Avalia qualidade de uma questão parseada.
+// Retorna { status: 'ok'|'suspicious'|'incomplete'|'no-answer', issues: [...] }
+// Status:
+//   - 'ok'           → tudo certo
+//   - 'suspicious'   → algo suspeito (começo em continuação, ruído etc.)
+//   - 'incomplete'   → enunciado muito curto ou MC sem alternativas
+//   - 'no-answer'    → falta gabarito
+function assessQuestionQuality(q){
+  const issues = [];
+  if(!q || !q.enunciado){
+    return { status: 'incomplete', issues: ['sem-enunciado'] };
+  }
+
+  // Sem gabarito
+  if(!q.answer){
+    issues.push('sem-gabarito');
+  }
+
+  // Enunciado muito curto
+  if(q.enunciado.length < 40){
+    issues.push('enunciado-curto');
+  }
+
+  // Começa com continuação (palavra minúscula ou conjunção)
+  if(_startsWithContinuation(q.enunciado)){
+    issues.push('comeco-em-continuacao');
+  }
+
+  // Ruído de cabeçalho/rodapé dentro do enunciado
+  // (regras parecidas com cleanTecPdfText, mas pra detecção)
+  const noisePatterns = [
+    /Tec\s*Concursos\s*-\s*Quest(?:õ|o)es/i,
+    /tecconcursos\.com\.br\/(?:cadernos|c|s)\//i,
+    /^\d{1,2}\/\d{1,2}\/\d{2,4}/m,
+    /Página\s+\d+\s+de\s+\d+/i,
+    /^\s*\d{1,3}\s*\/\s*\d{1,3}\s*$/m,
+  ];
+  if(noisePatterns.some(re => re.test(q.enunciado))){
+    issues.push('ruido-no-enunciado');
+  }
+
+  // MC sem alternativas suficientes
+  if(q.kind === 'MC'){
+    if(!q.alternatives || q.alternatives.length < 2){
+      issues.push('mc-sem-alternativas');
+    } else {
+      // Verifica se alternativas ficaram com texto vazio/curto
+      const badAlts = q.alternatives.filter(a => !a.text || a.text.length < 2);
+      if(badAlts.length > 0) issues.push('alternativas-incompletas');
+    }
+  }
+
+  // Determina status agregado
+  let status = 'ok';
+  if(issues.includes('sem-enunciado') || issues.includes('mc-sem-alternativas')){
+    status = 'incomplete';
+  } else if(issues.includes('sem-gabarito')){
+    status = 'no-answer';
+  } else if(issues.length > 0){
+    status = 'suspicious';
+  }
+
+  return { status, issues };
+}
+
+// V15.12.32 — Lista de palavras/prefixos de "continuação".
+// Se o enunciado começa com uma delas, provavelmente foi cortado pelo meio
+// (a parte inicial ficou em outro bloco/página). Marca como suspeito.
+const CONTINUATION_STARTS = [
+  // Conjunções
+  'e ', 'ou ', 'mas ', 'porém ', 'contudo ', 'todavia ', 'entretanto ',
+  // Preposições/contrações comuns
+  'para ', 'pela ', 'pelo ', 'pelas ', 'pelos ',
+  'do ', 'da ', 'dos ', 'das ', 'no ', 'na ', 'nos ', 'nas ',
+  'ao ', 'aos ', 'à ', 'às ',
+  'em ', 'com ', 'sem ', 'sobre ', 'sob ', 'entre ', 'após ', 'antes ',
+  'que ', 'cujo ', 'cuja ', 'cujos ', 'cujas ',
+  // Pronomes oblíquos / artigos só não bastam (podem começar frase legítima)
+  // Mas se vier com letra MINÚSCULA, é claramente continuação:
+];
+
+// V15.12.32 — Verifica se string começa com um padrão de continuação.
+// Heurística: se a 1ª palavra é minúscula E está na lista, é continuação.
+// Também: se começa com "..." ou letra minúscula isolada.
+function _startsWithContinuation(s){
+  if(!s) return false;
+  const trimmed = s.trim();
+  if(trimmed.length === 0) return false;
+  // Começa com "...", reticências
+  if(/^\.{2,}/.test(trimmed)) return true;
+  // Começa com letra minúscula? Em pt-BR enunciados sempre começam com maiúscula.
+  const firstChar = trimmed.charAt(0);
+  if(firstChar >= 'a' && firstChar <= 'z') return true;
+  if(firstChar >= 'à' && firstChar <= 'ÿ') return true;  // acentuadas minúsculas
+  // Começa com palavra de continuação (mesmo capitalizada — ex "Para a Administração...")
+  // Só marca se tem outras evidências (vamos ser menos agressivo aqui)
+  return false;
 }
 
 function parseTecBlock(block, sourceUrl){
-  const lines = block.split('\n').map(l=>l.trim());
-  // Line 0 (or first non-empty): banca/cabeçalho tipo "CEBRASPE (CESPE) - AJ (TJ PA)/..."
-  // Line 1: Matéria/tópico
-  // Line 2: Número da questão como "1) " ou "33) "
-  // Linhas seguintes: enunciado (até alternativas ou "Certo/Errado")
-  // Alternativas: "a) ..." até "e) ..."
-  // Ou: "Certo\nErrado"
-  // Última linha: "Gabarito: X"
+  const lines = block.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
+  if(lines.length < 2) return null;
 
-  // Extract metadata
-  const metaHeader = lines.find(l=>l&&/[A-Z]{3,}/.test(l)&&(l.includes('-')||l.includes('/'))) || '';
-  const metaTopic = lines[lines.indexOf(metaHeader)+1] || '';
+  // V15.12.32 — extrai ID da questão da URL pra metadata
+  const idMatch = (sourceUrl||'').match(/\/questoes\/(\d+)/i);
+  const questionId = idMatch ? idMatch[1] : null;
 
-  // Find "Gabarito:" line
+  // === Metadata: banca/cargo/matéria/assunto ===
+  // No TEC, depois da URL vem:
+  //   Linha 0: banca/cargo (UPPER + "-" ou "/")
+  //   Linha 1: matéria/tópico
+  //   Linha 2: opcionalmente "N)"
+  // V15.12.32: tornamos a detecção mais flexível (algumas linhas podem ter
+  //            sumido na limpeza/quebra de página)
+  const metaHeader = lines.find(l=>l && /[A-Z]{3,}/.test(l) && (l.includes('-')||l.includes('/'))) || '';
+  const metaIdx = metaHeader ? lines.indexOf(metaHeader) : -1;
+  const metaTopic = metaIdx >= 0 ? (lines[metaIdx+1] || '') : '';
+
+  // === Encontra "Gabarito:" ===
   const gabLineIdx = lines.findIndex(l=>/^gabarito\s*[:=]/i.test(l));
-  if(gabLineIdx===-1)return null;
+  if(gabLineIdx === -1) return null;
   const gabLine = lines[gabLineIdx];
   const gabMatch = gabLine.match(/gabarito\s*[:=]\s*(.+)$/i);
-  if(!gabMatch)return null;
+  if(!gabMatch) return null;
   const gabRaw = gabMatch[1].trim().toLowerCase();
 
-  // Determine question type: C/E or multiple choice
-  const hasCertoErrado = lines.slice(0,gabLineIdx).some(l=>/^certo$/i.test(l)) &&
-                         lines.slice(0,gabLineIdx).some(l=>/^errado$/i.test(l));
-  const ALT_RE = /^([a-e])\s*\)/i;
+  // === Detecta tipo da questão ===
+  const ALT_RE = /^\s*\(?([a-e])\s*[\)\.]\s*/i;
+  const linesBeforeGab = lines.slice(0, gabLineIdx);
+  const hasCertoErrado = linesBeforeGab.some(l=>/^certo$/i.test(l)) &&
+                         linesBeforeGab.some(l=>/^errado$/i.test(l));
   const altLineIdxs = [];
-  for(let i=0;i<gabLineIdx;i++){
-    if(ALT_RE.test(lines[i]))altLineIdxs.push(i);
+  for(let i = 0; i < gabLineIdx; i++){
+    if(ALT_RE.test(lines[i])) altLineIdxs.push(i);
   }
 
-  // Find "N)" question number line to locate enunciado start
-  const numLineIdx = lines.findIndex(l=>/^\d+\s*\)\s*$/.test(l)||/^\d+\s*\)/.test(l));
-  const enunStart = numLineIdx!==-1 ? numLineIdx+1 : 0;
+  // === Determina onde começa o enunciado ===
+  // V15.12.32 — REESCRITA da heurística.
+  // Antes: buscava `^N)` (linha com número da questão). Quando essa linha
+  // não existia (cabeçalho cortado), assumia enunStart=0 → pegava texto de
+  // continuação da página anterior.
+  // Agora: começa logo APÓS o último elemento de cabeçalho conhecido (banca,
+  // matéria, ou número da questão), o que vier por último.
+  let enunStart = 0;
+  let inlineQuestionNumber = null;  // se "N)" estiver inline com texto, salva pra prepend
 
-  if(hasCertoErrado && altLineIdxs.length===0){
-    // C/E question
-    const certoIdx = lines.findIndex((l,i)=>i>=enunStart&&/^certo$/i.test(l));
-    const enunEnd = certoIdx!==-1 ? certoIdx : gabLineIdx;
-    const enunciado = lines.slice(enunStart,enunEnd).filter(Boolean).join('\n').trim();
-    const answer = gabRaw.startsWith('c')||gabRaw.startsWith('v')?'C':'E';
-    if(enunciado.length<20)return null;
+  // (a) Tenta achar "N)" tradicional
+  // CASO 1: linha SÓ tem "N)" (ex: "1)") → enunStart = próxima linha
+  const numOnlyIdx = lines.findIndex(l=>/^\d+\s*\)\s*$/.test(l));
+  // CASO 2: linha começa com "N) texto..." → enunStart = essa linha, MAS removemos "N)"
+  const numInlineIdx = lines.findIndex(l=>/^\d+\s*\)\s+\S/.test(l));
+
+  if(numOnlyIdx !== -1){
+    enunStart = numOnlyIdx + 1;
+  } else if(numInlineIdx !== -1){
+    enunStart = numInlineIdx;
+    inlineQuestionNumber = numInlineIdx;  // marca pra strip do "N) " no enunciado
+  } else if(metaIdx !== -1){
+    // (b) Sem "N)", começa depois da linha de matéria (que é metaIdx+1)
+    if(metaTopic && metaTopic.length < 100 && !_startsWithContinuation(metaTopic)){
+      enunStart = metaIdx + 2;
+    } else {
+      enunStart = metaIdx + 1;
+    }
+  } else {
+    // (c) Sem nenhum cabeçalho identificado — começa do início (pode ser bloco truncado)
+    enunStart = 0;
+  }
+
+  // V15.12.32 — helper: remove "N) " do começo do enunciado se inlineQuestionNumber está setado
+  const _stripInlineNum = (s) => {
+    if(inlineQuestionNumber === null || enunStart !== inlineQuestionNumber) return s;
+    return s.replace(/^\s*\d+\s*\)\s*/, '');
+  };
+
+  // === Monta enunciado ===
+  if(hasCertoErrado && altLineIdxs.length === 0){
+    // C/E
+    const certoIdx = lines.findIndex((l,i)=>i>=enunStart && /^certo$/i.test(l));
+    const enunEnd = certoIdx !== -1 ? certoIdx : gabLineIdx;
+    let enunciado = lines.slice(enunStart, enunEnd).join('\n').trim();
+    enunciado = _stripInlineNum(enunciado);
+    const answer = (gabRaw.startsWith('c') || gabRaw.startsWith('v')) ? 'C' : 'E';
+    if(enunciado.length < 20) return null;
     return {
-      enunciado,
-      answer,
-      kind:'CE',
-      meta:metaHeader,
-      topic:metaTopic,
-      source:sourceUrl
+      enunciado, answer, kind:'CE',
+      meta: metaHeader, topic: metaTopic, source: sourceUrl,
+      questionId
     };
   }
 
-  if(altLineIdxs.length>=2){
-    // Multiple choice
+  if(altLineIdxs.length >= 2){
+    // MC
     const firstAltIdx = altLineIdxs[0];
-    const enunciado = lines.slice(enunStart,firstAltIdx).filter(Boolean).join('\n').trim();
-    // Extract alternatives
+    let enunciado = lines.slice(enunStart, firstAltIdx).join('\n').trim();
+    enunciado = _stripInlineNum(enunciado);
     const alts = [];
-    for(let i=0;i<altLineIdxs.length;i++){
+    for(let i = 0; i < altLineIdxs.length; i++){
       const idx = altLineIdxs[i];
-      const next = i<altLineIdxs.length-1 ? altLineIdxs[i+1] : gabLineIdx;
-      const altText = lines.slice(idx,next).filter(Boolean).join(' ').trim();
-      const letterMatch = altText.match(/^([a-e])\s*\)\s*(.+)$/i);
+      const next = i < altLineIdxs.length - 1 ? altLineIdxs[i+1] : gabLineIdx;
+      const altText = lines.slice(idx, next).join(' ').trim();
+      const letterMatch = altText.match(/^\s*\(?([a-e])\s*[\)\.]\s*(.+)$/i);
       if(letterMatch){
-        alts.push({letter:letterMatch[1].toUpperCase(),text:letterMatch[2].trim()});
+        alts.push({letter: letterMatch[1].toUpperCase(), text: letterMatch[2].trim()});
       }
     }
     const answerLetter = gabRaw.charAt(0).toUpperCase();
-    if(enunciado.length<20||alts.length<2)return null;
+    if(enunciado.length < 20 || alts.length < 2) return null;
     return {
-      enunciado,
-      answer:answerLetter,
-      kind:'MC',
-      alternatives:alts,
-      meta:metaHeader,
-      topic:metaTopic,
-      source:sourceUrl
+      enunciado, answer: answerLetter, kind:'MC', alternatives: alts,
+      meta: metaHeader, topic: metaTopic, source: sourceUrl,
+      questionId
     };
   }
 
@@ -25955,21 +26330,28 @@ function renderImportedImport(wrap){
         // ---------- ETAPA 2: Tenta parser LOCAL (grátis) primeiro ----------
         // V15.12.31: pipeline parser-first. Se for TEC ou padrão reconhecível,
         // pode salvar tudo SEM gastar crédito.
+        // V15.12.32: usa parseImportedQuestionsRich pra obter metadata
+        // (totalUrls, missingBlocks) e poder oferecer IA seletiva nos faltantes.
         let parserResult = null;
         try{
           // Se detecta TEC, limpa cabeçalhos antes
           const hasTec = /tecconcursos\.com\.br\/questoes\/\d+/i.test(text);
           const cleanText = hasTec ? cleanTecPdfText(text) : text;
-          const localQs = parseImportedQuestions(cleanText);
-          const withGab = (localQs||[]).filter(q=>q.answer).length;
+          const rich = parseImportedQuestionsRich(cleanText);
+          const localQs = rich.questions || [];
+          const withGab = localQs.filter(q=>q.answer).length;
+          const suspiciousCount = localQs.filter(q => q.quality && q.quality.status === 'suspicious').length;
           parserResult = {
-            count: (localQs||[]).length,
+            count: localQs.length,
             withGabarito: withGab,
-            questions: localQs || [],
+            suspiciousCount,
+            totalUrls: rich.totalUrls || 0,
+            missingBlocks: rich.missingBlocks || [],
+            questions: localQs,
             cleanText
           };
         }catch(_){
-          parserResult = { count: 0, withGabarito: 0, questions: [], cleanText: text };
+          parserResult = { count: 0, withGabarito: 0, suspiciousCount: 0, totalUrls: 0, missingBlocks: [], questions: [], cleanText: text };
         }
 
         // ---------- ETAPA 3: Estimativa de custo IA ----------
@@ -25995,24 +26377,109 @@ function renderImportedImport(wrap){
           return;
         }
 
+        // V15.12.32 — Mapper compartilhado: questão parseada → item do preview.
+        // Preserva quality (status), questionId (URL TEC), bandeira de IA seletiva.
+        const mapQToPreview = (q, opts)=>({
+          enunciado: q.enunciado,
+          kind: q.kind || 'CE',
+          alternatives: q.alternatives || [],
+          answer: q.answer || null,
+          meta: q.meta || null,
+          sourceUrl: q.source || null,
+          topicHint: q.topic || null,
+          questionId: q.questionId || null,
+          quality: q.quality || null,
+          recoveredByAi: !!q._recoveredByAi || (opts && opts.recoveredByAi) || false,
+          disciplineHint: q.disciplina || null,  // só aparece em q da IA
+          needsAnswer: q.needsAnswer || false
+        });
+
         if(decision.action === 'parser-first'){
           // Salva resultado do parser local SEM gastar crédito
           ST.importInput.text = '';
           ST.importAiExtractedCount = 0;
-          ST.importPreview = parserResult.questions.map(q=>({
-            enunciado: q.enunciado,
-            kind: q.kind || 'CE',
-            alternatives: q.alternatives || [],
-            answer: q.answer || null,
-            meta: q.meta || null,
-            sourceUrl: q.source || null,
-            topicHint: q.topic || null,
-            needsAnswer: q.needsAnswer || false
-          }));
+          ST.importPreview = parserResult.questions.map(q=>mapQToPreview(q));
           // Cacheia (parser-first não consome IA, mas evita re-rodar parser)
           if(fp) _pdfImportCache.set(fp, { rawText: text, parsedLocal: ST.importPreview.slice(), aiQuestions: null });
           const withGab = ST.importPreview.filter(q=>q.answer).length;
-          showToast(`✓ ${parserResult.count} questões extraídas pelo parser local (grátis) · ${withGab} com gabarito.`);
+          const okCount = ST.importPreview.filter(q=> !q.quality || q.quality.status === 'ok').length;
+          const suspCount = ST.importPreview.length - okCount;
+          let msg = `✓ ${parserResult.count} questões extraídas pelo parser local (grátis) · ${withGab} com gabarito`;
+          if(parserResult.totalUrls > parserResult.count){
+            msg += ` · ⚠ ${parserResult.totalUrls - parserResult.count} ${parserResult.totalUrls - parserResult.count === 1 ? 'questão não pôde ser parseada' : 'questões não puderam ser parseadas'}`;
+          }
+          if(suspCount > 0){
+            msg += ` · ${suspCount} ${suspCount===1?'precisa':'precisam'} revisão`;
+          }
+          showToast(msg);
+          render();
+          return;
+        }
+
+        // V15.12.32 — Pipeline novo: parser local + IA APENAS pros faltantes
+        if(decision.action === 'parser-plus-ai-missing'){
+          const seletivaCost = decision.maxCredits;
+          if(QUOTA.remaining != null && QUOTA.remaining < seletivaCost){
+            alert(`Saldo atual (${QUOTA.remaining}) menor que o custo da IA seletiva (${seletivaCost}).`);
+            return;
+          }
+          ST.importPdfLoading = true;
+          ST.importPdfProgress = `Recuperando ${parserResult.missingBlocks.length} trecho(s) com IA...`;
+          ST.importCancelRequested = false;
+          render();
+
+          let recovered = [];
+          try{
+            recovered = await extractMissingBlocksWithAI(parserResult.missingBlocks, {
+              maxCredits: seletivaCost,
+              shouldCancel: ()=> !!ST.importCancelRequested,
+              onProgress: (p)=>{
+                const el = document.getElementById('pdf-import-progress');
+                if(!el) return;
+                if(p.phase === 'extracting'){
+                  el.innerHTML = `IA recuperando... <b>${p.processed}/${p.total}</b> trechos · <b>${p.questionsFound}</b> recuperados · <b>${p.creditsUsed||0}/${seletivaCost}</b> créd`;
+                } else if(p.phase === 'cancelled'){
+                  el.innerHTML = `⏹ Cancelado em ${p.processed}/${p.total} · <b>${p.questionsFound}</b> recuperados`;
+                } else if(p.phase === 'limit-reached'){
+                  el.innerHTML = `⚠ Limite atingido em ${p.processed}/${p.total} · <b>${p.questionsFound}</b> recuperados`;
+                } else if(p.phase === 'done'){
+                  el.innerHTML = `✓ ${p.questionsFound} ${p.questionsFound===1?'trecho recuperado':'trechos recuperados'}`;
+                }
+              }
+            });
+            // Atribui qualidade (recuperadas pela IA já têm enunciado completo,
+            // mas verificamos pra marcar suspeitas se ainda houver problema)
+            recovered.forEach(q=>{ q.quality = assessQuestionQuality(q); });
+          }catch(err){
+            ST.importPdfLoading = false;
+            ST.importPdfProgress = null;
+            ST.importCancelRequested = false;
+            alert('Erro na IA seletiva: ' + (err.message || err));
+            render();
+            return;
+          }
+
+          // Combina: parser local + recuperadas pela IA
+          ST.importInput.text = '';
+          ST.importAiExtractedCount = recovered.length;
+          ST.importPreview = [
+            ...parserResult.questions.map(q=>mapQToPreview(q)),
+            ...recovered.map(q=>mapQToPreview(q, {recoveredByAi:true}))
+          ];
+          if(fp) _pdfImportCache.set(fp, { rawText: text, parsedLocal: parserResult.questions.slice(), aiQuestions: ST.importPreview.slice() });
+
+          ST.importPdfLoading = false;
+          ST.importPdfProgress = null;
+          ST.importCancelRequested = false;
+
+          const withGab = ST.importPreview.filter(q=>q.answer).length;
+          const okCount = ST.importPreview.filter(q=> !q.quality || q.quality.status === 'ok').length;
+          const suspCount = ST.importPreview.length - okCount;
+          const stillMissing = parserResult.missingBlocks.length - recovered.length;
+          let msg = `✓ ${ST.importPreview.length} questões total · ${parserResult.count} parser + ${recovered.length} IA · ${withGab} com gabarito`;
+          if(stillMissing > 0) msg += ` · ⚠ ${stillMissing} ainda ${stillMissing===1?'falta':'faltam'}`;
+          if(suspCount > 0) msg += ` · ${suspCount} ${suspCount===1?'precisa':'precisam'} revisão`;
+          showToast(msg);
           render();
           return;
         }
@@ -26049,6 +26516,9 @@ function renderImportedImport(wrap){
             }
           });
 
+          // V15.12.32: atribui quality em cada questão
+          aiQuestions.forEach(q=>{ q.quality = assessQuestionQuality(q); });
+
           // Mapeia pra formato local
           ST.importInput.text = '';
           ST.importAiExtractedCount = aiQuestions.length;
@@ -26059,7 +26529,9 @@ function renderImportedImport(wrap){
             answer: q.answer || null,
             meta: [q.banca, q.ano, q.cargo, q.disciplina, q.topico].filter(Boolean).join(' · ') || null,
             disciplineHint: q.disciplina,
-            topicHint: q.topico
+            topicHint: q.topico,
+            quality: q.quality || null,
+            recoveredByAi: true
           }));
 
           // Cacheia resultado pra evitar reprocessamento acidental do mesmo arquivo
@@ -26116,6 +26588,10 @@ function renderImportedImport(wrap){
           const cleaned = cleanTecPdfText(text);
           ST.importInput.text = cleaned;
           ST.importPreview = parseImportedQuestions(cleaned);
+          // V15.12.32: garante quality em cada questão
+          (ST.importPreview||[]).forEach(q=>{
+            if(!q.quality) q.quality = assessQuestionQuality(q);
+          });
           ST.importPdfLoading = false;
           ST.importPdfProgress = null;
           const parsed = ST.importPreview.filter(q=>q.answer).length;
@@ -26159,8 +26635,12 @@ function renderImportedImport(wrap){
     ta.addEventListener('input',e=>{
       ST.importInput.text=e.target.value;
       ST.importPreview=parseImportedQuestions(e.target.value);
+      // V15.12.32: atribui quality em cada questão parseada
+      (ST.importPreview||[]).forEach(q=>{
+        if(!q.quality) q.quality = assessQuestionQuality(q);
+      });
       renderPreviewInto(previewArea);
-      saveBtn.disabled = ST.importPreview.filter(q=>q.answer).length===0;
+      updateSaveBtn();
     });
     card.appendChild(ta);
   } else if(mode === 'pdf-ai' && ST.importAiExtractedCount > 0){
@@ -26220,28 +26700,115 @@ function renderImportedImport(wrap){
       }
       container.appendChild(p);return;
     }
+    // V15.12.32 — Resumo enriquecido com contagem de status
     const parsed = preview.filter(q=>q.answer).length;
     const pending = preview.filter(q=>q.needsAnswer).length;
     const mc = preview.filter(q=>q.kind==='MC').length;
     const ce = preview.filter(q=>q.kind==='CE'&&q.answer).length;
-    const summary = mk('p','txt2');summary.style.marginBottom='.5rem';
-    summary.innerHTML = `<b>${parsed}</b> ${parsed===1?'questão':'questões'} com gabarito${ce>0?` · <span style="color:var(--accent-text)">${ce} C/E</span>`:''}${mc>0?` · <span style="color:var(--blue-text)">${mc} múltipla escolha</span>`:''}${pending>0?` · <span style="color:var(--amber-text)">${pending} sem gabarito</span>`:''}`;
+    const okCount = preview.filter(q=>{
+      const st = q.quality && q.quality.status;
+      return !st || st === 'ok';
+    }).length;
+    const suspCount = preview.filter(q=>q.quality && q.quality.status === 'suspicious').length;
+    const incCount = preview.filter(q=>q.quality && q.quality.status === 'incomplete').length;
+    const recCount = preview.filter(q=>q.recoveredByAi).length;
+
+    const summary = mk('div','import-preview-summary');
+    summary.style.cssText='margin-bottom:.75rem;padding:.75rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px';
+    let summaryHtml = `<div style="font-size:13px;color:var(--text);margin-bottom:4px"><b>${preview.length}</b> ${preview.length===1?'questão no preview':'questões no preview'}`;
+    if(recCount > 0) summaryHtml += ` · <span style="color:var(--gralia-purple)">${recCount} recuperada${recCount===1?'':'s'} pela IA</span>`;
+    summaryHtml += `</div>`;
+    summaryHtml += `<div style="font-size:12px;color:var(--text2);display:flex;gap:12px;flex-wrap:wrap">`;
+    if(okCount > 0) summaryHtml += `<span><b style="color:var(--accent-text)">${okCount}</b> OK</span>`;
+    if(suspCount > 0) summaryHtml += `<span><b style="color:var(--amber-text)">${suspCount}</b> suspeita${suspCount===1?'':'s'}</span>`;
+    if(incCount > 0) summaryHtml += `<span><b style="color:var(--red)">${incCount}</b> incompleta${incCount===1?'':'s'}</span>`;
+    if(pending > 0) summaryHtml += `<span><b style="color:var(--amber-text)">${pending}</b> sem gabarito</span>`;
+    if(parsed > 0) summaryHtml += `<span><b>${parsed}</b> com gabarito</span>`;
+    if(ce > 0) summaryHtml += `<span><b style="color:var(--accent-text)">${ce}</b> C/E</span>`;
+    if(mc > 0) summaryHtml += `<span><b style="color:var(--blue-text)">${mc}</b> MC</span>`;
+    summaryHtml += `</div>`;
+    if(suspCount + incCount > 0){
+      summaryHtml += `<div style="font-size:11.5px;color:var(--text3);margin-top:6px;line-height:1.45">⚠ Questões suspeitas/incompletas <b>não são salvas</b> automaticamente. Revise abaixo e marque como OK quando estiverem prontas.</div>`;
+    }
+    summary.innerHTML = summaryHtml;
     container.appendChild(summary);
+
     preview.forEach((q,i)=>{
       const it = mk('div','card card-pad');it.style.marginBottom='.5rem';
+      // V15.12.32 — Borda esquerda colorida baseada na qualidade
+      const qStatus = q.quality && q.quality.status;
+      if(qStatus === 'suspicious'){
+        it.style.borderLeft = '3px solid var(--amber)';
+      } else if(qStatus === 'incomplete'){
+        it.style.borderLeft = '3px solid var(--red)';
+      } else if(qStatus === 'ok' || !qStatus){
+        it.style.borderLeft = '3px solid var(--accent)';
+      }
+
       const headRow = mk('div','flex');headRow.style.cssText='gap:6px;margin-bottom:4px;flex-wrap:wrap;align-items:center';
       const num = mk('span','txt3');num.textContent='Q'+(i+1);
       headRow.appendChild(num);
+
+      // V15.12.32 — ID da questão TEC
+      if(q.questionId){
+        const idTag = mk('span','txt3');idTag.style.cssText='font-size:10.5px;color:var(--text3)';
+        idTag.textContent = '#' + q.questionId;
+        headRow.appendChild(idTag);
+      }
+
       if(q.kind==='MC'){
         const k = mk('span','badge b-info');k.textContent='Múltipla escolha';headRow.appendChild(k);
       } else {
         const k = mk('span','badge b-info');k.textContent='C/E';headRow.appendChild(k);
       }
+
+      // V15.12.32 — Badge de qualidade
+      if(qStatus === 'suspicious'){
+        const qb = mk('span','badge');qb.style.cssText='background:rgba(245,158,11,.15);color:var(--amber-text);border-color:rgba(245,158,11,.30)';
+        qb.textContent = '⚠ Suspeita';
+        qb.title = (q.quality.issues || []).join(', ');
+        headRow.appendChild(qb);
+      } else if(qStatus === 'incomplete'){
+        const qb = mk('span','badge');qb.style.cssText='background:rgba(232,76,76,.15);color:var(--red-text);border-color:rgba(232,76,76,.30)';
+        qb.textContent = '✗ Incompleta';
+        qb.title = (q.quality.issues || []).join(', ');
+        headRow.appendChild(qb);
+      } else if(qStatus === 'ok'){
+        const qb = mk('span','badge');qb.style.cssText='background:rgba(16,185,129,.12);color:var(--accent-text);border-color:rgba(16,185,129,.25)';
+        qb.textContent = '✓ OK';
+        headRow.appendChild(qb);
+      }
+
+      // V15.12.32 — Badge "Recuperada pela IA"
+      if(q.recoveredByAi){
+        const rb = mk('span','badge');rb.style.cssText='background:rgba(124,92,255,.12);color:var(--gralia-purple);border-color:rgba(124,92,255,.25)';
+        rb.textContent = '✨ IA';
+        headRow.appendChild(rb);
+      }
+
       if(q.meta){
         const mt = mk('span','txt3');mt.style.fontSize='10.5px';mt.textContent=q.meta.slice(0,60)+(q.meta.length>60?'...':'');
         headRow.appendChild(mt);
       }
       it.appendChild(headRow);
+
+      // V15.12.32 — Lista de issues quando suspeita/incompleta
+      if((qStatus === 'suspicious' || qStatus === 'incomplete') && q.quality.issues && q.quality.issues.length > 0){
+        const issuesEl = mk('div');issuesEl.style.cssText='margin:.25rem 0;padding:6px 8px;background:rgba(245,158,11,.06);border-radius:4px;font-size:11px;color:var(--text2);line-height:1.45';
+        const issueLabels = {
+          'sem-enunciado': 'sem enunciado',
+          'sem-gabarito': 'sem gabarito',
+          'enunciado-curto': 'enunciado muito curto',
+          'comeco-em-continuacao': 'começa pelo meio (provável corte)',
+          'ruido-no-enunciado': 'cabeçalho/rodapé no enunciado',
+          'mc-sem-alternativas': 'múltipla escolha sem alternativas',
+          'alternativas-incompletas': 'alternativas incompletas'
+        };
+        const labels = q.quality.issues.map(iss => issueLabels[iss] || iss);
+        issuesEl.innerHTML = '<b>Problemas detectados:</b> ' + labels.join(' · ');
+        it.appendChild(issuesEl);
+      }
+
       const qt = mk('p','txt');qt.style.cssText='margin:.25rem 0;white-space:pre-wrap';qt.textContent=q.enunciado;
       it.appendChild(qt);
       // Show alternatives for MC
@@ -26255,30 +26822,88 @@ function renderImportedImport(wrap){
         });
         it.appendChild(altWrap);
       }
+
+      // Action row: gabarito badge + actions
+      const actionRow = mk('div');actionRow.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:.25rem';
       if(q.answer){
         const bg = mk('span','badge '+(q.kind==='MC'||q.answer==='C'?'b-ok':'b-err'));
         bg.textContent='Gabarito: '+q.answer;
-        it.appendChild(bg);
+        actionRow.appendChild(bg);
       } else if(q.needsAnswer){
-        const ar = mk('div','flex');ar.style.cssText='gap:6px;margin-top:.5rem';
         const lb = mk('span','txt2');lb.textContent='Definir:';
         const bc = mkBtn('Certo','btn btn-sm');
-        bc.addEventListener('click',()=>{q.answer='C';delete q.needsAnswer;renderPreviewInto(container);saveBtn.disabled=false;});
+        bc.addEventListener('click',()=>{q.answer='C';delete q.needsAnswer;renderPreviewInto(container);updateSaveBtn();});
         const be = mkBtn('Errado','btn btn-sm');
-        be.addEventListener('click',()=>{q.answer='E';delete q.needsAnswer;renderPreviewInto(container);saveBtn.disabled=false;});
-        ar.appendChild(lb);ar.appendChild(bc);ar.appendChild(be);
-        it.appendChild(ar);
+        be.addEventListener('click',()=>{q.answer='E';delete q.needsAnswer;renderPreviewInto(container);updateSaveBtn();});
+        actionRow.appendChild(lb);actionRow.appendChild(bc);actionRow.appendChild(be);
       }
+
+      // V15.12.32 — Botão "Marcar como OK" pra revisar suspeita manualmente
+      if(qStatus === 'suspicious' || qStatus === 'incomplete'){
+        const okBtn = mkBtn('Marcar como OK','btn btn-sm');
+        okBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);font-size:11px;padding:4px 10px';
+        okBtn.title = 'Após revisar, marca esta questão como pronta pra salvar';
+        okBtn.addEventListener('click',()=>{
+          q.quality = { status: 'ok', issues: [], _manualOverride: true };
+          renderPreviewInto(container);
+          updateSaveBtn();
+        });
+        actionRow.appendChild(okBtn);
+
+        // Botão "Remover" pra incompletas
+        const rmBtn = mkBtn('Remover','btn btn-sm');
+        rmBtn.style.cssText = 'border-color:var(--red);color:var(--red);font-size:11px;padding:4px 10px';
+        rmBtn.addEventListener('click',()=>{
+          ST.importPreview = ST.importPreview.filter(x=>x !== q);
+          renderPreviewInto(container);
+          updateSaveBtn();
+        });
+        actionRow.appendChild(rmBtn);
+      }
+
+      it.appendChild(actionRow);
       container.appendChild(it);
     });
   }
 
+  // V15.12.32 — Helper pra recalcular estado do saveBtn (chamado após mudanças no preview)
+  function updateSaveBtn(){
+    if(!saveBtn) return;
+    const valid = (ST.importPreview||[]).filter(q=>{
+      if(!q.answer) return false;
+      const st = q.quality && q.quality.status;
+      return !st || st === 'ok';
+    });
+    saveBtn.disabled = valid.length === 0;
+    // Atualiza label se tem questões a serem ignoradas
+    const total = (ST.importPreview||[]).filter(q=>q.answer).length;
+    const ignored = total - valid.length;
+    if(ignored > 0){
+      saveBtn.textContent = `Salvar ${valid.length} OK no banco → (${ignored} ignorada${ignored===1?'':'s'})`;
+    } else {
+      saveBtn.textContent = `Salvar ${valid.length} no banco →`;
+    }
+  }
+
   const saveBtn = mkBtn('Salvar no banco →','btn btn-p');saveBtn.style.marginTop='.75rem';
-  // V14: Habilita saveBtn se já tem preview com gabarito (caso da extração via IA)
-  saveBtn.disabled = (ST.importPreview||[]).filter(q=>q.answer).length === 0;
+  // V15.12.32: estado inicial do botão considera quality (não só answer)
+  // updateSaveBtn será chamado abaixo após preview ser populado
   saveBtn.addEventListener('click',()=>{
-    const valid = (ST.importPreview||[]).filter(q=>q.answer);
-    if(valid.length===0){alert('Nenhuma questão com gabarito válido.');return;}
+    // V15.12.32: bloqueia salvamento de questões com status suspicious/incomplete.
+    // Usuário precisa clicar "Marcar como OK" pra validar manualmente.
+    const valid = (ST.importPreview||[]).filter(q=>{
+      if(!q.answer) return false;
+      const st = q.quality && q.quality.status;
+      return !st || st === 'ok';
+    });
+    const totalWithGab = (ST.importPreview||[]).filter(q=>q.answer).length;
+    const blocked = totalWithGab - valid.length;
+    if(valid.length===0){alert('Nenhuma questão pronta pra salvar. Revise as suspeitas/incompletas e clique em "Marcar como OK", ou remova-as.');return;}
+    if(blocked > 0){
+      if(!confirm(`Vou salvar ${valid.length} questão(ões) OK. ${blocked} suspeita(s)/incompleta(s) ${blocked===1?'será ignorada':'serão ignoradas'}.\n\nContinuar?`)){
+        return;
+      }
+    }
     // V13: Deduplicação por hash do enunciado.
     const norm = s => (s||'').toLowerCase().replace(/\s+/g,' ').trim();
     const existingHashes = new Set(
@@ -26368,9 +26993,16 @@ function renderImportedImport(wrap){
 
   if(ST.importInput.text){
     ST.importPreview = parseImportedQuestions(ST.importInput.text);
+    // V15.12.32: re-atribui quality em cada questão (pode estar faltando se vem do parser local antigo)
+    (ST.importPreview||[]).forEach(q=>{
+      if(!q.quality) q.quality = assessQuestionQuality(q);
+    });
     renderPreviewInto(previewArea);
-    saveBtn.disabled = ST.importPreview.filter(q=>q.answer).length===0;
-  } else renderPreviewInto(previewArea);
+    updateSaveBtn();
+  } else {
+    renderPreviewInto(previewArea);
+    updateSaveBtn();
+  }
 
   return wrap;
 }
