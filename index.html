@@ -201,6 +201,36 @@ body.sidebar-collapsed .app-sidebar-search-btn span:first-child{font-size:14px}
    removida — agora o padding vai na .page (não no #app), e a regra equivalente
    pra estado colapsado está dentro do @media(min-width:1100px). */
 
+/* V15.12.22 — Mascote no rodapé direito da sidebar. Versão MAIOR e visível
+   pra apreciar o detalhe da gralha-azul (separado da logo principal que tem
+   nome). Empurrado pro fim da sidebar com margin-top:auto + alinhado à
+   direita. Oculto quando sidebar collapsed (vira só ícones). */
+.app-sidebar-mascot{
+  margin-top:auto;          /* empurra pro rodapé */
+  display:flex;
+  justify-content:flex-end;  /* alinha à direita */
+  align-items:flex-end;
+  padding:12px 14px 4px;
+  pointer-events:auto;
+}
+.sidebar-mascot{
+  height:84px;
+  width:auto;
+  max-width:96px;
+  object-fit:contain;
+  opacity:.92;
+  transition:opacity .15s, transform .25s ease;
+  cursor:default;
+  user-select:none;
+  -webkit-user-drag:none;
+}
+.sidebar-mascot:hover{opacity:1;transform:translateY(-2px) rotate(-2deg)}
+.sidebar-mascot-dark{display:none}
+:root[data-theme="dark"] .sidebar-mascot-light{display:none}
+:root[data-theme="dark"] .sidebar-mascot-dark{display:block}
+/* Quando sidebar collapsed, mascote some (rodapé fica só com ícones) */
+body.sidebar-collapsed .app-sidebar-mascot{display:none}
+
 /* Toggle button */
 /* V15.12.1: top de 13 → 25px pra alinhar verticalmente com o centro do
    botão "Buscar tudo". Cálculo: sidebar tem padding-top:14px, search-btn
@@ -430,6 +460,10 @@ body.srs-focus-mode #app .page{padding-left:0 !important}
 .bt-cta{margin-top:.75rem;padding-top:.625rem;border-top:1px solid var(--border);font-size:11.5px;color:var(--gralia-purple);font-weight:700;text-align:right}
 @media(max-width:640px){.brand-tooltip{display:none}}
 .brand-bird{height:44px;width:auto;display:block;flex-shrink:0;margin-right:-2px} /* V15.12.9: +10% (40→44px) */
+/* V15.12.22: logo do topbar agora contém o nome — span "GRALIA" fica oculto (só fallback se img falhar) */
+.brand .brand-bird{height:48px;max-width:200px;object-fit:contain}
+.brand .brand-name{display:none}
+.brand .brand-name.brand-fallback.show{display:inline-flex}
 .brand-bird-dark{display:none}
 :root[data-theme="dark"] .brand-bird-light{display:none}
 :root[data-theme="dark"] .brand-bird-dark{display:block}
@@ -7110,6 +7144,55 @@ function releasePrefetchLock(key){
   }
 }
 
+// V15.12.21 — Metadados de prefetch.
+// Antes da V3.10, prefetches automáticos (entrar na tela, importar fonte,
+// registrar erro) cobravam créditos invisivelmente e salvavam questão em
+// DATA.preloadedQuestions sem marcação de origem. Agora todo prefetch
+// legítimo (criado a partir de res.next vindo de eval explícito) é marcado
+// com metadados. Prefetches sem essa marcação são considerados legado e
+// descartados ao serem consumidos.
+const PREFETCH_SCHEMA_VERSION = 'v3.10';
+
+// Cria o objeto de prefetch legítimo a partir de res.next vindo do eval.
+// O usuário PAGOU pelo eval, então res.next é uma economia legítima
+// (sem nova cobrança). Prefetches criados por outros caminhos (legados ou
+// silenciosos) NÃO devem usar este helper — serão tratados como legado.
+function buildLegitimatePrefetch(q, evalActionId){
+  return {
+    q,
+    generatedAt: Date.now(),
+    origin: 'eval_next',
+    schemaVersion: PREFETCH_SCHEMA_VERSION,
+    sourceAction: evalActionId || 'practice_question_eval'
+  };
+}
+
+// Valida se um prefetch tem marcação confiável de origem.
+// Retorna true se for legítimo, false se for legado/sem marcação.
+function isPrefetchLegitimate(prefetchEntry){
+  if(!prefetchEntry || typeof prefetchEntry !== 'object') return false;
+  if(prefetchEntry.origin !== 'eval_next') return false;
+  // Aceita schemaVersion v3.10 ou superior. Como é string semver simples,
+  // comparação alfanumérica funciona pra v3.10, v3.11, ... v3.99 (depois disso
+  // teria que migrar pra parsing real).
+  if(!prefetchEntry.schemaVersion || prefetchEntry.schemaVersion < PREFETCH_SCHEMA_VERSION) return false;
+  return true;
+}
+
+// Descarta prefetch legado. Retorna true se descartou algo, false caso contrário.
+function discardLegacyPrefetch(prefetchKey){
+  if(DATA.preloadedQuestions && DATA.preloadedQuestions[prefetchKey]){
+    const entry = DATA.preloadedQuestions[prefetchKey];
+    if(!isPrefetchLegitimate(entry)){
+      console.warn('[prefetch] descartando legado em "'+prefetchKey+'" (sem metadado v3.10)');
+      delete DATA.preloadedQuestions[prefetchKey];
+      save();
+      return true;
+    }
+  }
+  return false;
+}
+
 // Pré-flight pra prefetches: combina visibility + suspensão + saldo + lock.
 // IMPORTANTE: prefetch NUNCA mostra modal — falha silenciosa.
 function canStartPrefetch(action_id, lockKey, batch_size){
@@ -8617,11 +8700,22 @@ function examCountdown(){
 }
 const BRAND = {
   name: 'Gralia',
-  // Logos hospedadas na raiz do Vercel (junto com index.html)
-  // Pra subir: coloque logo-light.png e logo-dark.png na raiz do repositório GitHub
-  birdLogo: '/logo-light.png',
-  birdLogoDark: '/logo-dark.png',
-  fullLogo: '/logo-light.png'
+  // V15.12.22 — separação de mascote (só pássaro) e logo com nome.
+  // Pra subir: arquivos na raiz do repositório GitHub:
+  //   logo-light.png        - legado (compat: landing + sobre + welcome + setup)
+  //   logo-dark.png         - legado idem
+  //   logo-light-nome.png   - V3.11: logo com nome pra topbar (tema claro)
+  //   logo-dark-nome.png    - V3.11: idem (tema escuro)
+  //   logo-light-mascote.png - V3.11: só o mascote, maior, pra rodapé sidebar (tema claro)
+  //   logo-dark-mascote.png  - V3.11: idem (tema escuro)
+  birdLogo: '/logo-light.png',          // legado — usado em landing/sobre/welcome
+  birdLogoDark: '/logo-dark.png',       // legado idem
+  fullLogo: '/logo-light.png',          // legado
+  // Novos caminhos V3.11
+  topbarLogo: '/logo-light-nome.png',       // topbar (tema claro)
+  topbarLogoDark: '/logo-dark-nome.png',    // topbar (tema escuro)
+  mascotLogo: '/logo-light-mascote.png',    // sidebar rodapé (tema claro)
+  mascotLogoDark: '/logo-dark-mascote.png'  // sidebar rodapé (tema escuro)
 };
 const STORAGE_KEY = 'nexus_pl_v4';
 const REFERRAL_KEY = 'gralia_referral';
@@ -11860,6 +11954,8 @@ async function assertCanAffordFresh(action_id, batch_size){
 //
 // Retorna: true se pode consumir; false se descartou (e modal já foi mostrado).
 function consumePrefetchedQuestionSafe(prefetchKey, evalActionId, ctx){
+  // NOTA V15.12.21: descarte de legado deve ser feito ANTES de chamar esta
+  // função, via discardLegacyPrefetch(prefetchKey). Esta função só valida saldo.
   const can = canAffordAction(evalActionId);
   if(!can.ok){
     console.warn('[prefetch] descartando '+prefetchKey+' — saldo insuficiente para '+evalActionId);
@@ -13626,6 +13722,20 @@ function buildAppSidebar(){
 
   // V15: secção secundária do rodapé REMOVIDA — esses 4 itens (Como usar, Dicas das bancas,
   // FAQ, Sobre o Gralia) já estão no menu do avatar. Sidebar fica mais limpa.
+
+  // V15.12.22 — Mascote no rodapé direito da sidebar.
+  // Como o topbar agora usa a logo COM NOME (sem destaque pro pássaro),
+  // adicionamos a versão MASCOTE separada aqui — maior e visível,
+  // permite o usuário apreciar o detalhe da gralha-azul.
+  // Aparece apenas quando sidebar NÃO está collapsed (CSS gerencia).
+  const mascotWrap = mk('div','app-sidebar-mascot');
+  mascotWrap.innerHTML = `
+    <img src="${BRAND.mascotLogo}" alt="Gralia mascote" class="sidebar-mascot sidebar-mascot-light">
+    <img src="${BRAND.mascotLogoDark}" alt="Gralia mascote" class="sidebar-mascot sidebar-mascot-dark">
+  `;
+  // Tooltip discreto
+  mascotWrap.title = 'Gralha-azul — ave do Paraná, mascote do Gralia';
+  sb.appendChild(mascotWrap);
 
   return sb;
 }
@@ -15848,7 +15958,7 @@ function renderTopbar(){
   brand.setAttribute('role','button');
   brand.setAttribute('tabindex','0');
   brand.setAttribute('aria-label','Sobre o Gralia');
-  brand.innerHTML = `<img src="${BRAND.birdLogo}" alt="Gralia" class="brand-bird brand-bird-light"><img src="${BRAND.birdLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark"><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
+  brand.innerHTML = `<img src="${BRAND.topbarLogo}" alt="Gralia" class="brand-bird brand-bird-light"><img src="${BRAND.topbarLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark"><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
   // Tooltip de marca com info da gralha-azul
   const brandTip = mk('div','brand-tooltip');
   brandTip.innerHTML = `
@@ -27144,6 +27254,8 @@ function renderCalibration(){
 async function calibStart(container){
   // V12: Reaproveita questão pré-carregada
   // V15.12.13: valida saldo de avaliação antes de exibir prefetch
+  // V15.12.21: descarta legado antes (sem metadados v3.10).
+  discardLegacyPrefetch('calibration');
   if(DATA.preloadedQuestions?.calibration?.q){
     if(!consumePrefetchedQuestionSafe('calibration', 'practice_question_eval', 'calibracao')) return;
     ST.calibQ = DATA.preloadedQuestions.calibration.q;
@@ -27199,9 +27311,10 @@ async function calibSubmit(answer){
       source: 'ai'
     });
     // V12: persiste a próxima questão pré-carregada
+    // V15.12.21: marcado com metadados pra distinguir de legados.
     if(res.next && res.next.question){
       DATA.preloadedQuestions = DATA.preloadedQuestions || {};
-      DATA.preloadedQuestions.calibration = {q: res.next, generatedAt: Date.now()};
+      DATA.preloadedQuestions.calibration = buildLegitimatePrefetch(res.next, 'practice_question_eval');
       save();
     }
   }catch(e){ST.calibAnswered=false;console.error(e);}
@@ -27469,6 +27582,8 @@ async function drillStart(idx,container){
   ST.drillTarget=idx;ST.drillQ=null;ST.drillFb=null;ST.drillAnswered=false;
   // V12: Reaproveita questão pré-carregada se for do mesmo target
   // V15.12.13 (CRITICAL FIX): valida saldo de avaliação antes de exibir prefetch
+  // V15.12.21: descarta legado antes (sem metadados v3.10).
+  discardLegacyPrefetch('drill_'+idx);
   const preload = DATA.preloadedQuestions?.['drill_'+idx];
   if(preload && preload.q){
     if(!consumePrefetchedQuestionSafe('drill_'+idx, 'practice_question_eval', 'drill')) return;
@@ -27524,9 +27639,10 @@ async function drillSubmit(answer){
       source: 'ai'
     });
     // V12: persiste a próxima como pré-carregada (por target)
+    // V15.12.21: marcado com metadados pra distinguir de legados.
     if(res.next && res.next.question){
       DATA.preloadedQuestions = DATA.preloadedQuestions || {};
-      DATA.preloadedQuestions['drill_'+ST.drillTarget] = {q: res.next, generatedAt: Date.now()};
+      DATA.preloadedQuestions['drill_'+ST.drillTarget] = buildLegitimatePrefetch(res.next, 'practice_question_eval');
       save();
     }
   }catch(e){ST.drillAnswered=false;console.error(e);}
@@ -27927,6 +28043,9 @@ async function practStart(container){
   // V15.12.13 (CRITICAL FIX): mesmo reaproveitando, o usuário precisa de saldo
   // pra AVALIAR a resposta (practice_question_eval = 1 crédito, faz nova
   // chamada à IA). Se ele não tem saldo, o prefetch é descartado.
+  // V15.12.21: descarta prefetch legado (sem metadados v3.10) ANTES — depois
+  // segue o fluxo normal cobrando 2 créditos pra gerar nova questão.
+  discardLegacyPrefetch('practice');
   if(DATA.preloadedQuestions?.practice?.q){
     if(!consumePrefetchedQuestionSafe('practice', 'practice_question_eval', 'pratica')) return;
     ST.practQ = DATA.preloadedQuestions.practice.q;
@@ -28069,12 +28188,11 @@ async function practSubmit(answer){
     });
     // V12: persiste a 'next' como pré-carregada — se o usuário sair sem clicar em "próxima",
     // ela está salva pra próxima sessão (economia de IA)
+    // V15.12.21: marcado com metadados (origin, schemaVersion) pra distinguir
+    // de prefetches legados criados antes da V3.10.
     if(res.next && res.next.question){
       DATA.preloadedQuestions = DATA.preloadedQuestions || {};
-      DATA.preloadedQuestions.practice = {
-        q: res.next,
-        generatedAt: Date.now()
-      };
+      DATA.preloadedQuestions.practice = buildLegitimatePrefetch(res.next, 'practice_question_eval');
       save();
     }
   }catch(e){
@@ -28425,6 +28543,8 @@ function renderInterleaving(){
 async function interStart(container){
   // V12: Reaproveita questão pré-carregada
   // V15.12.13 (CRITICAL FIX): valida saldo de avaliação antes de exibir prefetch
+  // V15.12.21: descarta legado antes (sem metadados v3.10).
+  discardLegacyPrefetch('interleaving');
   if(DATA.preloadedQuestions?.interleaving?.q){
     if(!consumePrefetchedQuestionSafe('interleaving', 'practice_question_eval', 'intercalacao')) return;
     ST.interQ = DATA.preloadedQuestions.interleaving.q;
@@ -28471,9 +28591,10 @@ async function interSubmit(answer){
     }
     ST.interFb={ok,explanation:res.explanation,trap:res.trap,keyword:res.keyword,next:res.next,errCtx};
     // V12: persiste a próxima como pré-carregada
+    // V15.12.21: marcado com metadados pra distinguir de legados.
     if(res.next && res.next.question){
       DATA.preloadedQuestions = DATA.preloadedQuestions || {};
-      DATA.preloadedQuestions.interleaving = {q: res.next, generatedAt: Date.now()};
+      DATA.preloadedQuestions.interleaving = buildLegitimatePrefetch(res.next, 'practice_question_eval');
       save();
     }
   }catch(e){ST.interAnswered=false;console.error(e);}
