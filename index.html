@@ -22935,6 +22935,10 @@ function parseTecFormat(text){
     const blockRaw = text.slice(blockStart, blockEnd).trim();
     const parsed = parseTecBlock(blockRaw, matches[i].url);
     if(parsed){
+      // V15.12.33 — Normaliza texto (reflow + blocks) ANTES de avaliar qualidade.
+      // O assessQuestionQuality opera sobre o texto JÁ reflowed, o que torna
+      // detecção de "começa em continuação" mais precisa.
+      normalizeQuestionText(parsed);
       // V15.12.32 — atribui flags de qualidade
       parsed.quality = assessQuestionQuality(parsed);
       questions.push(parsed);
@@ -22954,6 +22958,294 @@ function parseTecFormat(text){
     parsedCount: questions.length,
     missingBlocks
   };
+}
+
+// V15.12.33 — NORMALIZAÇÃO TEXTUAL DE QUESTÕES.
+// Objetivo: limpar quebras artificiais do PDF, preservar parágrafos semânticos,
+// detectar frases-pivô (comando) e separar contexto/comando/assertiva pra
+// render visual rico.
+
+// V15.12.33 — Padrões de "frase-pivô" (frase de comando do examinador).
+// Quando uma dessas aparece dentro de um enunciado, ela é candidato a se
+// tornar um BLOCO SEPARADO, com contexto antes e assertiva depois.
+//
+// As regex usam [\s\S]{1,400}? em vez de [^.]*? porque o contexto pode
+// conter pontos finais antes da frase de comando, e queremos casar a
+// frase de comando inteira (que tem seu próprio ponto final).
+//
+// Cobre contrações: dessa, desse, daquela, daquele, etc.
+const COMMAND_PHRASE_PATTERNS = [
+  // "Considerando essa situação hipotética, julgue o item a seguir."
+  /\b[Cc]onsiderando\b[\s\S]{1,400}?,\s*julgue\s+(?:o\s+)?(?:item|pr[óo]ximo\s+item)[\s\S]{0,80}?\./,
+  // "Acerca de X, julgue o item a seguir."
+  /\b[Aa]cerca\s+(?:de|do|da|dos|das|desse|dessa|desses|dessas|daquele|daquela|daqueles|daquelas)\b[\s\S]{1,400}?,\s*julgue\s+(?:o\s+)?(?:item|pr[óo]ximo\s+item)[\s\S]{0,80}?\./,
+  // "A respeito de X, julgue o item a seguir."
+  /\b[Aa]\s+respeito\s+(?:de|do|da|dos|das|desse|dessa|desses|dessas|daquele|daquela|daqueles|daquelas)\b[\s\S]{1,400}?,\s*julgue\s+(?:o\s+)?(?:item|pr[óo]ximo\s+item)[\s\S]{0,80}?\./,
+  // "Com relação a X, julgue..."
+  /\b[Cc]om\s+rela[çc][ãa]o\s+(?:a|ao|à|às|aos|aquele|aquela|aqueles|aquelas)\b[\s\S]{1,400}?,\s*julgue\s+(?:o\s+)?(?:item|pr[óo]ximo\s+item)[\s\S]{0,80}?\./,
+  // "No tocante a X, julgue..."
+  /\b[Nn]o\s+tocante\s+(?:a|ao|à|às|aos|aquele|aquela|aqueles|aquelas)\b[\s\S]{1,400}?,\s*julgue\s+(?:o\s+)?(?:item|pr[óo]ximo\s+item)[\s\S]{0,80}?\./,
+  // "Tendo em vista X, julgue..."
+  /\b[Tt]endo\s+em\s+vista\b[\s\S]{1,400}?,\s*julgue\s+(?:o\s+)?(?:item|pr[óo]ximo\s+item)[\s\S]{0,80}?\./,
+  // "Com base em X, julgue..."
+  /\b[Cc]om\s+base\s+(?:em|no|na|nos|nas|nesse|nessa|nesses|nessas|naquele|naquela|naqueles|naquelas)\b[\s\S]{1,400}?,\s*julgue\s+(?:o\s+)?(?:item|pr[óo]ximo\s+item)[\s\S]{0,80}?\./,
+  // Genéricos: "julgue o item a seguir." / "julgue o item seguinte." / "julgue o próximo item."
+  /\bJulgue\s+(?:o\s+)?(?:item|pr[óo]ximo\s+item)[\s\S]{0,80}?\./,
+  // MC: "Assinale a opção/alternativa..."
+  /\bAssinale\s+a\s+(?:op[çc][ãa]o|alternativa)[\s\S]{0,150}?\./,
+  // "Marque a alternativa..."
+  /\bMarque\s+a\s+(?:op[çc][ãa]o|alternativa|resposta)[\s\S]{0,150}?\./,
+];
+
+// V15.12.33 — Detecta se uma string contém uma frase-pivô.
+function _detectCommandPhrase(text){
+  if(!text) return null;
+  for(const re of COMMAND_PHRASE_PATTERNS){
+    const m = text.match(re);
+    if(m && m[0]) return { match: m[0], start: m.index, end: m.index + m[0].length };
+  }
+  return null;
+}
+
+// V15.12.33 — REFLOW de texto cru de PDF.
+// Junta linhas quebradas artificialmente (line-wrap do PDF) e normaliza
+// pontuação/espaços. Preserva quebras INTENCIONAIS (linhas em branco,
+// itens enumerados, alternativas A-E etc).
+//
+// Regras:
+//   - Linhas em branco (\n\n) são parágrafos: PRESERVAR.
+//   - Linha que termina com pontuação forte (.!?:) e a próxima começa com
+//     maiúscula → frases distintas, PRESERVAR quebra.
+//   - Linha que NÃO termina em pontuação E a próxima é minúscula/conector →
+//     mesma frase, JUNTAR com espaço.
+//   - Linhas começando com "A)", "B)" ... "E)" → alternativas, PRESERVAR.
+//   - Linhas começando com "I.", "II.", "III.", "1.", "2." → enumeração, PRESERVAR.
+//   - Hífen no fim de linha + minúscula no começo da próxima → palavra cortada,
+//     juntar SEM espaço removendo o hífen.
+function reflowText(raw){
+  if(!raw) return '';
+  let s = String(raw).replace(/\r\n/g,'\n');
+
+  // Normaliza espaços unicode raros
+  s = s.replace(/[\u00a0\u2000-\u200b\ufeff]/g,' ');
+
+  // Quebra em linhas
+  const lines = s.split('\n');
+  const out = [];
+  for(let i = 0; i < lines.length; i++){
+    const cur = lines[i];
+    const trimmed = cur.trim();
+
+    if(trimmed === ''){
+      // Linha vazia preserva quebra de parágrafo (mas evita 3+)
+      if(out.length > 0 && out[out.length-1] !== '\n\n') out.push('\n\n');
+      continue;
+    }
+
+    // Marcadores que NÃO devem ser merged com a linha anterior
+    const isAlternative = /^\s*\(?[a-eA-E]\)\s+/.test(trimmed) || /^\s*\(?[a-eA-E]\.\s+/.test(trimmed);
+    const isEnumeration = /^\s*(?:[IVX]+\.|[0-9]+[\.\)])\s+/.test(trimmed);
+    const isCertoErrado = /^(certo|errado)\.?$/i.test(trimmed);
+    const isGabarito = /^gabarito\s*[:=]/i.test(trimmed);
+
+    const prev = out.length > 0 ? out[out.length-1] : '';
+    const prevTrimmed = (typeof prev === 'string' ? prev : '').trim();
+
+    // Caso especial: hífen no fim da linha anterior + começa minúscula → palavra cortada
+    if(prevTrimmed.endsWith('-') && /^[a-zà-ÿ]/.test(trimmed)){
+      out[out.length-1] = prevTrimmed.slice(0, -1) + trimmed;
+      continue;
+    }
+
+    // Marcadores → sempre preservam quebra (alternativas, enumeração, certo/errado, gabarito)
+    if(isAlternative || isEnumeration || isCertoErrado || isGabarito){
+      if(prev && prev !== '\n\n') out.push('\n');
+      out.push(trimmed);
+      continue;
+    }
+
+    // Decide se merge ou quebra:
+    // Se a linha anterior NÃO terminou em pontuação forte E a atual começa minúscula
+    // OU é claramente continuação → MERGE com espaço.
+    const prevEndsHard = /[.!?:;]\s*$/.test(prevTrimmed);
+    const prevEndsComma = /,\s*$/.test(prevTrimmed);
+    const curStartsLower = /^[a-zà-ÿ]/.test(trimmed);
+    const curStartsConnector = /^(e|ou|mas|para|pela|pelo|que|cujo|cuja|do|da|dos|das|no|na|nos|nas|com|sem|em|sobre|sob|entre|após|antes|ao|aos|à|às)\b/i.test(trimmed);
+
+    if(prev === '\n\n' || prev === ''){
+      // Início de parágrafo
+      out.push(trimmed);
+    } else if(!prevEndsHard && (curStartsLower || curStartsConnector || prevEndsComma)){
+      // Continuação da mesma frase — junta com espaço
+      out[out.length-1] = prevTrimmed + ' ' + trimmed;
+    } else {
+      // Frases distintas no mesmo parágrafo — junta com espaço (ou quebra se preferir)
+      // Decisão: junta com espaço pra manter parágrafo coeso, SALVO se parece pulo de seção.
+      out[out.length-1] = prevTrimmed + ' ' + trimmed;
+    }
+  }
+
+  // Junta tudo, normaliza espaços múltiplos
+  let result = out.join('');
+  result = result.replace(/[ \t]{2,}/g, ' ');           // espaços múltiplos
+  result = result.replace(/\s+([.,;:!?])/g, '$1');       // espaço antes de pontuação
+  result = result.replace(/\n{3,}/g, '\n\n');            // 3+ quebras → 2
+  result = result.replace(/^\s+|\s+$/g, '');             // trim
+  return result;
+}
+
+// V15.12.33 — Quebra um enunciado em blocos semânticos.
+// Retorna array de blocos: [{kind: 'context'|'instruction'|'statement'|'paragraph', text}]
+//
+// Heurísticas:
+//   1. Aplica reflowText pra limpar quebras artificiais
+//   2. Procura frase-pivô (comando) — se achar, divide em [contexto, comando, assertiva]
+//   3. Se não tem comando, mantém parágrafos (split por \n\n) como blocos genéricos
+//
+// kind:
+//   - 'context'     → texto antes do comando (situação hipotética)
+//   - 'instruction' → frase de comando ("julgue o item a seguir")
+//   - 'statement'   → assertiva final (a julgar)
+//   - 'paragraph'   → parágrafo genérico (quando não há comando)
+function splitIntoSemanticBlocks(rawText, kind){
+  const text = reflowText(rawText || '');
+  if(!text) return [];
+
+  // Procura comando. Como há múltiplos padrões, tenta cada um e pega o
+  // PRIMEIRO match do PRIMEIRO padrão que casar. Se houver múltiplas
+  // ocorrências do mesmo padrão (raro em uma questão), pegamos a primeira
+  // (que é a mais provável de ser a frase de comando real).
+  let commandMatch = null;
+  for(const re of COMMAND_PHRASE_PATTERNS){
+    const m = text.match(re);
+    if(m && m[0]){
+      commandMatch = { match: m[0], start: m.index, end: m.index + m[0].length };
+      break;
+    }
+  }
+
+  const blocks = [];
+  if(commandMatch){
+    const before = text.slice(0, commandMatch.start).trim();
+    const command = commandMatch.match.trim();
+    const after = text.slice(commandMatch.end).trim();
+
+    if(before){
+      // Pode ter múltiplos parágrafos no contexto — quebra por \n\n
+      before.split(/\n\n+/).forEach(p=>{
+        const t = p.trim(); if(t) blocks.push({ kind:'context', text: t });
+      });
+    }
+    blocks.push({ kind:'instruction', text: command });
+    if(after){
+      // Em CE: tudo depois do comando é a assertiva. Pode ser 1+ parágrafos.
+      // Em MC: depois do comando vêm as alternativas, mas elas já foram extraídas
+      //        em q.alternatives — então normalmente "after" é vazio ou irrelevante.
+      after.split(/\n\n+/).forEach(p=>{
+        const t = p.trim(); if(t) blocks.push({ kind:'statement', text: t });
+      });
+    }
+  } else {
+    // Sem comando: divide por parágrafos (\n\n) — cada um vira bloco genérico
+    text.split(/\n\n+/).forEach(p=>{
+      const t = p.trim(); if(t) blocks.push({ kind:'paragraph', text: t });
+    });
+  }
+
+  return blocks;
+}
+
+// V15.12.33 — Wrapper: normaliza texto bruto + popula campos estruturados.
+// Recebe questão crua (com q.enunciado bruto do parser) e devolve mesma questão
+// COM:
+//   - q.enunciado: versão reflowed (string limpa, com \n\n preservados)
+//   - q.blocks: array de {kind, text} pronto pra render
+//
+// Não destrói nada — só enriquece. Usado depois do parser e antes de salvar.
+function normalizeQuestionText(q, opts){
+  if(!q || !q.enunciado) return q;
+  opts = opts || {};
+  const original = q.enunciado;
+  const reflowed = reflowText(original);
+  const blocks = splitIntoSemanticBlocks(reflowed, q.kind);
+
+  // Atualiza enunciado pra versão reflowed (texto canônico que vai pro banco)
+  q.enunciado = reflowed;
+  // Adiciona blocks pra render (não vai pro hash — hash usa enunciado)
+  q.blocks = blocks;
+
+  return q;
+}
+
+// V15.12.33 — Helper de renderização: cria DIV com blocos semânticos.
+// Aceita uma questão (q) e devolve um elemento DOM já estilizado.
+//
+// Usado em:
+//   - Preview de importação
+//   - Card de prática histórica
+//   - Card de prática de caderno
+//   - Lista de questões (caderno gerenciar) — opcional
+//
+// Comportamento:
+//   - Se q.blocks existe → renderiza cada bloco com estilo apropriado por kind
+//   - Se NÃO existe (questões antigas) → fallback: renderiza q.enunciado como
+//     único bloco "paragraph" (mantém compatibilidade)
+//
+// Estilos por kind:
+//   - context     → texto normal, padding-bottom maior
+//   - instruction → fundo sutil, fonte ligeiramente reduzida, itálico, separador
+//   - statement   → texto normal, peso médio (a "questão a julgar")
+//   - paragraph   → texto normal
+function renderQuestionBlocks(q, opts){
+  opts = opts || {};
+  const wrap = mk('div','q-blocks');
+  // Espaçamento e tipografia confortáveis
+  wrap.style.cssText = 'display:flex;flex-direction:column;gap:.65rem;line-height:1.65;font-size:14px;color:var(--text)';
+
+  // Seleciona blocos: se existe q.blocks usa, senão fallback do enunciado
+  let blocks = (q && Array.isArray(q.blocks) && q.blocks.length > 0)
+    ? q.blocks
+    : null;
+
+  if(!blocks){
+    // Fallback: tenta gerar blocks dinamicamente (questões antigas sem campo)
+    if(q && q.enunciado){
+      try{
+        blocks = splitIntoSemanticBlocks(q.enunciado, q.kind);
+      }catch(_){
+        blocks = [{kind:'paragraph', text: q.enunciado || ''}];
+      }
+    } else {
+      blocks = [];
+    }
+  }
+
+  blocks.forEach(b=>{
+    if(!b || !b.text) return;
+    const el = mk('div','q-block q-block-'+(b.kind||'paragraph'));
+
+    if(b.kind === 'instruction'){
+      // Frase de comando — destaque sutil
+      el.style.cssText = 'padding:.55rem .85rem;background:var(--surface2);border-left:3px solid var(--gralia-purple);border-radius:0 6px 6px 0;font-size:13px;color:var(--text2);font-style:italic;line-height:1.55';
+      el.textContent = b.text;
+    } else if(b.kind === 'context'){
+      // Contexto/situação hipotética
+      el.style.cssText = 'white-space:pre-wrap;color:var(--text);line-height:1.65';
+      el.textContent = b.text;
+    } else if(b.kind === 'statement'){
+      // Assertiva final — mais proeminente (peso médio)
+      el.style.cssText = 'white-space:pre-wrap;color:var(--text);line-height:1.65;font-weight:500';
+      el.textContent = b.text;
+    } else {
+      // paragraph (genérico)
+      el.style.cssText = 'white-space:pre-wrap;color:var(--text);line-height:1.65';
+      el.textContent = b.text;
+    }
+
+    wrap.appendChild(el);
+  });
+
+  return wrap;
 }
 
 // V15.12.32 — Avalia qualidade de uma questão parseada.
@@ -23005,6 +23297,29 @@ function assessQuestionQuality(q){
       // Verifica se alternativas ficaram com texto vazio/curto
       const badAlts = q.alternatives.filter(a => !a.text || a.text.length < 2);
       if(badAlts.length > 0) issues.push('alternativas-incompletas');
+    }
+  }
+
+  // V15.12.33 — formatacao-suspeita: muitas quebras internas estranhas
+  // ou texto sem separação lógica.
+  // Heurística:
+  //   - 3+ quebras de linha simples consecutivas (sem \n\n) → wrap artificial
+  //   - texto longo (>200 chars) E sem nenhum '\n' nem '\n\n' E sem comando-pivô
+  //     → tudo concatenado em 1 linha enorme (visual ruim)
+  //   - termina com pontuação fraca (hífen, vírgula, sem nada) → corte provável
+  if(q.enunciado.length > 80){
+    // Conta quebras simples vs duplas
+    const singleBreaks = (q.enunciado.match(/(?<!\n)\n(?!\n)/g) || []).length;
+    const doubleBreaks = (q.enunciado.match(/\n\n/g) || []).length;
+    // Muitas quebras simples sem parágrafos: indício de wrap de PDF não normalizado
+    if(singleBreaks >= 4 && doubleBreaks === 0){
+      issues.push('formatacao-suspeita');
+    }
+    // Texto longo sem nenhuma quebra — pode ser concatenação ruim sem espaços corretos
+    // (Não marcamos esse caso porque enunciado curto-mas-uma-linha é normal.)
+    // Termina com hífen ou vírgula → provável corte
+    if(/[-,]\s*$/.test(q.enunciado)){
+      if(!issues.includes('formatacao-suspeita')) issues.push('formatacao-suspeita');
     }
   }
 
@@ -23214,6 +23529,8 @@ function parseSimpleFormat(raw){
     if(enun.length>=20&&answer)out.push({enunciado:enun,answer,kind:'CE'});
     else if(enun.length>=20)out.push({enunciado:enun,answer:null,kind:'CE',needsAnswer:true});
   });
+  // V15.12.33: normaliza cada questão (reflow + blocks)
+  out.forEach(q=>{ try{ normalizeQuestionText(q); }catch(_){} });
   return out;
 }
 
@@ -23302,6 +23619,8 @@ function parseMultipleChoiceFormat(raw){
       needsAnswer: !answer
     });
   });
+  // V15.12.33: normaliza cada questão (reflow + blocks)
+  out.forEach(q=>{ try{ normalizeQuestionText(q); }catch(_){} });
   return out;
 }
 
@@ -26449,7 +26768,8 @@ function renderImportedImport(wrap){
             });
             // Atribui qualidade (recuperadas pela IA já têm enunciado completo,
             // mas verificamos pra marcar suspeitas se ainda houver problema)
-            recovered.forEach(q=>{ q.quality = assessQuestionQuality(q); });
+            // V15.12.33: normaliza texto (reflow+blocks) ANTES de quality
+            recovered.forEach(q=>{ try{ normalizeQuestionText(q); }catch(_){} q.quality = assessQuestionQuality(q); });
           }catch(err){
             ST.importPdfLoading = false;
             ST.importPdfProgress = null;
@@ -26517,7 +26837,8 @@ function renderImportedImport(wrap){
           });
 
           // V15.12.32: atribui quality em cada questão
-          aiQuestions.forEach(q=>{ q.quality = assessQuestionQuality(q); });
+          // V15.12.33: normaliza texto (reflow+blocks) ANTES de quality
+          aiQuestions.forEach(q=>{ try{ normalizeQuestionText(q); }catch(_){} q.quality = assessQuestionQuality(q); });
 
           // Mapeia pra formato local
           ST.importInput.text = '';
@@ -26590,7 +26911,7 @@ function renderImportedImport(wrap){
           ST.importPreview = parseImportedQuestions(cleaned);
           // V15.12.32: garante quality em cada questão
           (ST.importPreview||[]).forEach(q=>{
-            if(!q.quality) q.quality = assessQuestionQuality(q);
+            if(!q.blocks){ try{ normalizeQuestionText(q); }catch(_){} } if(!q.quality) q.quality = assessQuestionQuality(q);
           });
           ST.importPdfLoading = false;
           ST.importPdfProgress = null;
@@ -26637,7 +26958,7 @@ function renderImportedImport(wrap){
       ST.importPreview=parseImportedQuestions(e.target.value);
       // V15.12.32: atribui quality em cada questão parseada
       (ST.importPreview||[]).forEach(q=>{
-        if(!q.quality) q.quality = assessQuestionQuality(q);
+        if(!q.blocks){ try{ normalizeQuestionText(q); }catch(_){} } if(!q.quality) q.quality = assessQuestionQuality(q);
       });
       renderPreviewInto(previewArea);
       updateSaveBtn();
@@ -26802,20 +27123,23 @@ function renderImportedImport(wrap){
           'comeco-em-continuacao': 'começa pelo meio (provável corte)',
           'ruido-no-enunciado': 'cabeçalho/rodapé no enunciado',
           'mc-sem-alternativas': 'múltipla escolha sem alternativas',
-          'alternativas-incompletas': 'alternativas incompletas'
+          'alternativas-incompletas': 'alternativas incompletas',
+          'formatacao-suspeita': 'formatação estranha (quebras irregulares)'
         };
         const labels = q.quality.issues.map(iss => issueLabels[iss] || iss);
         issuesEl.innerHTML = '<b>Problemas detectados:</b> ' + labels.join(' · ');
         it.appendChild(issuesEl);
       }
 
-      const qt = mk('p','txt');qt.style.cssText='margin:.25rem 0;white-space:pre-wrap';qt.textContent=q.enunciado;
+      // V15.12.33: render rico em blocos semânticos (contexto/comando/assertiva)
+      const qt = renderQuestionBlocks(q);
+      qt.style.margin = '.25rem 0';
       it.appendChild(qt);
       // Show alternatives for MC
       if(q.kind==='MC'&&q.alternatives){
-        const altWrap = mk('div');altWrap.style.cssText='margin:.5rem 0;padding-left:4px';
+        const altWrap = mk('div');altWrap.style.cssText='margin:.6rem 0 .25rem;padding-left:4px;display:flex;flex-direction:column;gap:.25rem';
         q.alternatives.forEach(alt=>{
-          const line = mk('p','txt2');line.style.cssText='margin:2px 0';
+          const line = mk('p','txt2');line.style.cssText='margin:0;line-height:1.5';
           const isCorrect = q.answer===alt.letter;
           line.innerHTML=`<b${isCorrect?' style="color:var(--accent-text)"':''}>${alt.letter})</b> ${alt.text}`;
           altWrap.appendChild(line);
@@ -26975,6 +27299,11 @@ function renderImportedImport(wrap){
       if(q.kind==='MC'&&q.alternatives)rec.alternatives=q.alternatives;
       if(q.meta)rec.meta=q.meta;
       if(q.source)rec.sourceUrl=q.source;
+      // V15.12.33: persiste blocks pra render rico em prática (sem recalcular toda vez).
+      // Se faltarem (questão antiga), o render aplica fallback (texto único como bloco).
+      if(q.blocks && Array.isArray(q.blocks)) rec.blocks = q.blocks;
+      // V15.12.33: também persiste questionId do TEC se houver (rastreabilidade)
+      if(q.questionId) rec.questionId = q.questionId;
       DATA.importedQuestions.push(rec);
       addedCount++;
     });
@@ -26995,7 +27324,7 @@ function renderImportedImport(wrap){
     ST.importPreview = parseImportedQuestions(ST.importInput.text);
     // V15.12.32: re-atribui quality em cada questão (pode estar faltando se vem do parser local antigo)
     (ST.importPreview||[]).forEach(q=>{
-      if(!q.quality) q.quality = assessQuestionQuality(q);
+      if(!q.blocks){ try{ normalizeQuestionText(q); }catch(_){} } if(!q.quality) q.quality = assessQuestionQuality(q);
     });
     renderPreviewInto(previewArea);
     updateSaveBtn();
@@ -27057,8 +27386,8 @@ function renderImportedPractice(wrap){
   wrap.appendChild(meta);
 
   const qc = mk('div','card fade');
-  const qt = mk('p','txt');qt.style.cssText='margin:0;white-space:pre-wrap';qt.textContent=q.enunciado;
-  qc.appendChild(qt);
+  // V15.12.33: render rico em blocos semânticos
+  qc.appendChild(renderQuestionBlocks(q));
   // Render alternatives inside the card if MC
   if(q.kind==='MC'&&q.alternatives){
     const altWrap = mk('div');altWrap.style.cssText='margin-top:.875rem;display:flex;flex-direction:column;gap:6px';
@@ -28821,8 +29150,8 @@ function renderNotebookPractice(wrap){
   wrap.appendChild(meta);
 
   const qc = mk('div','card fade');
-  const qt = mk('p','txt');qt.style.cssText='margin:0;white-space:pre-wrap';qt.textContent=q.enunciado;
-  qc.appendChild(qt);
+  // V15.12.33: render rico em blocos semânticos
+  qc.appendChild(renderQuestionBlocks(q));
   if(q.kind==='MC'&&q.alternatives){
     const altWrap = mk('div');altWrap.style.cssText='margin-top:.875rem;display:flex;flex-direction:column;gap:6px';
     q.alternatives.forEach(alt=>{
