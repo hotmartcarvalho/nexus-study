@@ -201,36 +201,6 @@ body.sidebar-collapsed .app-sidebar-search-btn span:first-child{font-size:14px}
    removida — agora o padding vai na .page (não no #app), e a regra equivalente
    pra estado colapsado está dentro do @media(min-width:1100px). */
 
-/* V15.12.22 — Mascote no rodapé direito da sidebar. Versão MAIOR e visível
-   pra apreciar o detalhe da gralha-azul (separado da logo principal que tem
-   nome). Empurrado pro fim da sidebar com margin-top:auto + alinhado à
-   direita. Oculto quando sidebar collapsed (vira só ícones). */
-.app-sidebar-mascot{
-  margin-top:auto;          /* empurra pro rodapé */
-  display:flex;
-  justify-content:flex-end;  /* alinha à direita */
-  align-items:flex-end;
-  padding:12px 14px 4px;
-  pointer-events:auto;
-}
-.sidebar-mascot{
-  height:84px;
-  width:auto;
-  max-width:96px;
-  object-fit:contain;
-  opacity:.92;
-  transition:opacity .15s, transform .25s ease;
-  cursor:default;
-  user-select:none;
-  -webkit-user-drag:none;
-}
-.sidebar-mascot:hover{opacity:1;transform:translateY(-2px) rotate(-2deg)}
-.sidebar-mascot-dark{display:none}
-:root[data-theme="dark"] .sidebar-mascot-light{display:none}
-:root[data-theme="dark"] .sidebar-mascot-dark{display:block}
-/* Quando sidebar collapsed, mascote some (rodapé fica só com ícones) */
-body.sidebar-collapsed .app-sidebar-mascot{display:none}
-
 /* Toggle button */
 /* V15.12.1: top de 13 → 25px pra alinhar verticalmente com o centro do
    botão "Buscar tudo". Cálculo: sidebar tem padding-top:14px, search-btn
@@ -461,7 +431,8 @@ body.srs-focus-mode #app .page{padding-left:0 !important}
 @media(max-width:640px){.brand-tooltip{display:none}}
 .brand-bird{height:44px;width:auto;display:block;flex-shrink:0;margin-right:-2px} /* V15.12.9: +10% (40→44px) */
 /* V15.12.22: logo do topbar agora contém o nome — span "GRALIA" fica oculto (só fallback se img falhar) */
-.brand .brand-bird{height:48px;max-width:200px;object-fit:contain}
+/* V15.12.23: altura 48→38 — Jean reportou que 48 ficou exagerada visualmente */
+.brand .brand-bird{height:38px;max-width:170px;object-fit:contain}
 .brand .brand-name{display:none}
 .brand .brand-name.brand-fallback.show{display:inline-flex}
 .brand-bird-dark{display:none}
@@ -1968,6 +1939,20 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .dash-greeting b{font-size:24px;font-weight:700;letter-spacing:-.5px;background:var(--gralia-gradient);background-clip:text;-webkit-background-clip:text;color:transparent}
 .dash-greeting .dg-prompt{font-size:13px;color:var(--text3);font-weight:400;margin-left:6px}
 .dash-greeting .dg-link{color:var(--accent);text-decoration:underline;font-weight:600}
+
+/* V15.12.23 — Linha greeting + mascote */
+.dash-greet-row{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:0}
+.dash-greet-row .dash-greeting{margin-bottom:0;flex:1;min-width:0}
+.dash-mascot{flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;animation:route-in .55s ease both;animation-delay:.1s}
+.dash-mascot-img{height:96px;width:auto;max-width:120px;object-fit:contain;opacity:.95;transition:transform .35s ease, opacity .15s;user-select:none;-webkit-user-drag:none;cursor:default}
+.dash-mascot:hover .dash-mascot-img{transform:translateY(-3px) rotate(-3deg);opacity:1}
+.dash-mascot-dark{display:none}
+:root[data-theme="dark"] .dash-mascot-light{display:none}
+:root[data-theme="dark"] .dash-mascot-dark{display:block}
+@media(max-width:700px){
+  .dash-mascot{display:none}  /* mobile: prioriza espaço pra saudação */
+}
+.dash-greet-row + *{margin-top:1.25rem}  /* preserva espaçamento que o .dash-greeting tinha */
 .dash-greeting-sub{margin-top:6px;font-size:12.5px;color:var(--text2);line-height:1.5}
 .dash-greeting-sub b{font-size:12.5px;color:var(--text);font-weight:600}
 
@@ -13723,19 +13708,9 @@ function buildAppSidebar(){
   // V15: secção secundária do rodapé REMOVIDA — esses 4 itens (Como usar, Dicas das bancas,
   // FAQ, Sobre o Gralia) já estão no menu do avatar. Sidebar fica mais limpa.
 
-  // V15.12.22 — Mascote no rodapé direito da sidebar.
-  // Como o topbar agora usa a logo COM NOME (sem destaque pro pássaro),
-  // adicionamos a versão MASCOTE separada aqui — maior e visível,
-  // permite o usuário apreciar o detalhe da gralha-azul.
-  // Aparece apenas quando sidebar NÃO está collapsed (CSS gerencia).
-  const mascotWrap = mk('div','app-sidebar-mascot');
-  mascotWrap.innerHTML = `
-    <img src="${BRAND.mascotLogo}" alt="Gralia mascote" class="sidebar-mascot sidebar-mascot-light">
-    <img src="${BRAND.mascotLogoDark}" alt="Gralia mascote" class="sidebar-mascot sidebar-mascot-dark">
-  `;
-  // Tooltip discreto
-  mascotWrap.title = 'Gralha-azul — ave do Paraná, mascote do Gralia';
-  sb.appendChild(mascotWrap);
+  // V15.12.23 — Mascote REMOVIDO da sidebar (causava barra de rolagem).
+  // Movido pra área do dashboard (greeting), onde não compete por espaço
+  // vertical com o menu de navegação.
 
   return sb;
 }
@@ -17119,7 +17094,21 @@ function renderDashboard(){
       });
     });
   },10);
-  wrap.appendChild(greeting);
+
+  // V15.12.23 — Mascote da gralha-azul ao lado da saudação.
+  // Antes ficava na sidebar mas causava scrollbar. Aqui no dashboard
+  // o usuário tem destaque visual pra ver o detalhe da ave SEM impactar
+  // navegação. Em mobile (<700px) some via CSS pra preservar espaço.
+  const greetRow = mk('div','dash-greet-row');
+  greetRow.appendChild(greeting);
+  const mascot = mk('div','dash-mascot');
+  mascot.innerHTML = `
+    <img src="${BRAND.mascotLogo}" alt="" class="dash-mascot-img dash-mascot-light">
+    <img src="${BRAND.mascotLogoDark}" alt="" class="dash-mascot-img dash-mascot-dark">
+  `;
+  mascot.title = 'Gralha-azul — ave do Paraná, mascote do Gralia';
+  greetRow.appendChild(mascot);
+  wrap.appendChild(greetRow);
 
   // V12: Checklist de primeiros passos — aparece pra usuários novos.
   // Some automaticamente quando todos os passos estão completos.
