@@ -27914,6 +27914,16 @@ async function practSubmit(answer){
   const nh = [...ST.practHist,um];
   try{
     const res = await timedCallAPI('practice','question',SYS_PRACT,nh,{model:getMethodModel('practice'), action:'practice_question_eval'});
+    // V15.12.19: valida que a IA retornou conteúdo útil. Se vier vazio
+    // (campos faltando ou só whitespace), não trava UI — mostra erro claro
+    // e permite responder de novo.
+    const hasMinimalContent = res && (
+      (typeof res.is_correct === 'boolean') ||
+      (typeof res.explanation === 'string' && res.explanation.trim().length > 0)
+    );
+    if(!hasMinimalContent){
+      throw new Error('IA retornou resposta vazia ou sem campos esperados');
+    }
     ST.practHist=[...nh,{role:'assistant',content:JSON.stringify(res)}];
     const ok = res.is_correct;
     DATA.session.total+=1;if(ok)DATA.session.correct+=1;
