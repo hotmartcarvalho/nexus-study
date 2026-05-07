@@ -433,7 +433,8 @@ body.srs-focus-mode #app .page{padding-left:0 !important}
 /* V15.12.22: logo do topbar agora contém o nome — span "GRALIA" fica oculto (só fallback se img falhar) */
 /* V15.12.23: altura 48→38 — Jean reportou que 48 ficou exagerada visualmente */
 /* V15.12.24: 38→30 — ainda estava grande comparado a outros elementos da topbar */
-.brand .brand-bird{height:30px;max-width:135px;object-fit:contain}
+/* V15.12.28: 30→27 (-10%) — Jean reportou que ainda estava um pouco grande */
+.brand .brand-bird{height:27px;max-width:122px;object-fit:contain}
 .brand .brand-name{display:none}
 .brand .brand-name.brand-fallback.show{display:inline-flex}
 .brand-bird-dark{display:none}
@@ -1937,15 +1938,18 @@ html.dark .wfb-tag-ai{color:#b08aff}
 /* Dashboard greeting — saudação personalizada */
 /* V15.12.26 (Rodada 1): saudação mais imponente. Antes 22/24px parecia tímida
    pra um "Bom dia, Jean" que é o primeiro elemento do painel. Agora 26/30px,
-   line-height ajustado, gradiente do nome mais visível. */
+   line-height ajustado, gradiente do nome mais visível.
+   V15.12.28: gradient AGORA usa seletor `> b` (filho direto) em vez de `b`
+   genérico — antes herdava pro <b> dentro do .dash-greeting-sub (cargo/banca),
+   deixando "Polícia Legislativa Federal" gigante e em gradiente, ilegível. */
 .dash-greeting{margin-bottom:1.25rem;animation:route-in .35s ease}
 .dash-greeting .dg-time{font-size:26px;font-weight:400;color:var(--text2);letter-spacing:-.6px;line-height:1.2}
-.dash-greeting b{font-size:30px;font-weight:800;letter-spacing:-1px;background:var(--gralia-gradient);background-clip:text;-webkit-background-clip:text;color:transparent;line-height:1.2}
+.dash-greeting > b{font-size:30px;font-weight:800;letter-spacing:-1px;background:var(--gralia-gradient);background-clip:text;-webkit-background-clip:text;color:transparent;line-height:1.2}
 .dash-greeting .dg-prompt{font-size:13px;color:var(--text3);font-weight:400;margin-left:6px}
 .dash-greeting .dg-link{color:var(--accent);text-decoration:underline;font-weight:600}
 @media(max-width:540px){
   .dash-greeting .dg-time{font-size:22px}
-  .dash-greeting b{font-size:25px}
+  .dash-greeting > b{font-size:25px}
 }
 
 /* V15.12.27 (Rodada 2): Heatmap calendar-style (estilo GitHub contributions).
@@ -1957,16 +1961,40 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .heatmap-title .svg-icon{color:var(--text2)}
 .heatmap-sub{font-size:10.5px;color:var(--text3);font-weight:600;font-variant-numeric:tabular-nums}
 
-.heatmap-grid-wrap{display:flex;gap:6px;align-items:flex-end;padding:4px 0}
+.heatmap-grid-wrap{display:flex;gap:8px;align-items:flex-end;padding:4px 0}
 
-/* Coluna lateral de labels (Dom, Seg, Ter, ...) — só mostra Seg/Qua/Sex */
-.heatmap-day-labels{display:flex;flex-direction:column;gap:3px;padding-top:18px;flex-shrink:0}
-.heatmap-day-label{font-size:9.5px;color:var(--text3);font-weight:600;line-height:14px;height:14px;width:24px;text-align:right;padding-right:4px}
+/* V15.12.28: coluna lateral mostra TODOS os 7 dias (Dom-Sáb).
+   Antes só mostrava Seg/Qua/Sex. Agora cada label alinhada com sua célula. */
+.heatmap-day-labels{display:flex;flex-direction:column;gap:3px;padding-top:30px;flex-shrink:0}
+.heatmap-day-label{font-size:10px;color:var(--text3);font-weight:600;line-height:14px;height:14px;width:28px;text-align:right;padding-right:6px;font-variant-numeric:tabular-nums}
 
-/* Grid: 5 colunas (semanas), cada coluna tem header (mês) + 7 células */
-.heatmap-grid{display:flex;gap:3px;flex:1;justify-content:space-between}
+/* Grid: 5 colunas (semanas), cada coluna tem header (mês+dia) + 7 células */
+.heatmap-grid{display:flex;gap:4px;flex:1;justify-content:space-between}
 .heatmap-col{display:flex;flex-direction:column;gap:3px;flex:1;max-width:60px}
-.heatmap-col-head{font-size:9.5px;color:var(--text3);font-weight:600;height:15px;line-height:15px;text-align:left}
+
+/* V15.12.28: header da coluna com 2 linhas: mês (acima) + dia (abaixo).
+   Dá contexto temporal completo sem precisar passar mouse. */
+.heatmap-col-head{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  height:30px;
+  line-height:1.1;
+  gap:1px;
+}
+.heatmap-col-head .hch-mon{
+  font-size:9.5px;
+  color:var(--text3);
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.3px;
+}
+.heatmap-col-head .hch-day{
+  font-size:11px;
+  color:var(--text2);
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
 
 /* Células */
 .heatmap-cell{
@@ -2003,9 +2031,11 @@ html.dark .wfb-tag-ai{color:#b08aff}
 
 /* Mobile: células um pouco menores, labels mais compactos */
 @media(max-width:540px){
-  .heatmap-day-label{font-size:9px;width:20px}
+  .heatmap-day-label{font-size:9px;width:24px;padding-right:5px}
   .heatmap-cell{height:12px}
-  .heatmap-col-head{font-size:9px}
+  .heatmap-col-head{height:28px}
+  .heatmap-col-head .hch-mon{font-size:9px}
+  .heatmap-col-head .hch-day{font-size:10px}
 }
 
 
@@ -2122,6 +2152,17 @@ html.dark .wfb-tag-ai{color:#b08aff}
   opacity:.85;
 }
 
+/* V15.12.28: mascote CONGELADO no último frame do vídeo (em vez de trocar
+   pra imagem estática que mostra a pose inicial). O <video> permanece
+   visível mas pausado no fim. Reduzimos pra 72px pra não competir com o
+   conteúdo, mesmo princípio do estado static. */
+.dash-mascot.dash-mascot-frozen .dash-mascot-video{
+  height:72px;
+  max-width:90px;
+  opacity:.85;
+  transition:height .35s ease, max-width .35s ease, opacity .35s ease;
+}
+
 /* === Estado 1: VIDEO (default quando container tem .dash-mascot-video filho) === */
 .dash-mascot:not(.dash-mascot-static):has(.dash-mascot-video) .dash-mascot-video{display:block}
 
@@ -2154,8 +2195,45 @@ html.dark .wfb-tag-ai{color:#b08aff}
   .dash-mascot{display:none}  /* mobile: prioriza espaço pra saudação */
 }
 .dash-greet-row + *{margin-top:1.25rem}  /* preserva espaçamento que o .dash-greeting tinha */
-.dash-greeting-sub{margin-top:6px;font-size:12.5px;color:var(--text2);line-height:1.5}
-.dash-greeting-sub b{font-size:12.5px;color:var(--text);font-weight:600}
+/* V15.12.28: greeting-sub refinado. Antes 📋🏛️ + <b> herdando gradient
+   de 30px deixava cargo/banca quase ilegível. Agora layout mais limpo:
+   ícones SVG sutis, hierarquia clara (label "Banca" em --text3, valor em
+   --text com peso 600), separador visual mais discreto. */
+.dash-greeting-sub{
+  margin-top:.625rem;
+  font-size:13.5px;
+  color:var(--text2);
+  line-height:1.5;
+  display:flex;
+  align-items:center;
+  gap:.5rem;
+  flex-wrap:wrap;
+  font-weight:500;
+}
+.dash-greeting-sub .dgs-item{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  white-space:nowrap;
+}
+.dash-greeting-sub .dgs-item .svg-icon{color:var(--text3);flex-shrink:0}
+.dash-greeting-sub .dgs-prefix{color:var(--text3);font-weight:500;font-size:13px}
+.dash-greeting-sub b{
+  font-size:13.5px;
+  color:var(--text);
+  font-weight:600;
+  /* IMPORTANTE: explicitamente sem gradient — herdaria do .dash-greeting > b
+     se não bloquearmos. Cor sólida garante legibilidade total. */
+  background:none;
+  -webkit-background-clip:initial;
+  background-clip:initial;
+  letter-spacing:normal;
+}
+.dash-greeting-sub .dgs-sep{color:var(--text3);opacity:.6;font-weight:400}
+@media(max-width:540px){
+  .dash-greeting-sub{font-size:12.5px}
+  .dash-greeting-sub b{font-size:12.5px}
+}
 
 /* Batch flashcard card no resultado do simulado */
 .sim-batch-card{display:flex;align-items:center;gap:14px;padding:1rem 1.125rem;background:linear-gradient(135deg,var(--accent-light) 0%,var(--surface) 100%);border:1px solid var(--accent);border-left:4px solid var(--accent);border-radius:var(--r);margin-bottom:1rem;animation:route-in .3s ease}
@@ -8989,7 +9067,8 @@ const _SVG_ICONS = {
   'sparkles':        '<path d="M12 3l1.9 4.4 4.6.4-3.5 3.1 1 4.5L12 13l-4 2.4 1-4.5L5.5 7.8l4.6-.4z"/>',
   'flag':            '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>',
   'trophy':          '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
-  'rss':             '<path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/>'
+  'rss':             '<path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/>',
+  'crosshair':       '<circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/>'
 };
 function svgIcon(name, size){
   const path = _SVG_ICONS[name];
@@ -17377,9 +17456,12 @@ function renderDashboard(){
   if(examNm || examBank){
     const sub = mk('div','dash-greeting-sub');
     const parts = [];
-    if(examNm)parts.push(`📋 <b>${escapeHTML(examNm)}</b>`);
-    if(examBank)parts.push(`🏛️ Banca <b>${escapeHTML(examBank)}</b>`);
-    sub.innerHTML = parts.join(' · ');
+    // V15.12.28: emojis 📋🏛️ substituídos por SVGs (file-text/scale).
+    // Combinados com a nova tipografia (.dash-greeting-sub mais clara), fica
+    // mais legível e premium.
+    if(examNm)parts.push(`<span class="dgs-item">${svgIcon('file-text',13)}<b>${escapeHTML(examNm)}</b></span>`);
+    if(examBank)parts.push(`<span class="dgs-item">${svgIcon('scale',13)}<span class="dgs-prefix">Banca</span> <b>${escapeHTML(examBank)}</b></span>`);
+    sub.innerHTML = parts.join('<span class="dgs-sep">·</span>');
     greeting.appendChild(sub);
   }
   // Hook pra link "Config"
@@ -17432,24 +17514,46 @@ function renderDashboard(){
     setTimeout(()=>{
       const v = mascot.querySelector('.dash-mascot-video');
       if(!v) return;
-      // Helper: troca pra estado final (imagem estática do tema atual).
-      // Usado por: erro de carregamento, erro do source, duração inválida,
-      // ou término natural do vídeo (evento 'ended').
-      const switchToStatic = ()=>{
+      // V15.12.28: 2 caminhos diferentes pro estado final:
+      //   - ended (terminou normalmente)  → CONGELAR no último frame do vídeo
+      //   - error / duração inválida      → trocar pra imagem estática (fallback)
+      // Antes ambos iam pro fallback, mas Jean reportou que aparece a pose
+      // INICIAL do mascote (a img estática é frame 0), o que parece "voltou
+      // pro começo". Agora ended pausa no último frame e o vídeo continua
+      // visível — visualmente o mascote fica na pose final da animação.
+      const switchToStaticImage = ()=>{
         try{
           mascot.classList.remove('dash-mascot-playing');
           mascot.classList.add('dash-mascot-static');
           v.pause && v.pause();
-          // Remove o vídeo do DOM pra liberar recursos (não vai ser usado mais)
-          v.style.display = 'none';
+          v.style.display = 'none';  // esconde vídeo, revela <img>
         }catch(_){}
       };
-      v.addEventListener('error', switchToStatic);
-      v.addEventListener('ended', switchToStatic);  // V15.12.25: troca quando termina
+      const freezeOnLastFrame = ()=>{
+        try{
+          // Pausa o vídeo no último frame. NÃO esconde o vídeo nem revela img.
+          // O <video> continua visível mostrando o último frame que ficou
+          // renderizado. Garantimos posição final via currentTime = duration
+          // (seek pro fim, idempotente — se já está no fim, fica parado).
+          v.pause && v.pause();
+          if(v.duration && isFinite(v.duration)){
+            // Pequeno offset (-0.05s) pra evitar buffer/preto em alguns navegadores
+            try { v.currentTime = Math.max(0, v.duration - 0.05); } catch(_){}
+          }
+          // Marca classe pra CSS desativar transition de hover sem afetar layout
+          mascot.classList.add('dash-mascot-frozen');
+          mascot.classList.remove('dash-mascot-playing');
+        }catch(_){
+          // Se algo der errado, cai no comportamento antigo (img estática)
+          switchToStaticImage();
+        }
+      };
+      v.addEventListener('error', switchToStaticImage);
+      v.addEventListener('ended', freezeOnLastFrame);  // V15.12.28: congela em vez de trocar
       const src = v.querySelector('source');
-      if(src) src.addEventListener('error', switchToStatic);
+      if(src) src.addEventListener('error', switchToStaticImage);
       v.addEventListener('loadedmetadata', ()=>{
-        if(!v.duration || isNaN(v.duration) || v.duration === 0) switchToStatic();
+        if(!v.duration || isNaN(v.duration) || v.duration === 0) switchToStaticImage();
       });
     }, 0);
   }
@@ -18332,16 +18436,12 @@ function buildPerformanceHeatmap(){
   // Wrapper do grid (com labels de dias da semana à esquerda)
   const gridWrap = mk('div','heatmap-grid-wrap');
 
-  // Coluna de labels de dias (Dom-Sáb)
+  // V15.12.28: coluna lateral mostra TODOS os 7 dias (Dom-Sáb) — antes só
+  // mostrava Seg/Qua/Sex pra "não poluir", mas Jean pediu eixo completo.
   const dayLabelsCol = mk('div','heatmap-day-labels');
-  // Mostramos apenas Seg/Qua/Sex pra não poluir (estilo GitHub)
   for(let i = 0; i < 7; i++){
     const lbl = mk('span','heatmap-day-label');
-    if(i === 1 || i === 3 || i === 5){
-      lbl.textContent = dayLabels[i];
-    } else {
-      lbl.innerHTML = '&nbsp;';
-    }
+    lbl.textContent = dayLabels[i];
     dayLabelsCol.appendChild(lbl);
   }
   gridWrap.appendChild(dayLabelsCol);
@@ -18349,19 +18449,19 @@ function buildPerformanceHeatmap(){
   // Grid de células: 5 colunas × 7 linhas
   // Iteramos por semana (coluna), depois por dia da semana (linha)
   const grid = mk('div','heatmap-grid');
-  let monthsShown = new Set();
   for(let w = 0; w < WEEKS; w++){
     const col = mk('div','heatmap-col');
 
-    // Header da coluna: mês (mostra só quando muda)
+    // V15.12.28: header da coluna agora mostra "Mês Dia" (ex: "Mai 5") da
+    // PRIMEIRA célula da semana (domingo). Antes mostrava só o nome do mês
+    // e omitia se era o mesmo do anterior — Jean pediu pra ter mais contexto
+    // temporal sem buracos. Agora cada coluna tem um marco visível.
     const colHead = mk('div','heatmap-col-head');
     const colDate = new Date(gridStart);
     colDate.setDate(gridStart.getDate() + w*7);
     const monthIdx = colDate.getMonth();
-    if(!monthsShown.has(monthIdx) || w === 0){
-      colHead.textContent = monthLabels[monthIdx];
-      monthsShown.add(monthIdx);
-    }
+    const dayNum = colDate.getDate();
+    colHead.innerHTML = `<span class="hch-mon">${monthLabels[monthIdx]}</span><span class="hch-day">${dayNum}</span>`;
     col.appendChild(colHead);
 
     // 7 células da coluna (dom→sáb)
@@ -18446,7 +18546,7 @@ function buildQuickAccessCard(){
     {iconKey:'zap',           label:'Prática com IA', desc:'Questões geradas das fontes', view:'practice'},
     {iconKey:'layers',        label:'Revisar flashcards', desc:dueSrsCount > 0 ? `${dueSrsCount} pendentes` : 'Repetição espaçada', badge:dueSrsCount, view:'srs'},
     {iconKey:'history',       label:'Erros recentes', desc:errorsCount > 0 ? `${errorsCount} sem flashcard` : 'Pontos fracos', badge:errorsCount, view:'history'},
-    {iconKey:'dna',           label:'Drill DNA', desc:'Treino focado nas armadilhas', view:'drill'},
+    {iconKey:'crosshair',     label:'Drill DNA', desc:'Treino focado nas armadilhas', view:'drill'},
     {iconKey:'bar-chart',     label:'Simulado Gralia', desc:'Prova completa cronometrada', view:'simulado'}
   ];
   const secondaryActions = [
