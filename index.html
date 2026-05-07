@@ -2042,6 +2042,105 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .svg-icon{display:inline-block;vertical-align:-2px;flex-shrink:0;stroke:currentColor;fill:none}
 .svg-icon-baseline{vertical-align:baseline}
 
+/* V15.12.29 (Rodada 2): espaçamentos consistentes do Painel.
+   Antes os blocos ficavam com margins herdados de cada classe (alguns 1rem,
+   outros 1.25rem, outros 14px, alguns inline) — visualmente ritmo desigual.
+   ESTRATÉGIA: usa flex column + gap pra ditar o ritmo. Zera margin-bottom
+   herdado dos filhos diretos via CSS (importante pra sobrescrever inline
+   styles antigos). Resultado: ritmo único, fácil de ajustar. */
+.dashboard-page{
+  display:flex;
+  flex-direction:column;
+  gap:1.25rem;
+  padding-top:.5rem;
+}
+/* Zera margin-bottom dos filhos diretos — gap controla agora.
+   IMPORTANT é necessário pq alguns cards tem margin-bottom inline (style.cssText). */
+.dashboard-page > *{
+  margin-bottom:0 !important;
+}
+/* Mobile: gap menor pra economizar espaço vertical */
+@media(max-width:540px){
+  .dashboard-page{gap:1rem;padding-top:.25rem}
+}
+
+
+/* V15.12.29 (Rodada 2): Empty state padronizado.
+   Usado por buildEmptyState() — substitui blocos que antes simplesmente sumiam
+   sem contexto. Estrutura: ícone + título + descrição + CTA opcional.
+   2 variantes: default (card cheio) e .empty-state-inline (mais discreto, pra
+   substituir blocos que costumavam aparecer no fluxo). */
+.empty-state{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:1.125rem 1.25rem;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  margin-bottom:1.25rem;
+  transition:border-color .15s ease, transform .15s ease;
+}
+.empty-state-inline{
+  background:linear-gradient(135deg,rgba(124,92,255,.04),var(--surface));
+  border:1px dashed var(--border2);
+}
+.empty-state .es-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:42px;
+  height:42px;
+  background:rgba(124,92,255,.10);
+  color:var(--gralia-purple);
+  border-radius:10px;
+  flex-shrink:0;
+}
+:root[data-theme="dark"] .empty-state .es-icon{background:rgba(154,127,255,.14)}
+.empty-state .es-body{flex:1;min-width:0}
+.empty-state .es-title{
+  font-size:13.5px;
+  font-weight:700;
+  color:var(--text);
+  letter-spacing:-.1px;
+  margin-bottom:3px;
+  line-height:1.3;
+}
+.empty-state .es-desc{
+  font-size:12.5px;
+  color:var(--text2);
+  line-height:1.5;
+}
+.empty-state .es-cta{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background:transparent;
+  border:1px solid var(--gralia-purple);
+  color:var(--gralia-purple);
+  font-size:12.5px;
+  font-weight:600;
+  padding:.5rem .875rem;
+  border-radius:8px;
+  cursor:pointer;
+  font-family:inherit;
+  flex-shrink:0;
+  transition:background .15s ease, color .15s ease, transform .15s ease;
+  white-space:nowrap;
+}
+.empty-state .es-cta:hover{
+  background:var(--gralia-purple);
+  color:#fff;
+  transform:translateY(-1px);
+}
+.empty-state .es-cta .svg-icon{transition:transform .2s ease}
+.empty-state .es-cta:hover .svg-icon{transform:translateX(2px)}
+@media(max-width:540px){
+  .empty-state{flex-direction:column;align-items:stretch;text-align:center;padding:1rem}
+  .empty-state .es-icon{margin:0 auto}
+  .empty-state .es-cta{justify-content:center}
+}
+
 /* V15.12.27 (Rodada 2): Card de meta refatorado.
    Antes era 1300+ chars de style.cssText hardcoded inline. Agora classes CSS
    limpas, manuteníveis, respeitando tema claro/escuro automaticamente.
@@ -2076,6 +2175,31 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .dmg-pct-row{display:flex;align-items:baseline;gap:8px}
 .dmg-pct{font-size:26px;font-weight:800;color:var(--gralia-purple);line-height:1;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
 .dmg-pct-lbl{font-size:11.5px;color:var(--text3)}
+
+/* V15.12.29 (Rodada 2): mini barra de progresso. Cor definida inline (verde/
+   ambar/roxo conforme status). Animação width 0%→target em ~900ms easing.
+   Respeita prefers-reduced-motion (set instantâneo). */
+.dmg-bar{
+  height:4px;
+  background:var(--surface3);
+  border-radius:999px;
+  overflow:hidden;
+  margin:2px 0;
+}
+.dmg-bar-fill{
+  height:100%;
+  width:0;
+  border-radius:999px;
+  transition:width .9s cubic-bezier(.22,.61,.36,1);
+  animation:dmg-fill .9s cubic-bezier(.22,.61,.36,1) forwards;
+}
+@keyframes dmg-fill{
+  from{width:0}
+  to{width:var(--bar-target,0%)}
+}
+@media (prefers-reduced-motion: reduce){
+  .dmg-bar-fill{animation:none;width:var(--bar-target,0%)}
+}
 .dmg-stats{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text2)}
 .dmg-stat-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .dmg-stat-lbl{display:inline-flex;align-items:center;gap:5px}
@@ -9079,6 +9203,67 @@ function svgIcon(name, size){
   const s = size || 16;
   // strokeWidth 1.75 = "Lucide medium" (entre 1.5 e 2). Mais legível em sizes pequenos.
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="svg-icon" aria-hidden="true">${path}</svg>`;
+}
+
+// V15.12.29 (Rodada 2) — animateCountUp helper.
+// Anima o textContent de um elemento de 0 ao valor final em ~800ms.
+// Detecta automaticamente o formato:
+//   "12"     → anima 0..12
+//   "12/15"  → anima só o numerador (0..12), mantém "/15"
+//   "73%"    → anima 0..73, mantém "%"
+//   "3.5h"   → anima 0..3.5 (decimal), mantém "h"
+//   "—" / "0" / não-numérico → seta direto, sem animação
+//
+// Respeita prefers-reduced-motion: se ativo, seta valor final imediatamente.
+// Usa requestAnimationFrame com easing "easeOutQuart" — sutil, não chamativo.
+function animateCountUp(el, finalValue){
+  if(!el) return;
+  const valStr = String(finalValue || '');
+
+  // Detecta se há valor numérico animável
+  // Regex: captura o primeiro número (com ou sem decimal) e o sufixo
+  const m = valStr.match(/^(-?\d+(?:\.\d+)?)(.*)$/);
+  if(!m){
+    // Não-numérico (tipo "—") — seta direto
+    el.textContent = valStr;
+    return;
+  }
+  const target = parseFloat(m[1]);
+  const suffix = m[2];  // pode ser "%", "h", "/15", "" etc.
+
+  // Reduced motion: seta direto sem animar
+  const reducedMotion = (typeof window.matchMedia === 'function')
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reducedMotion || target === 0 || isNaN(target)){
+    el.textContent = valStr;
+    return;
+  }
+
+  const isDecimal = m[1].indexOf('.') !== -1;
+  const fmtNum = (n)=> isDecimal ? (Math.round(n*10)/10).toFixed(1) : String(Math.round(n));
+
+  const duration = 800;
+  const startTime = performance.now();
+  // easeOutQuart — desacelera no final, sensação premium
+  const ease = (t) => 1 - Math.pow(1 - t, 4);
+
+  // Inicia com 0 (mesmo formato de saída pra evitar layout shift)
+  el.textContent = fmtNum(0) + suffix;
+
+  function step(now){
+    const elapsed = now - startTime;
+    const progress = Math.min(1, elapsed / duration);
+    const eased = ease(progress);
+    const current = target * eased;
+    el.textContent = fmtNum(current) + suffix;
+    if(progress < 1){
+      requestAnimationFrame(step);
+    } else {
+      // Garante que termina exatamente no valor original (evita arredondamento)
+      el.textContent = valStr;
+    }
+  }
+  requestAnimationFrame(step);
 }
 
 // V13: Captura código de afiliado da URL (?ref=xyz) e salva em localStorage.
@@ -17408,8 +17593,56 @@ function renderTutorialVisual(kind){
   return wrap;
 }
 
+// V15.12.29 (Rodada 2) — buildEmptyState helper.
+// Padroniza empty states do Painel: mesmo visual, mesma estrutura,
+// sempre orientando o usuário ("o que falta + ação clara").
+// Antes alguns blocos sumiam silenciosamente sem contexto — agora
+// (quando faz sentido mostrar) usam este helper.
+//
+// Parâmetros:
+//   {iconKey, title, desc, ctaLabel?, ctaAction?, variant?}
+//   variant: 'compact' (default), 'inline' (mais discreto)
+//
+// CSS associado: .empty-state, .es-icon, .es-title, .es-desc, .es-cta
+function buildEmptyState(opts){
+  const o = opts || {};
+  const card = mk('div','empty-state' + (o.variant === 'inline' ? ' empty-state-inline' : ''));
+
+  if(o.iconKey){
+    const ico = mk('div','es-icon');
+    ico.innerHTML = svgIcon(o.iconKey, 22);
+    card.appendChild(ico);
+  }
+
+  const body = mk('div','es-body');
+  if(o.title){
+    const t = mk('div','es-title');
+    t.textContent = o.title;
+    body.appendChild(t);
+  }
+  if(o.desc){
+    const d = mk('div','es-desc');
+    d.textContent = o.desc;
+    body.appendChild(d);
+  }
+  card.appendChild(body);
+
+  if(o.ctaLabel && typeof o.ctaAction === 'function'){
+    const btn = mk('button','es-cta');
+    btn.type = 'button';
+    btn.innerHTML = `<span>${escapeHTML(o.ctaLabel)}</span>${svgIcon('arrow-right',13)}`;
+    btn.addEventListener('click', o.ctaAction);
+    card.appendChild(btn);
+  }
+
+  return card;
+}
+
 function renderDashboard(){
-  const wrap = mk('div','fade');
+  // V15.12.29 (Rodada 2): classe `dashboard-page` (além de `fade`) permite
+  // adicionar regras de espaçamento específicas do Painel sem afetar outras
+  // views do app que também usam `.fade`.
+  const wrap = mk('div','fade dashboard-page');
   const s = DATA.session;
   const pct = s.total?Math.round(s.correct/s.total*100):0;
   const overconf = s.calibration.certain.t>0?Math.round((s.calibration.certain.t-s.calibration.certain.c)/s.calibration.certain.t*100):null;
@@ -17671,6 +17904,12 @@ function renderDashboard(){
     // tema claro/escuro automaticamente. Comportamento e dados intactos.
     const cell = mk('button','dash-meta-goal');
     cell.type = 'button';
+    // V15.12.29 (Rodada 2): adicionada mini barra de progresso visualizando
+    // o totalPct. Anima width 0% → totalPct% em ~900ms. Sutil, premium.
+    // Cor da barra: gradient verde se ahead, ambar se behind, roxo neutro.
+    let _barColor = 'var(--gralia-purple)';
+    if(view.status === 'ahead') _barColor = 'var(--accent)';
+    else if(view.status === 'behind') _barColor = 'var(--amber)';
     cell.innerHTML = `
       <div class="dmg-head">
         <span class="dmg-period">${periodLbl}</span>
@@ -17680,6 +17919,7 @@ function renderDashboard(){
         <span class="dmg-pct">${totalPct}%</span>
         <span class="dmg-pct-lbl">progresso geral</span>
       </div>
+      <div class="dmg-bar"><div class="dmg-bar-fill" style="--bar-target:${totalPct}%;background:${_barColor}"></div></div>
       <div class="dmg-stats">
         <div class="dmg-stat-row"><span class="dmg-stat-lbl">${svgIcon('file-text',13)}<span>Questões</span></span><span class="dmg-stat-val"><b>${view.doneQ}</b>/${g.questionsTarget} <span class="dmg-stat-pct">(${view.pctQ}%)</span></span></div>
         <div class="dmg-stat-row"><span class="dmg-stat-lbl">${svgIcon('timer',13)}<span>Pomodoros</span></span><span class="dmg-stat-val"><b>${view.donePomos}</b>/${g.pomosTarget} <span class="dmg-stat-pct">(${view.pctP}%)</span></span></div>
@@ -17716,7 +17956,17 @@ function renderDashboard(){
     items.forEach(({v,l,c,tt})=>{
       const sc = mk('div','scard');
       if(tt) sc.title = tt;
-      const sv = mk('div','scard-v');sv.style.color=c;sv.textContent=v;
+      const sv = mk('div','scard-v');
+      sv.style.color=c;
+      // V15.12.29 (Rodada 2): count-up animation.
+      // Anima do 0 ao valor final em ~800ms via easing. Funciona pra:
+      //   - "12" → 0..12
+      //   - "12/15" → anima só o numerador (0..12)
+      //   - "73%" → 0..73 (mantém o "%")
+      //   - "3.5h" → 0..3.5 (mantém "h")
+      //   - "—" ou "0" → sem animação
+      // Respeita prefers-reduced-motion via animateCountUp.
+      animateCountUp(sv, v);
       const sl = mk('div','scard-l');sl.textContent=l;
       sc.appendChild(sv);sc.appendChild(sl);sg.appendChild(sc);
     });
@@ -18367,7 +18617,24 @@ function buildPerformanceHeatmap(){
     .filter(r => r.at && (now - r.at) <= RANGE_MS);
   const totalEvents = errors.length + cardsReviewed.length;
 
-  if(totalEvents < 5) return null;
+  // V15.12.29 (Rodada 2): em vez de retornar null, mostra empty state quando
+  // ainda não há dados suficientes pra um heatmap útil (>=5 eventos).
+  // Antes o bloco simplesmente sumia sem contexto. Agora orienta o usuário.
+  if(totalEvents < 5){
+    return buildEmptyState({
+      iconKey: 'bar-chart',
+      title: 'Atividade por dia da semana',
+      desc: totalEvents === 0
+        ? 'Comece a praticar e revisar para destravar este gráfico — mostra em quais dias você rende mais.'
+        : `${totalEvents} ${totalEvents===1?'evento':'eventos'} registrados. Continue praticando: o gráfico aparece a partir de 5 eventos.`,
+      ctaLabel: hasContent() ? 'Praticar agora' : 'Adicionar fonte',
+      ctaAction: ()=>{
+        ST.view = hasContent() ? 'practice' : 'sources';
+        render();
+      },
+      variant: 'inline'
+    });
+  }
 
   // ===== Agrega eventos por dia (chave: yyyy-mm-dd local) =====
   // Cada célula soma eventos do dia. correctRatio só contabiliza se houver
