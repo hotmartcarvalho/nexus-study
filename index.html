@@ -1944,12 +1944,51 @@ html.dark .wfb-tag-ai{color:#b08aff}
 /* V15.12.23 — Linha greeting + mascote */
 .dash-greet-row{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:0}
 .dash-greet-row .dash-greeting{margin-bottom:0;flex:1;min-width:0}
-.dash-mascot{flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;animation:route-in .55s ease both;animation-delay:.1s}
+.dash-mascot{flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;animation:route-in .55s ease both;animation-delay:.1s;position:relative}
+
+/* V15.12.24 (V3.13) — Vídeo do mascote.
+   Mesmas dimensões da imagem estática pra trocar sem layout shift.
+   background:transparent + object-fit:contain preservam alpha do WebM. */
+.dash-mascot-video{
+  height:96px;width:auto;max-width:120px;object-fit:contain;
+  background:transparent;
+  opacity:.95;transition:transform .35s ease, opacity .15s;
+  user-select:none;pointer-events:none;
+  display:block;
+}
 .dash-mascot-img{height:96px;width:auto;max-width:120px;object-fit:contain;opacity:.95;transition:transform .35s ease, opacity .15s;user-select:none;-webkit-user-drag:none;cursor:default}
-.dash-mascot:hover .dash-mascot-img{transform:translateY(-3px) rotate(-3deg);opacity:1}
+
+/* Fallback estático: por padrão escondido quando há vídeo. Só aparece se
+   o vídeo falhar (.dash-mascot-static é setado via JS) ou se o componente
+   foi montado em modo estático (prefers-reduced-motion). */
+.dash-mascot .dash-mascot-fallback{display:none}
+.dash-mascot.dash-mascot-static .dash-mascot-video{display:none}
+.dash-mascot.dash-mascot-static .dash-mascot-fallback.dash-mascot-light{display:block}
+:root[data-theme="dark"] .dash-mascot.dash-mascot-static .dash-mascot-fallback.dash-mascot-light{display:none}
+:root[data-theme="dark"] .dash-mascot.dash-mascot-static .dash-mascot-fallback.dash-mascot-dark{display:block}
+
+/* Hover suave no container (não no vídeo, que tem pointer-events:none) */
+.dash-mascot:hover .dash-mascot-img,
+.dash-mascot:hover .dash-mascot-video{transform:translateY(-3px) rotate(-3deg);opacity:1}
+
+/* Versão estática original (modo sem vídeo) — mantém comportamento legado de tema */
+.dash-mascot:not(.dash-mascot-static) .dash-mascot-img:not(.dash-mascot-fallback){display:none}
 .dash-mascot-dark{display:none}
 :root[data-theme="dark"] .dash-mascot-light{display:none}
 :root[data-theme="dark"] .dash-mascot-dark{display:block}
+
+/* Defesa adicional pra prefers-reduced-motion no nível do CSS:
+   se por algum motivo o JS não detectou (ex: usuário ativou DEPOIS de
+   carregar a página), o vídeo é ocultado e fallback aparece. */
+@media (prefers-reduced-motion: reduce){
+  .dash-mascot-video{display:none !important}
+  .dash-mascot .dash-mascot-fallback.dash-mascot-light{display:block}
+  :root[data-theme="dark"] .dash-mascot .dash-mascot-fallback.dash-mascot-light{display:none}
+  :root[data-theme="dark"] .dash-mascot .dash-mascot-fallback.dash-mascot-dark{display:block}
+  .dash-mascot:hover .dash-mascot-img,
+  .dash-mascot:hover .dash-mascot-video{transform:none}
+}
+
 @media(max-width:700px){
   .dash-mascot{display:none}  /* mobile: prioriza espaço pra saudação */
 }
@@ -8701,7 +8740,12 @@ const BRAND = {
   topbarLogo: '/logo-light-nome.png',       // topbar (tema claro)
   topbarLogoDark: '/logo-dark-nome.png',    // topbar (tema escuro)
   mascotLogo: '/logo-light-mascote.png',    // sidebar rodapé (tema claro)
-  mascotLogoDark: '/logo-dark-mascote.png'  // sidebar rodapé (tema escuro)
+  mascotLogoDark: '/logo-dark-mascote.png', // sidebar rodapé (tema escuro)
+  // V3.13 — Animação WebM do mascote (Painel). Usa o mesmo arquivo pra
+  // ambos os temas (assume transparência alpha + contraste próprio).
+  // Fallback automático para mascotLogo/mascotLogoDark se WebM falhar
+  // ou se prefers-reduced-motion estiver ativo.
+  mascotVideo: '/animacao-mascote.webm'
 };
 const STORAGE_KEY = 'nexus_pl_v4';
 const REFERRAL_KEY = 'gralia_referral';
@@ -17097,16 +17141,54 @@ function renderDashboard(){
   },10);
 
   // V15.12.23 — Mascote da gralha-azul ao lado da saudação.
-  // Antes ficava na sidebar mas causava scrollbar. Aqui no dashboard
-  // o usuário tem destaque visual pra ver o detalhe da ave SEM impactar
-  // navegação. Em mobile (<700px) some via CSS pra preservar espaço.
+  // V15.12.24 (V3.13) — Agora usa <video> WebM autoplay/muted/loop com
+  // fallback automático pra <img> estática se:
+  //   1) o navegador não suportar WebM
+  //   2) o arquivo falhar ao carregar
+  //   3) prefers-reduced-motion estiver ativo
+  // Em mobile (<700px) some via CSS pra preservar espaço.
   const greetRow = mk('div','dash-greet-row');
   greetRow.appendChild(greeting);
   const mascot = mk('div','dash-mascot');
-  mascot.innerHTML = `
-    <img src="${BRAND.mascotLogo}" alt="" class="dash-mascot-img dash-mascot-light">
-    <img src="${BRAND.mascotLogoDark}" alt="" class="dash-mascot-img dash-mascot-dark">
-  `;
+  // Detecta preferência de movimento reduzido — se ativo, pula direto pro fallback estático
+  const reducedMotion = (typeof window.matchMedia === 'function')
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reducedMotion){
+    mascot.classList.add('dash-mascot-static');
+    mascot.innerHTML = `
+      <img src="${BRAND.mascotLogo}" alt="" class="dash-mascot-img dash-mascot-light">
+      <img src="${BRAND.mascotLogoDark}" alt="" class="dash-mascot-img dash-mascot-dark">
+    `;
+  } else {
+    // Vídeo + imagens estáticas (escondidas via CSS por padrão; aparecem se vídeo falhar)
+    mascot.innerHTML = `
+      <video class="dash-mascot-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
+        <source src="${BRAND.mascotVideo}" type="video/webm">
+      </video>
+      <img src="${BRAND.mascotLogo}" alt="" class="dash-mascot-img dash-mascot-fallback dash-mascot-light">
+      <img src="${BRAND.mascotLogoDark}" alt="" class="dash-mascot-img dash-mascot-fallback dash-mascot-dark">
+    `;
+    // Hook: se vídeo falhar (404, codec não suportado, etc), revela fallback estático
+    setTimeout(()=>{
+      const v = mascot.querySelector('.dash-mascot-video');
+      if(!v) return;
+      const showFallback = ()=>{
+        try{
+          mascot.classList.add('dash-mascot-static');
+          v.style.display = 'none';
+          v.pause && v.pause();
+        }catch(_){}
+      };
+      v.addEventListener('error', showFallback);
+      // Source também emite error individual em alguns navegadores
+      const src = v.querySelector('source');
+      if(src) src.addEventListener('error', showFallback);
+      // Se o vídeo carregar mas tiver duração 0 (arquivo corrompido), também faz fallback
+      v.addEventListener('loadedmetadata', ()=>{
+        if(!v.duration || isNaN(v.duration) || v.duration === 0) showFallback();
+      });
+    }, 0);
+  }
   mascot.title = 'Gralha-azul — ave do Paraná, mascote do Gralia';
   greetRow.appendChild(mascot);
   wrap.appendChild(greetRow);
