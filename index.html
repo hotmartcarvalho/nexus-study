@@ -3790,6 +3790,8 @@ body.imported-focus-mode .shortcuts-floating-btn,
 body.imported-focus-mode .faq-floating-btn,
 body.imported-focus-mode .admin-floating-btn,
 body.imported-focus-mode .app-sidebar,
+body.imported-focus-mode .back-btn,
+body.imported-focus-mode .practice-focus-toolbar,
 body.imported-focus-mode #back-to-top-btn{display:none !important}
 body.imported-focus-mode #app{padding:0}
 body.imported-focus-mode .page{
@@ -8606,15 +8608,22 @@ async function renderSharedExplanationsBody(container, q){
   genRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
   const haveHaiku = items.some(i=>i.model==='haiku' && i.author_id===AUTH.user.id);
   const haveSonnet = items.some(i=>i.model==='sonnet' && i.author_id===AUTH.user.id);
-  // V15.12.31: labels com custo REAL (do AI_COSTS), não estimativa "~X-Y".
-  // imported_question_explanation = 2 créd (Haiku)
-  // imported_question_explanation_premium = 5 créd (Sonnet)
-  // V15.12.41 — Hierarquia clara:
-  // - Se NÃO há explicação: botões grandes "Gerar com IA" e "Gerar premium"
-  // - Se JÁ há explicação: o user já tem o que precisa. Em vez de "Atualizar
-  //   minha" genérico, oferecemos "🎯 Melhorar com orientação" que abre modal
-  //   direcionado (item 5 do prompt). Mantemos botão Sonnet "Gerar premium"
-  //   pra quem quer um segundo modelo, mas mais discreto.
+  const haveAnyMine = haveHaiku || haveSonnet;
+  const haveOnlyOthers = items.length > 0 && !haveAnyMine;
+
+  // V15.12.42 — REGRA NOVA (item 3 do prompt): NÃO permitir gerar novamente o
+  // mesmo modelo de forma genérica se o user já gerou. Pra modelo já usado, a
+  // ÚNICA porta é "Melhorar com orientação" (modal com campo obrigatório).
+  // Modelo ainda não usado pode ser gerado normalmente. Se a explicação veio só
+  // da comunidade, o copy é "Gerar minha versão" (não "Gerar com IA" genérico).
+  //
+  // Matriz:
+  //   - Sem nada                → Gerar Haiku + Gerar Sonnet (genéricos)
+  //   - Só de outros (cache)    → Gerar minha versão (Haiku) + Sonnet (idem)
+  //   - User tem Haiku          → Sonnet (se não tem) + 🎯 Melhorar (cobre Haiku)
+  //   - User tem Sonnet         → Haiku (se não tem) + 🎯 Melhorar (cobre Sonnet)
+  //   - User tem ambos          → SÓ 🎯 Melhorar com orientação (modal escolhe modelo)
+
   if(items.length === 0){
     // CASO 1: sem explicações — botões padrão "Gerar"
     const haikuBtn = mkBtn(`🤖 Gerar com IA · ${haikuCost} créd`,'btn btn-sm');
@@ -8634,24 +8643,59 @@ async function renderSharedExplanationsBody(container, q){
     }
     sonnetBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'sonnet', container, sonnetBtn));
     genRow.appendChild(sonnetBtn);
-  } else {
-    // CASO 2: já há explicação — ação principal é "Melhorar com orientação"
-    const improveBtn = mkBtn('🎯 Melhorar com orientação','btn btn-sm');
-    improveBtn.title = 'Diga o que você quer melhorar (mais simples, exemplo concreto, etc) — IA gera versão direcionada';
-    improveBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600;font-size:12.5px';
-    improveBtn.addEventListener('click', ()=>showImproveExplanationModal(q, container, improveBtn));
-    genRow.appendChild(improveBtn);
+  } else if(haveOnlyOthers){
+    // CASO 2: só explicações da comunidade — user pode gerar a SUA versão (não bloqueia)
+    const haikuBtn = mkBtn(`🤖 Gerar minha versão · ${haikuCost} créd`,'btn btn-sm');
+    haikuBtn.title = 'Gera a sua versão da explicação (Haiku). Útil se as da comunidade não atendem.';
+    haikuBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
+    if(insuficienteHaiku){
+      haikuBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${haikuCost} necessários)`;
+      haikuBtn.style.opacity = '0.6';
+    }
+    haikuBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'haiku', container, haikuBtn));
+    genRow.appendChild(haikuBtn);
 
-    // Sonnet permanece como ação secundária discreta (mais avançado)
     const sonnetBtn = mkBtn(`⚡ Sonnet · ${sonnetCost} créd`,'btn btn-sm');
     sonnetBtn.style.cssText = 'background:transparent;color:var(--text2);border-color:var(--border);font-size:12px';
-    sonnetBtn.title = 'Gera nova explicação com Sonnet 4.5 — análise mais profunda';
+    sonnetBtn.title = 'Gera a sua versão com Sonnet 4.5 — análise mais profunda';
     if(insuficienteSonnet){
       sonnetBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${sonnetCost} necessários)`;
       sonnetBtn.style.opacity = '0.6';
     }
     sonnetBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'sonnet', container, sonnetBtn));
     genRow.appendChild(sonnetBtn);
+  } else {
+    // CASO 3 (e 4): user já tem ALGUMA explicação dele.
+    // Ação principal: "🎯 Melhorar com orientação" (modal direcionado, escolhe modelo no modal).
+    const improveBtn = mkBtn('🎯 Melhorar com orientação','btn btn-sm');
+    improveBtn.title = 'Diga o que você quer melhorar — IA gera versão direcionada (escolhe modelo no modal)';
+    improveBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600;font-size:12.5px';
+    improveBtn.addEventListener('click', ()=>showImproveExplanationModal(q, container, improveBtn));
+    genRow.appendChild(improveBtn);
+
+    // Modelo AINDA NÃO usado pelo user → pode ser gerado normalmente (sem orientação)
+    if(!haveSonnet){
+      const sonnetBtn = mkBtn(`⚡ Gerar com Sonnet · ${sonnetCost} créd`,'btn btn-sm');
+      sonnetBtn.style.cssText = 'background:transparent;color:var(--gralia-purple);border-color:rgba(124,92,255,.30);font-size:12px';
+      sonnetBtn.title = 'Você ainda não gerou explicação Sonnet pra esta questão';
+      if(insuficienteSonnet){
+        sonnetBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${sonnetCost} necessários)`;
+        sonnetBtn.style.opacity = '0.6';
+      }
+      sonnetBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'sonnet', container, sonnetBtn));
+      genRow.appendChild(sonnetBtn);
+    }
+    if(!haveHaiku){
+      const haikuBtn = mkBtn(`🤖 Gerar com Haiku · ${haikuCost} créd`,'btn btn-sm');
+      haikuBtn.style.cssText = 'background:transparent;color:var(--text2);border-color:var(--border);font-size:12px';
+      haikuBtn.title = 'Você ainda não gerou explicação Haiku pra esta questão';
+      if(insuficienteHaiku){
+        haikuBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${haikuCost} necessários)`;
+        haikuBtn.style.opacity = '0.6';
+      }
+      haikuBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'haiku', container, haikuBtn));
+      genRow.appendChild(haikuBtn);
+    }
   }
   genWrap.appendChild(genRow);
   wrap.appendChild(genWrap);
@@ -8708,90 +8752,179 @@ async function renderSharedExplanationsBody(container, q){
   // Isso evita 4 botões empilhados e mantém Sonnet acessível mas discreto.
   const fcGenRow = mk('div','shexpl-gen-row');
   fcGenRow.style.cssText = 'margin-top:.5rem;display:flex;gap:6px;flex-wrap:wrap;align-items:center';
-  const fcLabel = flashItems.length > 0 ? '🎴 Gerar outro flashcard com IA · 1 créd' : '🎴 Gerar flashcard com IA · 1 créd';
-  const fcBtn = mkBtn(fcLabel,'btn btn-sm');
-  if(flashItems.length === 0){
-    fcBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
-  }
-  const fcCost = (typeof AI_COSTS === 'object' && AI_COSTS && AI_COSTS.error_flashcard) || 1;
-  if(balance != null && balance < fcCost){
-    fcBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${fcCost} necessários)`;
-    fcBtn.style.opacity = '0.6';
-  }
-  fcBtn.addEventListener('click',()=>generateAndSaveFlashcard(q, 'haiku', container, fcBtn));
-  fcGenRow.appendChild(fcBtn);
 
-  // Botão "Personalizar" (texto curto, abre modal com foco direcionado)
-  const fcCustomBtn = mkBtn('🎯 Personalizar','btn btn-sm');
-  fcCustomBtn.style.cssText = 'background:transparent;color:var(--text2);border-color:var(--border);font-size:12px;font-weight:500';
-  fcCustomBtn.title = `Diga o que você quer fixar — IA cria um flashcard direcionado. Custo: ${fcCost} crédito${fcCost===1?'':'s'}.`;
+  // V15.12.42 — Mesma regra das explicações pra flashcards:
+  // Se user já gerou flashcard com Haiku → bloqueia "Gerar com IA" genérico,
+  // só permite via "Personalizar" (com campo de orientação obrigatório).
+  // Mesma coisa pra Sonnet via popover.
+  const myFlashItems = flashItems.filter(f => f.author_id === AUTH.user.id);
+  const haveMyHaikuFc = myFlashItems.some(f => f.model === 'haiku');
+  const haveMySonnetFc = myFlashItems.some(f => f.model === 'sonnet');
+  const fcCost = (typeof AI_COSTS === 'object' && AI_COSTS && AI_COSTS.error_flashcard) || 1;
+
+  // Botão principal: só se user AINDA não gerou Haiku
+  if(!haveMyHaikuFc){
+    const fcLabel = flashItems.length > 0
+      ? '🎴 Gerar minha versão · ' + fcCost + ' créd'  // tem outros, mas user ainda não gerou
+      : '🎴 Gerar flashcard com IA · ' + fcCost + ' créd';
+    const fcBtn = mkBtn(fcLabel,'btn btn-sm');
+    if(flashItems.length === 0){
+      fcBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
+    }
+    if(balance != null && balance < fcCost){
+      fcBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${fcCost} necessários)`;
+      fcBtn.style.opacity = '0.6';
+    } else if(flashItems.length > 0){
+      fcBtn.title = 'Você ainda não gerou flashcard Haiku pra esta questão. Os existentes são da comunidade.';
+    }
+    fcBtn.addEventListener('click',()=>generateAndSaveFlashcard(q, 'haiku', container, fcBtn));
+    fcGenRow.appendChild(fcBtn);
+  }
+
+  // Botão "Personalizar" — sempre disponível (mas vira PRINCIPAL se user já gerou Haiku)
+  const customLbl = haveMyHaikuFc
+    ? '🎯 Gerar outro com orientação'  // já tem Haiku → essa é a porta nova
+    : '🎯 Personalizar';
+  const fcCustomBtn = mkBtn(customLbl,'btn btn-sm');
+  if(haveMyHaikuFc){
+    fcCustomBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600;font-size:12.5px';
+  } else {
+    fcCustomBtn.style.cssText = 'background:transparent;color:var(--text2);border-color:var(--border);font-size:12px;font-weight:500';
+  }
+  fcCustomBtn.title = haveMyHaikuFc
+    ? 'Você já tem um flashcard Haiku. Pra gerar outro, descreva o que quer fixar.'
+    : `Diga o que você quer fixar — IA cria um flashcard direcionado. Custo: ${fcCost} crédito${fcCost===1?'':'s'}.`;
   if(balance != null && balance < fcCost){ fcCustomBtn.style.opacity = '0.6'; }
   fcCustomBtn.addEventListener('click', ()=>showCustomFlashcardModal(q, container, fcCustomBtn));
   fcGenRow.appendChild(fcCustomBtn);
 
-  // V15.12.41 — Menu "⋯ Mais" com Sonnet (discreto)
-  // Usa o helper buildKebabMenu (criado na próxima fase) ou inline com <details>
+  // V15.12.41 → V15.12.42 — Menu "⋯" agora é um POPOVER FIXO NO BODY,
+  // posicionado dinamicamente em relação ao botão. Antes ficava com
+  // position:absolute dentro de um pai com overflow:hidden e era cortado.
+  // Agora: position:fixed (relativo à viewport), auto-flip pra cima se não
+  // couber pra baixo, alinha pra dentro da tela se estiver perto da borda
+  // direita, fecha ao rolar/clicar fora/Esc.
   const moreWrap = mk('div');
-  moreWrap.style.cssText = 'position:relative;display:inline-block';
+  moreWrap.style.cssText = 'display:inline-block';
   const moreBtn = mk('button','btn btn-sm');
   moreBtn.type = 'button';
   moreBtn.title = 'Mais opções de geração';
   moreBtn.innerHTML = '⋯';
   moreBtn.style.cssText = 'background:transparent;color:var(--text3);border-color:var(--border);font-size:14px;font-weight:600;padding:5px 10px;line-height:1';
-  // Saldo Sonnet (usa mesma action error_flashcard, custo igual — vide nota no relatório)
-  const sonnetFcCost = fcCost; // mesma action por enquanto; relatório explica
-  const menu = mk('div');
-  menu.style.cssText = 'display:none;position:absolute;top:calc(100% + 4px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.15);min-width:240px;z-index:50;padding:4px;overflow:hidden';
-  function makeMenuItem(label, sub, handler, disabled){
-    const item = mk('button');
-    item.type = 'button';
-    item.style.cssText = `display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:8px 12px;background:transparent;border:none;border-radius:6px;cursor:${disabled?'not-allowed':'pointer'};font-family:inherit;text-align:left;opacity:${disabled?'0.5':'1'};transition:background .12s`;
-    const a = mk('span');a.style.cssText='font-size:12.5px;color:var(--text);font-weight:600';a.textContent=label;
-    const b = mk('span');b.style.cssText='font-size:11px;color:var(--text3);font-weight:500';b.textContent=sub;
-    item.appendChild(a);item.appendChild(b);
-    if(!disabled){
-      item.addEventListener('mouseenter',()=>{ item.style.background='var(--surface2)'; });
-      item.addEventListener('mouseleave',()=>{ item.style.background='transparent'; });
-      item.addEventListener('click',()=>{
-        menu.style.display = 'none';
-        handler();
-      });
-    }
-    return item;
-  }
+  const sonnetFcCost = fcCost;
   const sonnetDisabled = (balance != null && balance < sonnetFcCost);
-  menu.appendChild(makeMenuItem(
-    '⚡ Gerar com Sonnet · ' + sonnetFcCost + ' créd',
-    'Análise mais profunda (modelo Sonnet 4.5)',
-    ()=>generateAndSaveFlashcard(q, 'sonnet', container, fcBtn),
-    sonnetDisabled
-  ));
-  menu.appendChild(makeMenuItem(
-    '⚡ Personalizado com Sonnet · ' + sonnetFcCost + ' créd',
-    'Você diz o foco — Sonnet cria flashcard mais elaborado',
-    ()=>showCustomFlashcardModal(q, container, fcBtn, {model:'sonnet'}),
-    sonnetDisabled
-  ));
+
   moreBtn.addEventListener('click',(ev)=>{
     ev.stopPropagation();
-    const willOpen = menu.style.display === 'none';
-    // Fecha outros menus abertos antes
-    document.querySelectorAll('[data-shexpl-more-menu]').forEach(m=>{ m.style.display='none'; });
-    menu.style.display = willOpen ? 'block' : 'none';
-    if(willOpen){
-      // Click fora fecha
-      const onDoc = (e)=>{
-        if(!moreWrap.contains(e.target)){
-          menu.style.display = 'none';
-          document.removeEventListener('click', onDoc);
-        }
-      };
-      setTimeout(()=>document.addEventListener('click', onDoc), 0);
+    // Fecha qualquer popover existente
+    const existing = document.querySelector('.shexpl-more-popover');
+    if(existing){
+      existing.remove();
+      return; // toggle off
     }
+
+    const popover = mk('div','shexpl-more-popover');
+    popover.style.cssText = 'position:fixed;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.18);min-width:260px;max-width:300px;z-index:9999;padding:4px;overflow:hidden;opacity:0;transform:translateY(-4px);transition:opacity .12s, transform .12s';
+
+    function makeMenuItem(label, sub, handler, disabled){
+      const item = mk('button');
+      item.type = 'button';
+      item.style.cssText = `display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:8px 12px;background:transparent;border:none;border-radius:6px;cursor:${disabled?'not-allowed':'pointer'};font-family:inherit;text-align:left;opacity:${disabled?'0.5':'1'};transition:background .12s`;
+      const a = mk('span');a.style.cssText='font-size:12.5px;color:var(--text);font-weight:600';a.textContent=label;
+      const b = mk('span');b.style.cssText='font-size:11px;color:var(--text3);font-weight:500;line-height:1.35';b.textContent=sub;
+      item.appendChild(a);item.appendChild(b);
+      if(!disabled){
+        item.addEventListener('mouseenter',()=>{ item.style.background='var(--surface2)'; });
+        item.addEventListener('mouseleave',()=>{ item.style.background='transparent'; });
+        item.addEventListener('click',()=>{
+          closePopover();
+          handler();
+        });
+      }
+      return item;
+    }
+    // V15.12.42 — Sonnet genérico só se user AINDA não gerou flashcard Sonnet
+    // (mesma regra do Haiku/explicação: bloqueia regeneração cega).
+    const triggerBtn = (typeof fcBtn !== 'undefined' && fcBtn) ? fcBtn : fcCustomBtn;
+    if(!haveMySonnetFc){
+      popover.appendChild(makeMenuItem(
+        '⚡ Gerar com Sonnet · ' + sonnetFcCost + ' créd',
+        'Análise mais profunda (modelo Sonnet 4.5)',
+        ()=>generateAndSaveFlashcard(q, 'sonnet', container, triggerBtn),
+        sonnetDisabled
+      ));
+    }
+    // Personalizado com Sonnet — sempre disponível (tem campo obrigatório)
+    popover.appendChild(makeMenuItem(
+      haveMySonnetFc ? '⚡ Outro com Sonnet (com orientação) · ' + sonnetFcCost + ' créd' : '⚡ Personalizado com Sonnet · ' + sonnetFcCost + ' créd',
+      'Você diz o foco — Sonnet cria flashcard direcionado',
+      ()=>showCustomFlashcardModal(q, container, triggerBtn, {model:'sonnet'}),
+      sonnetDisabled
+    ));
+    // Se user já tem AMBOS os modelos, mostra info dentro do popover
+    if(haveMyHaikuFc && haveMySonnetFc){
+      const info = mk('div');
+      info.style.cssText = 'padding:8px 12px;font-size:11px;color:var(--text3);line-height:1.4;border-top:1px solid var(--border);margin-top:4px';
+      info.textContent = 'Você já gerou flashcard com os 2 modelos. Pra criar outro, descreva o foco específico.';
+      popover.appendChild(info);
+    }
+
+    // Adiciona ao body PRIMEIRO pra poder medir
+    document.body.appendChild(popover);
+    // Aguarda paint pra getBoundingClientRect funcionar
+    requestAnimationFrame(()=>{
+      const btnRect = moreBtn.getBoundingClientRect();
+      const popRect = popover.getBoundingClientRect();
+      const margin = 8;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      // Posição padrão: abaixo do botão, alinhado à direita do botão
+      let top = btnRect.bottom + 4;
+      let left = btnRect.right - popRect.width;
+      // Auto-flip: se não couber pra baixo, abre pra cima
+      if(top + popRect.height + margin > vh){
+        top = btnRect.top - popRect.height - 4;
+        // Se ainda não couber em cima, prende no topo da viewport
+        if(top < margin) top = margin;
+      }
+      // Se estourou pra esquerda, alinha à esquerda do botão
+      if(left < margin){
+        left = btnRect.left;
+      }
+      // Se estourou pra direita
+      if(left + popRect.width > vw - margin){
+        left = vw - popRect.width - margin;
+      }
+      popover.style.top = top + 'px';
+      popover.style.left = left + 'px';
+      popover.style.opacity = '1';
+      popover.style.transform = 'translateY(0)';
+    });
+
+    function closePopover(){
+      popover.style.opacity = '0';
+      popover.style.transform = 'translateY(-4px)';
+      setTimeout(()=>{ if(popover.parentNode) popover.remove(); }, 120);
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', closePopover, true);
+      window.removeEventListener('resize', closePopover);
+    }
+    function onDocClick(e){
+      if(!popover.contains(e.target) && e.target !== moreBtn) closePopover();
+    }
+    function onKey(e){
+      if(e.key === 'Escape'){ e.preventDefault(); closePopover(); }
+    }
+    setTimeout(()=>{
+      document.addEventListener('click', onDocClick);
+      document.addEventListener('keydown', onKey);
+      // Fecha ao rolar (true = capture phase pra pegar scroll de qualquer elemento)
+      window.addEventListener('scroll', closePopover, true);
+      window.addEventListener('resize', closePopover);
+    }, 0);
   });
-  menu.setAttribute('data-shexpl-more-menu','1');
   moreWrap.appendChild(moreBtn);
-  moreWrap.appendChild(menu);
   fcGenRow.appendChild(moreWrap);
 
   wrap.appendChild(fcGenRow);
@@ -15416,6 +15549,8 @@ function render(){
         ST.importedFocusActive = false;
         ST.importedFocusStartedAt = null;
         ST.importedFocusSession = null;
+        ST.importedFocusPeriod = 'session';   // V15.12.42
+        ST._importedFocusContext = null;      // V15.12.42
         document.body.classList.remove('imported-focus-mode');
       }
       if(ST.practiceFocusMode){
@@ -15598,6 +15733,31 @@ function render(){
       // Não está em view de método — sai do modo foco
       ST.methodFocusActive = false;
       document.body.classList.remove('method-focus-mode');
+    }
+  }
+
+  // V15.12.42 — Barra superior do Modo Foco da prática histórica/caderno —
+  // injetada AQUI no .page (não mais no wrap interno) pra ficar com a mesma
+  // largura/posição do methodFocus. ST._importedFocusContext é setado por
+  // renderImportedPractice/renderNotebookPractice no momento do render do
+  // conteúdo, e lemos aqui na ordem render() global.
+  if(ST.importedFocusActive){
+    if(ST.view !== 'imported'){
+      // Não está em view de imported — sai do modo foco (segurança)
+      ST.importedFocusActive = false;
+      ST.importedFocusStartedAt = null;
+      ST.importedFocusSession = null;
+      ST.importedFocusPeriod = 'session';
+      ST._importedFocusContext = null;     // V15.12.42
+      document.body.classList.remove('imported-focus-mode');
+    } else {
+      try{
+        const ctx = ST._importedFocusContext || {title: 'Banco de questões', subtitle: 'Prática histórica'};
+        const bar = buildImportedFocusBar(ctx);
+        if(bar && pg && pg.firstChild){
+          pg.insertBefore(bar, pg.firstChild);
+        }
+      }catch(e){console.warn('[imported focus bar]', e);}
     }
   }
 
@@ -23021,6 +23181,46 @@ function renderBankFilters(stateKey,bank){
     activeFilters.push({key:'search', label: 'Busca: "'+f.search.slice(0,20)+(f.search.length>20?'…':'')+'"', reset:()=>{f.search='';}});
   }
 
+  // V15.12.42 — Filtro de disciplinas sempre visível (item 5 do prompt).
+  // Mesmo com filtros recolhidos, o user vê e clica direto. Antes ele só
+  // aparecia dentro do bloco expandido — pouco acessível.
+  const actDiscsTop = activeDisciplines();
+  const discsWithQTop = actDiscsTop.filter(d=>bank.some(q=>q.disciplineId===d.id));
+  if(discsWithQTop.length >= 2){
+    const discQuickRow = mk('div');
+    discQuickRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:.625rem;flex-wrap:wrap;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px';
+    const lblD = mk('span');
+    lblD.style.cssText = 'font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-right:4px';
+    lblD.textContent = 'Disciplina';
+    discQuickRow.appendChild(lblD);
+
+    function discChip(id, name, cnt, color){
+      const c = mk('button');
+      c.type = 'button';
+      const isOn = f.disc === id;
+      const bg = isOn ? (color ? color + '22' : 'var(--surface2)') : 'transparent';
+      const col = isOn ? (color || 'var(--text)') : 'var(--text2)';
+      const bd = isOn ? (color || 'var(--text2)') : 'var(--border)';
+      c.style.cssText = `display:inline-flex;align-items:center;gap:6px;padding:5px 11px;background:${bg};border:1px solid ${bd};border-radius:999px;cursor:pointer;font-size:12px;font-weight:${isOn?'700':'500'};color:${col};font-family:inherit;transition:all .12s`;
+      if(color){
+        const dot = mk('span');dot.style.cssText = `width:7px;height:7px;border-radius:50%;background:${color};flex-shrink:0`;
+        c.appendChild(dot);
+      }
+      const nm = mk('span');nm.textContent = name;
+      c.appendChild(nm);
+      const cn = mk('span');cn.style.cssText = 'font-size:11px;color:var(--text3);font-weight:500';cn.textContent = '· ' + cnt;
+      c.appendChild(cn);
+      c.addEventListener('click', ()=>{ f.disc = id; render(); });
+      return c;
+    }
+    discQuickRow.appendChild(discChip('all', 'Todas', bank.length, null));
+    discsWithQTop.forEach(d=>{
+      const cnt = bank.filter(q=>q.disciplineId===d.id).length;
+      discQuickRow.appendChild(discChip(d.id, d.name, cnt, d.color));
+    });
+    wrap.appendChild(discQuickRow);
+  }
+
   // Header da seção de filtros: botão de toggle + chips ativos + limpar
   const filtersHead = mk('div');
   filtersHead.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:.625rem;flex-wrap:wrap';
@@ -23627,6 +23827,7 @@ function exitImportedFocus(){
   ST.importedFocusStartedAt = null;
   ST.importedFocusSession = null;
   ST.importedFocusPeriod = 'session';  // V15.12.41 — reseta filtro
+  ST._importedFocusContext = null;     // V15.12.42 — limpa contexto da focus bar
   document.body.classList.remove('imported-focus-mode');
   render();
 }
@@ -29985,17 +30186,15 @@ function renderImportedPractice(wrap){
   }
   const q = ST.importedCurrent;
 
-  // V15.12.39 — Focus bar premium: aparece como primeiro filho do wrap quando o
-  // modo foco está ON. Reusa CSS .method-focus-bar (sticky-top com blur).
+  // V15.12.42 — A focus bar é injetada centralmente em render() (igual à prática IA),
+  // direto no `.page` antes do `.fade`. Antes ficava dentro do wrap (limitado a 920px),
+  // agora ocupa toda a largura útil. Guardamos contexto em ST pro render global ler.
   if(ST.importedFocusActive){
-    const focusBar = buildImportedFocusBar({
+    ST._importedFocusContext = {
       title: _customPool ? `Banco · ${_customPool.length} ${_customPool.length===1?'questão selecionada':'questões selecionadas'}` : 'Banco de questões',
       subtitle: 'Prática histórica',
       kind: q.kind || 'CE'
-    });
-    // Insere ANTES dos demais elementos
-    if(wrap.firstChild) wrap.insertBefore(focusBar, wrap.firstChild);
-    else wrap.appendChild(focusBar);
+    };
   }
 
   const meta = mk('div','flex focus-hide');meta.style.cssText='gap:6px;margin-bottom:.5rem;flex-wrap:wrap';
@@ -32089,7 +32288,8 @@ function renderNotebookPractice(wrap){
     wrap.appendChild(loading('Carregando...'));return wrap;
   }
 
-  // V15.12.39 — Focus bar premium quando modo foco está ON
+  // V15.12.42 — Contexto da focus bar pro render() global injetar no .page
+  // (não mais no wrap interno, que ficava limitado a 920px).
   if(ST.importedFocusActive){
     let subtitle = 'Caderno';
     if(nb.seriesParent){
@@ -32097,15 +32297,13 @@ function renderNotebookPractice(wrap){
       const seriesName = src ? src.name : 'série';
       subtitle = `🪄 Série · ${seriesName}${nb.seriesIndex?` · caderno ${nb.seriesIndex}`:''}`;
     }
-    const focusBar = buildImportedFocusBar({
+    ST._importedFocusContext = {
       title: '📒 ' + nb.name,
       subtitle: subtitle,
       kind: q.kind || 'CE',
       currentIdx: ST.notebookPracticeIdx,
       total: ST.notebookPracticeOrder.length
-    });
-    if(wrap.firstChild) wrap.insertBefore(focusBar, wrap.firstChild);
-    else wrap.appendChild(focusBar);
+    };
   }
 
   // Question display (reuses imported question UI patterns)
