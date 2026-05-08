@@ -395,8 +395,12 @@ body.method-focus-mode .app-sidebar,
 body.srs-focus-mode .app-sidebar{display:none !important}
 /* V15.12.3: como o padding agora vai na .page (não no #app), o reset
    pra modo foco também tem que ir nela. */
+/* V15.12.40: imported-focus-mode também precisa do reset — antes a sidebar
+   continuava ocupando 264px de padding-left, deixando o conteúdo comprimido
+   no centro com área vazia lateral. */
 body.method-focus-mode #app .page,
-body.srs-focus-mode #app .page{padding-left:0 !important}
+body.srs-focus-mode #app .page,
+body.imported-focus-mode #app .page{padding-left:0 !important}
 
 
 .topbar-inner{
@@ -2276,10 +2280,10 @@ html.dark .wfb-tag-ai{color:#b08aff}
   opacity:.85;
 }
 
-/* V15.12.28: mascote CONGELADO no último frame do vídeo (em vez de trocar
-   pra imagem estática que mostra a pose inicial). O <video> permanece
-   visível mas pausado no fim. Reduzimos pra 72px pra não competir com o
-   conteúdo, mesmo princípio do estado static. */
+/* V15.12.28 → V15.12.40 OBSOLETO mas mantido por compat:
+   .dash-mascot-frozen não é mais usado (vídeo agora sempre vai pra imagem
+   estática). Regras desativadas. Removidas em rodada futura quando o tema
+   final estiver estável. */
 .dash-mascot.dash-mascot-frozen .dash-mascot-video{
   height:72px;
   max-width:90px;
@@ -2287,12 +2291,7 @@ html.dark .wfb-tag-ai{color:#b08aff}
   transition:height .35s ease, max-width .35s ease, opacity .35s ease;
 }
 
-/* V15.12.30: dica visual de interatividade quando o mascote está congelado.
-   Cursor:pointer indica que dá pra interagir; opacity volta pra 1 no hover
-   pra reforçar feedback visual antes de o vídeo replayar. Quando playing,
-   cursor é default (não interromper a animação inicial). */
-.dash-mascot.dash-mascot-frozen{cursor:pointer}
-.dash-mascot.dash-mascot-frozen:hover .dash-mascot-video{opacity:1}
+.dash-mascot.dash-mascot-frozen{cursor:default}
 
 /* === Estado 1: VIDEO (default quando container tem .dash-mascot-video filho) === */
 .dash-mascot:not(.dash-mascot-static):has(.dash-mascot-video) .dash-mascot-video{display:block}
@@ -2307,13 +2306,19 @@ html.dark .wfb-tag-ai{color:#b08aff}
 :root[data-theme="dark"] .dash-mascot.dash-mascot-static .dash-mascot-light{display:none}
 :root[data-theme="dark"] .dash-mascot.dash-mascot-static .dash-mascot-dark{display:block}
 
-/* Hover suave (no elemento atualmente visível) */
-.dash-mascot:hover .dash-mascot-video,
-.dash-mascot:hover .dash-mascot-img{transform:translateY(-3px) rotate(-3deg);opacity:1}
+/* V15.12.40 — Hover suave e elegante (substituiu tilt brusco antigo).
+   Durante a animação inicial (.dash-mascot-playing), hover é INERTE pra
+   não distrair. Só faz lift quando o mascote já está estático. */
+.dash-mascot:not(.dash-mascot-playing) .dash-mascot-img{
+  transition:transform .35s cubic-bezier(.4, 0, .2, 1), opacity .25s ease;
+}
+.dash-mascot:not(.dash-mascot-playing):hover .dash-mascot-img{
+  transform:translateY(-2px) scale(1.03);
+  opacity:1;
+}
 
-/* V15.12.30: durante o REPLAY (estado playing reativado por hover), NÃO
-   aplicar transform de tilt — fica esquisito ver o vídeo tocando inclinado
-   e deslocado. O lift só faz sentido no estado parado (frozen ou static). */
+/* Durante o vídeo tocando, o lift fica DESATIVADO. Quando vídeo termina e
+   troca pra static (com fade), o hover passa a funcionar suavemente. */
 .dash-mascot.dash-mascot-playing:hover .dash-mascot-video{
   transform:none;
 }
@@ -3860,7 +3865,8 @@ html.dark .method-focus-bar{background:rgba(20,20,28,.85)}
   .method-focus-bar{padding:.625rem 1rem}
   .mfb-score-num{font-size:18px}
   .mfb-stats{gap:10px}
-  body.method-focus-mode .page > .fade{padding:.625rem 1rem 1rem}
+  body.method-focus-mode .page > .fade,
+  body.imported-focus-mode .page > .fade{padding:.625rem 1rem 1rem}
 }
 
 .srs-focus-header{
@@ -5025,6 +5031,41 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 /* ====== TOAST ====== */
 .ux-toast{position:fixed;bottom:-60px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:var(--rs);font-size:13px;font-weight:500;box-shadow:0 4px 18px rgba(0,0,0,.2);z-index:1000;opacity:0;transition:bottom .3s,opacity .3s;max-width:80vw;text-align:center}
 .ux-toast.visible{bottom:24px;opacity:1}
+/* V15.12.40 — Botões dentro do toast precisam contrastar com o FUNDO do toast (que é var(--text), não var(--surface)).
+   Antes: rgba(255,255,255,.18) + color:#fff — invisível no tema claro porque toast tem fundo escuro = ok,
+   mas no tema escuro o toast tem fundo CLARO e os botões "brancos" sumiam.
+   Agora: usamos var(--bg) (que é OPOSTO ao --text do fundo do toast) com transparência baseada nele. */
+.ux-toast-action{
+  background:transparent;
+  border:1.5px solid var(--bg);
+  color:var(--bg);
+  border-radius:6px;
+  padding:5px 12px;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  font-family:inherit;
+  letter-spacing:.1px;
+  transition:background .12s, transform .08s;
+  flex-shrink:0;
+}
+.ux-toast-action:hover{
+  background:var(--bg);
+  color:var(--text);
+}
+.ux-toast-action:focus{
+  outline:2px solid var(--gralia-purple);
+  outline-offset:2px;
+}
+.ux-toast-action:active{transform:scale(.96)}
+.ux-toast-action--primary{
+  background:var(--bg);
+  color:var(--text);
+}
+.ux-toast-action--primary:hover{
+  background:transparent;
+  color:var(--bg);
+}
 
 /* ====== SHORTCUTS OVERLAY ====== */
 .shortcuts-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem}
@@ -8316,17 +8357,56 @@ async function renderSharedExplanationsUI(container, q, wasCorrect){
 // (lista offline) pra acumular evidência. Não envia ao Supabase ainda
 // (estrutura de tabela/RLS não preparada — fica pra rodada futura).
 // Quando o backend estiver pronto, basta trocar o handler de save.
+//
+// V15.12.40 — Anti-duplicidade: o mesmo usuário não pode criar reports
+// duplicados pro mesmo item. Se ele já reportou, o modal abre em modo
+// "atualizar motivo" (faz upsert do registro existente em vez de criar novo).
+// Chave de unicidade: itemId + itemKind + authorId(reporter).
+
+// Retorna o report existente do user atual pra esse item, ou null
+function findUserReportForItem(itemId, kind){
+  if(!itemId || !DATA._reportedExplanations) return null;
+  const myId = (AUTH.user && AUTH.user.id) || 'local';
+  return DATA._reportedExplanations.find(r =>
+    r.itemId === itemId &&
+    r.itemKind === kind &&
+    (r.reporterId || 'local') === myId
+  ) || null;
+}
+
+// True se o user atual já reportou esse item
+function hasUserReportedItem(itemId, kind){
+  return !!findUserReportForItem(itemId, kind);
+}
+
 function showReportExplanationModal(item, q, kind){
+  // V15.12.40 — Detecta se já reportou e ativa modo "atualizar"
+  const existing = findUserReportForItem(item.id || null, kind);
+
   const m = mk('div');m.style.maxWidth='420px';
   const head = mk('div','modal-head');
-  const h = mk('h3');h.textContent = kind==='flashcard' ? 'Reportar flashcard' : 'Reportar explicação';
+  const h = mk('h3');
+  h.textContent = existing
+    ? (kind==='flashcard' ? 'Atualizar report do flashcard' : 'Atualizar report da explicação')
+    : (kind==='flashcard' ? 'Reportar flashcard' : 'Reportar explicação');
   const cl = mkBtn('×','modal-close');cl.addEventListener('click',closeModal);
   head.appendChild(h);head.appendChild(cl);
   m.appendChild(head);
 
-  const intro = mk('p','txt2');intro.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.55';
-  intro.innerHTML = 'Reportar ajuda a comunidade — explicações com muitos reports vão sumir do destaque automaticamente. <b>Use com responsabilidade</b>.';
-  m.appendChild(intro);
+  // V15.12.40 — Banner indicando que já reportou (só atualiza)
+  if(existing){
+    const banner = mk('div');
+    banner.style.cssText = 'padding:.625rem .875rem;background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.30);border-left:3px solid var(--amber);border-radius:8px;margin-bottom:.875rem;font-size:12.5px;line-height:1.5';
+    const reportedAtStr = (typeof formatRelativeDate === 'function')
+      ? formatRelativeDate(new Date(existing.reportedAt).toISOString())
+      : 'anteriormente';
+    banner.innerHTML = `<b>Você já reportou este conteúdo</b> (${reportedAtStr}). Selecione um novo motivo se quiser atualizar — não criamos reports duplicados.`;
+    m.appendChild(banner);
+  } else {
+    const intro = mk('p','txt2');intro.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.55';
+    intro.innerHTML = 'Reportar ajuda a comunidade — explicações com muitos reports vão sumir do destaque automaticamente. <b>Use com responsabilidade</b>.';
+    m.appendChild(intro);
+  }
 
   const reasons = [
     {value:'incorrect', label:'Incorreta', desc:'A explicação contradiz o gabarito ou está factualmente errada.'},
@@ -8337,12 +8417,14 @@ function showReportExplanationModal(item, q, kind){
     {value:'other', label:'Outro', desc:''},
   ];
 
-  let selected = null;
+  // V15.12.40 — Pré-seleciona motivo anterior se for atualização
+  let selected = existing ? existing.reason : null;
   const reasonList = mk('div');reasonList.style.cssText='display:flex;flex-direction:column;gap:6px;margin-bottom:.75rem';
   reasons.forEach(r => {
     const row = mk('label');
     row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:12.5px;line-height:1.45';
     const radio = mk('input');radio.type='radio';radio.name='report-reason';radio.value=r.value;radio.style.cssText='margin-top:2px';
+    if(existing && existing.reason === r.value) radio.checked = true;
     radio.addEventListener('change',()=>{ selected = r.value; });
     const txt = mk('div');txt.style.flex='1';
     txt.innerHTML = `<b>${r.label}</b>${r.desc?`<div style="font-size:11px;color:var(--text3);margin-top:1px">${r.desc}</div>`:''}`;
@@ -8355,31 +8437,47 @@ function showReportExplanationModal(item, q, kind){
   const noteLbl = mk('label');noteLbl.textContent='Comentário (opcional)';noteLbl.style.cssText='font-size:11.5px;color:var(--text2);font-weight:600';
   m.appendChild(noteLbl);
   const note = mk('textarea');note.rows=2;note.placeholder='Detalhe o problema…';note.style.cssText='width:100%;margin-top:4px;font-family:inherit;font-size:12.5px;padding:.5rem .65rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;resize:vertical;min-height:50px;max-height:120px;color:var(--text)';
+  if(existing && existing.note) note.value = existing.note;
   m.appendChild(note);
 
   const actions = mk('div','flex');actions.style.cssText='margin-top:1rem;gap:8px;justify-content:flex-end';
   const cancel = mkBtn('Cancelar','btn');
   cancel.addEventListener('click',closeModal);
   actions.appendChild(cancel);
-  const send = mkBtn('Enviar report','btn btn-p');
+  const send = mkBtn(existing ? 'Atualizar motivo' : 'Enviar report','btn btn-p');
   send.addEventListener('click',()=>{
     if(!selected){ alert('Selecione um motivo.'); return; }
-    // Persistência local
     if(!DATA._reportedExplanations) DATA._reportedExplanations = [];
-    DATA._reportedExplanations.push({
-      id: 'rpt_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
-      itemId: item.id || null,
-      itemKind: kind,
-      itemModel: item.model || null,
-      authorId: item.author_id || null,
-      questionHash: (typeof questionHash === 'function' ? questionHash(q.enunciado) : null),
-      reason: selected,
-      note: note.value.trim(),
-      reportedAt: Date.now()
-    });
-    save();
-    closeModal();
-    showToast('✓ Report registrado. Obrigado pela ajuda!', 3000);
+    const myId = (AUTH.user && AUTH.user.id) || 'local';
+
+    if(existing){
+      // V15.12.40 — Atualiza in-place (sem criar duplicata)
+      existing.reason = selected;
+      existing.note = note.value.trim();
+      existing.updatedAt = Date.now();
+      // Garante que reporterId está setado em registros antigos (migration on-the-fly)
+      if(!existing.reporterId) existing.reporterId = myId;
+      save();
+      closeModal();
+      showToast('✓ Report atualizado', 3000);
+    } else {
+      // Novo report
+      DATA._reportedExplanations.push({
+        id: 'rpt_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
+        itemId: item.id || null,
+        itemKind: kind,
+        itemModel: item.model || null,
+        authorId: item.author_id || null,
+        reporterId: myId,           // V15.12.40 — quem reportou (pra anti-duplicidade)
+        questionHash: (typeof questionHash === 'function' ? questionHash(q.enunciado) : null),
+        reason: selected,
+        note: note.value.trim(),
+        reportedAt: Date.now()
+      });
+      save();
+      closeModal();
+      showToast('✓ Report registrado. Obrigado pela ajuda!', 3000);
+    }
   });
   actions.appendChild(send);
   m.appendChild(actions);
@@ -8539,13 +8637,43 @@ async function renderSharedExplanationsBody(container, q){
   wrap.appendChild(flashHead);
   if(flashItems.length > 0){
     const flashList = mk('div','shexpl-list');
-    flashItems.slice(0,3).forEach(item=>flashList.appendChild(renderSharedFlashcardCard(item, q)));
+    // V15.12.40 — Ordena por score desc (igual explicações). Flashcards muito
+    // negativos (score <= -3) NÃO aparecem na lista principal — ficam atrás
+    // do <details> "Mostrar flashcards menos avaliados".
+    const sortedFlash = flashItems.slice().sort((a,b) => (b.score||0) - (a.score||0));
+    const positive = sortedFlash.filter(f => (f.score||0) > -3);
+    const negative = sortedFlash.filter(f => (f.score||0) <= -3);
+    // Top 3 da lista positiva (badge na primeira se score > 0 e há concorrência)
+    const topVisible = positive.slice(0, 3);
+    topVisible.forEach((item, idx)=>{
+      const c = renderSharedFlashcardCard(item, q);
+      // Indica "Mais votado" no primeiro se há score positivo e há concorrência
+      if(idx === 0 && (item.score||0) > 0 && positive.length > 1){
+        const topBadge = mk('div');
+        topBadge.style.cssText = 'display:inline-block;padding:1px 7px;background:rgba(16,185,129,.15);color:var(--accent-text);border-radius:9px;font-size:10.5px;font-weight:700;margin-bottom:6px';
+        topBadge.textContent = '⭐ Mais votado';
+        c.insertBefore(topBadge, c.firstChild);
+      }
+      flashList.appendChild(c);
+    });
     wrap.appendChild(flashList);
+    // Negativos colapsados (visualmente discretos)
+    if(negative.length > 0){
+      const det = mk('details');det.style.cssText = 'margin-top:.5rem';
+      const sm = mk('summary');sm.style.cssText='cursor:pointer;font-size:11.5px;color:var(--text3);padding:4px 0';
+      sm.textContent = `Mostrar ${negative.length} flashcard${negative.length>1?'s menos avaliados':' menos avaliado'}`;
+      det.appendChild(sm);
+      const negList = mk('div','shexpl-list');negList.style.marginTop='6px';
+      negative.forEach(item => negList.appendChild(renderSharedFlashcardCard(item, q)));
+      det.appendChild(negList);
+      wrap.appendChild(det);
+    }
   }
   // V15.12.38 — UM SÓ botão de gerar flashcard.
   // Antes: dois botões (Haiku/Sonnet) ambos custando 1 créd — confuso.
   // Agora: ação única. Se já há flashcard compartilhado, label muda pra "Gerar outro".
-  const fcGenRow = mk('div','shexpl-gen-row');fcGenRow.style.marginTop='.5rem';
+  const fcGenRow = mk('div','shexpl-gen-row');
+  fcGenRow.style.cssText = 'margin-top:.5rem;display:flex;gap:6px;flex-wrap:wrap;align-items:center';
   const fcLabel = flashItems.length > 0 ? '🎴 Gerar outro flashcard com IA · 1 créd' : '🎴 Gerar flashcard com IA · 1 créd';
   const fcBtn = mkBtn(fcLabel,'btn btn-sm');
   // Mantemos o estilo original pra ação principal (mais fraca quando há cache)
@@ -8560,6 +8688,17 @@ async function renderSharedExplanationsBody(container, q){
   }
   fcBtn.addEventListener('click',()=>generateAndSaveFlashcard(q, 'haiku', container, fcBtn));
   fcGenRow.appendChild(fcBtn);
+
+  // V15.12.40 — Ação avançada: flashcard personalizado (mesmo custo, mais direcionado)
+  const fcCustomBtn = mkBtn('🎯 Gerar flashcard personalizado','btn btn-sm');
+  fcCustomBtn.style.cssText = 'background:transparent;color:var(--text2);border-color:var(--border);font-size:11.5px;font-weight:500';
+  fcCustomBtn.title = `Você diz o que quer fixar; a IA cria um flashcard direcionado. Custo: ${fcCost} crédito${fcCost===1?'':'s'}.`;
+  if(balance != null && balance < fcCost){
+    fcCustomBtn.style.opacity = '0.6';
+  }
+  fcCustomBtn.addEventListener('click', ()=>showCustomFlashcardModal(q, container, fcCustomBtn));
+  fcGenRow.appendChild(fcCustomBtn);
+
   wrap.appendChild(fcGenRow);
 }
 
@@ -8659,13 +8798,19 @@ function renderSharedExplanationCard(item, q){
   helpBtn.addEventListener('click',()=>showHelpDoubtModal(q, item));
   foot.appendChild(helpBtn);
   // V15.12.37 — Botão "Reportar" descreto
+  // V15.12.40 — Adapta visual se user já reportou: cor amber + tooltip muda
   const reportBtn = mk('button','shexpl-report-btn');
   reportBtn.type='button';
-  reportBtn.title = 'Reportar problema nesta explicação';
-  reportBtn.innerHTML = '⚠';
-  reportBtn.style.cssText = 'background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11.5px;color:var(--text3);margin-left:auto';
-  reportBtn.addEventListener('mouseenter', ()=>{ reportBtn.style.color='var(--amber-text)'; reportBtn.style.borderColor='var(--amber)'; });
-  reportBtn.addEventListener('mouseleave', ()=>{ reportBtn.style.color='var(--text3)'; reportBtn.style.borderColor='var(--border)'; });
+  const alreadyReported = hasUserReportedItem(item.id, 'explicacao');
+  reportBtn.title = alreadyReported ? 'Você já reportou — clique pra atualizar o motivo' : 'Reportar problema nesta explicação';
+  reportBtn.innerHTML = alreadyReported ? '⚠ Reportado' : '⚠';
+  if(alreadyReported){
+    reportBtn.style.cssText = 'background:rgba(245,158,11,.10);border:1px solid var(--amber);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;color:var(--amber-text);margin-left:auto;font-weight:600';
+  } else {
+    reportBtn.style.cssText = 'background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11.5px;color:var(--text3);margin-left:auto';
+    reportBtn.addEventListener('mouseenter', ()=>{ reportBtn.style.color='var(--amber-text)'; reportBtn.style.borderColor='var(--amber)'; });
+    reportBtn.addEventListener('mouseleave', ()=>{ reportBtn.style.color='var(--text3)'; reportBtn.style.borderColor='var(--border)'; });
+  }
   reportBtn.addEventListener('click',()=>showReportExplanationModal(item, q, 'explicacao'));
   foot.appendChild(reportBtn);
   card.appendChild(foot);
@@ -8709,6 +8854,57 @@ function renderSharedFlashcardCard(item, q){
   card.appendChild(body);
 
   const foot = mk('div','shexpl-foot');
+  // V15.12.40 — Voto em flashcards: reusa a mesma RPC vote_explanation
+  // (a tabela shared_explanations distingue por kind, então um id de flashcard
+  // serve perfeitamente). Optimistic items (id começa com 'optimistic-')
+  // não podem ser votados — botões ficam desabilitados com tooltip.
+  const isOptimistic = item.id && String(item.id).startsWith('optimistic-');
+  const myVote = item.my_vote || 0;
+  const upBtn = mk('button','shexpl-vote'+(myVote===1?' on':''));
+  upBtn.type='button';
+  upBtn.innerHTML = `👍 <span class="vote-count">${item.upvotes||0}</span>`;
+  upBtn.title = isOptimistic ? 'Aguarde alguns segundos pra poder votar (sincronizando)' : 'Útil';
+  if(isOptimistic) upBtn.disabled = true;
+  const dnBtn = mk('button','shexpl-vote dn'+(myVote===-1?' on':''));
+  dnBtn.type='button';
+  dnBtn.innerHTML = `👎 <span class="vote-count">${item.downvotes||0}</span>`;
+  dnBtn.title = isOptimistic ? 'Aguarde alguns segundos pra poder votar (sincronizando)' : 'Não útil';
+  if(isOptimistic) dnBtn.disabled = true;
+  if(!isOptimistic){
+    upBtn.addEventListener('click',async()=>{
+      const newVote = myVote === 1 ? 0 : 1;
+      upBtn.disabled = true;dnBtn.disabled = true;
+      const okv = await voteSharedExplanation(item.id, newVote);
+      if(okv){
+        if(myVote === 1){ item.upvotes = Math.max(0,(item.upvotes||0)-1); item.my_vote = 0; }
+        else if(myVote === -1){ item.downvotes = Math.max(0,(item.downvotes||0)-1); item.upvotes = (item.upvotes||0)+1; item.my_vote = 1; }
+        else{ item.upvotes = (item.upvotes||0)+1; item.my_vote = 1; }
+        item.score = (item.upvotes||0) - (item.downvotes||0);
+        const newCard = renderSharedFlashcardCard(item, q);
+        card.replaceWith(newCard);
+      } else {
+        upBtn.disabled = false;dnBtn.disabled = false;
+      }
+    });
+    dnBtn.addEventListener('click',async()=>{
+      const newVote = myVote === -1 ? 0 : -1;
+      upBtn.disabled = true;dnBtn.disabled = true;
+      const okv = await voteSharedExplanation(item.id, newVote);
+      if(okv){
+        if(myVote === -1){ item.downvotes = Math.max(0,(item.downvotes||0)-1); item.my_vote = 0; }
+        else if(myVote === 1){ item.upvotes = Math.max(0,(item.upvotes||0)-1); item.downvotes = (item.downvotes||0)+1; item.my_vote = -1; }
+        else{ item.downvotes = (item.downvotes||0)+1; item.my_vote = -1; }
+        item.score = (item.upvotes||0) - (item.downvotes||0);
+        const newCard = renderSharedFlashcardCard(item, q);
+        card.replaceWith(newCard);
+      } else {
+        upBtn.disabled = false;dnBtn.disabled = false;
+      }
+    });
+  }
+  foot.appendChild(upBtn);
+  foot.appendChild(dnBtn);
+
   // V15.12.39 — Detectar se já está no deck do user (já foi adicionado em sessão anterior)
   const inMyDeck = (DATA.srs && Array.isArray(DATA.srs.cards))
     ? DATA.srs.cards.some(c => c.front === p.front && c.back === p.back)
@@ -8740,13 +8936,19 @@ function renderSharedFlashcardCard(item, q){
     foot.appendChild(addBtn);
   }
   // V15.12.37 — Botão Reportar (mesmo padrão do card de explicação)
+  // V15.12.40 — Adapta visual se user já reportou
   const reportBtn = mk('button','shexpl-report-btn');
   reportBtn.type='button';
-  reportBtn.title = 'Reportar problema neste flashcard';
-  reportBtn.innerHTML = '⚠';
-  reportBtn.style.cssText = 'background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11.5px;color:var(--text3);margin-left:auto';
-  reportBtn.addEventListener('mouseenter', ()=>{ reportBtn.style.color='var(--amber-text)'; reportBtn.style.borderColor='var(--amber)'; });
-  reportBtn.addEventListener('mouseleave', ()=>{ reportBtn.style.color='var(--text3)'; reportBtn.style.borderColor='var(--border)'; });
+  const alreadyReportedFc = hasUserReportedItem(item.id, 'flashcard');
+  reportBtn.title = alreadyReportedFc ? 'Você já reportou — clique pra atualizar o motivo' : 'Reportar problema neste flashcard';
+  reportBtn.innerHTML = alreadyReportedFc ? '⚠ Reportado' : '⚠';
+  if(alreadyReportedFc){
+    reportBtn.style.cssText = 'background:rgba(245,158,11,.10);border:1px solid var(--amber);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;color:var(--amber-text);margin-left:auto;font-weight:600';
+  } else {
+    reportBtn.style.cssText = 'background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11.5px;color:var(--text3);margin-left:auto';
+    reportBtn.addEventListener('mouseenter', ()=>{ reportBtn.style.color='var(--amber-text)'; reportBtn.style.borderColor='var(--amber)'; });
+    reportBtn.addEventListener('mouseleave', ()=>{ reportBtn.style.color='var(--text3)'; reportBtn.style.borderColor='var(--border)'; });
+  }
   reportBtn.addEventListener('click',()=>showReportExplanationModal(item, q, 'flashcard'));
   foot.appendChild(reportBtn);
   card.appendChild(foot);
@@ -8807,18 +9009,19 @@ function showToastWithAction(msg, actions, duration){
   const old = document.querySelector('.ux-toast');
   if(old) old.remove();
   const t = mk('div','ux-toast');
-  t.style.cssText = 'display:flex;align-items:center;gap:14px;flex-wrap:wrap';
-  const txt = mk('span');txt.textContent = msg;txt.style.flex='1';txt.style.minWidth='180px';
+  // V15.12.40 — Toast com ações: layout horizontal com botões sempre legíveis.
+  // padding maior pra dar respiro aos botões.
+  t.style.cssText = 'display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px;text-align:left;justify-content:space-between';
+  const txt = mk('span');txt.textContent = msg;txt.style.cssText='flex:1;min-width:160px;font-weight:500';
   t.appendChild(txt);
   const acts = Array.isArray(actions) ? actions : [actions];
-  acts.forEach(a => {
+  acts.forEach((a, i) => {
     if(!a || !a.label) return;
     const b = mk('button');
     b.type = 'button';
     b.textContent = a.label;
-    b.style.cssText = 'background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.30);color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit';
-    b.addEventListener('mouseenter', ()=>{ b.style.background='rgba(255,255,255,.30)'; });
-    b.addEventListener('mouseleave', ()=>{ b.style.background='rgba(255,255,255,.18)'; });
+    // Primeira ação é primária (estilo destacado), demais são secundárias
+    b.className = 'ux-toast-action' + (i === 0 ? ' ux-toast-action--primary' : '');
     b.addEventListener('click', (ev)=>{
       ev.stopPropagation();
       try{ if(typeof a.handler === 'function') a.handler(); }catch(_){}
@@ -9056,20 +9259,26 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn){
 }
 
 // Gera FLASHCARD novo a partir da questão + salva no cache compartilhado + adiciona ao deck
-async function generateAndSaveFlashcard(q, model, container, triggerBtn){
+async function generateAndSaveFlashcard(q, model, container, triggerBtn, opts){
   // V15.12.31: substitui confirm() nativo por confirmAction (modal customizado).
   // Custo real: error_flashcard = 1 crédito (igual em Haiku e Sonnet — a diferença
   // é qualidade, não custo). Antes dizia "~3-5 créditos" pra Sonnet, o que era
   // enganoso.
-  const ok = await confirmAction({
-    title: model === 'sonnet' ? '⚡ Gerar flashcard com Sonnet' : '🎴 Gerar flashcard com Haiku',
-    body: model === 'sonnet'
-      ? 'Análise mais profunda com Sonnet 4.5. O flashcard será adicionado ao seu deck E ficará disponível pra outros usuários.'
-      : 'Geração rápida com Haiku. O flashcard será adicionado ao seu deck E ficará disponível pra outros usuários.',
-    costAction: 'error_flashcard',
-    confirmLabel: 'Gerar flashcard'
-  });
-  if(!ok) return;
+  // V15.12.40: aceita opts.customFocus (string) — quando presente, usa Sonnet
+  // por padrão e injeta o foco do user no prompt. Mas o custo continua sendo
+  // error_flashcard (1 créd). O confirm já foi feito no showCustomFlashcardModal,
+  // então pulamos aqui se opts.skipConfirm for true.
+  opts = opts || {};
+  const customFocus = (opts.customFocus || '').trim();
+  if(!opts.skipConfirm){
+    const ok = await confirmAction({
+      title: '🎴 Gerar flashcard com Haiku',
+      body: 'Geração rápida com Haiku. O flashcard será adicionado ao seu deck E ficará disponível pra outros usuários.',
+      costAction: 'error_flashcard',
+      confirmLabel: 'Gerar flashcard'
+    });
+    if(!ok) return;
+  }
 
   // Loading visual no botão
   let originalLabel = '';
@@ -9086,7 +9295,13 @@ async function generateAndSaveFlashcard(q, model, container, triggerBtn){
     const sys = model === 'sonnet'
       ? 'Você é especialista em criar flashcards eficazes para concursos brasileiros. Use repetição espaçada (SRS). FRENTE: pergunta ou conceito-gatilho concreto. VERSO: resposta direta com no máximo 2 frases. Foque no que diferencia esse conceito de outros parecidos. Responda em JSON puro.'
       : 'Você cria flashcards SRS pra concursos. FRENTE: pergunta concreta. VERSO: resposta breve. Responda em JSON puro.';
-    const prompt = `Crie UM flashcard a partir desta questão:\n\nQUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nO flashcard deve testar o CONCEITO da questão, não decorar a questão. Foque na regra/princípio que ela cobra.\n\nResponda em JSON:\n{"front":"...","back":"...","type":"concept"}`;
+    // V15.12.40 — Quando há customFocus, o flashcard é direcionado pelo usuário
+    let prompt;
+    if(customFocus){
+      prompt = `Crie UM flashcard a partir desta questão, FOCADO especificamente no que o estudante quer fixar:\n\nFOCO DO ESTUDANTE: "${customFocus}"\n\nQUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nCrie um flashcard que ataca DIRETAMENTE o ponto que o estudante mencionou. A frente deve ser uma pergunta que testa esse aspecto específico; o verso deve responder de forma clara. Não fuja do foco pedido.\n\nResponda em JSON:\n{"front":"...","back":"...","type":"concept"}`;
+    } else {
+      prompt = `Crie UM flashcard a partir desta questão:\n\nQUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nO flashcard deve testar o CONCEITO da questão, não decorar a questão. Foque na regra/princípio que ela cobra.\n\nResponda em JSON:\n{"front":"...","back":"...","type":"concept"}`;
+    }
 
     const modelStr = model === 'sonnet' ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
     const res = await callAPI(sys, [{role:'user', content: prompt}], {model: modelStr, action: 'error_flashcard'});
@@ -9188,6 +9403,87 @@ async function generateAndSaveFlashcard(q, model, container, triggerBtn){
   }
 }
 
+// V15.12.40 — Modal pra gerar flashcard personalizado: o user diz o que quer fixar.
+// Custo igual ao flashcard padrão (1 créd, action: error_flashcard) — Haiku.
+// Se quiser deixar Sonnet pra essa ação no futuro, basta trocar 'haiku' por 'sonnet'
+// e ajustar action_id (não rodada agora pra preservar custo claro).
+function showCustomFlashcardModal(q, container, srcBtn){
+  const m = mk('div');m.style.cssText='max-width:520px;max-height:85vh;overflow-y:auto';
+
+  const head = mk('div','modal-head');
+  const h = mk('h3');h.innerHTML = '🎯 Gerar flashcard personalizado';
+  const cl = mkBtn('×','modal-close');cl.addEventListener('click',closeModal);
+  head.appendChild(h);head.appendChild(cl);
+  m.appendChild(head);
+
+  const sub = mk('p','txt2');sub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.55';
+  sub.innerHTML = 'Diga o que <b>você</b> quer fixar dessa questão. A IA cria um flashcard direcionado pro ponto que você mencionou — ideal pra detalhes que sempre confundem ou nuances específicas.';
+  m.appendChild(sub);
+
+  // Mostra prévia do enunciado em destaque (resumo)
+  const qPreview = mk('div');
+  qPreview.style.cssText = 'padding:.625rem .875rem;background:var(--surface2);border-left:3px solid var(--gralia-purple);border-radius:6px;font-size:12px;line-height:1.5;color:var(--text2);margin-bottom:.875rem;max-height:80px;overflow-y:auto';
+  const enunPreview = (q.enunciado || '').slice(0, 280) + ((q.enunciado||'').length > 280 ? '…' : '');
+  qPreview.textContent = enunPreview;
+  m.appendChild(qPreview);
+
+  // Textarea pro foco
+  const lbl = mk('label');lbl.textContent = 'O que você quer fixar?';
+  lbl.style.cssText = 'font-size:11.5px;color:var(--text2);font-weight:600;margin-bottom:4px;display:block';
+  m.appendChild(lbl);
+  const ta = mk('textarea');
+  ta.rows = 3;
+  ta.placeholder = 'Explique o que você quer fixar melhor nesta questão... Ex: "a diferença entre detournement de pouvoir e excesso de poder", "a regra dos 5 anos da prescrição administrativa", "o quórum exato de 2/3"';
+  ta.style.cssText = 'width:100%;font-family:inherit;font-size:13px;padding:.625rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:7px;resize:vertical;min-height:80px;max-height:180px;color:var(--text);box-sizing:border-box';
+  m.appendChild(ta);
+
+  // Dica + custo
+  const costInfo = mk('div');
+  costInfo.style.cssText = 'margin-top:.625rem;padding:.5rem .75rem;background:rgba(124,92,255,.06);border:1px solid rgba(124,92,255,.20);border-radius:6px;font-size:11.5px;color:var(--text2);line-height:1.5';
+  const fcCost = (typeof AI_COSTS === 'object' && AI_COSTS && AI_COSTS.error_flashcard) || 1;
+  const balanceNow = (QUOTA && typeof QUOTA.remaining === 'number') ? QUOTA.remaining : null;
+  costInfo.innerHTML = `<b>Custo:</b> ${fcCost} crédito${fcCost===1?'':'s'} (Haiku)${balanceNow!=null?` · Saldo: ${balanceNow} créd`:''}. Você gasta o mesmo de um flashcard normal — só fica mais direcionado.`;
+  m.appendChild(costInfo);
+
+  // Ações
+  const actions = mk('div','flex');actions.style.cssText='margin-top:1rem;gap:8px;justify-content:flex-end';
+  const cancel = mkBtn('Cancelar','btn');
+  cancel.addEventListener('click',closeModal);
+  actions.appendChild(cancel);
+
+  const send = mkBtn('🎯 Gerar flashcard direcionado','btn btn-p');
+  send.addEventListener('click', async ()=>{
+    const focus = ta.value.trim();
+    if(focus.length < 8){
+      alert('Descreva pelo menos brevemente o que você quer fixar (mínimo 8 caracteres).');
+      ta.focus();
+      return;
+    }
+    if(focus.length > 500){
+      alert('Mantenha o foco em até 500 caracteres pra a IA não se perder.');
+      ta.focus();
+      return;
+    }
+    // Pré-flight de saldo (mesma regra do fluxo normal)
+    if(typeof assertCanAffordFresh === 'function'){
+      try{ await assertCanAffordFresh('error_flashcard'); }
+      catch(e){ alert('Saldo insuficiente: ' + (e.message||e)); return; }
+    }
+    closeModal();
+    // Chama generateAndSaveFlashcard com customFocus + skipConfirm (já confirmou aqui)
+    await generateAndSaveFlashcard(q, 'haiku', container, srcBtn || null, {
+      customFocus: focus,
+      skipConfirm: true
+    });
+  });
+  actions.appendChild(send);
+  m.appendChild(actions);
+
+  showModal(m);
+  // Foco no textarea
+  setTimeout(()=>{ try{ ta.focus(); }catch(_){} }, 100);
+}
+
 // V1.5: Modal pra usuário dizer o que não entendeu — gera resposta personalizada com Sonnet
 function showHelpDoubtModal(q, currentExplanation){
   const m = mk('div');m.style.cssText='max-width:560px;max-height:85vh;overflow-y:auto';
@@ -9196,7 +9492,11 @@ function showHelpDoubtModal(q, currentExplanation){
   h.innerHTML = '🤔 Me ajuda a entender';
   m.appendChild(h);
   const sub = mk('p','txt2');sub.style.cssText='margin:0 0 1rem;font-size:13px;line-height:1.55';
-  sub.innerHTML = 'Sonnet 4.5 vai explicar do jeito que faz sentido pra você. <span style="color:var(--text3);font-size:12px">Custo: ~3-6 créditos.</span>';
+  // V15.12.40 — Custo real (action: imported_question_explanation_premium = 5 créd).
+  // O texto "~3-6 créditos" anterior era impreciso. Mostramos custo exato + saldo.
+  const expCost = (typeof AI_COSTS === 'object' && AI_COSTS && AI_COSTS.imported_question_explanation_premium) || 5;
+  const balanceHere = (QUOTA && typeof QUOTA.remaining === 'number') ? QUOTA.remaining : null;
+  sub.innerHTML = `Sonnet 4.5 vai explicar do jeito que faz sentido pra você. <span style="color:var(--text3);font-size:12px">Custo: ${expCost} créditos${balanceHere!=null?` · Saldo: ${balanceHere} créd`:''}.</span>`;
   m.appendChild(sub);
 
   // Mostra explicação atual em destaque (resumo)
@@ -14928,8 +15228,10 @@ function render(){
   // Adiciona ANTES do quick sidebar pra ficar à esquerda. Só aparece se autenticado,
   // welcome já mostrado e fora de modo foco. CSS controla visibilidade por largura de tela.
   // V14 fix: Garantir que sidebar NÃO aparece em landing / pre-auth / setup.
+  // V15.12.40: importedFocusActive também desativa a sidebar (antes ela
+  // continuava montando e deixava layout torto mesmo com CSS escondendo).
   const showSidebar = isAuthed() && DATA.welcomeShown && !needsSetup() &&
-    !isFocusMode() && !ST.srsFocusActive && !ST.methodFocusActive;
+    !isFocusMode() && !ST.srsFocusActive && !ST.methodFocusActive && !ST.importedFocusActive;
   if(showSidebar){
     try{
       const oldSidebar = document.querySelector('.app-sidebar');
@@ -18252,102 +18554,46 @@ function renderDashboard(){
     setTimeout(()=>{
       const v = mascot.querySelector('.dash-mascot-video');
       if(!v) return;
-      // V15.12.28: 2 caminhos diferentes pro estado final:
-      //   - ended (terminou normalmente)  → CONGELAR no último frame do vídeo
-      //   - error / duração inválida      → trocar pra imagem estática (fallback)
-      // Antes ambos iam pro fallback, mas Jean reportou que aparece a pose
-      // INICIAL do mascote (a img estática é frame 0), o que parece "voltou
-      // pro começo". Agora ended pausa no último frame e o vídeo continua
-      // visível — visualmente o mascote fica na pose final da animação.
+      // V15.12.40 — Decisão de produto:
+      // - vídeo toca uma vez automaticamente quando o Painel monta;
+      // - quando termina, troca pra IMAGEM ESTÁTICA OFICIAL com fade suave
+      //   (em vez de "freezar" no último frame, que pode não ser visualmente
+      //   idêntico ao mascote oficial da logo);
+      // - hover NÃO replaya o vídeo (era "seco" e quebrava a estética). Só
+      //   faz o lift sutil do CSS.
+      // Isso preserva identidade do mascote oficial e elimina o "pulo"
+      // brusco do hover.
       const switchToStaticImage = ()=>{
         try{
+          // Crossfade: opacity do vídeo cai antes de esconder.
+          v.style.transition = 'opacity .45s ease';
+          v.style.opacity = '0';
+          // Adiciona classe static depois do fade
+          setTimeout(()=>{
+            mascot.classList.remove('dash-mascot-playing');
+            mascot.classList.add('dash-mascot-static');
+            try{ v.pause && v.pause(); }catch(_){}
+            v.style.display = 'none';
+          }, 450);
+        }catch(_){
+          // Fallback: troca direta
           mascot.classList.remove('dash-mascot-playing');
           mascot.classList.add('dash-mascot-static');
-          v.pause && v.pause();
-          v.style.display = 'none';  // esconde vídeo, revela <img>
-        }catch(_){}
-      };
-      const freezeOnLastFrame = ()=>{
-        try{
-          // Pausa o vídeo no último frame. NÃO esconde o vídeo nem revela img.
-          // O <video> continua visível mostrando o último frame que ficou
-          // renderizado. Garantimos posição final via currentTime = duration
-          // (seek pro fim, idempotente — se já está no fim, fica parado).
-          v.pause && v.pause();
-          if(v.duration && isFinite(v.duration)){
-            // Pequeno offset (-0.05s) pra evitar buffer/preto em alguns navegadores
-            try { v.currentTime = Math.max(0, v.duration - 0.05); } catch(_){}
-          }
-          // Marca classe pra CSS desativar transition de hover sem afetar layout
-          mascot.classList.add('dash-mascot-frozen');
-          mascot.classList.remove('dash-mascot-playing');
-        }catch(_){
-          // Se algo der errado, cai no comportamento antigo (img estática)
-          switchToStaticImage();
         }
       };
       v.addEventListener('error', switchToStaticImage);
-      v.addEventListener('ended', freezeOnLastFrame);  // V15.12.28: congela em vez de trocar
+      v.addEventListener('ended', switchToStaticImage);  // V15.12.40: sempre vai pra estática
       const src = v.querySelector('source');
       if(src) src.addEventListener('error', switchToStaticImage);
       v.addEventListener('loadedmetadata', ()=>{
         if(!v.duration || isNaN(v.duration) || v.duration === 0) switchToStaticImage();
       });
-
-      // V15.12.30 — REPLAY no hover.
-      // Quando o vídeo está congelado no último frame, hover do mouse no
-      // container reinicia a animação do começo (uma vez). Útil pra usuários
-      // que querem rever a animação do mascote.
-      // Regras:
-      //   - Só funciona no estado 'frozen' (animação já terminou). Durante
-      //     'playing' (primeira execução), hover é ignorado pra não cortar.
-      //   - Só funciona se o vídeo está acessível (não foi pra fallback img
-      //     por erro). Em estado 'static', não há replay possível.
-      //   - Reduced-motion: respeitamos — sem replay (mascote fica como imagem).
-      //   - Lock interno (_replaying) impede reentrada se o usuário entra-sai-
-      //     entra rápido durante a animação. Liberado quando 'ended' dispara.
-      //   - Visual: cursor:pointer quando frozen (CSS), tooltip atualizado.
-      let _replaying = false;
-      mascot.addEventListener('mouseenter', ()=>{
-        // Só replaya se está congelado (animação inicial já terminou).
-        if(!mascot.classList.contains('dash-mascot-frozen')) return;
-        if(_replaying) return;
-        if(mascot.classList.contains('dash-mascot-static')) return;
-        // Reduced-motion: ignora — mascote é imagem estática nesse caso.
-        const reducedMotion = (typeof window.matchMedia === 'function')
-          && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if(reducedMotion) return;
-
-        try{
-          _replaying = true;
-          // Volta ao início e toca de novo
-          mascot.classList.remove('dash-mascot-frozen');
-          mascot.classList.add('dash-mascot-playing');
-          v.currentTime = 0;
-          // play() retorna Promise — captura erros silenciosamente
-          // (ex: navegador bloqueando autoplay sem gesture, embora aqui já
-          //  tenha o gesto do mouseenter, então deve passar normalmente).
-          const p = v.play();
-          if(p && typeof p.then === 'function'){
-            p.catch(()=>{
-              // Falhou: volta pro estado frozen
-              _replaying = false;
-              freezeOnLastFrame();
-            });
-          }
-        }catch(_){
-          _replaying = false;
-        }
-      });
-      // Quando termina o replay, libera o lock e congela de novo.
-      // (freezeOnLastFrame já é chamado pelo handler 'ended' acima — só
-      // precisamos liberar o lock pra próximo hover funcionar.)
-      v.addEventListener('ended', ()=>{
-        _replaying = false;
-      });
+      // V15.12.40 — Hover NÃO replaya mais. O lift sutil já vem do CSS:
+      //   .dash-mascot:hover .dash-mascot-img { transform:translateY(-3px) rotate(-3deg) }
+      // Essa transição é controlada por CSS com .35s ease — suave e elegante.
     }, 0);
   }
-  mascot.title = 'Gralha-azul — passe o mouse pra ver a animação novamente';
+  mascot.title = 'Gralha-azul — mascote da Gralia';
   greetRow.appendChild(mascot);
   wrap.appendChild(greetRow);
 
