@@ -8262,14 +8262,90 @@ async function renderSharedExplanationsUI(container, q, wasCorrect){
   renderSharedExplanationsBody(container, q);
 }
 
+// V15.12.37 — Modal de Reportar problema em explicação/flashcard compartilhado.
+// Persistência: Por enquanto registra LOCALMENTE em DATA._reportedExplanations
+// (lista offline) pra acumular evidência. Não envia ao Supabase ainda
+// (estrutura de tabela/RLS não preparada — fica pra rodada futura).
+// Quando o backend estiver pronto, basta trocar o handler de save.
+function showReportExplanationModal(item, q, kind){
+  const m = mk('div');m.style.maxWidth='420px';
+  const head = mk('div','modal-head');
+  const h = mk('h3');h.textContent = kind==='flashcard' ? 'Reportar flashcard' : 'Reportar explicação';
+  const cl = mkBtn('×','modal-close');cl.addEventListener('click',closeModal);
+  head.appendChild(h);head.appendChild(cl);
+  m.appendChild(head);
+
+  const intro = mk('p','txt2');intro.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.55';
+  intro.innerHTML = 'Reportar ajuda a comunidade — explicações com muitos reports vão sumir do destaque automaticamente. <b>Use com responsabilidade</b>.';
+  m.appendChild(intro);
+
+  const reasons = [
+    {value:'incorrect', label:'Incorreta', desc:'A explicação contradiz o gabarito ou está factualmente errada.'},
+    {value:'confusing', label:'Confusa', desc:'O texto é difícil de entender ou mal organizado.'},
+    {value:'outdated', label:'Desatualizada', desc:'Cita lei revogada, jurisprudência superada etc.'},
+    {value:'gabarito', label:'Gabarito divergente', desc:'A explicação concorda com gabarito diferente do oficial.'},
+    {value:'inappropriate', label:'Conteúdo impróprio', desc:'Linguagem ofensiva, spam, etc.'},
+    {value:'other', label:'Outro', desc:''},
+  ];
+
+  let selected = null;
+  const reasonList = mk('div');reasonList.style.cssText='display:flex;flex-direction:column;gap:6px;margin-bottom:.75rem';
+  reasons.forEach(r => {
+    const row = mk('label');
+    row.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:7px;cursor:pointer;font-size:12.5px;line-height:1.45';
+    const radio = mk('input');radio.type='radio';radio.name='report-reason';radio.value=r.value;radio.style.cssText='margin-top:2px';
+    radio.addEventListener('change',()=>{ selected = r.value; });
+    const txt = mk('div');txt.style.flex='1';
+    txt.innerHTML = `<b>${r.label}</b>${r.desc?`<div style="font-size:11px;color:var(--text3);margin-top:1px">${r.desc}</div>`:''}`;
+    row.appendChild(radio);row.appendChild(txt);
+    reasonList.appendChild(row);
+  });
+  m.appendChild(reasonList);
+
+  // Comentário opcional
+  const noteLbl = mk('label');noteLbl.textContent='Comentário (opcional)';noteLbl.style.cssText='font-size:11.5px;color:var(--text2);font-weight:600';
+  m.appendChild(noteLbl);
+  const note = mk('textarea');note.rows=2;note.placeholder='Detalhe o problema…';note.style.cssText='width:100%;margin-top:4px;font-family:inherit;font-size:12.5px;padding:.5rem .65rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;resize:vertical;min-height:50px;max-height:120px;color:var(--text)';
+  m.appendChild(note);
+
+  const actions = mk('div','flex');actions.style.cssText='margin-top:1rem;gap:8px;justify-content:flex-end';
+  const cancel = mkBtn('Cancelar','btn');
+  cancel.addEventListener('click',closeModal);
+  actions.appendChild(cancel);
+  const send = mkBtn('Enviar report','btn btn-p');
+  send.addEventListener('click',()=>{
+    if(!selected){ alert('Selecione um motivo.'); return; }
+    // Persistência local
+    if(!DATA._reportedExplanations) DATA._reportedExplanations = [];
+    DATA._reportedExplanations.push({
+      id: 'rpt_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
+      itemId: item.id || null,
+      itemKind: kind,
+      itemModel: item.model || null,
+      authorId: item.author_id || null,
+      questionHash: (typeof questionHash === 'function' ? questionHash(q.enunciado) : null),
+      reason: selected,
+      note: note.value.trim(),
+      reportedAt: Date.now()
+    });
+    save();
+    closeModal();
+    showToast('✓ Report registrado. Obrigado pela ajuda!', 3000);
+  });
+  actions.appendChild(send);
+  m.appendChild(actions);
+
+  showModal(m);
+}
+
 async function renderSharedExplanationsBody(container, q){
   container.innerHTML = '';
   const wrap = mk('div','shexpl-wrap');
   container.appendChild(wrap);
 
-  // Header
+  // V15.12.37 — Header neutro (será trocado depois que carregar)
   const head = mk('div','shexpl-head');
-  head.innerHTML = `<span class="she-icon">🤖</span><b>Explicações da IA</b><span class="she-sub">Geradas pela comunidade — economize créditos!</span>`;
+  head.innerHTML = `<span class="she-icon">🤖</span><b>Explicações</b><span class="she-sub">Carregando…</span>`;
   wrap.appendChild(head);
 
   const list = mk('div','shexpl-list');
@@ -8277,7 +8353,7 @@ async function renderSharedExplanationsBody(container, q){
 
   // Loading state
   const loading = mk('div','shexpl-loading');
-  loading.innerHTML = '<span class="loading-spinner"></span><span>Procurando explicações disponíveis...</span>';
+  loading.innerHTML = '<span class="loading-spinner"></span><span>Procurando explicações disponíveis…</span>';
   loading.style.cssText = 'padding:.625rem;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--text3);font-size:12px;font-style:italic';
   list.appendChild(loading);
 
@@ -8288,36 +8364,110 @@ async function renderSharedExplanationsBody(container, q){
   ]);
   list.innerHTML = '';
 
-  if(items.length === 0){
-    const empty = mk('div','shexpl-empty');
-    empty.innerHTML = `<div style="font-size:12.5px;color:var(--text2);line-height:1.5;margin-bottom:.5rem">Ainda ninguém gerou explicação pra essa questão. <b>Seja o primeiro!</b> Sua explicação ficará disponível pra outros estudantes — e você ganha gratidão da comunidade.</div>`;
-    list.appendChild(empty);
+  // V15.12.37 — Header adaptativo + mensagem proeminente
+  if(items.length > 0){
+    head.innerHTML = `<span class="she-icon" style="color:var(--accent-text)">✨</span><b style="color:var(--accent-text)">Explicação encontrada na comunidade</b><span class="she-sub" style="color:var(--accent-text);font-weight:600">— sem gastar créditos</span>`;
+    // Banner de destaque
+    const badgeFree = mk('div');
+    badgeFree.style.cssText = 'padding:.5rem .75rem;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.30);border-left:3px solid var(--accent);border-radius:8px;margin-bottom:.5rem;font-size:12.5px;color:var(--text);line-height:1.5';
+    badgeFree.innerHTML = `<b>${items.length} ${items.length===1?'explicação disponível':'explicações disponíveis'}</b> — geradas por outros estudantes. Você pode aproveitar sem gastar créditos.`;
+    list.appendChild(badgeFree);
+    // Ordena por score desc, mostra a melhor primeiro destacada
+    const sorted = items.slice().sort((a,b) => (b.score||0) - (a.score||0));
+    const best = sorted[0];
+    const bestCard = renderSharedExplanationCard(best, q);
+    bestCard.style.cssText = (bestCard.style.cssText||'') + ';border-color:rgba(16,185,129,.30);box-shadow:0 1px 3px rgba(16,185,129,.10)';
+    // Indica "Mais votada" quando tem score positivo e há concorrência
+    if((best.score||0) > 0 && sorted.length > 1){
+      const topBadge = mk('div');
+      topBadge.style.cssText = 'display:inline-block;padding:1px 7px;background:rgba(16,185,129,.15);color:var(--accent-text);border-radius:9px;font-size:10.5px;font-weight:700;margin-bottom:6px';
+      topBadge.textContent = '⭐ Mais votada';
+      bestCard.insertBefore(topBadge, bestCard.firstChild);
+    }
+    list.appendChild(bestCard);
+    // Outras (recolhidas) — incluindo as com scores baixos/negativos
+    const others = sorted.slice(1);
+    if(others.length > 0){
+      const det = mk('details');
+      det.style.cssText = 'margin-top:.5rem';
+      const sum = mk('summary');
+      sum.style.cssText = 'cursor:pointer;font-size:11.5px;color:var(--text3);padding:4px 0;list-style:none';
+      const negCount = others.filter(it => (it.score||0) < 0).length;
+      sum.innerHTML = `▾ Outras explicações (${others.length})` + (negCount > 0 ? ` <span style="color:var(--amber-text);font-size:10.5px">· ${negCount} com avaliação negativa</span>` : '');
+      det.appendChild(sum);
+      const otherList = mk('div');
+      otherList.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:6px';
+      others.forEach(it => {
+        const c = renderSharedExplanationCard(it, q);
+        if((it.score||0) < 0){
+          c.style.opacity = '0.7';
+          const negTag = mk('div');
+          negTag.style.cssText = 'display:inline-block;padding:1px 7px;background:rgba(245,158,11,.10);color:var(--amber-text);border-radius:9px;font-size:10.5px;font-weight:600;margin-bottom:4px';
+          negTag.textContent = '⚠ Avaliação negativa';
+          c.insertBefore(negTag, c.firstChild);
+        }
+        otherList.appendChild(c);
+      });
+      det.appendChild(otherList);
+      list.appendChild(det);
+    }
   } else {
-    items.forEach(item=>{
-      list.appendChild(renderSharedExplanationCard(item, q));
-    });
+    head.innerHTML = `<span class="she-icon">🤖</span><b>Explicações</b><span class="she-sub">Ainda não temos explicação pra esta questão</span>`;
+    const empty = mk('div','shexpl-empty');
+    empty.style.cssText = 'padding:.75rem;background:var(--surface2);border-radius:8px';
+    empty.innerHTML = `<div style="font-size:12.5px;color:var(--text2);line-height:1.5">Ainda ninguém gerou explicação pra esta questão. <b>Seja o primeiro!</b> Sua explicação ficará disponível pra outros estudantes — e você economiza créditos pra próxima vez que cair.</div>`;
+    list.appendChild(empty);
   }
 
-  // Botões de gerar nova
+  // Botões de gerar nova — ação SECUNDÁRIA com custo claro
+  const genWrap = mk('div');
+  genWrap.style.cssText = 'margin-top:.75rem;padding-top:.625rem;border-top:1px solid var(--border)';
+  const genLabel = mk('div');
+  genLabel.style.cssText = 'font-size:11.5px;color:var(--text3);margin-bottom:6px';
+  const balance = (typeof QUOTA === 'object' && QUOTA && typeof QUOTA.remaining === 'number') ? QUOTA.remaining : null;
+  const haikuCost = (typeof AI_COSTS === 'object' && AI_COSTS && AI_COSTS.imported_question_explanation) || 2;
+  const sonnetCost = (typeof AI_COSTS === 'object' && AI_COSTS && AI_COSTS.imported_question_explanation_premium) || 5;
+  const insuficienteHaiku = (balance != null && balance < haikuCost);
+  const insuficienteSonnet = (balance != null && balance < sonnetCost);
+  if(items.length > 0){
+    genLabel.innerHTML = `⚠ Gerar nova explicação consome créditos. Use só se as acima não forem suficientes.${balance != null ? ` <span style="color:var(--text3)">Saldo: ${balance} créd</span>` : ''}`;
+  } else {
+    genLabel.innerHTML = `Gerar com IA — uma cópia ficará disponível pra outros estudantes economizarem.${balance != null ? ` <span style="color:var(--text3)">Saldo: ${balance} créd</span>` : ''}`;
+  }
+  genWrap.appendChild(genLabel);
   const genRow = mk('div','shexpl-gen-row');
+  genRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
   const haveHaiku = items.some(i=>i.model==='haiku' && i.author_id===AUTH.user.id);
   const haveSonnet = items.some(i=>i.model==='sonnet' && i.author_id===AUTH.user.id);
   // V15.12.31: labels com custo REAL (do AI_COSTS), não estimativa "~X-Y".
   // imported_question_explanation = 2 créd (Haiku)
   // imported_question_explanation_premium = 5 créd (Sonnet)
-  const haikuBtn = mkBtn(haveHaiku?'🤖 Atualizar minha (Haiku)':'🤖 Gerar (Haiku) · 2 créd','btn btn-sm');
+  const haikuBtn = mkBtn(haveHaiku?'🤖 Atualizar minha (Haiku)':`🤖 Gerar com IA · ${haikuCost} créd`,'btn btn-sm');
+  if(insuficienteHaiku){
+    haikuBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${haikuCost} necessários)`;
+    haikuBtn.style.opacity = '0.6';
+  }
   haikuBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'haiku', container, haikuBtn));
   genRow.appendChild(haikuBtn);
-  const sonnetBtn = mkBtn(haveSonnet?'⚡ Atualizar minha (Sonnet)':'⚡ Gerar com Sonnet (mais profundo) · 5 créd','btn btn-sm');
+  const sonnetBtn = mkBtn(haveSonnet?'⚡ Atualizar minha (Sonnet)':`⚡ Gerar premium · ${sonnetCost} créd`,'btn btn-sm');
   sonnetBtn.style.borderColor = 'var(--gralia-purple)';
   sonnetBtn.style.color = 'var(--gralia-purple)';
+  if(insuficienteSonnet){
+    sonnetBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${sonnetCost} necessários)`;
+    sonnetBtn.style.opacity = '0.6';
+  }
   sonnetBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'sonnet', container, sonnetBtn));
   genRow.appendChild(sonnetBtn);
-  wrap.appendChild(genRow);
+  genWrap.appendChild(genRow);
+  wrap.appendChild(genWrap);
 
   // Seção de flashcards compartilhados
   const flashHead = mk('div','shexpl-head');flashHead.style.marginTop='1rem';
-  flashHead.innerHTML = `<span class="she-icon">🎴</span><b>Flashcards desta questão</b><span class="she-sub">${flashItems.length} ${flashItems.length===1?'disponível':'disponíveis'}</span>`;
+  if(flashItems.length > 0){
+    flashHead.innerHTML = `<span class="she-icon" style="color:var(--accent-text)">🎴</span><b style="color:var(--accent-text)">Flashcard${flashItems.length===1?'':'s'} disponível${flashItems.length===1?'':'eis'}</b><span class="she-sub" style="color:var(--accent-text);font-weight:600">— sem custo</span>`;
+  } else {
+    flashHead.innerHTML = `<span class="she-icon">🎴</span><b>Flashcards</b><span class="she-sub">Ainda nenhum disponível</span>`;
+  }
   wrap.appendChild(flashHead);
   if(flashItems.length > 0){
     const flashList = mk('div','shexpl-list');
@@ -8328,10 +8478,10 @@ async function renderSharedExplanationsBody(container, q){
   const fcGenRow = mk('div','shexpl-gen-row');fcGenRow.style.marginTop='.5rem';
   // V15.12.31: ambos usam action_id=error_flashcard = 1 crédito (independente
   // do modelo). O Sonnet só muda a qualidade da geração, não o custo.
-  const fcHaiku = mkBtn('🎴 Gerar flashcard (Haiku) · 1 créd','btn btn-sm');
+  const fcHaiku = mkBtn('🎴 Gerar flashcard · 1 créd','btn btn-sm');
   fcHaiku.addEventListener('click',()=>generateAndSaveFlashcard(q, 'haiku', container, fcHaiku));
   fcGenRow.appendChild(fcHaiku);
-  const fcSonnet = mkBtn('🎴 Gerar com Sonnet (mais profundo) · 1 créd','btn btn-sm');
+  const fcSonnet = mkBtn('🎴 Gerar premium · 1 créd','btn btn-sm');
   fcSonnet.style.borderColor = 'var(--gralia-purple)';
   fcSonnet.style.color = 'var(--gralia-purple)';
   fcSonnet.addEventListener('click',()=>generateAndSaveFlashcard(q, 'sonnet', container, fcSonnet));
@@ -8423,6 +8573,16 @@ function renderSharedExplanationCard(item, q){
   helpBtn.title = 'Pergunta específica pra Sonnet 4.5 explicar do seu jeito';
   helpBtn.addEventListener('click',()=>showHelpDoubtModal(q, item));
   foot.appendChild(helpBtn);
+  // V15.12.37 — Botão "Reportar" descreto
+  const reportBtn = mk('button','shexpl-report-btn');
+  reportBtn.type='button';
+  reportBtn.title = 'Reportar problema nesta explicação';
+  reportBtn.innerHTML = '⚠';
+  reportBtn.style.cssText = 'background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11.5px;color:var(--text3);margin-left:auto';
+  reportBtn.addEventListener('mouseenter', ()=>{ reportBtn.style.color='var(--amber-text)'; reportBtn.style.borderColor='var(--amber)'; });
+  reportBtn.addEventListener('mouseleave', ()=>{ reportBtn.style.color='var(--text3)'; reportBtn.style.borderColor='var(--border)'; });
+  reportBtn.addEventListener('click',()=>showReportExplanationModal(item, q, 'explicacao'));
+  foot.appendChild(reportBtn);
   card.appendChild(foot);
 
   return card;
@@ -8473,6 +8633,16 @@ function renderSharedFlashcardCard(item, q){
     addBtn.textContent = '✓ Adicionado';
   });
   foot.appendChild(addBtn);
+  // V15.12.37 — Botão Reportar (mesmo padrão do card de explicação)
+  const reportBtn = mk('button','shexpl-report-btn');
+  reportBtn.type='button';
+  reportBtn.title = 'Reportar problema neste flashcard';
+  reportBtn.innerHTML = '⚠';
+  reportBtn.style.cssText = 'background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11.5px;color:var(--text3);margin-left:auto';
+  reportBtn.addEventListener('mouseenter', ()=>{ reportBtn.style.color='var(--amber-text)'; reportBtn.style.borderColor='var(--amber)'; });
+  reportBtn.addEventListener('mouseleave', ()=>{ reportBtn.style.color='var(--text3)'; reportBtn.style.borderColor='var(--border)'; });
+  reportBtn.addEventListener('click',()=>showReportExplanationModal(item, q, 'flashcard'));
+  foot.appendChild(reportBtn);
   card.appendChild(foot);
 
   return card;
@@ -8854,6 +9024,20 @@ function showHelpDoubtModal(q, currentExplanation){
       alert('Descreva sua dúvida (mínimo 5 caracteres). Use as sugestões se ajudar.');
       return;
     }
+    // V15.12.37 — Proteção contra cobrança sem confirmação. Esse botão chama Sonnet
+    // direto (action=imported_question_explanation_premium = 5 créd). Antes disso,
+    // confirma custo + pré-flight de saldo.
+    const okConfirm = await confirmAction({
+      title: '⚡ Explicação personalizada',
+      body: 'O Sonnet 4.5 vai responder sua dúvida específica usando a questão e a explicação anterior como contexto. <b>Esta ação não fica em cache compartilhado</b> — é uma resposta sob medida pra você.',
+      bodyHtml: true,
+      costAction: 'imported_question_explanation_premium',
+      confirmLabel: 'Perguntar'
+    });
+    if(!okConfirm) return;
+    try { await assertCanAffordFresh('imported_question_explanation_premium'); }
+    catch(creditsErr){ handleApiError(creditsErr, {context:'help-doubt'}); return; }
+
     askBtn.disabled = true;
     askBtn.textContent = 'Pensando...';
     respArea.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--text3);font-size:12.5px">Sonnet 4.5 está analisando sua dúvida...</div>';
@@ -28599,8 +28783,39 @@ function renderImportedPractice(wrap){
   // V15.12.36: pool customizado tem prioridade sobre filtro de disciplina
   const pool = _customPool ? _customPool : (filter==='all'?bank:bank.filter(q=>q.disciplineId===filter));
   if(pool.length===0){wrap.appendChild(infoBox('Sem questões nessa disciplina.'));return wrap;}
+  // V15.12.37 — Aviso quando pool é pequeno (questões vão repetir muito)
+  if(pool.length <= 3 && !_customPool){
+    const small = mk('div');
+    small.style.cssText = 'padding:.55rem .8rem;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.30);border-left:3px solid var(--amber);border-radius:7px;margin-bottom:.75rem;font-size:11.5px;color:var(--text2);line-height:1.5';
+    small.innerHTML = `⚠ Pool pequeno: apenas <b>${pool.length}</b> ${pool.length===1?'questão disponível':'questões disponíveis'} nesta disciplina. As questões vão repetir.`;
+    wrap.appendChild(small);
+  }
   if(!ST.importedCurrent||!pool.find(q=>q.id===ST.importedCurrent.id)){
-    ST.importedCurrent = pool[Math.floor(Math.random()*pool.length)];
+    // V15.12.37 — Anti-repetição: mantém fila da sessão pra evitar mostrar
+    // a mesma questão duas vezes em pouco tempo. Reseta quando todas foram vistas
+    // ou quando o pool muda (custom/disciplina).
+    if(!ST._importedSessionSeen) ST._importedSessionSeen = {};
+    if(!ST._importedSessionPoolSig) ST._importedSessionPoolSig = '';
+    const poolSig = pool.map(q=>q.id).sort().join(',').slice(0,200);
+    if(poolSig !== ST._importedSessionPoolSig){
+      // Pool mudou — reset
+      ST._importedSessionSeen = {};
+      ST._importedSessionPoolSig = poolSig;
+    }
+    let availables = pool.filter(q => !ST._importedSessionSeen[q.id]);
+    // Se já viu tudo, reseta (mas mantém a última pra evitar repetir imediato)
+    if(availables.length === 0){
+      const lastId = ST.importedLastId || null;
+      ST._importedSessionSeen = lastId ? {[lastId]: true} : {};
+      availables = pool.filter(q => !ST._importedSessionSeen[q.id]);
+      if(availables.length === 0) availables = pool;  // pool de 1 questão só
+      // Toast informando que ciclou
+      if(pool.length > 3){ try{ showToast(`✓ Ciclou todas as ${pool.length} questões da sessão`, 3000); }catch(_){} }
+    }
+    const picked = availables[Math.floor(Math.random() * availables.length)];
+    ST._importedSessionSeen[picked.id] = true;
+    ST.importedLastId = picked.id;
+    ST.importedCurrent = picked;
     ST.importedAnswered=false;ST.importedAnswer=null;
   }
   const q = ST.importedCurrent;
@@ -30565,6 +30780,17 @@ function renderNotebookPractice(wrap){
   wrap.appendChild(back);
 
   const head = mk('div');head.style.marginBottom='1rem';
+
+  // V15.12.37 — Se o caderno faz parte de uma série, mostra o contexto
+  if(nb.seriesParent){
+    const src = (DATA.sources||[]).find(s => s.id === nb.seriesParent);
+    const seriesName = src ? src.name : 'série removida';
+    const seriesBanner = mk('div');
+    seriesBanner.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:.5rem;padding:.4rem .75rem;background:rgba(124,92,255,.06);border-left:3px solid var(--gralia-purple);border-radius:6px;font-size:11.5px';
+    seriesBanner.innerHTML = `<span>🪄</span><span style="color:var(--text2)">Série · <b style="color:var(--gralia-purple)">${escapeHTML(seriesName)}</b>${nb.seriesIndex?` · caderno ${nb.seriesIndex}`:''}</span>`;
+    head.appendChild(seriesBanner);
+  }
+
   const t = mk('h2');t.style.marginBottom='4px';t.textContent='📒 '+nb.name;
   const sub = mk('p','txt3');sub.style.margin='0';
   const total = ST.notebookPracticeOrder.length;
@@ -30572,6 +30798,18 @@ function renderNotebookPractice(wrap){
   const stats = ST.notebookPracticeStats||{correct:0,answered:0};
   sub.textContent = `Questão ${idx+1} de ${total} · Sessão: ${stats.correct}/${stats.answered} acertos`;
   head.appendChild(t);head.appendChild(sub);
+
+  // V15.12.37 — Barra de progresso visual
+  if(total > 0 && idx < total){
+    const progressWrap = mk('div');
+    progressWrap.style.cssText = 'margin-top:.5rem;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden';
+    const progressBar = mk('div');
+    const pctProg = Math.min(100, Math.round((idx / total) * 100));
+    progressBar.style.cssText = `height:100%;width:${pctProg}%;background:var(--gralia-purple);transition:width .3s`;
+    progressWrap.appendChild(progressBar);
+    head.appendChild(progressWrap);
+  }
+
   wrap.appendChild(head);
 
   if(idx>=total){
@@ -30584,8 +30822,34 @@ function renderNotebookPractice(wrap){
     const pct = stats.answered>0?Math.round(stats.correct/stats.answered*100):0;
     const result = mk('p','txt2');result.textContent = `Você acertou ${stats.correct} de ${stats.answered} (${pct}%)`;
     card.appendChild(result);
-    const actions = mk('div','flex');actions.style.cssText='justify-content:center;gap:8px;margin-top:1.25rem';
-    const again = mkBtn('Praticar novamente','btn btn-p');
+
+    // V15.12.37 — Se faz parte de série, sugere próximo caderno
+    let nextSeriesNb = null;
+    if(nb.seriesParent){
+      const seriesNbs = (DATA.notebooks||[]).filter(n => n.seriesParent === nb.seriesParent);
+      // Próximo é o que tem seriesIndex > nb.seriesIndex e ainda tem questões pendentes
+      seriesNbs.sort((a,b)=>(a.seriesIndex||0) - (b.seriesIndex||0));
+      const myIdx = seriesNbs.findIndex(n => n.id === nb.id);
+      // Procura o próximo caderno DA SÉRIE depois deste
+      for(let i = myIdx + 1; i < seriesNbs.length; i++){
+        const candidate = seriesNbs[i];
+        const candidateQs = notebookQuestions(candidate.id);
+        if(candidateQs.length > 0){
+          nextSeriesNb = candidate;
+          break;
+        }
+      }
+    }
+
+    const actions = mk('div','flex');actions.style.cssText='justify-content:center;gap:8px;margin-top:1.25rem;flex-wrap:wrap';
+    if(nextSeriesNb){
+      const nextBtn = mkBtn(`▶ Próximo da série · ${nextSeriesNb.seriesIndex||'?'}`,'btn btn-p');
+      nextBtn.style.cssText = 'background:var(--gralia-purple);border-color:var(--gralia-purple);color:#fff';
+      nextBtn.title = nextSeriesNb.name;
+      nextBtn.addEventListener('click',()=>startNotebookPractice(nextSeriesNb.id));
+      actions.appendChild(nextBtn);
+    }
+    const again = mkBtn('Praticar novamente', nextSeriesNb ? 'btn' : 'btn btn-p');
     again.addEventListener('click',()=>startNotebookPractice(nb.id));
     actions.appendChild(again);
     const exit = mkBtn('Voltar ao caderno','btn');
