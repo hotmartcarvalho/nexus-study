@@ -445,34 +445,64 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
 :root[data-theme="dark"] .brand-bird-light{display:none}
 :root[data-theme="dark"] .brand-bird-dark{display:block}
 
-/* V15.12.46 — Efeitos minimalistas na logo da topbar.
-   Substituiu o experimento de animação WebM (V15.12.45 revertida).
-   Dois efeitos:
-   1. Fade-in inicial: logo aparece com opacity 0→1 e desliza 4px de cima
-      ao montar a topbar pela primeira vez (300ms cubic-bezier suave).
-   2. Hover lift: logo sobe 1px e ganha drop-shadow roxo bem leve quando
-      o cursor passa, reforçando que ela é clicável (leva pra Sobre).
-   Respeitamos prefers-reduced-motion: sem fade-in nem hover transform. */
+/* V15.12.47 — Efeitos minimalistas na logo da topbar.
+   Substituiu V15.12.46 (hover lift): fade-in inicial + shimmer sweep periódico.
+   1. Fade-in inicial: logo aparece com opacity 0→1 + slide 4px de cima (350ms).
+   2. Shimmer sweep: linha de luz cruza a logo a cada ~9s (sutil, decorativo).
+      Cor da luz adapta ao tema (roxo-claro no light, branco no dark) pra
+      manter contraste. Implementado via wrapper .brand-bird-wrap + ::after
+      pra não quebrar o tooltip do brand nem outras regras existentes.
+   Respeita prefers-reduced-motion: desativa ambos os efeitos. */
 .brand-interactive{cursor:pointer}
 .brand-interactive .brand-bird{
-  transition:transform .25s cubic-bezier(.4,0,.2,1), filter .25s ease;
   animation:brand-fade-in .35s cubic-bezier(.2,.6,.3,1) both;
-}
-.brand-interactive:hover .brand-bird{
-  transform:translateY(-1px);
-  filter:drop-shadow(0 2px 6px rgba(124,92,255,.25));
-}
-.brand-interactive:active .brand-bird{
-  transform:translateY(0);
-  filter:none;
 }
 @keyframes brand-fade-in{
   from{opacity:0;transform:translateY(-4px)}
   to{opacity:1;transform:translateY(0)}
 }
+
+/* Wrapper das 2 imagens (light/dark) que hospeda o shimmer.
+   inline-flex se ajusta ao tamanho da img visível conforme tema. */
+.brand-bird-wrap{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  overflow:hidden;
+  border-radius:4px;
+}
+.brand-bird-wrap::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(100deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(124,92,255,.32) 50%,
+    transparent 62%,
+    transparent 100%);
+  transform:translateX(-110%);
+  pointer-events:none;
+  animation:brand-shimmer 9s ease-in-out infinite;
+  animation-delay:1.5s;
+}
+:root[data-theme="dark"] .brand-bird-wrap::after{
+  background:linear-gradient(100deg,
+    transparent 0%,
+    transparent 38%,
+    rgba(255,255,255,.30) 50%,
+    transparent 62%,
+    transparent 100%);
+}
+@keyframes brand-shimmer{
+  0%{transform:translateX(-110%)}
+  18%{transform:translateX(110%)}
+  100%{transform:translateX(110%)}
+}
+
 @media (prefers-reduced-motion: reduce){
-  .brand-interactive .brand-bird{animation:none;transition:none}
-  .brand-interactive:hover .brand-bird{transform:none;filter:none}
+  .brand-interactive .brand-bird{animation:none}
+  .brand-bird-wrap::after{animation:none;display:none}
 }
 
 .brand-name{font-family:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:22px;font-weight:800;letter-spacing:-1px;line-height:1;display:inline-flex;align-items:baseline}
@@ -17810,10 +17840,11 @@ function renderTopbar(){
   brand.setAttribute('role','button');
   brand.setAttribute('tabindex','0');
   brand.setAttribute('aria-label','Sobre o Gralia');
-  // V15.12.46 — Logo estática com efeitos sutis em CSS (fade-in inicial + hover lift).
-  // Reverteu V15.12.45 (vídeo WebM) por dificuldade de calibrar tamanho/timing.
-  // Os efeitos minimalistas estão definidos no bloco CSS .brand-interactive.
-  brand.innerHTML = `<img src="${BRAND.topbarLogo}" alt="Gralia" class="brand-bird brand-bird-light"><img src="${BRAND.topbarLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark"><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
+  // V15.12.47 — Logo estática com efeitos sutis em CSS (fade-in + shimmer sweep).
+  // Reverteu V15.12.45 (vídeo WebM) e V15.12.46 (hover lift).
+  // O wrapper .brand-bird-wrap hospeda o pseudo-elemento ::after que faz o
+  // shimmer cruzar a logo periodicamente (~9s).
+  brand.innerHTML = `<span class="brand-bird-wrap"><img src="${BRAND.topbarLogo}" alt="Gralia" class="brand-bird brand-bird-light"><img src="${BRAND.topbarLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark"></span><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
   // Tooltip de marca com info da gralha-azul
   const brandTip = mk('div','brand-tooltip');
   brandTip.innerHTML = `
@@ -53745,6 +53776,65 @@ function renderSettings(){
     });
     adminLbl.appendChild(adminTxt);adminLbl.appendChild(adminToggle);
     adminCard.appendChild(adminLbl);
+
+    // V15.12.47 — Reset de flags de onboarding pra retestes.
+    // Problema que estava resolvendo: as flags `tutorialOffered`, `welcomeShown`,
+    // `_mergeHandled`, etc ficam salvas tanto local (localStorage) quanto
+    // remoto (tabela user_data no Supabase). Limpar localStorage NÃO basta —
+    // no próximo login, syncDown traz as flags antigas de volta. Esse botão
+    // zera local + força syncUp pra propagar pra nuvem, depois recarrega
+    // a página pra simular fluxo de conta nova.
+    const resetOnboardingRow = mk('div');
+    resetOnboardingRow.style.cssText='margin-top:.875rem;padding-top:.75rem;border-top:1px solid var(--border)';
+    const roTxt = mk('div');
+    const roTitle = mk('div');roTitle.style.cssText='font-size:12.5px;font-weight:600';
+    roTitle.textContent = '🔁 Resetar flags de onboarding';
+    const roDesc = mk('div','txt3');roDesc.style.cssText='font-size:11px;margin-top:2px;line-height:1.55';
+    roDesc.innerHTML = 'Faz o app voltar a mostrar tutorial visual, checklist completo e modal de boas-vindas no próximo login. <b>Não apaga</b> seus dados (fontes, flashcards, erros). Útil pra testar onboarding de novo.';
+    roTxt.appendChild(roTitle);roTxt.appendChild(roDesc);
+    resetOnboardingRow.appendChild(roTxt);
+    const roBtnRow = mk('div');roBtnRow.style.cssText='display:flex;gap:8px;margin-top:.625rem;flex-wrap:wrap';
+    const roBtn = mk('button','btn btn-sm');
+    roBtn.textContent = 'Resetar onboarding';
+    roBtn.style.cssText = 'color:var(--amber);border-color:var(--amber)';
+    roBtn.addEventListener('click', async ()=>{
+      if(!confirm('Zerar flags de onboarding?\n\nIsso vai:\n• Marcar tutorial como não-visto\n• Marcar welcome como não-visto\n• Forçar prompt de username de novo\n• Sincronizar com a nuvem\n• Recarregar a página\n\nSeus dados (fontes, flashcards, erros) NÃO serão apagados.')) return;
+      roBtn.disabled = true;
+      roBtn.textContent = 'Resetando...';
+      try{
+        // Zera flags em DATA local
+        DATA.tutorialOffered = false;
+        DATA.welcomeShown = false;
+        DATA.setup = false;
+        if(DATA.config){
+          DATA.config._mergeHandled = null;
+        }
+        // Zera flags voláteis em ST (não persistem, mas garantia)
+        ST._profileSetupDismissed = false;
+        ST._topbarLogoPlayed = false;
+        save();
+        // Força sync up pra propagar o reset pra nuvem (senão próximo login traz de volta)
+        try{
+          await syncUp();
+        }catch(e){
+          console.warn('[reset-onboarding] syncUp falhou:', e);
+          alert('Aviso: sync com a nuvem falhou (' + (e.message||'erro') + '). As flags foram resetadas local, mas no próximo login podem voltar. Tente de novo ou use o SQL fornecido pelo desenvolvedor.');
+          roBtn.disabled = false;
+          roBtn.textContent = 'Resetar onboarding';
+          return;
+        }
+        showToast('✓ Onboarding resetado. Recarregando...', 3000);
+        setTimeout(()=>{ window.location.reload(); }, 1200);
+      }catch(err){
+        roBtn.disabled = false;
+        roBtn.textContent = 'Resetar onboarding';
+        alert('Erro: ' + (err.message||err));
+      }
+    });
+    roBtnRow.appendChild(roBtn);
+    resetOnboardingRow.appendChild(roBtnRow);
+    adminCard.appendChild(resetOnboardingRow);
+
     wrap.appendChild(adminCard);
   }
 
