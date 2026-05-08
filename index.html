@@ -3084,6 +3084,14 @@ html.dark .about-page .ao-quote{
 .shexpl-list{display:flex;flex-direction:column;gap:8px}
 .shexpl-loading{padding:.625rem;text-align:center;color:var(--text3);font-size:12px;font-style:italic}
 .shexpl-empty{padding:.75rem 1rem;background:var(--surface);border:1px dashed var(--border);border-radius:8px}
+
+/* V15.12.38 — Modo foco da prática: esconde elementos marcados com .focus-hide */
+body.focus-mode .focus-hide{display:none !important}
+body.focus-mode .sub-tabs{display:none !important}
+body.focus-mode #back-to-top-btn{display:none !important}
+body.focus-mode .practice-focus-banner{display:flex;align-items:center;gap:8px;padding:.4rem .75rem;background:rgba(124,92,255,.06);border:1px solid rgba(124,92,255,.20);border-radius:6px;margin-bottom:.75rem;font-size:11px;color:var(--gralia-purple)}
+.practice-focus-banner{display:none}
+.practice-focus-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:.75rem}
 .shexpl-card{padding:.75rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;gap:8px}
 .shexpl-card-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .shexpl-model-tag{font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.4px;line-height:1.5}
@@ -8474,18 +8482,24 @@ async function renderSharedExplanationsBody(container, q){
     flashItems.slice(0,3).forEach(item=>flashList.appendChild(renderSharedFlashcardCard(item, q)));
     wrap.appendChild(flashList);
   }
-  // Botão de gerar flashcard novo (sempre disponível)
+  // V15.12.38 — UM SÓ botão de gerar flashcard.
+  // Antes: dois botões (Haiku/Sonnet) ambos custando 1 créd — confuso.
+  // Agora: ação única. Se já há flashcard compartilhado, label muda pra "Gerar outro".
   const fcGenRow = mk('div','shexpl-gen-row');fcGenRow.style.marginTop='.5rem';
-  // V15.12.31: ambos usam action_id=error_flashcard = 1 crédito (independente
-  // do modelo). O Sonnet só muda a qualidade da geração, não o custo.
-  const fcHaiku = mkBtn('🎴 Gerar flashcard · 1 créd','btn btn-sm');
-  fcHaiku.addEventListener('click',()=>generateAndSaveFlashcard(q, 'haiku', container, fcHaiku));
-  fcGenRow.appendChild(fcHaiku);
-  const fcSonnet = mkBtn('🎴 Gerar premium · 1 créd','btn btn-sm');
-  fcSonnet.style.borderColor = 'var(--gralia-purple)';
-  fcSonnet.style.color = 'var(--gralia-purple)';
-  fcSonnet.addEventListener('click',()=>generateAndSaveFlashcard(q, 'sonnet', container, fcSonnet));
-  fcGenRow.appendChild(fcSonnet);
+  const fcLabel = flashItems.length > 0 ? '🎴 Gerar outro flashcard com IA · 1 créd' : '🎴 Gerar flashcard com IA · 1 créd';
+  const fcBtn = mkBtn(fcLabel,'btn btn-sm');
+  // Mantemos o estilo original pra ação principal (mais fraca quando há cache)
+  if(flashItems.length === 0){
+    fcBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
+  }
+  // Tooltip com saldo
+  const fcCost = (typeof AI_COSTS === 'object' && AI_COSTS && AI_COSTS.error_flashcard) || 1;
+  if(balance != null && balance < fcCost){
+    fcBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${fcCost} necessários)`;
+    fcBtn.style.opacity = '0.6';
+  }
+  fcBtn.addEventListener('click',()=>generateAndSaveFlashcard(q, 'haiku', container, fcBtn));
+  fcGenRow.appendChild(fcBtn);
   wrap.appendChild(fcGenRow);
 }
 
@@ -10792,6 +10806,8 @@ const ST = {
   bankExpandedIds:{},        // {questionId: true} — questões com enunciado expandido
   bankFiltersCollapsed:false,// se filtros estão recolhidos
   bankRenderLimit:50,        // limite de render inicial (paginação)
+  // V15.12.38 — Modo foco da prática histórica/caderno
+  practiceFocusMode:false,   // se true, esconde elementos secundários durante prática
   // Notebooks (cadernos)
   notebookSubview:'list', // 'list' | 'manage' | 'practice'
   notebookCurrentId:null, // id do caderno aberto / em prática
@@ -14549,6 +14565,11 @@ function render(){
       // Esconde botão "voltar ao topo" quando sai do banco
       const btToTop = document.getElementById('back-to-top-btn');
       if(btToTop) btToTop.style.display = 'none';
+      // V15.12.38: tira modo foco se sair de imported (só faz sentido lá)
+      if(ST.practiceFocusMode){
+        ST.practiceFocusMode = false;
+        document.body.classList.remove('focus-mode');
+      }
     }
   }
   // V15.12: data-view no body permite CSS customizar layout por tela
@@ -22078,6 +22099,8 @@ function getBankFilters(stateKey){
   if(ST[stateKey].anoTo===undefined)ST[stateKey].anoTo='';
   if(ST[stateKey].quality===undefined)ST[stateKey].quality='all';
   if(ST[stateKey].practiced===undefined)ST[stateKey].practiced='all';
+  // V15.12.38: novo campo favorite
+  if(ST[stateKey].favorite===undefined)ST[stateKey].favorite='all';
   return ST[stateKey];
 }
 function applyBankFilters(bank,f){
@@ -22142,6 +22165,9 @@ function applyBankFilters(bank,f){
     else if(f.practiced === 'right') r = r.filter(q => q.attempts > 0 && (q.correctCount||0) === q.attempts);
     else if(f.practiced === 'wrong') r = r.filter(q => q.attempts > 0 && (q.correctCount||0) < q.attempts);
   }
+  // V15.12.38 — Filtro de favoritas. Compatível com questões antigas (sem campo favorite).
+  if(f.favorite === 'yes') r = r.filter(q => q.favorite === true);
+  else if(f.favorite === 'no') r = r.filter(q => !q.favorite);
   if(f.search&&f.search.trim()){
     const t = f.search.toLowerCase().trim();
     r = r.filter(q=>(q.enunciado||'').toLowerCase().includes(t));
@@ -22186,6 +22212,12 @@ function renderBankFilters(stateKey,bank){
   if(f.practiced && f.practiced !== 'all'){
     const prLabels = {no:'Não praticada', yes:'Praticada', right:'Sempre acertei', wrong:'Errei pelo menos 1×'};
     activeFilters.push({key:'practiced', label: prLabels[f.practiced]||f.practiced, reset:()=>{f.practiced='all';}});
+  }
+  // V15.12.38 — Chip de favoritas
+  if(f.favorite === 'yes'){
+    activeFilters.push({key:'favorite', label: '★ Favoritadas', reset:()=>{f.favorite='all';}});
+  } else if(f.favorite === 'no'){
+    activeFilters.push({key:'favorite', label: 'Sem favoritar', reset:()=>{f.favorite='all';}});
   }
   if(f.search && f.search.trim()){
     activeFilters.push({key:'search', label: 'Busca: "'+f.search.slice(0,20)+(f.search.length>20?'…':'')+'"', reset:()=>{f.search='';}});
@@ -22341,6 +22373,16 @@ function renderBankFilters(stateKey,bank){
     ['right','Sempre acertei',practRight],
     ['wrong','Errei pelo menos uma vez',practWrong]
   ]));
+
+  // V15.12.38 — Filtro de favoritas
+  const favYes = bank.filter(q=>q.favorite===true).length;
+  if(favYes > 0 || f.favorite !== 'all'){
+    chipRows.appendChild(buildChipGroup('Favoritas','favorite',[
+      ['all','Todas'],
+      ['yes','★ Favoritadas',favYes],
+      ['no','Sem favoritar',bank.length - favYes]
+    ]));
+  }
 
   // Discipline filter
   const actDiscs = activeDisciplines();
@@ -22707,6 +22749,90 @@ function notebookQuestions(notebookId){
 // How many notebooks contain this question
 function notebooksContaining(questionId){
   return (DATA.notebooks||[]).filter(n=>n.questionIds.includes(questionId));
+}
+
+// V15.12.38 — Sistema de favoritos pra questões importadas/históricas.
+// Persistência: campo `q.favorite = true` direto na questão (compatível com
+// IndexedDB existente). `save()` propaga pro backend Supabase via sincronização
+// padrão. Se a questão não tiver `favorite`, é tratada como false.
+function isQuestionFavorite(q){
+  if(!q) return false;
+  return q.favorite === true;
+}
+function toggleQuestionFavorite(qId){
+  const q = (DATA.importedQuestions||[]).find(x => x.id === qId);
+  if(!q) return false;
+  q.favorite = !q.favorite;
+  q.favoriteAt = q.favorite ? Date.now() : null;
+  save();
+  return q.favorite;
+}
+function listFavoriteQuestions(){
+  return (DATA.importedQuestions||[]).filter(q => q.favorite === true);
+}
+
+// Botão de favorito plug-and-play. Cria um botão estrela que reflete o estado
+// atual da questão e atualiza ao clicar. Reusa em prática histórica/caderno e na lista.
+// opts.compact=true → versão pequena pra cards de lista (só ícone, sem texto)
+function makeFavoriteButton(q, opts){
+  const o = opts || {};
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = o.compact ? 'btn btn-sm icon-btn' : 'btn btn-sm';
+  function paint(){
+    const isFav = isQuestionFavorite(q);
+    if(o.compact){
+      btn.innerHTML = isFav ? '★' : '☆';
+      btn.style.cssText = `font-size:14px;padding:4px 8px;line-height:1;color:${isFav?'var(--gralia-purple)':'var(--text3)'};background:${isFav?'rgba(124,92,255,.10)':'transparent'};border-color:${isFav?'rgba(124,92,255,.30)':'var(--border)'}`;
+    } else {
+      btn.innerHTML = isFav ? '★ Favoritada' : '☆ Favoritar';
+      btn.style.cssText = `font-size:12px;color:${isFav?'var(--gralia-purple)':'var(--text2)'};border-color:${isFav?'rgba(124,92,255,.40)':'var(--border)'};background:${isFav?'rgba(124,92,255,.08)':'transparent'};font-weight:${isFav?'600':'500'}`;
+    }
+    btn.title = isFav ? 'Remover dos favoritos' : 'Adicionar aos favoritos';
+  }
+  paint();
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const newState = toggleQuestionFavorite(q.id);
+    // Atualiza a referência local pra paint refletir
+    q.favorite = newState;
+    paint();
+    // Se há filtro ativo de favoritas, re-render pra remover/adicionar da lista
+    if(o.rerenderOnToggle) render();
+  });
+  return btn;
+}
+
+// V15.12.38 — Botão de toggle do Modo Foco. Esconde elementos secundários durante
+// a prática (sub-tabs, banners auxiliares, chips de stats, etc) através da classe
+// `body.focus-mode`. CSS já injetado em <style> aplica display:none nos seletores
+// marcados com a classe `focus-hide`. Funciona pra prática histórica e de caderno.
+function makeFocusModeToggle(){
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn btn-sm';
+  function paint(){
+    const on = !!ST.practiceFocusMode;
+    btn.innerHTML = on ? '✕ Sair do modo foco' : '🎯 Modo foco';
+    btn.title = on ? 'Mostrar todos os elementos da tela' : 'Esconder elementos secundários e ampliar a área da questão';
+    btn.style.cssText = on
+      ? 'font-size:11.5px;color:var(--gralia-purple);background:rgba(124,92,255,.10);border-color:rgba(124,92,255,.40);font-weight:600'
+      : 'font-size:11.5px;color:var(--text2);font-weight:500';
+  }
+  paint();
+  btn.addEventListener('click', ()=>{
+    ST.practiceFocusMode = !ST.practiceFocusMode;
+    if(ST.practiceFocusMode){ document.body.classList.add('focus-mode'); }
+    else{ document.body.classList.remove('focus-mode'); }
+    paint();
+  });
+  return btn;
+}
+
+// Garante que a classe focus-mode reflete o state atual após qualquer render
+function syncFocusModeClass(){
+  if(ST.practiceFocusMode) document.body.classList.add('focus-mode');
+  else document.body.classList.remove('focus-mode');
 }
 
 // V15.12.36 — Botão flutuante "voltar ao topo".
@@ -27366,9 +27492,12 @@ function renderImported(){
   // V15.12.36: garante que o botão "voltar ao topo" está registrado quando o user
   // está nesta view (banco, cadernos, prática, importar)
   ensureBackToTopButton();
-  const h = mk('h1');h.textContent='📥 Cadernos de prática';
+  // V15.12.38: sincroniza classe focus-mode no body com state
+  syncFocusModeClass();
+  const h = mk('h1');h.textContent='📥 Cadernos de prática';h.classList.add('focus-hide');
   const sub = mk('p','txt2');sub.style.marginBottom='1rem';
   sub.textContent='Importe questões reais (TEC Concursos, texto colado) ou questões da IA, organize em cadernos temáticos e refaça pra fixar conteúdo.';
+  sub.classList.add('focus-hide');
   wrap.appendChild(h);wrap.appendChild(sub);
 
   const sub2 = ST.importedSubview||'list';
@@ -27430,11 +27559,22 @@ function renderImportedList(wrap){
   const headerActions = mk('div');
   headerActions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center';
 
+  // V15.12.38 — Atalhos rápidos pra favoritas (só aparece se há favoritadas)
+  const favCount = bank.filter(q=>q.favorite===true).length;
+  if(favCount > 0 && f.favorite !== 'yes'){
+    const goFavBtn = mkBtn(`★ ${favCount} favorita${favCount===1?'':'s'}`,'btn btn-sm');
+    goFavBtn.style.cssText = 'font-size:11.5px;color:var(--gralia-purple);background:rgba(124,92,255,.06);border-color:rgba(124,92,255,.30)';
+    goFavBtn.title = 'Filtrar só as favoritadas';
+    goFavBtn.addEventListener('click', ()=>{ f.favorite = 'yes'; render(); });
+    headerActions.appendChild(goFavBtn);
+  }
+
   // V15.12.36 — Criar caderno com resultado atual (se há filtro ativo + questões)
   const hasActiveFilter = (f.disc!=='all' || f.source!=='all' || f.kind!=='all'
     || (f.banca && f.banca!=='all') || (f.cargo && f.cargo!=='all') || (f.topic && f.topic!=='all')
     || f.perf!=='all' || f.period!=='all' || f.anoFrom || f.anoTo
     || (f.quality && f.quality!=='all') || (f.practiced && f.practiced!=='all')
+    || (f.favorite && f.favorite!=='all')
     || (f.search && f.search.trim()));
   if(hasActiveFilter && filtered.length > 0 && filtered.length < bank.length){
     const createFilterBtn = mkBtn(`+ Criar caderno com ${filtered.length} ${filtered.length===1?'questão':'questões'}`,'btn btn-sm');
@@ -27643,6 +27783,9 @@ function renderImportedList(wrap){
     gb.style.fontSize='10.5px';
     gb.textContent='Gab: '+(q.answer||'?');
     headerLine.appendChild(gb);
+
+    // V15.12.38 — Estrela de favorito (compacta)
+    headerLine.appendChild(makeFavoriteButton(q, {compact:true, rerenderOnToggle: f.favorite==='yes' || f.favorite==='no'}));
 
     // Status de prática (à direita)
     const spacerH = mk('div');spacerH.style.flex='1';
@@ -28730,6 +28873,15 @@ function renderImportedPractice(wrap){
     return wrap;
   }
 
+  // V15.12.38 — Toolbar com modo foco (sempre visível, mesmo em focus mode)
+  const toolbar = mk('div','practice-focus-toolbar');
+  toolbar.appendChild(makeFocusModeToggle());
+  wrap.appendChild(toolbar);
+  // Banner discreto quando focus está on (avisa o user que está em modo foco)
+  const focusBanner = mk('div','practice-focus-banner');
+  focusBanner.innerHTML = '🎯 <b>Modo foco ativo</b> · elementos secundários ocultos';
+  wrap.appendChild(focusBanner);
+
   // V15.12.36 — Modo "praticar IDs específicos" (vem de seleção em massa ou botão Praticar do card).
   // Quando ativo, ignora o filtro de disciplina e o pool é só esses IDs.
   const practiceIds = (ST.importedPracticeIds && ST.importedPracticeIds.length > 0) ? ST.importedPracticeIds : null;
@@ -28761,7 +28913,7 @@ function renderImportedPractice(wrap){
   const filter = ST.importedPracticeDisc||'all';
   // V15.12.36: esconde filtro de disciplinas se está em modo "praticar IDs específicos"
   if(!_customPool && discsWithQ.length>=2){
-    const fr = mk('div','disc-filter');fr.style.marginBottom='1rem';
+    const fr = mk('div','disc-filter focus-hide');fr.style.marginBottom='1rem';
     const allChip = mk('button','disc-chip'+(filter==='all'?' on':''));
     if(filter==='all'){allChip.style.background='var(--surface2)';allChip.style.color='var(--text)';}
     const d1 = mk('span','dot');d1.style.background='var(--text2)';
@@ -28820,7 +28972,7 @@ function renderImportedPractice(wrap){
   }
   const q = ST.importedCurrent;
 
-  const meta = mk('div','flex');meta.style.cssText='gap:6px;margin-bottom:.5rem;flex-wrap:wrap';
+  const meta = mk('div','flex focus-hide');meta.style.cssText='gap:6px;margin-bottom:.5rem;flex-wrap:wrap';
   const disc = getDiscipline(q.disciplineId);
   if(disc){
     const dTag = mk('span','disc-tag');dTag.style.background=disc.color+'22';dTag.style.color=disc.color;
@@ -28830,6 +28982,8 @@ function renderImportedPractice(wrap){
   }
   if(q.topic){const tp = mk('span','topic-tag');tp.textContent=q.topic;tp.style.marginBottom='0';meta.appendChild(tp);}
   const src = mk('span','badge b-info');src.textContent='📋 Importada';meta.appendChild(src);
+  // V15.12.38 — Estrela de favorito no meta (versão compacta)
+  meta.appendChild(makeFavoriteButton(q, {compact:true}));
   wrap.appendChild(meta);
 
   const qc = mk('div','card fade');
@@ -28914,9 +29068,9 @@ function renderImportedPractice(wrap){
     const badge = mk('span','badge '+(ok?'b-ok':'b-err'));
     badge.textContent = ok?'✓ Correto':`✗ Incorreto · Gabarito: ${q.answer}`;
     fb.appendChild(badge);
-    const info = mk('p','txt2');info.style.marginTop='.75rem';
-    info.textContent='Questão importada — sem explicação automática. Consulte o comentário original na fonte.';
-    fb.appendChild(info);
+    // V15.12.38 — Texto sem soar limitado. A explicação compartilhada (renderSharedExplanationsUI)
+    // já aparece logo abaixo, então nem precisamos avisar "consulte na fonte".
+    // O texto antigo era falsamente negativo: "sem explicação automática. Consulte na fonte."
     // Estágio 6: chip de estatísticas globais (anônimo)
     const statsContainer = mk('div','qs-chip-container');
     statsContainer.style.marginTop='.625rem';
@@ -28937,37 +29091,34 @@ function renderImportedPractice(wrap){
       ST.importedCurrent=null;ST.importedAnswered=false;ST.importedAnswer=null;render();
     });
     actions.appendChild(nb);
+    // V15.12.38 — Botão favoritar (estado ao vivo)
+    const favBtn = makeFavoriteButton(q);
+    actions.appendChild(favBtn);
     if(q.sourceUrl){
       const srcLink = mk('a');srcLink.href=q.sourceUrl.startsWith('http')?q.sourceUrl:'https://'+q.sourceUrl;
       srcLink.target='_blank';srcLink.rel='noopener';
       srcLink.className='btn';srcLink.style.cssText='font-size:12px;padding:6px 12px;text-decoration:none';
-      srcLink.textContent='Ver no TEC ↗';
+      srcLink.textContent='Abrir origem ↗';
       actions.appendChild(srcLink);
     }
     // IMPORTANTE: anexa actions ao fb ANTES de qualquer insertBefore que use 'actions' como referência
     // (caso contrário, insertBefore lança NotFoundError porque actions ainda não é filho de fb)
     fb.appendChild(actions);
+    // V15.12.38 — REMOVIDO o botão "🎴 Criar flashcard deste erro" externo.
+    // A criação de flashcard fica consolidada na seção "Flashcards" (renderSharedExplanationsUI).
+    // Mantemos só "Ver na matéria" se houver tópico — ação de navegação, não de geração.
     if(!ok){
-      // Create flashcard button — uses the error just logged
       const errRef = DATA.errors.find(e=>e.id===ST.importedLastErrId);
-      if(errRef){
+      if(errRef && errRef.topic){
         const ctaRow = mk('div');ctaRow.style.cssText='margin-bottom:.875rem;display:flex;gap:8px;flex-wrap:wrap;align-items:center';
         if(errRef.hasCard){
-          const done = mk('div','alert alert-accent');done.style.cssText='margin:0;flex:1;min-width:200px';
-          done.innerHTML='✓ <b>Flashcard criado e adicionado ao deck.</b>';
+          const done = mk('div','alert alert-accent');done.style.cssText='margin:0;flex:1;min-width:200px;font-size:12px';
+          done.innerHTML='✓ Flashcard deste erro já está no seu deck.';
           ctaRow.appendChild(done);
-        } else {
-          const genBtn = mkBtn('🎴 Criar flashcard deste erro','btn');
-          genBtn.style.cssText='border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
-          genBtn.addEventListener('click',()=>generateCardFromError(errRef,genBtn,null,ctaRow));
-          ctaRow.appendChild(genBtn);
         }
-        // Ver na matéria
-        if(errRef.topic){
-          const mapBtn = mkBtn('🗺️ Ver na matéria','btn btn-sm');
-          mapBtn.addEventListener('click',()=>mapNavigate(errRef.disciplineId,errRef.topic));
-          ctaRow.appendChild(mapBtn);
-        }
+        const mapBtn = mkBtn('🗺️ Ver na matéria','btn btn-sm');
+        mapBtn.addEventListener('click',()=>mapNavigate(errRef.disciplineId,errRef.topic));
+        ctaRow.appendChild(mapBtn);
         fb.insertBefore(ctaRow,actions);
       }
     }
@@ -30770,7 +30921,11 @@ function renderNotebookPractice(wrap){
   const nb = getNotebook(ST.notebookCurrentId);
   if(!nb){ST.notebookCurrentId=null;ST.notebookSubview='list';render();return wrap;}
 
+  // V15.12.38 — Sincroniza classe focus-mode no body com state
+  syncFocusModeClass();
+
   const back = mkBtn('← Voltar ao caderno','back-btn');
+  back.classList.add('focus-hide');
   back.addEventListener('click',()=>{
     ST.notebookSubview='manage';
     ST.notebookManageTab='in';
@@ -30778,6 +30933,15 @@ function renderNotebookPractice(wrap){
     render();
   });
   wrap.appendChild(back);
+
+  // V15.12.38 — Toolbar com modo foco
+  const toolbar = mk('div','practice-focus-toolbar');
+  toolbar.appendChild(makeFocusModeToggle());
+  wrap.appendChild(toolbar);
+  // Banner discreto quando focus está on
+  const focusBanner = mk('div','practice-focus-banner');
+  focusBanner.innerHTML = '🎯 <b>Modo foco ativo</b> · elementos secundários ocultos';
+  wrap.appendChild(focusBanner);
 
   const head = mk('div');head.style.marginBottom='1rem';
 
@@ -30874,7 +31038,7 @@ function renderNotebookPractice(wrap){
   }
 
   // Question display (reuses imported question UI patterns)
-  const meta = mk('div','flex');meta.style.cssText='gap:6px;margin-bottom:.5rem;flex-wrap:wrap';
+  const meta = mk('div','flex focus-hide');meta.style.cssText='gap:6px;margin-bottom:.5rem;flex-wrap:wrap';
   const disc = getDiscipline(q.disciplineId);
   if(disc){
     const dTag = mk('span','disc-tag');dTag.style.background=disc.color+'22';dTag.style.color=disc.color;
@@ -30884,6 +31048,8 @@ function renderNotebookPractice(wrap){
   }
   if(q.topic){const tp = mk('span','topic-tag');tp.textContent=q.topic;tp.style.marginBottom='0';meta.appendChild(tp);}
   const src = mk('span','badge b-info');src.textContent='📒 Caderno';meta.appendChild(src);
+  // V15.12.38 — Favoritar (compacto)
+  meta.appendChild(makeFavoriteButton(q, {compact:true}));
   wrap.appendChild(meta);
 
   const qc = mk('div','card fade');
@@ -30929,9 +31095,8 @@ function renderNotebookPractice(wrap){
     const badge = mk('span','badge '+(ok?'b-ok':'b-err'));
     badge.textContent = ok?'✓ Correto':`✗ Incorreto · Gabarito: ${q.answer}`;
     fb.appendChild(badge);
-    const info = mk('p','txt2');info.style.marginTop='.75rem';
-    info.textContent='Questão importada — sem explicação automática.';
-    fb.appendChild(info);
+    // V15.12.38 — Removido o aviso "sem explicação automática". A seção de
+    // explicações compartilhadas (renderSharedExplanationsUI) já cobre o caso.
     // Estágio 6: chip de estatísticas globais
     const statsContainer = mk('div','qs-chip-container');
     statsContainer.style.marginTop='.625rem';
@@ -30957,37 +31122,39 @@ function renderNotebookPractice(wrap){
       render();
     });
     actions.appendChild(nb2);
+    // V15.12.38 — Botão favoritar
+    const favBtn = makeFavoriteButton(q);
+    actions.appendChild(favBtn);
     if(q.sourceUrl){
       const srcLink = mk('a');srcLink.href=q.sourceUrl.startsWith('http')?q.sourceUrl:'https://'+q.sourceUrl;
       srcLink.target='_blank';srcLink.rel='noopener';
       srcLink.className='btn';srcLink.style.cssText='font-size:12px;padding:6px 12px;text-decoration:none';
-      srcLink.textContent='Ver no TEC ↗';
+      srcLink.textContent='Abrir origem ↗';
       actions.appendChild(srcLink);
     }
+    // V15.12.38 — Em vez do botão duplicado de "Criar flashcard deste erro",
+    // só mostra "Ver na matéria" + status do flashcard se existir. A criação
+    // fica na seção Flashcards do renderSharedExplanationsUI.
     if(!ok){
-      // Find the error just logged for this question
       const errRef = DATA.errors.find(e=>e.id===ST.notebookLastErrId);
-      if(errRef){
+      if(errRef && errRef.topic){
         const ctaRow = mk('div');ctaRow.style.cssText='margin-bottom:.875rem;display:flex;gap:8px;flex-wrap:wrap;align-items:center';
         if(errRef.hasCard){
-          const done = mk('div','alert alert-accent');done.style.cssText='margin:0;flex:1;min-width:200px';
-          done.innerHTML='✓ <b>Flashcard criado.</b>';
+          const done = mk('div','alert alert-accent');done.style.cssText='margin:0;flex:1;min-width:200px;font-size:12px';
+          done.innerHTML='✓ Flashcard deste erro já está no seu deck.';
           ctaRow.appendChild(done);
-        } else {
-          const genBtn = mkBtn('🎴 Criar flashcard deste erro','btn');
-          genBtn.style.cssText='border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
-          genBtn.addEventListener('click',()=>generateCardFromError(errRef,genBtn,null,ctaRow));
-          ctaRow.appendChild(genBtn);
         }
-        if(errRef.topic){
-          const mapBtn = mkBtn('🗺️ Ver na matéria','btn btn-sm');
-          mapBtn.addEventListener('click',()=>mapNavigate(errRef.disciplineId,errRef.topic));
-          ctaRow.appendChild(mapBtn);
-        }
-        // V12 fix: appendar ctaRow direto em fb. Era insertBefore num actions ainda não anexado → NotFoundError
+        const mapBtn = mkBtn('🗺️ Ver na matéria','btn btn-sm');
+        mapBtn.addEventListener('click',()=>mapNavigate(errRef.disciplineId,errRef.topic));
+        ctaRow.appendChild(mapBtn);
         fb.appendChild(ctaRow);
       }
     }
+    // V15.12.38 — Container pra explicações IA + flashcards compartilhados
+    // (idêntico à prática histórica geral). Padroniza o motor.
+    const aiContainer = mk('div','imp-ai-container');aiContainer.style.cssText='margin-top:.875rem';
+    fb.appendChild(aiContainer);
+    renderSharedExplanationsUI(aiContainer, q, ok);
     fb.appendChild(actions);
     wrap.appendChild(fb);
   }
