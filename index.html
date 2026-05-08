@@ -445,34 +445,34 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
 :root[data-theme="dark"] .brand-bird-light{display:none}
 :root[data-theme="dark"] .brand-bird-dark{display:block}
 
-/* V15.12.45 — Animação da logo nominal da topbar.
-   Mesma lógica do mascote do Painel (.dash-mascot), mas adaptada à topbar:
-   - 3 estados mutuamente exclusivos (playing / static / reduced-motion)
-   - WebM toca uma vez e faz fade pra imagem estática do tema
-   - Imagens light/dark dentro do container trocam via data-theme
-   - Vídeos light/dark separados (escolha feita no JS conforme tema atual)
-   Tamanho casado com .brand .brand-bird (height:27px, max-width:122px) pra
-   não causar shift de layout entre estados. */
-.brand-anim{position:relative;display:inline-flex;align-items:center;flex-shrink:0}
-.brand-anim-video,.brand-anim .brand-bird{display:none}
-.brand-anim-video{
-  height:27px;width:auto;max-width:122px;object-fit:contain;
-  background:transparent;
-  user-select:none;pointer-events:none;
-  transition:opacity .45s ease;
+/* V15.12.46 — Efeitos minimalistas na logo da topbar.
+   Substituiu o experimento de animação WebM (V15.12.45 revertida).
+   Dois efeitos:
+   1. Fade-in inicial: logo aparece com opacity 0→1 e desliza 4px de cima
+      ao montar a topbar pela primeira vez (300ms cubic-bezier suave).
+   2. Hover lift: logo sobe 1px e ganha drop-shadow roxo bem leve quando
+      o cursor passa, reforçando que ela é clicável (leva pra Sobre).
+   Respeitamos prefers-reduced-motion: sem fade-in nem hover transform. */
+.brand-interactive{cursor:pointer}
+.brand-interactive .brand-bird{
+  transition:transform .25s cubic-bezier(.4,0,.2,1), filter .25s ease;
+  animation:brand-fade-in .35s cubic-bezier(.2,.6,.3,1) both;
 }
-/* Estado playing: vídeo visível, imagens ocultas */
-.brand-anim.brand-anim-playing .brand-anim-video{display:block}
-/* Estado static: imagem do tema atual visível, vídeo oculto */
-.brand-anim.brand-anim-static .brand-bird-light{display:block}
-:root[data-theme="dark"] .brand-anim.brand-anim-static .brand-bird-light{display:none}
-:root[data-theme="dark"] .brand-anim.brand-anim-static .brand-bird-dark{display:block}
-/* Defesa em CSS pra reduced-motion: força estado estático mesmo se JS falhar */
+.brand-interactive:hover .brand-bird{
+  transform:translateY(-1px);
+  filter:drop-shadow(0 2px 6px rgba(124,92,255,.25));
+}
+.brand-interactive:active .brand-bird{
+  transform:translateY(0);
+  filter:none;
+}
+@keyframes brand-fade-in{
+  from{opacity:0;transform:translateY(-4px)}
+  to{opacity:1;transform:translateY(0)}
+}
 @media (prefers-reduced-motion: reduce){
-  .brand-anim-video{display:none !important}
-  .brand-anim .brand-bird-light{display:block}
-  :root[data-theme="dark"] .brand-anim .brand-bird-light{display:none}
-  :root[data-theme="dark"] .brand-anim .brand-bird-dark{display:block}
+  .brand-interactive .brand-bird{animation:none;transition:none}
+  .brand-interactive:hover .brand-bird{transform:none;filter:none}
 }
 
 .brand-name{font-family:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:22px;font-weight:800;letter-spacing:-1px;line-height:1;display:inline-flex;align-items:baseline}
@@ -10402,14 +10402,11 @@ const BRAND = {
   // ambos os temas (assume transparência alpha + contraste próprio).
   // Fallback automático para mascotLogo/mascotLogoDark se WebM falhar
   // ou se prefers-reduced-motion estiver ativo.
-  mascotVideo: '/animacao-mascote.webm',
-  // V15.12.45 — Animação WebM da logo da topbar. Diferente do mascote: tem
-  // arquivos separados pra cada tema (a logo nominal tem cores específicas).
-  // Fallback automático para topbarLogo/topbarLogoDark se WebM falhar ou se
-  // prefers-reduced-motion estiver ativo. Toca uma vez por sessão (controlado
-  // por ST._topbarLogoPlayed pra não animar a cada re-render da topbar).
-  topbarVideoLight: '/animacao-nome-light.webm',
-  topbarVideoDark: '/animacao-nome-dark.webm'
+  mascotVideo: '/animacao-mascote.webm'
+  // V15.12.45 → V15.12.46: chaves topbarVideoLight/topbarVideoDark removidas.
+  // O experimento de logo animada na topbar foi revertido pra logo estática
+  // por dificuldade de calibrar tamanho/timing. Voltamos pro <img> direto
+  // com efeitos sutis em CSS (fade-in inicial + hover lift).
 };
 const STORAGE_KEY = 'nexus_pl_v4';
 const REFERRAL_KEY = 'gralia_referral';
@@ -17813,60 +17810,10 @@ function renderTopbar(){
   brand.setAttribute('role','button');
   brand.setAttribute('tabindex','0');
   brand.setAttribute('aria-label','Sobre o Gralia');
-  // V15.12.45 — Logo nominal da topbar com animação WebM por tema.
-  // Mesmo padrão do mascote do Painel: vídeo toca uma vez e faz fade pra
-  // imagem estática. Diferente do mascote, tem 2 vídeos (light/dark) — a
-  // escolha é feita no momento da renderização conforme tema atual.
-  // Toca apenas 1x por sessão (controlado por ST._topbarLogoPlayed) pra
-  // não animar a cada re-render da topbar (que acontece em quase toda interação).
-  const reducedMotion = (typeof window.matchMedia === 'function')
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  const videoSrc = isDark ? BRAND.topbarVideoDark : BRAND.topbarVideoLight;
-  const shouldAnimate = !reducedMotion && !ST._topbarLogoPlayed;
-  if(shouldAnimate){
-    brand.innerHTML = `<div class="brand-anim brand-anim-playing">
-      <video class="brand-anim-video" autoplay muted playsinline preload="metadata" aria-hidden="true">
-        <source src="${videoSrc}" type="video/webm">
-      </video>
-      <img src="${BRAND.topbarLogo}" alt="Gralia" class="brand-bird brand-bird-light">
-      <img src="${BRAND.topbarLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark">
-    </div><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
-    setTimeout(()=>{
-      const animBox = brand.querySelector('.brand-anim');
-      const v = brand.querySelector('.brand-anim-video');
-      if(!animBox || !v) return;
-      const switchToStatic = ()=>{
-        try{
-          v.style.opacity = '0';
-          setTimeout(()=>{
-            animBox.classList.remove('brand-anim-playing');
-            animBox.classList.add('brand-anim-static');
-            try{ v.pause && v.pause(); }catch(_){}
-            v.style.display = 'none';
-          }, 450);
-        }catch(_){
-          animBox.classList.remove('brand-anim-playing');
-          animBox.classList.add('brand-anim-static');
-        }
-        ST._topbarLogoPlayed = true;
-      };
-      v.addEventListener('error', switchToStatic);
-      v.addEventListener('ended', switchToStatic);
-      const src = v.querySelector('source');
-      if(src) src.addEventListener('error', switchToStatic);
-      v.addEventListener('loadedmetadata', ()=>{
-        if(!v.duration || isNaN(v.duration) || v.duration === 0) switchToStatic();
-      });
-    }, 0);
-  } else {
-    // Estado estático direto: já tocou nesta sessão OU prefers-reduced-motion.
-    // CSS .brand-anim-static + data-theme cuidam de mostrar a imagem certa.
-    brand.innerHTML = `<div class="brand-anim brand-anim-static">
-      <img src="${BRAND.topbarLogo}" alt="Gralia" class="brand-bird brand-bird-light">
-      <img src="${BRAND.topbarLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark">
-    </div><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
-  }
+  // V15.12.46 — Logo estática com efeitos sutis em CSS (fade-in inicial + hover lift).
+  // Reverteu V15.12.45 (vídeo WebM) por dificuldade de calibrar tamanho/timing.
+  // Os efeitos minimalistas estão definidos no bloco CSS .brand-interactive.
+  brand.innerHTML = `<img src="${BRAND.topbarLogo}" alt="Gralia" class="brand-bird brand-bird-light"><img src="${BRAND.topbarLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark"><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
   // Tooltip de marca com info da gralha-azul
   const brandTip = mk('div','brand-tooltip');
   brandTip.innerHTML = `
