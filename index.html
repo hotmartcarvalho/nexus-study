@@ -445,64 +445,35 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
 :root[data-theme="dark"] .brand-bird-light{display:none}
 :root[data-theme="dark"] .brand-bird-dark{display:block}
 
-/* V15.12.47 — Efeitos minimalistas na logo da topbar.
-   Substituiu V15.12.46 (hover lift): fade-in inicial + shimmer sweep periódico.
+/* V15.12.48 — Efeitos minimalistas na logo da topbar.
+   Substituiu V15.12.47 (shimmer sweep periódico que ficava chamando atenção).
+   Dois efeitos discretos:
    1. Fade-in inicial: logo aparece com opacity 0→1 + slide 4px de cima (350ms).
-   2. Shimmer sweep: linha de luz cruza a logo a cada ~9s (sutil, decorativo).
-      Cor da luz adapta ao tema (roxo-claro no light, branco no dark) pra
-      manter contraste. Implementado via wrapper .brand-bird-wrap + ::after
-      pra não quebrar o tooltip do brand nem outras regras existentes.
+   2. Hover scale: ao passar o mouse, logo cresce sutilmente (1.04x) com lift
+      de 1px e brilho roxo bem leve, reforçando que é clicável (leva pra Sobre).
    Respeita prefers-reduced-motion: desativa ambos os efeitos. */
 .brand-interactive{cursor:pointer}
 .brand-interactive .brand-bird{
+  transition:transform .25s cubic-bezier(.34,1.2,.5,1), filter .25s ease;
   animation:brand-fade-in .35s cubic-bezier(.2,.6,.3,1) both;
+  transform-origin:left center;
+}
+.brand-interactive:hover .brand-bird{
+  transform:scale(1.04) translateY(-1px);
+  filter:drop-shadow(0 2px 8px rgba(124,92,255,.28));
+}
+.brand-interactive:active .brand-bird{
+  transform:scale(1.02) translateY(0);
+  filter:drop-shadow(0 1px 4px rgba(124,92,255,.18));
 }
 @keyframes brand-fade-in{
   from{opacity:0;transform:translateY(-4px)}
   to{opacity:1;transform:translateY(0)}
 }
-
-/* Wrapper das 2 imagens (light/dark) que hospeda o shimmer.
-   inline-flex se ajusta ao tamanho da img visível conforme tema. */
-.brand-bird-wrap{
-  position:relative;
-  display:inline-flex;
-  align-items:center;
-  overflow:hidden;
-  border-radius:4px;
-}
-.brand-bird-wrap::after{
-  content:'';
-  position:absolute;
-  inset:0;
-  background:linear-gradient(100deg,
-    transparent 0%,
-    transparent 38%,
-    rgba(124,92,255,.32) 50%,
-    transparent 62%,
-    transparent 100%);
-  transform:translateX(-110%);
-  pointer-events:none;
-  animation:brand-shimmer 9s ease-in-out infinite;
-  animation-delay:1.5s;
-}
-:root[data-theme="dark"] .brand-bird-wrap::after{
-  background:linear-gradient(100deg,
-    transparent 0%,
-    transparent 38%,
-    rgba(255,255,255,.30) 50%,
-    transparent 62%,
-    transparent 100%);
-}
-@keyframes brand-shimmer{
-  0%{transform:translateX(-110%)}
-  18%{transform:translateX(110%)}
-  100%{transform:translateX(110%)}
-}
-
 @media (prefers-reduced-motion: reduce){
-  .brand-interactive .brand-bird{animation:none}
-  .brand-bird-wrap::after{animation:none;display:none}
+  .brand-interactive .brand-bird{animation:none;transition:none}
+  .brand-interactive:hover .brand-bird,
+  .brand-interactive:active .brand-bird{transform:none;filter:none}
 }
 
 .brand-name{font-family:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:22px;font-weight:800;letter-spacing:-1px;line-height:1;display:inline-flex;align-items:baseline}
@@ -2583,9 +2554,14 @@ h3{font-size:15px;font-weight:600}
 .btn-p:hover:not(:disabled){opacity:.9;background:var(--accent)}
 .btn-lg{padding:12px 22px;font-size:14.5px;border-radius:var(--r)}
 /* V14: Botão grande primário com transição mais suave (item 43) — antes hover criava
-   bordas estranhas por mudança brusca de border-color. */
-.btn-p.btn-lg{background:var(--gralia-gradient);border:1px solid transparent;box-shadow:0 2px 8px rgba(124,92,255,.25)}
-.btn-p.btn-lg:hover:not(:disabled){opacity:1;background:var(--gralia-gradient);border-color:transparent;transform:translateY(-1px);box-shadow:0 6px 18px rgba(124,92,255,.40)}
+   bordas estranhas por mudança brusca de border-color.
+   V15.12.49 — Adicionado background-clip:padding-box. No tema escuro, o gradient
+   começa em #3a4a82 (azul escuro) e estava "vazando" 1px pra área da borda
+   transparente (default background-clip:border-box pinta gradient até a borda),
+   criando um artefato visível na esquerda. Com padding-box, o gradient fica
+   contido e a borda fica transparente de verdade, alinhada com o fundo. */
+.btn-p.btn-lg{background:var(--gralia-gradient);background-clip:padding-box;-webkit-background-clip:padding-box;border:1px solid transparent;box-shadow:0 2px 8px rgba(124,92,255,.25)}
+.btn-p.btn-lg:hover:not(:disabled){opacity:1;background:var(--gralia-gradient);background-clip:padding-box;-webkit-background-clip:padding-box;border-color:transparent;transform:translateY(-1px);box-shadow:0 6px 18px rgba(124,92,255,.40)}
 .btn-p.btn-lg:active:not(:disabled){transform:translateY(0);box-shadow:0 2px 6px rgba(124,92,255,.25)}
 .btn-danger{color:var(--red-text);border-color:var(--red-light)}
 .btn-danger:hover:not(:disabled){background:var(--red-light)}
@@ -4711,6 +4687,35 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 @keyframes bird-wing-r{
   0%, 100%{transform:rotate(0deg) scaleY(1)}
   50%{transform:rotate(12deg) scaleY(0.7)}
+}
+
+/* V15.12.50 — Substituição da gralha SVG pela animação WebM dentro do
+   pinhal. O movimento pelo cenário (forest-bird-fly) continua aplicado
+   ao <g class="forest-bird"> que agora hospeda dois filhos:
+   - <foreignObject> com <video> WebM (estado padrão)
+   - <g class="forest-bird-svg"> com o desenho original (fallback)
+   JS após mount adiciona .bird-fallback no <g> caso vídeo falhe.
+   prefers-reduced-motion força fallback E desativa as animações de
+   movimento e bater de asa. */
+.forest-bird-video-fo{overflow:visible}
+.forest-bird-video-wrap{width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.forest-bird-video{width:100%;height:100%;object-fit:contain;background:transparent;display:block;pointer-events:none}
+/* Estado padrão: vídeo visível, SVG escondido */
+.forest-bird-svg{display:none}
+/* Estado fallback: vídeo escondido, SVG visível (asas internas voltam a animar) */
+.forest-bird.bird-fallback .forest-bird-video-fo{display:none}
+.forest-bird.bird-fallback .forest-bird-svg{display:block}
+/* Quando o vídeo está ativo, asas internas do SVG não rodam — economiza CPU
+   mesmo escondidas, e evita reflow se o user trocar pra fallback no meio. */
+.forest-bird:not(.bird-fallback) .forest-bird-wing-l,
+.forest-bird:not(.bird-fallback) .forest-bird-wing-r{animation:none}
+/* prefers-reduced-motion: força SVG estático (sem animações nenhuma) */
+@media (prefers-reduced-motion: reduce){
+  .forest-bird{animation:none}
+  .forest-bird .forest-bird-video-fo{display:none}
+  .forest-bird .forest-bird-svg{display:block}
+  .forest-bird-wing-l,
+  .forest-bird-wing-r{animation:none}
 }
 
 .forest-list-sec{margin-bottom:1.5rem}
@@ -10432,7 +10437,12 @@ const BRAND = {
   // ambos os temas (assume transparência alpha + contraste próprio).
   // Fallback automático para mascotLogo/mascotLogoDark se WebM falhar
   // ou se prefers-reduced-motion estiver ativo.
-  mascotVideo: '/animacao-mascote.webm'
+  mascotVideo: '/animacao-mascote.webm',
+  // V15.12.50 — Animação WebM da gralha que voa pelo pinhal (página Pinhal).
+  // O movimento pelo cenário continua via CSS (.forest-bird-fly), o vídeo
+  // só substitui o desenho SVG da ave. Fallback automático: se WebM falhar
+  // ou prefers-reduced-motion estiver ativo, renderiza o SVG original.
+  forestBirdVideo: '/animacao-mascote-pinhal.webm'
   // V15.12.45 → V15.12.46: chaves topbarVideoLight/topbarVideoDark removidas.
   // O experimento de logo animada na topbar foi revertido pra logo estática
   // por dificuldade de calibrar tamanho/timing. Voltamos pro <img> direto
@@ -17840,11 +17850,10 @@ function renderTopbar(){
   brand.setAttribute('role','button');
   brand.setAttribute('tabindex','0');
   brand.setAttribute('aria-label','Sobre o Gralia');
-  // V15.12.47 — Logo estática com efeitos sutis em CSS (fade-in + shimmer sweep).
-  // Reverteu V15.12.45 (vídeo WebM) e V15.12.46 (hover lift).
-  // O wrapper .brand-bird-wrap hospeda o pseudo-elemento ::after que faz o
-  // shimmer cruzar a logo periodicamente (~9s).
-  brand.innerHTML = `<span class="brand-bird-wrap"><img src="${BRAND.topbarLogo}" alt="Gralia" class="brand-bird brand-bird-light"><img src="${BRAND.topbarLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark"></span><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
+  // V15.12.48 — Logo estática com efeitos sutis em CSS (fade-in + hover scale).
+  // Reverteu V15.12.45 (vídeo WebM), V15.12.46 (lift) e V15.12.47 (shimmer rotativo).
+  // Os efeitos minimalistas estão definidos no bloco CSS .brand-interactive.
+  brand.innerHTML = `<img src="${BRAND.topbarLogo}" alt="Gralia" class="brand-bird brand-bird-light"><img src="${BRAND.topbarLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark"><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
   // Tooltip de marca com info da gralha-azul
   const brandTip = mk('div','brand-tooltip');
   brandTip.innerHTML = `
@@ -41264,19 +41273,25 @@ function showImportConfirmModal(item){
     okBtn.textContent = okBtnLoading;
     try{
       let toastMsg = '';
+      // V15.12.48 — Após importar, navega pra view apropriada pro user achar
+      // o material que acabou de baixar. Antes ficava na descoberta sem direção.
+      let nextView = null;
       if(item.resource_type === 'caderno'){
         const result = await importNotebookToLocal(item.id);
-        toastMsg = `✓ Caderno importado (${result.importedCount} questões)`;
+        toastMsg = `✓ Caderno importado (${result.importedCount} questões) — abrindo seus cadernos`;
+        nextView = 'notebooks';
       } else if(item.resource_type === 'fonte'){
         const targetDiscId = discSelect ? discSelect.value : null;
         if(!targetDiscId) throw new Error('Selecione uma disciplina destino');
         await importSourceToLocal(item.id, targetDiscId);
-        toastMsg = '✓ Fonte importada';
+        toastMsg = '✓ Fonte importada — abrindo suas fontes';
+        nextView = 'sources';
       } else if(item.resource_type === 'perfil_topico'){
         const targetDiscId = discSelect ? discSelect.value : null;
         if(!targetDiscId) throw new Error('Selecione uma disciplina destino');
         await importTopicProfileToLocal(item.id, targetDiscId);
         toastMsg = '✓ Perfil importado';
+        // Perfil de tópico não tem view dedicada — fica na descoberta mesmo
       } else if(item.resource_type === 'edital'){
         // Editais são apenas visualizados (não importados — visualização direta na descoberta)
         closeModal();
@@ -41288,6 +41303,10 @@ function showImportConfirmModal(item){
       closeModal();
       showToast(toastMsg);
       item.total_uses = (item.total_uses||0) + 1;
+      // V15.12.48 — Navega pra view apropriada se houver
+      if(nextView){
+        ST.view = nextView;
+      }
       render();
     }catch(err){
       okBtn.disabled = false;
@@ -52590,41 +52609,82 @@ function buildForestScene(trees){
   });
 
   // === GRALHA — alinhada à identidade da marca ===
+  // V15.12.50 — Estrutura híbrida: <foreignObject> com <video> WebM (visual
+  // padrão) + <g class="forest-bird-svg"> com o desenho original (fallback).
+  // O grupo externo continua sendo movido pela animação CSS forest-bird-fly,
+  // garantindo que o trajeto pelo pinhal funciona pra ambos. JS pós-mount
+  // adiciona .bird-fallback no <g> se o vídeo falhar; prefers-reduced-motion
+  // já força fallback via CSS sem precisar de JS.
+  // Tamanho do foreignObject calibrado pra cobrir aproximadamente a mesma
+  // área visual do desenho SVG (que vai de x≈-18..16, y≈-10..4).
+  // Margem extra evita corte das asas/cauda quando a animação faz scale
+  // entre 1.7x e 2.1x.
   // Paleta cinza + roxo Gralia (em vez do azul-cobalto naturalista da Cyanocorax caeruleus)
   // Silhueta mais esguia, mais elegante — tipo das ilustrações de logo
   svg += `
     <g class="forest-bird" filter="url(#birdShadow)">
-      <!-- Cauda longa atrás (cinza-roxo escuro) - desenhada PRIMEIRO pra ficar atrás -->
-      <path d="M -7 1 L -18 4 L -16 6 L -6 3 Z" fill="#3a3650"/>
-      <!-- Corpo (forma esguia) - cinza médio -->
-      <path d="M -7 -1 Q -8 -4 -4 -6 Q 1 -7 5 -6 Q 8 -4 9 -1 Q 9 2 6 3 Q 1 4 -3 3 Q -6 2 -7 -1 Z"
-            fill="#6e6878"/>
-      <!-- Barriga discreta (cinza claro) -->
-      <ellipse cx="-1" cy="1" rx="6" ry="3" fill="#9c97a8" opacity="0.7"/>
-      <!-- Cabeça (cinza-roxo escuro, menor e mais arredondada) -->
-      <circle cx="5" cy="-3" r="3.8" fill="#4a4359"/>
-      <!-- Crista — penas pra cima na cor roxo Gralia (acento de marca) -->
-      <path d="M 3 -6 Q 4 -10 5 -9 M 5 -7 Q 6 -11 7 -10 M 7 -6 Q 8 -9 9 -8"
-            stroke="#8042fa" stroke-width="1.3" stroke-linecap="round" fill="none"/>
-      <!-- Asa esquerda (cinza-roxo, mais estilizada e fininha) -->
-      <path d="M -4 -1 Q -10 -5 -16 -3 Q -12 1 -7 1 Q -5 0 -4 -1 Z"
-            fill="#5a536b" class="forest-bird-wing-l"/>
-      <!-- Asa direita -->
-      <path d="M 4 -1 Q 10 -5 16 -3 Q 12 1 7 1 Q 5 0 4 -1 Z"
-            fill="#5a536b" class="forest-bird-wing-r"/>
-      <!-- Bico curto cinza-claro -->
-      <path d="M 8.5 -3 L 11 -3 L 9 -1.5 Z" fill="#bcb5c8"/>
-      <!-- Olho com brilho pequeno -->
-      <circle cx="6" cy="-3.5" r="1" fill="#15101e"/>
-      <circle cx="6.3" cy="-3.8" r="0.35" fill="#fff" opacity="0.95"/>
-      <!-- Detalhe roxo na ponta da asa (acento sutil) -->
-      <circle cx="-15" cy="-2.5" r="0.8" fill="#8042fa" opacity="0.6"/>
-      <circle cx="15" cy="-2.5" r="0.8" fill="#8042fa" opacity="0.6"/>
+      <foreignObject class="forest-bird-video-fo" x="-22" y="-18" width="44" height="32">
+        <div xmlns="http://www.w3.org/1999/xhtml" class="forest-bird-video-wrap">
+          <video class="forest-bird-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
+            <source src="${BRAND.forestBirdVideo}" type="video/webm">
+          </video>
+        </div>
+      </foreignObject>
+      <g class="forest-bird-svg">
+        <!-- Cauda longa atrás (cinza-roxo escuro) - desenhada PRIMEIRO pra ficar atrás -->
+        <path d="M -7 1 L -18 4 L -16 6 L -6 3 Z" fill="#3a3650"/>
+        <!-- Corpo (forma esguia) - cinza médio -->
+        <path d="M -7 -1 Q -8 -4 -4 -6 Q 1 -7 5 -6 Q 8 -4 9 -1 Q 9 2 6 3 Q 1 4 -3 3 Q -6 2 -7 -1 Z"
+              fill="#6e6878"/>
+        <!-- Barriga discreta (cinza claro) -->
+        <ellipse cx="-1" cy="1" rx="6" ry="3" fill="#9c97a8" opacity="0.7"/>
+        <!-- Cabeça (cinza-roxo escuro, menor e mais arredondada) -->
+        <circle cx="5" cy="-3" r="3.8" fill="#4a4359"/>
+        <!-- Crista — penas pra cima na cor roxo Gralia (acento de marca) -->
+        <path d="M 3 -6 Q 4 -10 5 -9 M 5 -7 Q 6 -11 7 -10 M 7 -6 Q 8 -9 9 -8"
+              stroke="#8042fa" stroke-width="1.3" stroke-linecap="round" fill="none"/>
+        <!-- Asa esquerda (cinza-roxo, mais estilizada e fininha) -->
+        <path d="M -4 -1 Q -10 -5 -16 -3 Q -12 1 -7 1 Q -5 0 -4 -1 Z"
+              fill="#5a536b" class="forest-bird-wing-l"/>
+        <!-- Asa direita -->
+        <path d="M 4 -1 Q 10 -5 16 -3 Q 12 1 7 1 Q 5 0 4 -1 Z"
+              fill="#5a536b" class="forest-bird-wing-r"/>
+        <!-- Bico curto cinza-claro -->
+        <path d="M 8.5 -3 L 11 -3 L 9 -1.5 Z" fill="#bcb5c8"/>
+        <!-- Olho com brilho pequeno -->
+        <circle cx="6" cy="-3.5" r="1" fill="#15101e"/>
+        <circle cx="6.3" cy="-3.8" r="0.35" fill="#fff" opacity="0.95"/>
+        <!-- Detalhe roxo na ponta da asa (acento sutil) -->
+        <circle cx="-15" cy="-2.5" r="0.8" fill="#8042fa" opacity="0.6"/>
+        <circle cx="15" cy="-2.5" r="0.8" fill="#8042fa" opacity="0.6"/>
+      </g>
     </g>
   `;
 
   svg += `</svg>`;
   container.innerHTML = svg;
+
+  // V15.12.50 — Hook pós-mount: detecta falha do WebM e ativa fallback SVG.
+  // Tem que ser feito após innerHTML porque o <video> só existe no DOM
+  // depois disso. Eventos cobrem: source 404, codec não suportado, duração
+  // zero/inválida, e erro genérico do elemento.
+  setTimeout(()=>{
+    const birdGroup = container.querySelector('.forest-bird');
+    const v = container.querySelector('.forest-bird-video');
+    if(!birdGroup || !v) return;
+    const activateFallback = ()=>{
+      birdGroup.classList.add('bird-fallback');
+      try{ v.pause && v.pause(); }catch(_){}
+    };
+    v.addEventListener('error', activateFallback);
+    const src = v.querySelector('source');
+    if(src) src.addEventListener('error', activateFallback);
+    v.addEventListener('loadedmetadata', ()=>{
+      // Catch: WebM corrompido pode reportar metadata mas com dimensões zeradas
+      if(!v.videoWidth || !v.videoHeight) activateFallback();
+    });
+  }, 0);
+
   return container;
 }
 
@@ -57955,71 +58015,10 @@ function renderAuthScreen(){
   form.appendChild(passLbl);form.appendChild(pass);
 
   // === Campo de username — APENAS no modo signup ===
-  let usernameInput = null, usernameStatus = null, displayNameInput = null;
-  if(mode === 'signup'){
-    // Caixa explicativa sobre pra que serve o username
-    const usernameInfoBox = mk('div','auth-username-info');
-    usernameInfoBox.innerHTML = `
-      <div class="aui-head"><span class="aui-icon">🌐</span><b>Sobre o nome de usuário</b></div>
-      <p class="aui-text">Seu @username serve pra <b>compartilhar materiais</b> (cadernos de questões, fontes de estudo, perfis de matéria) e <b>seguir outros estudantes</b>. <b>Não há chat de conversa</b> — o foco é estudo, não rede social.</p>
-    `;
-    form.appendChild(usernameInfoBox);
-
-    const userLbl = mk('label');userLbl.textContent='Nome de usuário (@)';userLbl.style.marginTop='.75rem';
-    usernameInput = mk('input');usernameInput.type='text';usernameInput.autocomplete='username';
-    usernameInput.placeholder='ex: joao_silva';
-    usernameInput.value = ST.authUsername || '';
-    usernameInput.style.cssText = 'text-transform:lowercase';
-    usernameStatus = mk('div','auth-username-status');
-    usernameStatus.style.cssText = 'font-size:11px;margin-top:4px;min-height:14px;color:var(--text3)';
-    usernameStatus.textContent = '3-20 caracteres · letras minúsculas, números e _';
-    // Validação em tempo real (debounced)
-    let checkTimer = null;
-    usernameInput.addEventListener('input',e=>{
-      const v = e.target.value.toLowerCase().replace(/\s/g,'');
-      e.target.value = v;
-      ST.authUsername = v;
-      // Validação local primeiro
-      const local = validateUsername(v);
-      if(!local.ok){
-        usernameStatus.textContent = '❌ ' + local.error;
-        usernameStatus.style.color = 'var(--red-text)';
-        return;
-      }
-      usernameStatus.textContent = '✓ formato válido · verificando disponibilidade...';
-      usernameStatus.style.color = 'var(--text3)';
-      // Debounce checagem remota
-      if(checkTimer) clearTimeout(checkTimer);
-      checkTimer = setTimeout(async()=>{
-        if(!supa){
-          usernameStatus.textContent = '✓ formato válido';
-          return;
-        }
-        try{
-          const result = await checkUsernameAvailable(v);
-          if(result.available){
-            usernameStatus.textContent = '✓ disponível';
-            usernameStatus.style.color = 'var(--accent-text)';
-          } else {
-            usernameStatus.textContent = '❌ ' + (result.error || 'já em uso');
-            usernameStatus.style.color = 'var(--red-text)';
-          }
-        }catch(_){ /* falha silenciosa — backend valida no signup */ }
-      }, 500);
-    });
-    form.appendChild(userLbl);
-    form.appendChild(usernameInput);
-    form.appendChild(usernameStatus);
-
-    // Display name (opcional)
-    const dnLbl = mk('label');dnLbl.textContent='Nome de exibição (opcional)';dnLbl.style.marginTop='.75rem';
-    displayNameInput = mk('input');displayNameInput.type='text';displayNameInput.autocomplete='name';
-    displayNameInput.placeholder='Como você quer ser chamado';
-    displayNameInput.value = ST.authDisplayName || '';
-    displayNameInput.addEventListener('input',e=>{ST.authDisplayName=e.target.value;});
-    form.appendChild(dnLbl);
-    form.appendChild(displayNameInput);
-  }
+  // V15.12.48 — Campos REMOVIDOS do form. Agora signup pede apenas email + senha.
+  // Após criação da conta, showCompleteProfileModal (V15.12.44) abre automaticamente
+  // pedindo @username e nome de exibição. Decisão: o pop-up dedicado é mais
+  // esclarecedor e o flow fica menos sobrecarregado no momento de signup.
 
   if(ST.authError){
     const err = mk('div','auth-error');err.textContent=ST.authError;
@@ -58032,23 +58031,18 @@ function renderAuthScreen(){
     const pw = ST.authPass||'';
     if(!em||!pw){ST.authError='Preencha email e senha.';render();return;}
     if(mode==='signup'&&pw.length<6){ST.authError='Senha deve ter ao menos 6 caracteres.';render();return;}
-    if(mode==='signup'){
-      const u = (ST.authUsername||'').trim();
-      if(!u){ST.authError='Escolha um nome de usuário.';render();return;}
-      const validation = validateUsername(u);
-      if(!validation.ok){ST.authError='Username inválido: '+validation.error;render();return;}
-    }
+    // V15.12.48 — Username não é mais validado aqui. O modal pós-signup
+    // (showCompleteProfileModal) cuida dessa etapa após a conta ser criada.
     submitBtn.disabled=true;submitBtn.textContent='Aguarde...';
     ST.authError=null;
     try{
       if(mode==='signup'){
-        const u = (ST.authUsername||'').trim().toLowerCase();
-        const dn = (ST.authDisplayName||'').trim() || null;
-        await authSignUp(em,pw,u,dn);
+        // V15.12.48 — Não passa mais username/displayName pro signUp.
+        // O profile vai ser criado pelo trigger sem username, e o modal
+        // showCompleteProfileModal abre logo após detectar que falta.
+        await authSignUp(em,pw,null,null);
         ST.authSuccess='Conta criada! Verifique seu email para ativar (se configurado) e faça login.';
         ST.authMode='login';ST.authPass='';
-        // Limpa campos do signup
-        ST.authUsername=''; ST.authDisplayName='';
       } else {
         await authSignIn(em,pw);
         // onAuthStateChange triggers the session + first render
@@ -58057,7 +58051,6 @@ function renderAuthScreen(){
     }catch(e){
       ST.authError = (e.message||'').includes('Invalid login')?'Email ou senha incorretos.':
                      (e.message||'').includes('User already')?'Este email já está cadastrado.':
-                     (e.message||'').includes('username')?'Esse nome de usuário já está em uso. Escolha outro.':
                      e.message||'Falha na autenticação.';
     }
     submitBtn.disabled=false;submitBtn.textContent=mode==='signup'?'Criar conta':'Entrar';
@@ -58569,7 +58562,9 @@ function showCompleteProfileModal(){
 
   const intro = mk('p','txt2');
   intro.style.cssText = 'margin:0 0 .75rem;font-size:13px;line-height:1.55';
-  intro.innerHTML = 'Você entrou via Google. Pra finalizar a conta, escolha um <b>@username</b> (único) e um <b>nome de exibição</b>. Sem isso, não dá pra compartilhar cadernos, fontes nem aparecer pra outros estudantes.';
+  // V15.12.48 — Texto genérico (não menciona Google) porque agora o modal
+  // dispara em qualquer signup novo, não só OAuth.
+  intro.innerHTML = 'Conta criada! Pra finalizar, escolha um <b>@username</b> (único) e um <b>nome de exibição</b>. Esses dados são usados pra você compartilhar cadernos, fontes e aparecer pra outros estudantes na comunidade. Sem chat de conversa — o foco é estudo.';
   m.appendChild(intro);
 
   const state = {
@@ -58676,6 +58671,8 @@ function showCompleteProfileModal(){
     ST._profileSetupDismissed = true;
     closeModal();
     showToast('Você pode criar seu perfil depois em Conta → Perfil público.', 6000);
+    // V15.12.48 — Após pular, ainda agenda tutorial visual
+    setTimeout(() => maybeShowTutorial(), 800);
   });
   actions.appendChild(skipBtn);
 
@@ -58711,6 +58708,10 @@ function showCompleteProfileModal(){
       closeModal();
       showToast('✓ Perfil criado! Bem-vindo ao Gralia, @' + u + '.', 6000);
       render();
+      // V15.12.48 — Após concluir cadastro, agenda tutorial visual
+      // (em vez de rodar em paralelo com o modal de username, o que causava
+      // o tutorial ser empilhado e a ordem ficar invertida).
+      setTimeout(() => maybeShowTutorial(), 1200);
     }catch(err){
       errBox.textContent = (err && err.message) ? err.message : 'Erro ao criar perfil. Tente de novo.';
       errBox.style.display = 'block';
@@ -58740,6 +58741,20 @@ function maybePromptProfileSetup(retries){
   if(isProfileSetupNeeded()){
     try{ showCompleteProfileModal(); }catch(e){console.warn('[profile-setup]', e);}
   }
+}
+
+// V15.12.48 — Helper que abre o tutorial visual se aplicável.
+// Extraído do setTimeout do onAuthStateChange pra ser reusado depois do
+// modal de profile setup fechar (evita os dois aparecerem em paralelo).
+// Também não abre se já existe outro modal aberto (cuidado com pilhas).
+function maybeShowTutorial(){
+  try{
+    if(ST.modal) return; // outro modal aberto — não atropela
+    const noSources = !(DATA.sources||[]).length;
+    if(noSources && !DATA.tutorialOffered){
+      showTutorialModal();
+    }
+  }catch(e){console.warn('[tutorial]', e);}
 }
 
 /* ============================================================
@@ -58919,13 +58934,12 @@ async function initAuth(){
         }catch(e){}
       }, 1500);
       // V14: Tutorial guiado — só pra usuários sem fontes E que ainda não viram
+      // V15.12.48 — Não dispara se o modal de profile setup vai/está aberto;
+      // nesse caso, o tutorial é encadeado pelo handler do modal (após skip
+      // ou conclusão). Evita o tutorial empilhar em cima do username modal.
       setTimeout(()=>{
-        try{
-          const noSources = !(DATA.sources||[]).length;
-          if(noSources && !DATA.tutorialOffered){
-            showTutorialModal();
-          }
-        }catch(e){console.warn('[tutorial]', e);}
+        if(isProfileSetupNeeded() || ST.modal) return;
+        maybeShowTutorial();
       }, 3500);
     }
     if(event==='SIGNED_OUT'){
