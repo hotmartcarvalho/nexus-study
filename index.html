@@ -3773,6 +3773,47 @@ body.method-focus-mode .page > .fade{
   margin:0 auto;
   width:100%;
 }
+
+/* V15.12.39 — Modo foco para prática histórica/caderno reusa o mesmo padrão visual */
+body.imported-focus-mode{overflow:hidden}
+body.imported-focus-mode .topbar,
+body.imported-focus-mode .quick-sidebar,
+body.imported-focus-mode .quick-fab,
+body.imported-focus-mode .quick-fab-panel,
+body.imported-focus-mode .feedback-floating-btn,
+body.imported-focus-mode .shortcuts-floating-btn,
+body.imported-focus-mode .faq-floating-btn,
+body.imported-focus-mode .admin-floating-btn,
+body.imported-focus-mode .app-sidebar,
+body.imported-focus-mode #back-to-top-btn{display:none !important}
+body.imported-focus-mode #app{padding:0}
+body.imported-focus-mode .page{
+  position:fixed;
+  inset:0;
+  background:linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+  z-index:9990;
+  max-width:none;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  animation:srsFocusFadeIn .25s ease;
+  overflow:hidden;
+}
+body.imported-focus-mode .page > .fade{
+  flex:1;
+  overflow-y:auto;
+  padding:1rem 1.5rem 2rem;
+  max-width:920px;
+  margin:0 auto;
+  width:100%;
+}
+/* No modo foco da histórica/caderno, esconde elementos marcados pelo render */
+body.imported-focus-mode .focus-hide{display:none !important}
+body.imported-focus-mode .sub-tabs{display:none !important}
+/* Banner de status do focus (aparece quando foco está ON) */
+body.imported-focus-mode .practice-focus-banner{display:none !important}
+/* Toolbar de modo foco antiga (barra horizontal pequena) some — substituída pela barra premium */
+body.imported-focus-mode .practice-focus-toolbar{display:none !important}
 .method-focus-bar{
   position:sticky;
   top:0;
@@ -8374,11 +8415,30 @@ async function renderSharedExplanationsBody(container, q){
 
   // V15.12.37 — Header adaptativo + mensagem proeminente
   if(items.length > 0){
-    head.innerHTML = `<span class="she-icon" style="color:var(--accent-text)">✨</span><b style="color:var(--accent-text)">Explicação encontrada na comunidade</b><span class="she-sub" style="color:var(--accent-text);font-weight:600">— sem gastar créditos</span>`;
-    // Banner de destaque
+    // V15.12.39 — Detecta se TODAS as explicações são do próprio user
+    const myUserId = AUTH.user && AUTH.user.id;
+    const onlyMine = myUserId && items.every(it => it.author_id === myUserId);
+    const someMine = myUserId && items.some(it => it.author_id === myUserId);
+    if(onlyMine){
+      head.innerHTML = `<span class="she-icon" style="color:var(--gralia-purple)">👤</span><b style="color:var(--gralia-purple)">Você já tem explicação${items.length>1?'s':''} pra esta questão</b>`;
+    } else {
+      head.innerHTML = `<span class="she-icon" style="color:var(--accent-text)">✨</span><b style="color:var(--accent-text)">Explicação encontrada na comunidade</b><span class="she-sub" style="color:var(--accent-text);font-weight:600">— sem gastar créditos</span>`;
+    }
+    // Banner de destaque (texto adapta à autoria)
     const badgeFree = mk('div');
     badgeFree.style.cssText = 'padding:.5rem .75rem;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.30);border-left:3px solid var(--accent);border-radius:8px;margin-bottom:.5rem;font-size:12.5px;color:var(--text);line-height:1.5';
-    badgeFree.innerHTML = `<b>${items.length} ${items.length===1?'explicação disponível':'explicações disponíveis'}</b> — geradas por outros estudantes. Você pode aproveitar sem gastar créditos.`;
+    if(onlyMine){
+      badgeFree.style.background = 'rgba(124,92,255,.06)';
+      badgeFree.style.borderColor = 'rgba(124,92,255,.30)';
+      badgeFree.style.borderLeftColor = 'var(--gralia-purple)';
+      badgeFree.innerHTML = `<b>${items.length} ${items.length===1?'explicação sua':'explicações suas'}</b> — já no seu histórico, sem custo extra ao reler.`;
+    } else if(someMine){
+      const mineCount = items.filter(it => it.author_id === myUserId).length;
+      const otherCount = items.length - mineCount;
+      badgeFree.innerHTML = `<b>${items.length} ${items.length===1?'explicação disponível':'explicações disponíveis'}</b> — ${mineCount} ${mineCount===1?'sua':'suas'} + ${otherCount} da comunidade. Sem gastar créditos.`;
+    } else {
+      badgeFree.innerHTML = `<b>${items.length} ${items.length===1?'explicação disponível':'explicações disponíveis'}</b> — geradas por outros estudantes. Você pode aproveitar sem gastar créditos.`;
+    }
     list.appendChild(badgeFree);
     // Ordena por score desc, mostra a melhor primeiro destacada
     const sorted = items.slice().sort((a,b) => (b.score||0) - (a.score||0));
@@ -8513,10 +8573,21 @@ function renderSharedExplanationCard(item, q){
   modelTag.textContent = item.model === 'sonnet' ? '⚡ Sonnet' : '🤖 Haiku';
   cHead.appendChild(modelTag);
   const author = mk('span','shexpl-author');
-  author.innerHTML = `por <a href="#u/${escapeHTML(item.author_username||'')}" class="shexpl-author-link">@${escapeHTML(item.author_username||'desconhecido')}</a>`;
+  // V15.12.39 — Diferenciação de autoria:
+  // 1) Acabou de gerar agora (__justGenerated): "✨ Gerada agora por você"
+  // 2) Foi gerada por você em sessão anterior: "👤 Gerada por você"
+  // 3) Outros usuários: "@username"
+  const isMine = item.author_id && AUTH.user && item.author_id === AUTH.user.id;
+  if(item.__justGenerated){
+    author.innerHTML = '<span style="color:var(--accent-text);font-weight:700">✨ Gerada agora por você</span>';
+  } else if(isMine){
+    author.innerHTML = '<span style="color:var(--gralia-purple);font-weight:600">👤 Gerada por você</span>';
+  } else {
+    author.innerHTML = `por <a href="#u/${escapeHTML(item.author_username||'')}" class="shexpl-author-link">@${escapeHTML(item.author_username||'desconhecido')}</a>`;
+  }
   cHead.appendChild(author);
   const dateEl = mk('span','shexpl-date');
-  dateEl.textContent = formatRelativeDate(item.created_at);
+  dateEl.textContent = item.__justGenerated ? 'agora mesmo' : formatRelativeDate(item.created_at);
   cHead.appendChild(dateEl);
   card.appendChild(cHead);
 
@@ -8611,7 +8682,15 @@ function renderSharedFlashcardCard(item, q){
   modelTag.textContent = item.model === 'sonnet' ? '⚡ Sonnet' : '🤖 Haiku';
   cHead.appendChild(modelTag);
   const author = mk('span','shexpl-author');
-  author.innerHTML = `por @${escapeHTML(item.author_username||'')}`;
+  // V15.12.39 — Autoria diferenciada
+  const isMine = item.author_id && AUTH.user && item.author_id === AUTH.user.id;
+  if(item.__justGenerated){
+    author.innerHTML = '<span style="color:var(--accent-text);font-weight:700">✨ Criado agora por você</span>';
+  } else if(isMine){
+    author.innerHTML = '<span style="color:var(--gralia-purple);font-weight:600">👤 Criado por você</span>';
+  } else {
+    author.innerHTML = `por @${escapeHTML(item.author_username||'desconhecido')}`;
+  }
   cHead.appendChild(author);
   card.appendChild(cHead);
 
@@ -8630,23 +8709,36 @@ function renderSharedFlashcardCard(item, q){
   card.appendChild(body);
 
   const foot = mk('div','shexpl-foot');
-  const addBtn = mkBtn('+ Adicionar ao meu deck','btn btn-sm');
-  addBtn.style.cssText = 'background:var(--accent);color:white;border-color:var(--accent);font-size:11px';
-  addBtn.addEventListener('click',()=>{
-    if(!p.front || !p.back){ alert('Flashcard incompleto'); return; }
-    addCardToDeck({
-      front: p.front,
-      back: p.back,
-      type: p.type,
-      disciplineId: q.disciplineId || null,
-      topic: q.topic || null,
-      sourceQuestion: q.id,
-      generatedBy: 'shared-'+(item.model||'haiku')
+  // V15.12.39 — Detectar se já está no deck do user (já foi adicionado em sessão anterior)
+  const inMyDeck = (DATA.srs && Array.isArray(DATA.srs.cards))
+    ? DATA.srs.cards.some(c => c.front === p.front && c.back === p.back)
+    : false;
+
+  if(item.__justGenerated || inMyDeck){
+    // Já está no deck — mostra status em vez de botão duplicado
+    const inDeckTag = mk('span');
+    inDeckTag.style.cssText = 'display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(16,185,129,.10);color:var(--accent-text);border:1px solid rgba(16,185,129,.30);border-radius:7px;font-size:11px;font-weight:600';
+    inDeckTag.textContent = item.__justGenerated ? '✓ No seu deck (criado agora)' : '✓ Já está no seu deck';
+    foot.appendChild(inDeckTag);
+  } else {
+    const addBtn = mkBtn('+ Adicionar ao meu deck','btn btn-sm');
+    addBtn.style.cssText = 'background:var(--accent);color:white;border-color:var(--accent);font-size:11px';
+    addBtn.addEventListener('click',()=>{
+      if(!p.front || !p.back){ alert('Flashcard incompleto'); return; }
+      addCardToDeck({
+        front: p.front,
+        back: p.back,
+        type: p.type,
+        disciplineId: q.disciplineId || null,
+        topic: q.topic || null,
+        sourceQuestion: q.id,
+        generatedBy: 'shared-'+(item.model||'haiku')
+      });
+      addBtn.disabled = true;
+      addBtn.textContent = '✓ Adicionado';
     });
-    addBtn.disabled = true;
-    addBtn.textContent = '✓ Adicionado';
-  });
-  foot.appendChild(addBtn);
+    foot.appendChild(addBtn);
+  }
   // V15.12.37 — Botão Reportar (mesmo padrão do card de explicação)
   const reportBtn = mk('button','shexpl-report-btn');
   reportBtn.type='button';
@@ -8689,7 +8781,68 @@ function addCardToDeck(c){
   if(c.topic && c.disciplineId && typeof recordTopicActivity === 'function'){
     try{ recordTopicActivity(c.disciplineId, c.topic, 'flashcards'); }catch(e){}
   }
-  showToast('🎴 Flashcard adicionado ao deck');
+  // V15.12.39 — Toast simples (sem opções) só no fluxo COMPARTILHADO.
+  // O fluxo de geração nova usa toast com Undo (showToastWithAction).
+  if(!c._silent){
+    showToast('🎴 Flashcard adicionado ao deck');
+  }
+  return id;
+}
+
+// V15.12.39 — Remove card do deck por ID (usado pelo Undo).
+function removeCardFromDeck(cardId){
+  if(!DATA.srs || !Array.isArray(DATA.srs.cards)) return false;
+  const before = DATA.srs.cards.length;
+  DATA.srs.cards = DATA.srs.cards.filter(c => c.id !== cardId);
+  if(DATA.srs.cards.length < before){
+    save();
+    return true;
+  }
+  return false;
+}
+
+// V15.12.39 — Toast com 1+ ações (botões clicáveis). Compatível com showToast simples.
+// Usa o mesmo container .ux-toast mas com layout horizontal de botões.
+function showToastWithAction(msg, actions, duration){
+  const old = document.querySelector('.ux-toast');
+  if(old) old.remove();
+  const t = mk('div','ux-toast');
+  t.style.cssText = 'display:flex;align-items:center;gap:14px;flex-wrap:wrap';
+  const txt = mk('span');txt.textContent = msg;txt.style.flex='1';txt.style.minWidth='180px';
+  t.appendChild(txt);
+  const acts = Array.isArray(actions) ? actions : [actions];
+  acts.forEach(a => {
+    if(!a || !a.label) return;
+    const b = mk('button');
+    b.type = 'button';
+    b.textContent = a.label;
+    b.style.cssText = 'background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.30);color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit';
+    b.addEventListener('mouseenter', ()=>{ b.style.background='rgba(255,255,255,.30)'; });
+    b.addEventListener('mouseleave', ()=>{ b.style.background='rgba(255,255,255,.18)'; });
+    b.addEventListener('click', (ev)=>{
+      ev.stopPropagation();
+      try{ if(typeof a.handler === 'function') a.handler(); }catch(_){}
+      // Fecha o toast após executar a ação
+      t.classList.remove('visible');
+      setTimeout(()=>{ if(t.parentNode) t.remove(); }, 200);
+    });
+    t.appendChild(b);
+  });
+  // Fecha ao clicar fora dos botões (na área de texto)
+  txt.style.cursor = 'pointer';
+  txt.title = 'Clique pra dispensar';
+  txt.addEventListener('click', ()=>{
+    t.classList.remove('visible');
+    setTimeout(()=>{ if(t.parentNode) t.remove(); }, 200);
+  });
+  document.body.appendChild(t);
+  setTimeout(()=>{ t.classList.add('visible'); }, 10);
+  const ms = (typeof duration === 'number' && duration > 0) ? duration : 6000;
+  setTimeout(()=>{
+    t.classList.remove('visible');
+    setTimeout(()=>{ if(t.parentNode) t.remove(); }, 300);
+  }, ms);
+  return t;
 }
 
 // Gera explicação NOVA com modelo escolhido + salva no cache compartilhado + re-renderiza UI
@@ -8856,7 +9009,9 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn){
       saveSharedExplanation(q.enunciado, 'explicacao', model, payload).catch(()=>{});
     }
 
-    // Otimistic update: monta um item local e insere no UI sem refetch completo
+    // V15.12.39 — Optimistic update SEM refetch posterior (eliminou flicker e
+    // bug de "outros usuários"). O item é marcado com __justGenerated pra UI
+    // mostrar "✨ Gerada agora por você" em vez de copy genérico.
     const username = (AUTH.profile && AUTH.profile.username) || (AUTH.user.email||'').split('@')[0];
     const optimisticItem = {
       id: 'optimistic-'+Date.now(),
@@ -8869,7 +9024,8 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn){
       downvotes: 0,
       score: 0,
       created_at: new Date().toISOString(),
-      my_vote: 0
+      my_vote: 0,
+      __justGenerated: true   // marca UI: "Gerada agora por você"
     };
     // Remove placeholder
     placeholderCard.remove();
@@ -8877,14 +9033,21 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn){
     const newCard = renderSharedExplanationCard(optimisticItem, q);
     if(list) list.insertBefore(newCard, list.firstChild);
     else container.appendChild(newCard);
+    // V15.12.39 — Atualiza o header pra refletir que TEM explicação agora
+    // (antes ficava "Ainda não temos explicação" mesmo após gerar — efeito stale).
+    try{
+      const headEl = container.querySelector('.shexpl-head');
+      if(headEl){
+        headEl.innerHTML = `<span class="she-icon" style="color:var(--accent-text)">✨</span><b style="color:var(--accent-text)">Sua explicação foi gerada</b><span class="she-sub" style="color:var(--accent-text);font-weight:600">— agora também ajuda outros estudantes</span>`;
+      }
+    }catch(_){}
     // Limpa prefetch usado
     clearPrefetchedShared(q, 'explicacao', model);
     showToast('✓ Explicação gerada e compartilhada');
-
-    // Atualiza estado dos botões (background) — refetch real depois pra pegar id e voto
-    setTimeout(()=>{
-      try{ renderSharedExplanationsBody(container, q); }catch(e){}
-    }, 1200);
+    // V15.12.39 — REMOVIDO o setTimeout(refetch, 1200) que causava flicker.
+    // O optimistic item já está visível com copy correto. Quando o user voltar
+    // pra essa questão depois, o refetch normal de listExplanationsForQuestion
+    // já vai trazer o item persistido (com id real, sem __justGenerated).
   }catch(e){
     placeholderCard.remove();
     if(triggerBtn){ triggerBtn.disabled = false; triggerBtn.textContent = originalLabel; }
@@ -8941,20 +9104,84 @@ async function generateAndSaveFlashcard(q, model, container, triggerBtn){
       type: res.type || 'concept'
     }).catch(()=>{});
 
-    // Adiciona ao deck local automaticamente
-    addCardToDeck({
+    // V15.12.39 — Adiciona ao deck local (silent: pulou toast simples; vamos usar
+    // toast com Undo abaixo).
+    const newCardId = addCardToDeck({
       front: res.front,
       back: res.back,
       type: res.type || 'concept',
       disciplineId: q.disciplineId || null,
       topic: q.topic || null,
       sourceQuestion: q.id,
-      generatedBy: 'self-'+model
+      generatedBy: 'self-'+model,
+      _silent: true
     });
 
-    // Re-renderiza pra mostrar o flashcard novo
-    await renderSharedExplanationsBody(container, q);
-    showToast('✓ Flashcard criado, adicionado ao deck e compartilhado');
+    // V15.12.39 — Optimistic update: insere o card recém-gerado direto na seção
+    // de flashcards SEM refetch. Marcado com __justGenerated pra UI mostrar
+    // "✨ Criado agora por você" e badge "✓ No seu deck (criado agora)".
+    const username = (AUTH.profile && AUTH.profile.username) || (AUTH.user.email||'').split('@')[0];
+    const optimisticItem = {
+      id: 'optimistic-fc-'+Date.now(),
+      kind: 'flashcard',
+      model: model,
+      payload: {front: res.front, back: res.back, type: res.type || 'concept'},
+      author_id: AUTH.user.id,
+      author_username: username,
+      created_at: new Date().toISOString(),
+      __justGenerated: true
+    };
+    try{
+      // Encontra a área de flashcards (segundo .shexpl-head) e injeta o card
+      const heads = container.querySelectorAll('.shexpl-head');
+      if(heads.length >= 2){
+        const flashHead = heads[heads.length - 1];
+        // Atualiza header pra refletir
+        flashHead.innerHTML = '<span class="she-icon" style="color:var(--accent-text)">🎴</span><b style="color:var(--accent-text)">Flashcard criado agora</b><span class="she-sub" style="color:var(--accent-text);font-weight:600">— já está no seu deck</span>';
+        // Cria/insere o card na lista (pode haver lista existente ou não)
+        let flashList = flashHead.nextElementSibling;
+        if(!flashList || !flashList.classList || !flashList.classList.contains('shexpl-list')){
+          flashList = mk('div','shexpl-list');
+          flashHead.parentNode.insertBefore(flashList, flashHead.nextSibling);
+        }
+        flashList.insertBefore(renderSharedFlashcardCard(optimisticItem, q), flashList.firstChild);
+      }
+    }catch(_){}
+
+    // V15.12.39 — Reseta o botão de "Gerar flashcard" pra label "Gerar OUTRO" (já que agora há um)
+    if(triggerBtn){
+      triggerBtn.disabled = false;
+      triggerBtn.textContent = '🎴 Gerar outro flashcard com IA · 1 créd';
+      triggerBtn.style.fontWeight = '500';
+      triggerBtn.style.background = 'transparent';
+      triggerBtn.style.borderColor = 'var(--border)';
+      triggerBtn.style.color = 'var(--text2)';
+    }
+
+    // V15.12.39 — Toast com Undo. 6s de janela.
+    showToastWithAction(
+      '🎴 Flashcard criado e adicionado ao deck',
+      [
+        {
+          label: 'Desfazer',
+          handler: ()=>{
+            if(removeCardFromDeck(newCardId)){
+              showToast('↶ Flashcard removido do deck (compartilhado segue salvo)');
+              // Re-render da seção de flashcards pra remover o optimistic card
+              try{ renderSharedExplanationsBody(container, q); }catch(_){}
+            }
+          }
+        },
+        {
+          label: 'Ver deck',
+          handler: ()=>{
+            ST.view = 'srs';
+            render();
+          }
+        }
+      ],
+      6500
+    );
   }catch(e){
     if(triggerBtn){ triggerBtn.disabled = false; triggerBtn.textContent = originalLabel; }
     alert('Erro: ' + (e.message||e));
@@ -10807,7 +11034,11 @@ const ST = {
   bankFiltersCollapsed:false,// se filtros estão recolhidos
   bankRenderLimit:50,        // limite de render inicial (paginação)
   // V15.12.38 — Modo foco da prática histórica/caderno
-  practiceFocusMode:false,   // se true, esconde elementos secundários durante prática
+  // V15.12.39 — Renomeado pra `importedFocusActive` (alinha com `methodFocusActive`/`srsFocusActive`).
+  // `practiceFocusMode` mantido como alias deprecated pra compat retroativa.
+  practiceFocusMode:false,   // [DEPRECATED — use importedFocusActive]
+  importedFocusActive:false, // ON quando user está no modo foco da prática histórica/caderno
+  importedFocusStartedAt:null, // timestamp pra contar questões da sessão de foco
   // Notebooks (cadernos)
   notebookSubview:'list', // 'list' | 'manage' | 'practice'
   notebookCurrentId:null, // id do caderno aberto / em prática
@@ -14565,7 +14796,13 @@ function render(){
       // Esconde botão "voltar ao topo" quando sai do banco
       const btToTop = document.getElementById('back-to-top-btn');
       if(btToTop) btToTop.style.display = 'none';
-      // V15.12.38: tira modo foco se sair de imported (só faz sentido lá)
+      // V15.12.38/V15.12.39: tira modo foco se sair de imported (só faz sentido lá)
+      if(ST.importedFocusActive){
+        ST.importedFocusActive = false;
+        ST.importedFocusStartedAt = null;
+        ST.importedFocusSession = null;
+        document.body.classList.remove('imported-focus-mode');
+      }
       if(ST.practiceFocusMode){
         ST.practiceFocusMode = false;
         document.body.classList.remove('focus-mode');
@@ -22807,32 +23044,170 @@ function makeFavoriteButton(q, opts){
 // a prática (sub-tabs, banners auxiliares, chips de stats, etc) através da classe
 // `body.focus-mode`. CSS já injetado em <style> aplica display:none nos seletores
 // marcados com a classe `focus-hide`. Funciona pra prática histórica e de caderno.
+// V15.12.38/V15.12.39 — Modo foco da prática histórica/caderno.
+// Reusa o padrão visual e comportamental do modo foco da prática IA (method-focus-mode),
+// mas com classe e state próprios pra não interferir.
+function enterImportedFocus(){
+  ST.importedFocusActive = true;
+  ST.practiceFocusMode = true;  // mantém alias por compat (foi usado em V15.12.38)
+  ST.importedFocusStartedAt = Date.now();
+  document.body.classList.add('imported-focus-mode');
+  // Inicializa contadores da sessão de foco se ainda não existem
+  if(!ST.importedFocusSession){
+    ST.importedFocusSession = {answered:0, correct:0, startedAt: Date.now()};
+  }
+  render();
+}
+
+function exitImportedFocus(){
+  ST.importedFocusActive = false;
+  ST.practiceFocusMode = false;
+  ST.importedFocusStartedAt = null;
+  ST.importedFocusSession = null;
+  document.body.classList.remove('imported-focus-mode');
+  render();
+}
+
 function makeFocusModeToggle(){
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'btn btn-sm';
   function paint(){
-    const on = !!ST.practiceFocusMode;
-    btn.innerHTML = on ? '✕ Sair do modo foco' : '🎯 Modo foco';
-    btn.title = on ? 'Mostrar todos os elementos da tela' : 'Esconder elementos secundários e ampliar a área da questão';
+    const on = !!ST.importedFocusActive;
+    btn.innerHTML = on ? '✕ Sair do modo foco <kbd style="margin-left:4px;background:rgba(255,255,255,.18);padding:1px 5px;border-radius:3px;font-size:10px">Esc</kbd>' : '🎯 Modo foco <kbd style="margin-left:4px;background:var(--surface2);padding:1px 5px;border-radius:3px;font-size:10px">M</kbd>';
+    btn.title = on ? 'Sair do modo foco (Esc)' : 'Esconder elementos secundários e ampliar a área da questão (M)';
     btn.style.cssText = on
       ? 'font-size:11.5px;color:var(--gralia-purple);background:rgba(124,92,255,.10);border-color:rgba(124,92,255,.40);font-weight:600'
       : 'font-size:11.5px;color:var(--text2);font-weight:500';
   }
   paint();
   btn.addEventListener('click', ()=>{
-    ST.practiceFocusMode = !ST.practiceFocusMode;
-    if(ST.practiceFocusMode){ document.body.classList.add('focus-mode'); }
-    else{ document.body.classList.remove('focus-mode'); }
-    paint();
+    if(ST.importedFocusActive) exitImportedFocus();
+    else enterImportedFocus();
   });
   return btn;
 }
 
-// Garante que a classe focus-mode reflete o state atual após qualquer render
+// Sincroniza classes do body com o state atual (chamado no início de cada render relevante)
 function syncFocusModeClass(){
-  if(ST.practiceFocusMode) document.body.classList.add('focus-mode');
-  else document.body.classList.remove('focus-mode');
+  if(ST.importedFocusActive) document.body.classList.add('imported-focus-mode');
+  else document.body.classList.remove('imported-focus-mode');
+}
+
+// V15.12.39 — Barra superior premium do modo foco da prática histórica/caderno.
+// Inspirada na buildMethodFocusBar mas adaptada ao contexto importado:
+// - Identificação clara: "Banco · Disciplina" / "Caderno · NOME · X/Y" / "Série · NOME · caderno N"
+// - Placar da sessão de foco (acertos/respondidas)
+// - Botão sair com atalho Esc
+// - Reusa CSS .method-focus-bar pra herdar tipografia/blur consistentes
+function buildImportedFocusBar(opts){
+  const o = opts || {};
+  const bar = mk('div','method-focus-bar');
+  const row1 = mk('div','mfb-row1');
+
+  // === Identificação contextual ===
+  const lblWrap = mk('div');
+  lblWrap.style.cssText = 'display:flex;align-items:center;gap:8px;flex-shrink:0;min-width:0';
+  const ico = mk('span');
+  ico.style.cssText = 'font-size:18px;line-height:1';
+  ico.textContent = '🎯';
+  lblWrap.appendChild(ico);
+  const lblText = mk('div');
+  lblText.style.cssText = 'display:flex;flex-direction:column;line-height:1.2;min-width:0';
+  const lbl = mk('span');
+  lbl.style.cssText = 'font-size:13px;font-weight:700;color:var(--text);letter-spacing:-.1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:340px';
+  lbl.textContent = o.title || 'Resolução';
+  const sub = mk('span');
+  sub.style.cssText = 'font-size:10.5px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-top:2px';
+  sub.textContent = o.subtitle || 'Modo Foco';
+  lblText.appendChild(lbl);
+  lblText.appendChild(sub);
+  lblWrap.appendChild(lblText);
+  row1.appendChild(lblWrap);
+
+  // === Placar da sessão de foco ===
+  const session = ST.importedFocusSession || {answered:0, correct:0};
+  const scoreWrap = mk('div');
+  scoreWrap.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 12px;background:var(--surface2);border-radius:999px;border:1px solid var(--border);flex-shrink:0';
+  if(session.answered > 0){
+    const pct = Math.round(session.correct / session.answered * 100);
+    const scoreSym = mk('span');scoreSym.style.cssText = 'font-size:11.5px;color:var(--text2);font-weight:600';
+    scoreSym.innerHTML = `<b style="color:var(--text)">${session.correct}/${session.answered}</b> · ${pct}%`;
+    scoreWrap.appendChild(scoreSym);
+  } else {
+    const empty = mk('span');empty.style.cssText = 'font-size:11.5px;color:var(--text3)';
+    empty.textContent = 'Sessão · 0 respondidas';
+    scoreWrap.appendChild(empty);
+  }
+  row1.appendChild(scoreWrap);
+
+  // === Progresso do caderno (se aplicável) ===
+  if(typeof o.currentIdx === 'number' && typeof o.total === 'number' && o.total > 0){
+    const progWrap = mk('div');
+    progWrap.style.cssText = 'display:flex;align-items:center;gap:8px;flex:1;min-width:140px;max-width:280px';
+    const progLbl = mk('span');progLbl.style.cssText = 'font-size:11px;color:var(--text3);font-weight:600;flex-shrink:0';
+    progLbl.textContent = `${o.currentIdx + 1}/${o.total}`;
+    progWrap.appendChild(progLbl);
+    const progBar = mk('div');
+    progBar.style.cssText = 'flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;border:1px solid var(--border)';
+    const progFill = mk('div');
+    const pctProg = Math.min(100, Math.round((o.currentIdx / o.total) * 100));
+    progFill.style.cssText = `height:100%;width:${pctProg}%;background:var(--gralia-purple);transition:width .3s`;
+    progBar.appendChild(progFill);
+    progWrap.appendChild(progBar);
+    row1.appendChild(progWrap);
+  }
+
+  // Spacer
+  const spacer = mk('div');spacer.style.cssText = 'flex:1';
+  row1.appendChild(spacer);
+
+  // === Dica de atalhos (compacta, hover mostra mais) ===
+  const hintBtn = mk('button');
+  hintBtn.type = 'button';
+  hintBtn.style.cssText = 'background:transparent;border:1px solid var(--border);border-radius:6px;padding:4px 9px;font-size:10.5px;color:var(--text3);cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;flex-shrink:0';
+  hintBtn.innerHTML = '⌨ <span style="font-weight:600">Atalhos</span>';
+  hintBtn.title = 'Ver todos os atalhos (?)';
+  hintBtn.addEventListener('mouseenter',()=>{ hintBtn.style.background='var(--surface2)';hintBtn.style.color='var(--text2)'; });
+  hintBtn.addEventListener('mouseleave',()=>{ hintBtn.style.background='transparent';hintBtn.style.color='var(--text3)'; });
+  hintBtn.addEventListener('click',()=>{ if(typeof showShortcutsOverlay === 'function') showShortcutsOverlay(); });
+  row1.appendChild(hintBtn);
+
+  // === Botão sair ===
+  const exitBtn = mk('button','mfb-exit-btn');
+  exitBtn.type = 'button';
+  exitBtn.innerHTML = '<span>✕ Sair do foco</span><kbd>Esc</kbd>';
+  exitBtn.addEventListener('click', exitImportedFocus);
+  row1.appendChild(exitBtn);
+
+  bar.appendChild(row1);
+
+  // === Linha 2 (opcional): legenda de atalhos contextuais ===
+  const row2 = mk('div','mfb-row2');
+  row2.style.cssText = 'display:flex;align-items:center;gap:14px;width:100%;margin-top:10px;flex-wrap:wrap;font-size:10.5px;color:var(--text3)';
+  const hints = [];
+  if(o.kind === 'CE'){
+    hints.push('<kbd>C</kbd> Certo');
+    hints.push('<kbd>E</kbd> Errado');
+  } else if(o.kind === 'MC'){
+    hints.push('<kbd>A</kbd>-<kbd>E</kbd> Alternativas');
+  }
+  hints.push('<kbd>Espaço</kbd> Próxima');
+  hints.push('<kbd>F</kbd> Favoritar');
+  hints.push('<kbd>Esc</kbd> Sair');
+  hints.forEach((h, i) => {
+    const span = mk('span');
+    span.style.cssText = 'display:inline-flex;align-items:center;gap:4px';
+    span.innerHTML = h;
+    row2.appendChild(span);
+    if(i < hints.length - 1){
+      const dot = mk('span');dot.style.cssText='color:var(--text3);opacity:.5';dot.textContent='·';
+      row2.appendChild(dot);
+    }
+  });
+  bar.appendChild(row2);
+
+  return bar;
 }
 
 // V15.12.36 — Botão flutuante "voltar ao topo".
@@ -28873,14 +29248,15 @@ function renderImportedPractice(wrap){
     return wrap;
   }
 
-  // V15.12.38 — Toolbar com modo foco (sempre visível, mesmo em focus mode)
+  // V15.12.38: sincroniza classe (legacy)
+  // V15.12.39: classe imported-focus-mode aplicada via syncFocusModeClass()
+  // Toolbar SIMPLES com botão entrar/sair — fica oculta dentro do focus (substituída pela focus-bar premium)
   const toolbar = mk('div','practice-focus-toolbar');
   toolbar.appendChild(makeFocusModeToggle());
   wrap.appendChild(toolbar);
-  // Banner discreto quando focus está on (avisa o user que está em modo foco)
-  const focusBanner = mk('div','practice-focus-banner');
-  focusBanner.innerHTML = '🎯 <b>Modo foco ativo</b> · elementos secundários ocultos';
-  wrap.appendChild(focusBanner);
+
+  // Banner antigo "modo foco ativo" - removido (a focus-bar premium cobre essa info)
+  // mas mantemos um placeholder vazio pra não quebrar referências de CSS
 
   // V15.12.36 — Modo "praticar IDs específicos" (vem de seleção em massa ou botão Praticar do card).
   // Quando ativo, ignora o filtro de disciplina e o pool é só esses IDs.
@@ -28972,6 +29348,19 @@ function renderImportedPractice(wrap){
   }
   const q = ST.importedCurrent;
 
+  // V15.12.39 — Focus bar premium: aparece como primeiro filho do wrap quando o
+  // modo foco está ON. Reusa CSS .method-focus-bar (sticky-top com blur).
+  if(ST.importedFocusActive){
+    const focusBar = buildImportedFocusBar({
+      title: _customPool ? `Banco · ${_customPool.length} ${_customPool.length===1?'questão selecionada':'questões selecionadas'}` : 'Banco de questões',
+      subtitle: 'Prática histórica',
+      kind: q.kind || 'CE'
+    });
+    // Insere ANTES dos demais elementos
+    if(wrap.firstChild) wrap.insertBefore(focusBar, wrap.firstChild);
+    else wrap.appendChild(focusBar);
+  }
+
   const meta = mk('div','flex focus-hide');meta.style.cssText='gap:6px;margin-bottom:.5rem;flex-wrap:wrap';
   const disc = getDiscipline(q.disciplineId);
   if(disc){
@@ -29029,6 +29418,12 @@ function renderImportedPractice(wrap){
           // Estágio 6: registra atempt anônimo no servidor
           recordQuestionAttempt(q, ok);
           if(q.topic) recordTopicActivity(q.disciplineId, q.topic, 'questions');
+          // V15.12.39 — Atualiza placar da sessão de foco (se ativo)
+          if(ST.importedFocusActive){
+            if(!ST.importedFocusSession) ST.importedFocusSession = {answered:0, correct:0, startedAt:Date.now()};
+            ST.importedFocusSession.answered += 1;
+            if(ok) ST.importedFocusSession.correct += 1;
+          }
           save();render();
         });
         br.appendChild(b);
@@ -29056,6 +29451,12 @@ function renderImportedPractice(wrap){
           // Estágio 6: registra atempt anônimo no servidor
           recordQuestionAttempt(q, ok);
           if(q.topic) recordTopicActivity(q.disciplineId, q.topic, 'questions');
+          // V15.12.39 — Atualiza placar da sessão de foco (se ativo)
+          if(ST.importedFocusActive){
+            if(!ST.importedFocusSession) ST.importedFocusSession = {answered:0, correct:0, startedAt:Date.now()};
+            ST.importedFocusSession.answered += 1;
+            if(ok) ST.importedFocusSession.correct += 1;
+          }
           save();render();
         });
         br.appendChild(b);
@@ -30934,16 +31335,13 @@ function renderNotebookPractice(wrap){
   });
   wrap.appendChild(back);
 
-  // V15.12.38 — Toolbar com modo foco
+  // V15.12.38 — Toolbar com modo foco (escondida dentro do focus mode)
   const toolbar = mk('div','practice-focus-toolbar');
   toolbar.appendChild(makeFocusModeToggle());
   wrap.appendChild(toolbar);
-  // Banner discreto quando focus está on
-  const focusBanner = mk('div','practice-focus-banner');
-  focusBanner.innerHTML = '🎯 <b>Modo foco ativo</b> · elementos secundários ocultos';
-  wrap.appendChild(focusBanner);
+  // Banner antigo removido — focus bar premium cobre essa info
 
-  const head = mk('div');head.style.marginBottom='1rem';
+  const head = mk('div');head.style.marginBottom='1rem';head.classList.add('focus-hide');
 
   // V15.12.37 — Se o caderno faz parte de uma série, mostra o contexto
   if(nb.seriesParent){
@@ -31035,6 +31433,25 @@ function renderNotebookPractice(wrap){
     ST.notebookPracticeAnswered=false;ST.notebookPracticeAnswer=null;
     setTimeout(render,0);
     wrap.appendChild(loading('Carregando...'));return wrap;
+  }
+
+  // V15.12.39 — Focus bar premium quando modo foco está ON
+  if(ST.importedFocusActive){
+    let subtitle = 'Caderno';
+    if(nb.seriesParent){
+      const src = (DATA.sources||[]).find(s => s.id === nb.seriesParent);
+      const seriesName = src ? src.name : 'série';
+      subtitle = `🪄 Série · ${seriesName}${nb.seriesIndex?` · caderno ${nb.seriesIndex}`:''}`;
+    }
+    const focusBar = buildImportedFocusBar({
+      title: '📒 ' + nb.name,
+      subtitle: subtitle,
+      kind: q.kind || 'CE',
+      currentIdx: ST.notebookPracticeIdx,
+      total: ST.notebookPracticeOrder.length
+    });
+    if(wrap.firstChild) wrap.insertBefore(focusBar, wrap.firstChild);
+    else wrap.appendChild(focusBar);
   }
 
   // Question display (reuses imported question UI patterns)
@@ -31189,6 +31606,12 @@ function notebookSubmitAnswer(answer){
   // Estágio 6: registra atempt anônimo no servidor
   recordQuestionAttempt(q, ok);
   if(q.topic) recordTopicActivity(q.disciplineId, q.topic, 'questions');
+  // V15.12.39 — Atualiza placar da sessão de foco (se ativo)
+  if(ST.importedFocusActive){
+    if(!ST.importedFocusSession) ST.importedFocusSession = {answered:0, correct:0, startedAt:Date.now()};
+    ST.importedFocusSession.answered += 1;
+    if(ok) ST.importedFocusSession.correct += 1;
+  }
   save();render();
 }
 
@@ -55975,7 +56398,10 @@ document.addEventListener('keydown',e=>{
   // V15.10: Atalhos de prática (C/E/A/B/D/Space/R/B) só funcionam em modo foco.
   // Antes disparavam em qualquer página, podendo causar ações indesejadas.
   // Agora exigem ST.methodFocusActive ou ST.srsFocusActive.
-  const inFocusMode = !!(ST.methodFocusActive || ST.srsFocusActive);
+  // V15.12.39: ST.importedFocusActive também conta — atalhos válidos na prática
+  // histórica/caderno em modo foco.
+  const inFocusMode = !!(ST.methodFocusActive || ST.srsFocusActive || ST.importedFocusActive);
+  const inImportedFocus = !!ST.importedFocusActive;
 
   if(k==='C' && inFocusMode){
     handled = dispatchAnswer('C');
@@ -55991,6 +56417,53 @@ document.addEventListener('keydown',e=>{
   else if((e.key===' '||k===' ') && inFocusMode){
     // Espaço: prioriza próxima (fluxo natural), e se não tem próxima, tenta confirmar resposta
     handled = dispatchNext();
+  }
+  // V15.12.39 — Atalhos contextuais da prática histórica/caderno em modo foco.
+  // Prioridade ANTES dos atalhos globais (F/M) pra não conflitar.
+  else if(inImportedFocus && k==='F'){
+    // F = favoritar/desfavoritar a questão atual
+    const q = ST.importedCurrent || ST.notebookPracticeCurrent;
+    if(q){
+      const isFav = toggleQuestionFavorite(q.id);
+      showToast(isFav ? '★ Questão favoritada' : '☆ Removida dos favoritos', 2000);
+      // Re-render pra atualizar estrelas
+      try{ render(); }catch(_){}
+      handled = true;
+    }
+  }
+  else if(inImportedFocus && k==='G'){
+    // G = gerar explicação (procura botão visível "Gerar com IA"/"Gerar premium" e clica no Haiku)
+    const btns = Array.from(document.querySelectorAll('.shexpl-gen-row button'));
+    const genBtn = btns.find(b => {
+      if(b.disabled || b.offsetParent === null) return false;
+      const t = (b.textContent||'').trim();
+      return /Gerar com IA|Gerar \(Haiku\)|Atualizar minha \(Haiku\)/.test(t);
+    });
+    if(genBtn){ genBtn.click(); handled = true; }
+  }
+  else if(inImportedFocus && k==='X'){
+    // X = gerar flashcard (procura botão visível na seção Flashcards)
+    const btns = Array.from(document.querySelectorAll('button'));
+    const fcBtn = btns.find(b => {
+      if(b.disabled || b.offsetParent === null) return false;
+      const t = (b.textContent||'').trim();
+      return /Gerar flashcard com IA|Gerar outro flashcard com IA/.test(t);
+    });
+    if(fcBtn){ fcBtn.click(); handled = true; }
+  }
+  else if(inImportedFocus && k==='M'){
+    // M = sair do modo foco da prática histórica/caderno (atalho preferido)
+    exitImportedFocus(); handled = true;
+  }
+  else if(!inFocusMode && k==='M' && ST.view === 'imported' && (ST.importedSubview === 'practice' || ST.notebookSubview === 'practice')){
+    // V15.12.39 — M fora do foco: entra no modo foco se está em prática histórica/caderno
+    enterImportedFocus(); handled = true;
+  }
+  else if(inImportedFocus && (e.key === 'Backspace' || e.key === 'ArrowLeft')){
+    // Backspace/← = questão anterior, se houver
+    if(typeof navigateToPreviousQuestion === 'function'){
+      handled = navigateToPreviousQuestion();
+    }
   }
   else if(k==='F'){
     // Toggle modo foco — sempre funciona (atalho global)
@@ -56014,8 +56487,9 @@ document.addEventListener('keydown',e=>{
       togglePomodoroPanel();handled=true;
     }
   }
-  else if(k==='B' && inFocusMode){
+  else if(k==='B' && inFocusMode && !inImportedFocus){
     // V12: B (back) — volta pra questão anterior do histórico (24h)
+    // V15.12.39: só pra prática IA (na histórica usamos Backspace pra voltar)
     if(typeof navigateToPreviousQuestion === 'function'){
       handled = navigateToPreviousQuestion();
     }
@@ -56028,6 +56502,10 @@ document.addEventListener('keydown',e=>{
     if(ST.modal){closeModal();handled=true;}
     else if(document.querySelector('.shortcuts-overlay')){
       document.querySelector('.shortcuts-overlay').remove();handled=true;
+    }
+    // V15.12.39 — Esc também sai do imported focus
+    else if(inImportedFocus){
+      exitImportedFocus(); handled = true;
     }
   }
   if(handled)e.preventDefault();
@@ -56053,6 +56531,15 @@ function showShortcutsOverlay(){
         <div class="sk-row"><kbd>Espaço</kbd><span>Próxima questão</span></div>
         <div class="sk-row"><kbd>R</kbd><span>Refazer questão (modo revisão)</span></div>
         <div class="sk-row"><kbd>B</kbd><span>Voltar pra questão anterior (últimas 24h)</span></div>
+      </div>
+
+      <div class="sk-section">
+        <div class="sk-section-label">Prática histórica / caderno (modo foco)</div>
+        <div class="sk-row"><kbd>M</kbd><span>Entrar/sair do modo foco</span></div>
+        <div class="sk-row"><kbd>F</kbd><span>Favoritar/desfavoritar questão atual</span></div>
+        <div class="sk-row"><kbd>G</kbd><span>Gerar explicação com IA</span></div>
+        <div class="sk-row"><kbd>X</kbd><span>Gerar flashcard com IA</span></div>
+        <div class="sk-row"><kbd>Backspace</kbd> ou <kbd>←</kbd><span>Questão anterior (24h)</span></div>
       </div>
 
       <div class="sk-section">
