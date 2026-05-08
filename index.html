@@ -23034,15 +23034,69 @@ function showManageImportsModal(){
 //   estimate: retorno de estimatePdfImportCost
 //   parserResult: { count, withGabarito } — resultado do parser local (se já rodou)
 //   fileName: nome do arquivo (display)
+// V15.12.35 — Avalia o resultado do parser local e decide qual cenário UX usar.
+// Retorna 'sufficient' | 'partial' | 'failed'.
+//
+// Critérios:
+//   - 'sufficient': parser pegou TUDO (totalUrls === parsedCount), sem missingBlocks,
+//     sem incompletas, com no máximo 1 ou 2 suspeitas (tolerância pequena),
+//     e ratio de gabarito alto (>=85%). Usuário NÃO precisa de IA.
+//   - 'partial':   parser pegou a maior parte (>=5 questões com >=70% gabarito) mas há
+//     missingBlocks ou suspeitas relevantes. IA SELETIVA é útil.
+//   - 'failed':    parser não conseguiu nada útil (<5 questões OU <70% gabarito).
+//     IA COMPLETA é o caminho recomendado.
+function _evaluateImportDecision(parserResult){
+  if(!parserResult || parserResult.count === 0){
+    return { scenario: 'failed', reason: 'no-questions' };
+  }
+  const ratio = parserResult.count > 0 ? (parserResult.withGabarito / parserResult.count) : 0;
+  const totalUrls = parserResult.totalUrls || 0;
+  const missing = parserResult.missingBlocks ? parserResult.missingBlocks.length : 0;
+  const susp = parserResult.suspiciousCount || 0;
+  const incomplete = parserResult.incompleteCount || 0;
+
+  // Critério "sufficient" (parser resolveu sozinho):
+  //   - SE temos contagem esperada (TEC com URLs): totalUrls === count
+  //   - SE não temos (texto colado simples): aceita se count >= 5
+  //   - missingBlocks zerado
+  //   - sem incompletas
+  //   - suspeitas: tolera até 2 (mas se for >=3 vira 'partial')
+  //   - ratio gabarito >= 85%
+  const allParsed = totalUrls === 0 ? parserResult.count >= 5 : (totalUrls === parserResult.count);
+  if(allParsed && missing === 0 && incomplete === 0 && susp <= 2 && ratio >= 0.85){
+    return { scenario: 'sufficient', reason: 'all-ok', ratio, susp };
+  }
+
+  // Critério "partial" — parser foi razoável mas dá pra recuperar mais com IA seletiva
+  if(parserResult.count >= 5 && ratio >= 0.7){
+    return { scenario: 'partial', reason: missing > 0 ? 'missing-blocks' : 'has-suspicious', missing, susp, incomplete };
+  }
+
+  // Resto: parser não resolveu — IA completa é o caminho
+  return { scenario: 'failed', reason: 'low-confidence' };
+}
+
 function showImportCostModal({ estimate, parserResult, fileName }){
   return new Promise((resolve)=>{
-    const m = mk('div','import-cost-modal');
-    m.style.cssText = 'max-width:520px';
+    // V15.12.35 — UX adaptativa por cenário (parser sufficient / partial / failed).
+    // Em vez de oferecer IA como CTA principal sempre, agora a UI muda baseada
+    // no resultado do parser local pra evitar gasto desnecessário de créditos.
+    const decision = _evaluateImportDecision(parserResult);
+    const scenario = decision.scenario;
 
-    // Header
+    const m = mk('div','import-cost-modal');
+    m.style.cssText = 'max-width:540px';
+
+    // === HEADER adaptativo por cenário ===
     const h = mk('h3');
     h.style.cssText = 'margin:0 0 .375rem;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px';
-    h.innerHTML = svgIcon('sparkles',18) + '<span>Confirmar importação por IA</span>';
+    if(scenario === 'sufficient'){
+      h.innerHTML = svgIcon('check',18) + '<span style="color:var(--accent-text)">Importação reconhecida sem IA</span>';
+    } else if(scenario === 'partial'){
+      h.innerHTML = svgIcon('flag',18) + '<span>Parser local + IA seletiva</span>';
+    } else {
+      h.innerHTML = svgIcon('sparkles',18) + '<span>Importação por IA recomendada</span>';
+    }
     m.appendChild(h);
     if(fileName){
       const fn = mk('p','txt3');
@@ -23051,179 +23105,290 @@ function showImportCostModal({ estimate, parserResult, fileName }){
       m.appendChild(fn);
     }
 
-    // ===== Bloco do parser local (se aplicável) =====
-    // Se o parser local achou questões úteis (>=5 com >=70% gabarito), recomenda
-    // usar resultado grátis primeiro e oferecer botão de destaque.
-    let parserRecommended = false;
-    if(parserResult && parserResult.count >= 5){
-      const ratio = parserResult.withGabarito / parserResult.count;
-      parserRecommended = ratio >= 0.7;
+    // ============================================================
+    // CENÁRIO 'sufficient' — parser resolveu tudo, IA NÃO necessária
+    // ============================================================
+    if(scenario === 'sufficient'){
+      const totalUrls = parserResult.totalUrls || 0;
+      const count = parserResult.count;
+      const withGab = parserResult.withGabarito;
+      const susp = parserResult.suspiciousCount || 0;
+
+      // Mensagem principal verde proeminente
+      const goodBox = mk('div');
+      goodBox.style.cssText = 'padding:1rem 1.125rem;background:linear-gradient(135deg,rgba(16,185,129,.10),var(--surface));border:1px solid rgba(16,185,129,.35);border-left:3px solid var(--accent);border-radius:9px;margin-bottom:1rem';
+      let mainMsg;
+      if(totalUrls > 0){
+        mainMsg = `<b style="font-size:14px;color:var(--accent-text)">Boa notícia: o Gralia reconheceu todas as questões sem usar IA.</b><br>Encontramos <b>${count}</b> ${count===1?'questão':'questões'} com gabarito usando o parser local. Você pode revisar e <b>salvar sem gastar créditos</b>.`;
+      } else {
+        mainMsg = `<b style="font-size:14px;color:var(--accent-text)">Importação reconhecida sem IA.</b><br>O parser local detectou <b>${count}</b> ${count===1?'questão':'questões'}, ${withGab} com gabarito (${Math.round((withGab/count)*100)}%). Salve sem gastar créditos.`;
+      }
+      if(susp > 0){
+        mainMsg += `<br><span style="font-size:12px;color:var(--text2)">Atenção: ${susp} ${susp===1?'questão':'questões'} marcada${susp===1?'':'s'} como suspeita${susp===1?'':'s'} — você pode revisá-las antes de salvar.</span>`;
+      }
+      goodBox.innerHTML = mainMsg;
+      m.appendChild(goodBox);
+
+      // === CTAs principais ===
+      const btnRow = mk('div');
+      btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:.25rem';
+
+      const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+      cancelBtn.addEventListener('click',()=>{ closeModal(); resolve({ action:'cancel' }); });
+      btnRow.appendChild(cancelBtn);
+
+      const useFreebtn = mkBtn('✓ Usar importação grátis','btn btn-sm btn-p');
+      useFreebtn.style.background = 'var(--accent)';
+      useFreebtn.style.borderColor = 'var(--accent)';
+      useFreebtn.addEventListener('click',()=>{ closeModal(); resolve({ action:'parser-first' }); });
+      btnRow.appendChild(useFreebtn);
+
+      m.appendChild(btnRow);
+
+      // === OPÇÕES AVANÇADAS (collapse) ===
+      const advWrap = mk('details','icm-advanced');
+      advWrap.style.cssText = 'margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)';
+      const advSum = mk('summary');
+      advSum.style.cssText = 'cursor:pointer;font-size:12px;color:var(--text3);padding:4px 0;list-style:none;display:inline-flex;align-items:center;gap:6px;user-select:none';
+      advSum.innerHTML = '<span style="font-weight:600">⚙ Opções avançadas</span><span style="font-size:11px;color:var(--text3)">(reprocessar com IA — não recomendado)</span>';
+      advWrap.appendChild(advSum);
+
+      const advBody = mk('div');
+      advBody.style.cssText = 'margin-top:.75rem';
+
+      // Aviso forte
+      const warnBox = mk('div');
+      warnBox.style.cssText = 'padding:.75rem 1rem;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.30);border-left:3px solid var(--amber);border-radius:9px;margin-bottom:.75rem;font-size:12.5px;color:var(--text2);line-height:1.55';
+      warnBox.innerHTML = `<b style="color:var(--amber-text)">⚠ IA não necessária neste caso.</b><br>O parser local já reconheceu todas as questões. Usar IA provavelmente não é necessário e <b>consumirá ${estimate.totalCost} créditos</b>. Use apenas se o resultado parecer ruim no preview.`;
+      advBody.appendChild(warnBox);
+
+      // Estimativa compacta
+      const estCompact = mk('div');
+      estCompact.style.cssText = 'padding:.625rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:.75rem;font-size:12px;color:var(--text2)';
+      estCompact.innerHTML = `<div style="display:flex;justify-content:space-between"><span>Custo estimado IA completa</span><b style="color:var(--gralia-purple);font-variant-numeric:tabular-nums">${estimate.totalCost} créd</b></div>${estimate.balance != null ? `<div style="display:flex;justify-content:space-between;margin-top:3px"><span>Saldo</span><b style="font-variant-numeric:tabular-nums;color:${(estimate.balance < estimate.totalCost) ? 'var(--red)' : 'var(--text)'}">${estimate.balance} créd</b></div>` : ''}`;
+      advBody.appendChild(estCompact);
+
+      // Limite de créditos
+      const defaultLimit = estimate.balance != null
+        ? Math.max(1, Math.min(estimate.totalCost, estimate.balance))
+        : estimate.totalCost;
+      const limBox = mk('div');
+      limBox.style.cssText = 'padding:.625rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:.75rem';
+      limBox.innerHTML = `<label for="icm-limit-adv" style="font-size:11.5px;color:var(--text2);font-weight:600;display:block;margin-bottom:5px">Limite máximo de créditos</label>
+        <div style="display:flex;align-items:center;gap:10px"><input id="icm-limit-adv" type="number" min="1" max="999" value="${defaultLimit}" style="flex:1;padding:.4rem .65rem;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-family:inherit;font-size:13px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums"><span style="font-size:11px;color:var(--text3)">créd</span></div>`;
+      advBody.appendChild(limBox);
+
+      // Botão "Processar mesmo assim com IA"
+      const advBtnRow = mk('div');
+      advBtnRow.style.cssText = 'display:flex;justify-content:flex-end';
+      const insufBalance = (estimate.balance != null && estimate.balance < estimate.totalCost);
+      const aiBtn = mkBtn('Processar mesmo assim com IA','btn btn-sm');
+      aiBtn.style.cssText = 'color:var(--amber-text);border-color:var(--amber)';
+      if(insufBalance) aiBtn.disabled = true;
+      aiBtn.addEventListener('click',()=>{
+        const limit = Math.max(1, parseInt(document.getElementById('icm-limit-adv')?.value || defaultLimit, 10));
+        if(estimate.balance != null && limit > estimate.balance){
+          alert(`Limite (${limit}) maior que seu saldo (${estimate.balance}). Reduza o limite ou recarregue créditos.`);
+          return;
+        }
+        // V15.12.35 — Confirmação extra pra evitar gasto acidental quando parser foi suficiente
+        if(!confirm(`Tem certeza? O parser local já reconheceu ${parserResult.count} questões com sucesso.\n\nVocê vai gastar até ${limit} créditos sem necessidade aparente.\n\nProsseguir mesmo assim?`)) return;
+        closeModal();
+        resolve({ action:'ai-full', maxCredits: limit });
+      });
+      advBtnRow.appendChild(aiBtn);
+      advBody.appendChild(advBtnRow);
+
+      advWrap.appendChild(advBody);
+      m.appendChild(advWrap);
+
+      showModal(m);
+      _watchExternalClose(resolve);
+      return;
     }
 
-    if(parserResult && parserResult.count > 0){
-      const parserBox = mk('div','icm-parser-box');
-      parserBox.style.cssText = parserRecommended
-        ? 'padding:.875rem 1rem;background:linear-gradient(135deg,rgba(16,185,129,.08),var(--surface));border:1px solid rgba(16,185,129,.30);border-left:3px solid var(--accent);border-radius:9px;margin-bottom:1rem'
-        : 'padding:.875rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:1rem';
-
-      // V15.12.32 — Mostra comparação esperado/importado quando vem do TEC
-      // (parserResult agora pode ter totalUrls e suspiciousCount).
+    // ============================================================
+    // CENÁRIO 'partial' — parser pegou a maior parte, IA SELETIVA é útil
+    // ============================================================
+    if(scenario === 'partial'){
+      const count = parserResult.count;
       const totalUrls = parserResult.totalUrls || 0;
-      const suspicious = parserResult.suspiciousCount || 0;
-      const missingCount = parserResult.missingBlocks ? parserResult.missingBlocks.length : 0;
-      const allOk = totalUrls > 0 && parserResult.count === totalUrls && suspicious === 0;
+      const missing = parserResult.missingBlocks ? parserResult.missingBlocks.length : 0;
+      const susp = parserResult.suspiciousCount || 0;
+      const withGab = parserResult.withGabarito;
+      const costPerBlock = (typeof AI_COSTS === 'object' && AI_COSTS.extract_questions_pdf != null) ? AI_COSTS.extract_questions_pdf : 1;
+      const seletivaCost = missing * costPerBlock;
+      const balance = estimate.balance;
+      const seletivaInsuf = (balance != null && balance < seletivaCost);
 
-      let detailHtml = `O parser local detectou <b>${parserResult.count}</b> ${parserResult.count===1?'questão':'questões'}, <b>${parserResult.withGabarito}</b> com gabarito (${Math.round((parserResult.withGabarito/parserResult.count)*100)}%).`;
-
-      if(totalUrls > 0 && totalUrls > parserResult.count){
-        // Houve perda — sinaliza claramente
-        detailHtml = `<span style="color:var(--amber-text);font-weight:600">⚠ ${totalUrls} questões detectadas no PDF, ${parserResult.count} importadas com segurança</span> · <b>${missingCount}</b> ${missingCount===1?'precisa':'precisam'} de revisão ou IA.<br>Das ${parserResult.count} importadas, <b>${parserResult.withGabarito}</b> têm gabarito (${Math.round((parserResult.withGabarito/parserResult.count)*100)}%).`;
-      } else if(suspicious > 0){
-        detailHtml += `<br><span style="color:var(--amber-text)">⚠ ${suspicious} ${suspicious===1?'questão':'questões'} marcada${suspicious===1?'':'s'} como suspeita${suspicious===1?'':'s'} (precisa${suspicious===1?'':'m'} de revisão).</span>`;
-      } else if(parserRecommended){
-        detailHtml += '<br>Você pode salvar essas questões <b>sem gastar créditos</b>.';
+      // Mensagem principal: parser local pegou X, IA pode recuperar Y
+      const mainBox = mk('div');
+      mainBox.style.cssText = 'padding:.875rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:1rem';
+      let mainHtml = `<div style="font-size:14px;color:var(--text);margin-bottom:6px"><b>Parser local reconheceu ${count} ${count===1?'questão':'questões'} com sucesso</b></div>`;
+      if(totalUrls > 0 && totalUrls > count){
+        mainHtml += `<div style="font-size:12.5px;color:var(--text2);line-height:1.55">${totalUrls} questões detectadas no PDF · <b>${count}</b> importadas com segurança · <b style="color:var(--amber-text)">${missing} ${missing===1?'precisa':'precisam'} de IA</b>.</div>`;
+      } else if(susp > 0){
+        mainHtml += `<div style="font-size:12.5px;color:var(--text2);line-height:1.55"><b>${withGab}</b> com gabarito · <b style="color:var(--amber-text)">${susp} ${susp===1?'questão':'questões'} suspeita${susp===1?'':'s'}</b>.</div>`;
       }
+      mainBox.innerHTML = mainHtml;
+      m.appendChild(mainBox);
 
-      parserBox.innerHTML = `
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          ${svgIcon(allOk?'check':(missingCount>0?'flag':'file-text'),16)}
-          <b style="font-size:13.5px;color:${allOk?'var(--accent-text)':'var(--text)'}">
-            ${allOk?'Importação grátis disponível':(missingCount>0?'Parser local + IA seletiva':'Parser local detectou algumas questões')}
-          </b>
-        </div>
-        <div style="font-size:12.5px;color:var(--text2);line-height:1.55">${detailHtml}</div>
-      `;
-      m.appendChild(parserBox);
-
-      // V15.12.32 — Bloco DEDICADO de "IA seletiva" quando há blocos faltantes.
-      // Custo MUITO menor que rodar PDF inteiro.
-      if(missingCount > 0){
-        const seletivaBox = mk('div','icm-seletiva-box');
-        const costPerBlock = (typeof AI_COSTS === 'object' && AI_COSTS.extract_questions_pdf != null) ? AI_COSTS.extract_questions_pdf : 1;
-        const seletivaCost = missingCount * costPerBlock;
-        const balance = estimate.balance;
-        const seletivaInsuf = (balance != null && balance < seletivaCost);
-        seletivaBox.style.cssText = 'padding:.75rem 1rem;background:linear-gradient(135deg,rgba(124,92,255,.06),var(--surface));border:1px solid rgba(124,92,255,.25);border-left:3px solid var(--gralia-purple);border-radius:9px;margin-bottom:1rem';
-        seletivaBox.innerHTML = `
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-            ${svgIcon('sparkles',16)}
-            <b style="font-size:13px;color:var(--gralia-purple)">IA seletiva — só os trechos problemáticos</b>
-          </div>
-          <div style="font-size:12.5px;color:var(--text2);line-height:1.55">
-            Recuperar <b>${missingCount}</b> ${missingCount===1?'trecho':'trechos'} via IA (1 créd cada).
-            <b style="color:${seletivaInsuf?'var(--red)':'var(--gralia-purple)'}">Custo total: ${seletivaCost} créd</b>.
-            Mais barato que rodar IA no PDF inteiro (${estimate.totalCost} créd).
-          </div>
-        `;
+      // Bloco IA seletiva (proeminente, pois é o complemento útil)
+      if(missing > 0){
+        const seletivaBox = mk('div');
+        seletivaBox.style.cssText = 'padding:.875rem 1rem;background:linear-gradient(135deg,rgba(124,92,255,.08),var(--surface));border:1px solid rgba(124,92,255,.30);border-left:3px solid var(--gralia-purple);border-radius:9px;margin-bottom:1rem';
+        seletivaBox.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">${svgIcon('sparkles',16)}<b style="font-size:13.5px;color:var(--gralia-purple)">Recuperar trechos com IA seletiva</b></div>
+          <div style="font-size:12.5px;color:var(--text2);line-height:1.55">A IA processa <b>apenas os ${missing} trechos problemáticos</b> (1 créd cada). <b style="color:${seletivaInsuf?'var(--red)':'var(--gralia-purple)'}">Custo total: ${seletivaCost} créd</b>${balance != null ? ` · saldo: ${balance} créd` : ''}.</div>`;
         m.appendChild(seletivaBox);
       }
-    }
 
-    // ===== Bloco de estimativa de IA =====
-    const estBox = mk('div','icm-est-box');
-    estBox.style.cssText = 'padding:.875rem 1rem;background:rgba(124,92,255,.05);border:1px solid rgba(124,92,255,.20);border-left:3px solid var(--gralia-purple);border-radius:9px;margin-bottom:1rem';
+      // === CTAs principais ===
+      const btnRow = mk('div');
+      btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:.25rem';
 
-    const insufBalance = (estimate.balance != null && estimate.balance < estimate.totalCost);
-    const balanceLine = estimate.balance == null
-      ? `<div style="font-size:12px;color:var(--text3);margin-top:6px">Saldo não disponível</div>`
-      : `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
-           <span style="font-size:12px;color:var(--text2)">Seu saldo atual</span>
-           <b style="font-size:13px;color:${insufBalance?'var(--red)':'var(--accent-text)'};font-variant-numeric:tabular-nums">${estimate.balance} créd</b>
-         </div>`;
+      const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+      cancelBtn.addEventListener('click',()=>{ closeModal(); resolve({ action:'cancel' }); });
+      btnRow.appendChild(cancelBtn);
 
-    estBox.innerHTML = `
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        ${svgIcon('sparkles',16)}
-        <b style="font-size:13.5px;color:var(--gralia-purple)">Processar com IA (estimativa)</b>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr auto;gap:6px 16px;font-size:12.5px;color:var(--text2)">
-        <span>Texto extraído</span><b style="color:var(--text);font-variant-numeric:tabular-nums">${estimate.chars.toLocaleString('pt-BR')} caracteres</b>
-        <span>Trechos a processar</span><b style="color:var(--text);font-variant-numeric:tabular-nums">${estimate.chunks}</b>
-        <span>Custo por trecho</span><b style="color:var(--text);font-variant-numeric:tabular-nums">${estimate.costPerChunk} créd</b>
-        <span style="font-weight:600">Custo estimado</span><b style="color:var(--gralia-purple);font-variant-numeric:tabular-nums;font-size:14px">${estimate.totalCost} créd</b>
-      </div>
-      ${balanceLine}
-    `;
-    m.appendChild(estBox);
+      const useFreebtn = mkBtn(`Usar ${count} ${count===1?'questão grátis':'questões grátis'}`,'btn btn-sm');
+      useFreebtn.addEventListener('click',()=>{ closeModal(); resolve({ action:'parser-first' }); });
+      btnRow.appendChild(useFreebtn);
 
-    // ===== Limite de créditos =====
-    const defaultLimit = estimate.balance != null
-      ? Math.max(1, Math.min(estimate.totalCost, estimate.balance))
-      : estimate.totalCost;
-
-    const limitBox = mk('div','icm-limit-box');
-    limitBox.style.cssText = 'padding:.75rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:1rem';
-    limitBox.innerHTML = `
-      <label for="icm-limit" style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:6px">
-        Limite máximo de créditos para esta importação
-      </label>
-      <div style="display:flex;align-items:center;gap:10px">
-        <input id="icm-limit" type="number" min="1" max="999" value="${defaultLimit}"
-               style="flex:1;padding:.5rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums">
-        <span style="font-size:12px;color:var(--text3)">créd</span>
-      </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.4">
-        A IA pára de processar ao atingir esse limite. Você fica com o que já foi extraído.
-      </div>
-    `;
-    m.appendChild(limitBox);
-
-    // ===== Aviso de saldo insuficiente =====
-    if(insufBalance){
-      const warn = mk('div');
-      warn.style.cssText = 'padding:.75rem 1rem;background:rgba(232,76,76,.06);border:1px solid rgba(232,76,76,.30);border-left:3px solid var(--red);border-radius:9px;margin-bottom:1rem;font-size:12.5px;color:var(--red-text);line-height:1.5';
-      warn.innerHTML = `<b>⚠ Saldo insuficiente.</b> Faltam <b>${estimate.shortBy} créditos</b> para processar tudo. Reduza o limite acima para o seu saldo (${estimate.balance}) ou recarregue créditos. Você ainda pode salvar o que já foi parseado localmente.`;
-      m.appendChild(warn);
-    }
-
-    // ===== Botões =====
-    const btnRow = mk('div');
-    btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:1.25rem';
-
-    const cancelBtn = mkBtn('Cancelar','btn btn-sm');
-    cancelBtn.addEventListener('click',()=>{ closeModal(); resolve({ action:'cancel' }); });
-    btnRow.appendChild(cancelBtn);
-
-    if(parserResult && parserResult.count > 0){
-      const parserBtn = mkBtn(
-        parserRecommended ? '✓ Usar resultado grátis' : 'Tentar grátis primeiro',
-        parserRecommended ? 'btn btn-sm btn-p' : 'btn btn-sm'
-      );
-      if(parserRecommended){
-        parserBtn.style.background = 'var(--accent)';
-        parserBtn.style.borderColor = 'var(--accent)';
-      }
-      parserBtn.addEventListener('click',()=>{ closeModal(); resolve({ action:'parser-first' }); });
-      btnRow.appendChild(parserBtn);
-
-      // V15.12.32 — Botão "IA seletiva" só pros missingBlocks
-      const missingCount = parserResult.missingBlocks ? parserResult.missingBlocks.length : 0;
-      if(missingCount > 0){
-        const costPerBlock = (typeof AI_COSTS === 'object' && AI_COSTS.extract_questions_pdf != null) ? AI_COSTS.extract_questions_pdf : 1;
-        const seletivaCost = missingCount * costPerBlock;
-        const balance = estimate.balance;
-        const seletivaInsuf = (balance != null && balance < seletivaCost);
-        const seletivaBtn = mkBtn(`✨ Salvar grátis + IA nos ${missingCount} faltantes (${seletivaCost} créd)`,'btn btn-sm btn-p');
+      if(missing > 0){
+        const seletivaBtn = mkBtn(`✨ Recuperar ${missing} ${missing===1?'trecho':'trechos'} com IA — ${seletivaCost} créd`,'btn btn-sm btn-p');
         seletivaBtn.style.background = 'var(--gralia-purple)';
         seletivaBtn.style.borderColor = 'var(--gralia-purple)';
-        if(seletivaInsuf){
-          seletivaBtn.disabled = true;
-          seletivaBtn.title = 'Saldo insuficiente pra IA seletiva';
-        }
+        if(seletivaInsuf){ seletivaBtn.disabled = true; seletivaBtn.title = 'Saldo insuficiente'; }
         seletivaBtn.addEventListener('click',()=>{
           closeModal();
           resolve({ action:'parser-plus-ai-missing', maxCredits: seletivaCost });
         });
         btnRow.appendChild(seletivaBtn);
       }
+      m.appendChild(btnRow);
+
+      // === OPÇÕES AVANÇADAS — IA completa escondida ===
+      const advWrap = mk('details');
+      advWrap.style.cssText = 'margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)';
+      const advSum = mk('summary');
+      advSum.style.cssText = 'cursor:pointer;font-size:12px;color:var(--text3);padding:4px 0;list-style:none;display:inline-flex;align-items:center;gap:6px;user-select:none';
+      advSum.innerHTML = '<span style="font-weight:600">⚙ Opções avançadas</span><span style="font-size:11px;color:var(--text3)">(reprocessar PDF inteiro com IA)</span>';
+      advWrap.appendChild(advSum);
+
+      const advBody = mk('div');
+      advBody.style.cssText = 'margin-top:.75rem';
+
+      const warnBox = mk('div');
+      warnBox.style.cssText = 'padding:.75rem 1rem;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.30);border-left:3px solid var(--amber);border-radius:9px;margin-bottom:.75rem;font-size:12.5px;color:var(--text2);line-height:1.55';
+      warnBox.innerHTML = `<b style="color:var(--amber-text)">Isso pode consumir mais créditos e normalmente não é necessário.</b><br>O parser local já reconheceu ${count} questões. A IA seletiva acima resolve os trechos problemáticos com <b>${seletivaCost} créd</b>. Processar o PDF inteiro custa <b>${estimate.totalCost} créd</b>.`;
+      advBody.appendChild(warnBox);
+
+      const defaultLimit = estimate.balance != null
+        ? Math.max(1, Math.min(estimate.totalCost, estimate.balance))
+        : estimate.totalCost;
+      const limBox = mk('div');
+      limBox.style.cssText = 'padding:.625rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:.75rem';
+      limBox.innerHTML = `<label for="icm-limit-adv" style="font-size:11.5px;color:var(--text2);font-weight:600;display:block;margin-bottom:5px">Limite máximo de créditos (IA completa)</label>
+        <div style="display:flex;align-items:center;gap:10px"><input id="icm-limit-adv" type="number" min="1" max="999" value="${defaultLimit}" style="flex:1;padding:.4rem .65rem;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-family:inherit;font-size:13px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums"><span style="font-size:11px;color:var(--text3)">créd</span></div>`;
+      advBody.appendChild(limBox);
+
+      const advBtnRow = mk('div');
+      advBtnRow.style.cssText = 'display:flex;justify-content:flex-end';
+      const insufBalance = (estimate.balance != null && estimate.balance < estimate.totalCost);
+      const aiBtn = mkBtn('Processar PDF inteiro com IA','btn btn-sm');
+      aiBtn.style.cssText = 'color:var(--amber-text);border-color:var(--amber)';
+      if(insufBalance) aiBtn.disabled = true;
+      aiBtn.addEventListener('click',()=>{
+        const limit = Math.max(1, parseInt(document.getElementById('icm-limit-adv')?.value || defaultLimit, 10));
+        if(estimate.balance != null && limit > estimate.balance){
+          alert(`Limite (${limit}) maior que seu saldo (${estimate.balance}).`);
+          return;
+        }
+        if(!confirm(`Tem certeza? Vai gastar até ${limit} créditos.\n\nA IA seletiva (${seletivaCost} créd) já é suficiente pra recuperar os ${missing} trechos problemáticos.`)) return;
+        closeModal();
+        resolve({ action:'ai-full', maxCredits: limit });
+      });
+      advBtnRow.appendChild(aiBtn);
+      advBody.appendChild(advBtnRow);
+      advWrap.appendChild(advBody);
+      m.appendChild(advWrap);
+
+      showModal(m);
+      _watchExternalClose(resolve);
+      return;
     }
 
-    const aiBtn = mkBtn('Processar com IA','btn btn-sm' + (parserRecommended ? '' : ' btn-p'));
+    // ============================================================
+    // CENÁRIO 'failed' — parser não resolveu, IA é o caminho recomendado
+    // ============================================================
+    // (mantém UI próxima da V15.12.34, mas sem oferecer parser-first como destaque)
+
+    // Mensagem
+    const failBox = mk('div');
+    failBox.style.cssText = 'padding:.875rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:1rem';
+    if(parserResult && parserResult.count > 0){
+      failBox.innerHTML = `<div style="font-size:13.5px;color:var(--text);margin-bottom:4px"><b>Parser local reconheceu pouco</b></div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.55">Encontrou <b>${parserResult.count}</b> ${parserResult.count===1?'questão':'questões'}, mas a confiança é baixa (${Math.round((parserResult.withGabarito/parserResult.count)*100)}% com gabarito). A IA é recomendada pra extrair com mais precisão.</div>`;
+    } else {
+      failBox.innerHTML = `<div style="font-size:13.5px;color:var(--text);margin-bottom:4px"><b>Formato não reconhecido pelo parser local</b></div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.55">Este PDF não tem o formato do TEC ou outro padrão conhecido. Use IA pra extrair as questões.</div>`;
+    }
+    m.appendChild(failBox);
+
+    // Estimativa de IA
+    const insufBalance = (estimate.balance != null && estimate.balance < estimate.totalCost);
+    const balanceLine = estimate.balance == null
+      ? `<div style="font-size:12px;color:var(--text3);margin-top:6px">Saldo não disponível</div>`
+      : `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)"><span style="font-size:12px;color:var(--text2)">Seu saldo atual</span><b style="font-size:13px;color:${insufBalance?'var(--red)':'var(--accent-text)'};font-variant-numeric:tabular-nums">${estimate.balance} créd</b></div>`;
+
+    const estBox = mk('div');
+    estBox.style.cssText = 'padding:.875rem 1rem;background:rgba(124,92,255,.05);border:1px solid rgba(124,92,255,.20);border-left:3px solid var(--gralia-purple);border-radius:9px;margin-bottom:1rem';
+    estBox.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">${svgIcon('sparkles',16)}<b style="font-size:13.5px;color:var(--gralia-purple)">Processar com IA (estimativa)</b></div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:6px 16px;font-size:12.5px;color:var(--text2)">
+        <span>Texto extraído</span><b style="color:var(--text);font-variant-numeric:tabular-nums">${estimate.chars.toLocaleString('pt-BR')} caracteres</b>
+        <span>Trechos a processar</span><b style="color:var(--text);font-variant-numeric:tabular-nums">${estimate.chunks}</b>
+        <span>Custo por trecho</span><b style="color:var(--text);font-variant-numeric:tabular-nums">${estimate.costPerChunk} créd</b>
+        <span style="font-weight:600">Custo estimado</span><b style="color:var(--gralia-purple);font-variant-numeric:tabular-nums;font-size:14px">${estimate.totalCost} créd</b>
+      </div>
+      ${balanceLine}`;
+    m.appendChild(estBox);
+
+    // Limite
+    const defaultLimit = estimate.balance != null
+      ? Math.max(1, Math.min(estimate.totalCost, estimate.balance))
+      : estimate.totalCost;
+    const limitBox = mk('div');
+    limitBox.style.cssText = 'padding:.75rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:1rem';
+    limitBox.innerHTML = `<label for="icm-limit" style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:6px">Limite máximo de créditos para esta importação</label>
+      <div style="display:flex;align-items:center;gap:10px"><input id="icm-limit" type="number" min="1" max="999" value="${defaultLimit}" style="flex:1;padding:.5rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:14px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums"><span style="font-size:12px;color:var(--text3)">créd</span></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.4">A IA pára de processar ao atingir esse limite. Você fica com o que já foi extraído.</div>`;
+    m.appendChild(limitBox);
+
+    if(insufBalance){
+      const warn = mk('div');
+      warn.style.cssText = 'padding:.75rem 1rem;background:rgba(232,76,76,.06);border:1px solid rgba(232,76,76,.30);border-left:3px solid var(--red);border-radius:9px;margin-bottom:1rem;font-size:12.5px;color:var(--red-text);line-height:1.5';
+      warn.innerHTML = `<b>⚠ Saldo insuficiente.</b> Faltam <b>${estimate.shortBy} créditos</b> para processar tudo. Reduza o limite acima para o seu saldo (${estimate.balance}) ou recarregue créditos.`;
+      m.appendChild(warn);
+    }
+
+    // Botões
+    const btnRow = mk('div');
+    btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:1.25rem';
+    const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+    cancelBtn.addEventListener('click',()=>{ closeModal(); resolve({ action:'cancel' }); });
+    btnRow.appendChild(cancelBtn);
+
+    // Se há QUALQUER coisa do parser, oferece como secundário
+    if(parserResult && parserResult.count > 0){
+      const parserBtn = mkBtn(`Salvar as ${parserResult.count} grátis`,'btn btn-sm');
+      parserBtn.addEventListener('click',()=>{ closeModal(); resolve({ action:'parser-first' }); });
+      btnRow.appendChild(parserBtn);
+    }
+
+    const aiBtn = mkBtn('Processar com IA','btn btn-sm btn-p');
     if(insufBalance) aiBtn.disabled = true;
     aiBtn.addEventListener('click',()=>{
-      const limitInput = document.getElementById('icm-limit');
-      const limit = Math.max(1, parseInt(limitInput?.value || defaultLimit, 10));
-      // Bloqueia se limite > saldo (se saldo conhecido)
+      const limit = Math.max(1, parseInt(document.getElementById('icm-limit')?.value || defaultLimit, 10));
       if(estimate.balance != null && limit > estimate.balance){
         alert(`Limite (${limit}) maior que seu saldo (${estimate.balance}). Reduza o limite ou recarregue créditos.`);
         return;
@@ -23232,22 +23397,23 @@ function showImportCostModal({ estimate, parserResult, fileName }){
       resolve({ action:'ai-full', maxCredits: limit });
     });
     btnRow.appendChild(aiBtn);
-
     m.appendChild(btnRow);
 
     showModal(m);
-    // Se o usuário fechar o modal clicando fora, resolve com cancel
-    // (closeModal não dispara nada — precisamos de um observer simples)
-    // Hack: monitora ST.modal — se ele virar null sem nossa interação, é fechamento externo.
-    const _interval = setInterval(()=>{
-      if(!ST.modal){
-        clearInterval(_interval);
-        // Resolve só se ainda não foi resolvido por um botão
-        // (Promise resolve uma vez só, segunda chamada é no-op)
-        resolve({ action:'cancel' });
-      }
-    }, 200);
+    _watchExternalClose(resolve);
   });
+}
+
+// V15.12.35 — Helper extraído pra detectar fechamento externo do modal
+// (usuário clicou fora ou apertou ESC). Compartilhado pelos 3 cenários.
+function _watchExternalClose(resolve){
+  const _interval = setInterval(()=>{
+    if(!ST.modal){
+      clearInterval(_interval);
+      // Promise resolve uma vez só — segunda chamada é no-op
+      resolve({ action:'cancel' });
+    }
+  }, 200);
 }
 
 function parseImportedQuestions(raw){
@@ -27217,17 +27383,20 @@ function renderImportedImport(wrap){
           const localQs = rich.questions || [];
           const withGab = localQs.filter(q=>q.answer).length;
           const suspiciousCount = localQs.filter(q => q.quality && q.quality.status === 'suspicious').length;
+          // V15.12.35: também conta incompletas pra decisão UX no modal
+          const incompleteCount = localQs.filter(q => q.quality && q.quality.status === 'incomplete').length;
           parserResult = {
             count: localQs.length,
             withGabarito: withGab,
             suspiciousCount,
+            incompleteCount,
             totalUrls: rich.totalUrls || 0,
             missingBlocks: rich.missingBlocks || [],
             questions: localQs,
             cleanText
           };
         }catch(_){
-          parserResult = { count: 0, withGabarito: 0, suspiciousCount: 0, totalUrls: 0, missingBlocks: [], questions: [], cleanText: text };
+          parserResult = { count: 0, withGabarito: 0, suspiciousCount: 0, incompleteCount: 0, totalUrls: 0, missingBlocks: [], questions: [], cleanText: text };
         }
 
         // ---------- ETAPA 3: Estimativa de custo IA ----------
