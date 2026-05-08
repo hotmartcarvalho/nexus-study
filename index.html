@@ -21816,14 +21816,30 @@ function questionBank(){return DATA.importedQuestions||[];}
 
 // Extract banca (e.g. "CEBRASPE (CESPE)") from TEC-style meta header
 // Header format typical: "CEBRASPE (CESPE) - AJ (TJ PA)/TJ PA/Comunicação Social/2025"
-function extractBanca(meta){
-  if(!meta)return '';
+// V15.12.34 — Prefere campo estruturado q.banca se disponível.
+// Aceita q (objeto) OU meta (string) — compatibilidade com chamadas antigas.
+function extractBanca(arg){
+  if(!arg) return '';
+  // Se é objeto, tenta campo estruturado primeiro
+  if(typeof arg === 'object'){
+    if(arg.banca) return arg.banca;
+    if(!arg.meta) return '';
+    arg = arg.meta;
+  }
+  const meta = String(arg);
   const firstPart = meta.split(/\s-\s/)[0].trim();
   return firstPart.replace(/\s+/g,' ');
 }
 // Extract cargo (everything after the first " - ")
-function extractCargo(meta){
-  if(!meta)return '';
+// V15.12.34 — Prefere campo estruturado q.cargo se disponível.
+function extractCargo(arg){
+  if(!arg) return '';
+  if(typeof arg === 'object'){
+    if(arg.cargo) return arg.cargo;
+    if(!arg.meta) return '';
+    arg = arg.meta;
+  }
+  const meta = String(arg);
   const dash = meta.indexOf(' - ');
   if(dash<0)return '';
   const rest = meta.slice(dash+3).trim();
@@ -21832,8 +21848,25 @@ function extractCargo(meta){
   return firstSeg;
 }
 
+// V15.12.34 — Extrai ano da questão. Prefere campo estruturado q.ano,
+// senão tenta regex em q.meta (formato "BANCA - 2024 - CARGO" ou similar).
+function extractAno(q){
+  if(!q) return null;
+  if(typeof q.ano === 'number' && q.ano >= 1900) return q.ano;
+  if(typeof q.ano === 'string'){
+    const n = parseInt(q.ano, 10);
+    if(n >= 1900 && n <= 2100) return n;
+  }
+  // Fallback: tenta achar ano dentro de meta
+  if(q.meta){
+    const m = q.meta.match(/\b(19|20)\d{2}\b/);
+    if(m) return parseInt(m[0], 10);
+  }
+  return null;
+}
+
 function getBankFilters(stateKey){
-  if(!ST[stateKey])ST[stateKey]={disc:'all',source:'all',kind:'all',banca:'all',cargo:'all',topic:'all',perf:'all',period:'all',search:''};
+  if(!ST[stateKey])ST[stateKey]={disc:'all',source:'all',kind:'all',banca:'all',cargo:'all',topic:'all',perf:'all',period:'all',search:'',anoFrom:'',anoTo:'',quality:'all',practiced:'all'};
   // migrate old shape with "meta" to new shape
   if(ST[stateKey].meta!==undefined){
     delete ST[stateKey].meta;
@@ -21843,15 +21876,35 @@ function getBankFilters(stateKey){
   if(ST[stateKey].topic===undefined)ST[stateKey].topic='all';
   // V13: período default
   if(ST[stateKey].period===undefined)ST[stateKey].period='all';
+  // V15.12.34: novos campos
+  if(ST[stateKey].anoFrom===undefined)ST[stateKey].anoFrom='';
+  if(ST[stateKey].anoTo===undefined)ST[stateKey].anoTo='';
+  if(ST[stateKey].quality===undefined)ST[stateKey].quality='all';
+  if(ST[stateKey].practiced===undefined)ST[stateKey].practiced='all';
   return ST[stateKey];
 }
 function applyBankFilters(bank,f){
   let r = bank;
   if(f.disc!=='all')r = r.filter(q=>q.disciplineId===f.disc);
-  if(f.source!=='all')r = r.filter(q=>(q.source||'imported')===f.source);
+  // V15.12.34: source pode ser:
+  //   'all'         → tudo
+  //   'imported'    → q.source==='imported' E sem importSource (legacy) OU explicitamente imported
+  //   'ai'          → q.source==='ai' (gerada por IA)
+  //   '__pdf-ai'    → q.importSource === 'pdf-ai'
+  //   '__text'      → q.importSource === 'text'
+  //   '__pdf'       → q.importSource === 'pdf'
+  if(f.source && f.source !== 'all'){
+    if(f.source.startsWith('__')){
+      const target = f.source.slice(2);
+      r = r.filter(q => q.importSource === target);
+    } else {
+      r = r.filter(q => (q.source || 'imported') === f.source);
+    }
+  }
   if(f.kind!=='all')r = r.filter(q=>(q.kind||'CE')===f.kind);
-  if(f.banca&&f.banca!=='all')r = r.filter(q=>extractBanca(q.meta)===f.banca);
-  if(f.cargo&&f.cargo!=='all')r = r.filter(q=>extractCargo(q.meta)===f.cargo);
+  // V15.12.34 — extractBanca/extractCargo agora aceitam q direto
+  if(f.banca&&f.banca!=='all')r = r.filter(q=>extractBanca(q)===f.banca);
+  if(f.cargo&&f.cargo!=='all')r = r.filter(q=>extractCargo(q)===f.cargo);
   // Topic filter — matches against q.topic field (not enunciado)
   if(f.topic&&f.topic!=='all'){
     const target = normTopic(f.topic);
@@ -21867,6 +21920,30 @@ function applyBankFilters(bank,f){
   } else if(f.period === '30d'){
     const cutoff = Date.now() - 30*86400*1000;
     r = r.filter(q => q.lastPracticedAt && q.lastPracticedAt > cutoff);
+  }
+  // V15.12.34 — Range de ano (anoFrom/anoTo). Aceita string vazia = sem filtro.
+  if(f.anoFrom){
+    const from = parseInt(f.anoFrom, 10);
+    if(from >= 1900) r = r.filter(q => { const a = extractAno(q); return a !== null && a >= from; });
+  }
+  if(f.anoTo){
+    const to = parseInt(f.anoTo, 10);
+    if(to >= 1900) r = r.filter(q => { const a = extractAno(q); return a !== null && a <= to; });
+  }
+  // V15.12.34 — Filtro por status de qualidade
+  if(f.quality && f.quality !== 'all'){
+    r = r.filter(q => {
+      const st = q.quality && q.quality.status;
+      if(f.quality === 'ok') return !st || st === 'ok';
+      return st === f.quality;
+    });
+  }
+  // V15.12.34 — Filtro por status de prática
+  if(f.practiced && f.practiced !== 'all'){
+    if(f.practiced === 'no') r = r.filter(q => !q.attempts || q.attempts === 0);
+    else if(f.practiced === 'yes') r = r.filter(q => q.attempts > 0);
+    else if(f.practiced === 'right') r = r.filter(q => q.attempts > 0 && (q.correctCount||0) === q.attempts);
+    else if(f.practiced === 'wrong') r = r.filter(q => q.attempts > 0 && (q.correctCount||0) < q.attempts);
   }
   if(f.search&&f.search.trim()){
     const t = f.search.toLowerCase().trim();
@@ -21925,13 +22002,28 @@ function renderBankFilters(stateKey,bank){
   };
 
   // Source filter
+  // V15.12.34: origem mais granular (pdf-ai, text, ai, imported antigo)
   const aiCount = bank.filter(q=>q.source==='ai').length;
-  const importedCount = bank.length - aiCount;
-  chipRows.appendChild(buildChipGroup('Origem','source',[
-    ['all','Todas',bank.length],
-    ['imported','📋 TEC',importedCount],
-    ['ai','🤖 IA',aiCount]
-  ]));
+  const pdfAiCount = bank.filter(q=>q.importSource==='pdf-ai').length;
+  const textCount = bank.filter(q=>q.importSource==='text').length;
+  const importedLegacy = bank.filter(q=>(q.source||'imported')==='imported' && !q.importSource).length;
+  const sourceOpts = [['all','Todas',bank.length]];
+  if(pdfAiCount>0) sourceOpts.push(['__pdf-ai','✨ PDF c/ IA',pdfAiCount]);
+  if(textCount>0) sourceOpts.push(['__text','📝 Texto colado',textCount]);
+  if(importedLegacy>0) sourceOpts.push(['imported','📋 Importadas',importedLegacy]);
+  if(aiCount>0) sourceOpts.push(['ai','🤖 Geradas IA',aiCount]);
+  // Construímos manualmente porque source pode ser composto (importSource ou source)
+  const srcRow = mk('div','filter-row');
+  const srcLbl = mk('span','filter-row-lbl');srcLbl.textContent='Origem';
+  srcRow.appendChild(srcLbl);
+  sourceOpts.forEach(([val,text,count])=>{
+    const isOn = f.source===val;
+    const chip = mk('button','filter-chip'+(isOn?' on':''));
+    chip.innerHTML = text + (count!==undefined?` <span class="count">${count}</span>`:'');
+    chip.addEventListener('click',()=>{f.source=val;render();});
+    srcRow.appendChild(chip);
+  });
+  chipRows.appendChild(srcRow);
 
   // Kind filter
   const ceCount = bank.filter(q=>(q.kind||'CE')==='CE').length;
@@ -21940,6 +22032,32 @@ function renderBankFilters(stateKey,bank){
     ['all','Todos',bank.length],
     ['CE','C/E',ceCount],
     ['MC','Múltipla',mcCount]
+  ]));
+
+  // V15.12.34 — Filtro de qualidade (suspeitas/incompletas)
+  const okCount = bank.filter(q=>!q.quality || q.quality.status === 'ok').length;
+  const suspCount = bank.filter(q=>q.quality && q.quality.status === 'suspicious').length;
+  const incCount = bank.filter(q=>q.quality && q.quality.status === 'incomplete').length;
+  if(suspCount + incCount > 0){
+    chipRows.appendChild(buildChipGroup('Qualidade','quality',[
+      ['all','Todas'],
+      ['ok','✓ OK',okCount],
+      ['suspicious','⚠ Suspeitas',suspCount],
+      ['incomplete','✗ Incompletas',incCount]
+    ]));
+  }
+
+  // V15.12.34 — Filtro de prática
+  const practNo = bank.filter(q=>!q.attempts).length;
+  const practYes = bank.filter(q=>q.attempts>0).length;
+  const practRight = bank.filter(q=>q.attempts>0 && (q.correctCount||0) === q.attempts).length;
+  const practWrong = bank.filter(q=>q.attempts>0 && (q.correctCount||0) < q.attempts).length;
+  chipRows.appendChild(buildChipGroup('Prática','practiced',[
+    ['all','Todas'],
+    ['no','Não praticada',practNo],
+    ['yes','Praticada',practYes],
+    ['right','Sempre acertei',practRight],
+    ['wrong','Errei pelo menos uma vez',practWrong]
   ]));
 
   // Discipline filter
@@ -21979,7 +22097,7 @@ function renderBankFilters(stateKey,bank){
 
   // Banca filter (separate from cargo)
   const bancas = {};
-  bank.forEach(q=>{const b=extractBanca(q.meta);if(b)bancas[b]=(bancas[b]||0)+1;});
+  bank.forEach(q=>{const b=extractBanca(q);if(b)bancas[b]=(bancas[b]||0)+1;});
   const bancasList = Object.entries(bancas).sort((a,b)=>b[1]-a[1]);
   if(bancasList.length>=2){
     const bRow = mk('div','filter-row');
@@ -22001,8 +22119,8 @@ function renderBankFilters(stateKey,bank){
 
   // Cargo filter (separate)
   const cargos = {};
-  const cargoSourceBank = f.banca&&f.banca!=='all' ? bank.filter(q=>extractBanca(q.meta)===f.banca) : bank;
-  cargoSourceBank.forEach(q=>{const c=extractCargo(q.meta);if(c)cargos[c]=(cargos[c]||0)+1;});
+  const cargoSourceBank = f.banca&&f.banca!=='all' ? bank.filter(q=>extractBanca(q)===f.banca) : bank;
+  cargoSourceBank.forEach(q=>{const c=extractCargo(q);if(c)cargos[c]=(cargos[c]||0)+1;});
   const cargosList = Object.entries(cargos).sort((a,b)=>b[1]-a[1]);
   if(cargosList.length>=2){
     const cRow = mk('div','filter-row');
@@ -22020,6 +22138,36 @@ function renderBankFilters(stateKey,bank){
     sel.addEventListener('change',e=>{f.cargo=e.target.value;render();});
     cRow.appendChild(sel);
     chipRows.appendChild(cRow);
+  }
+
+  // V15.12.34 — Range de ano (anoFrom / anoTo).
+  // Coleta anos disponíveis pra inferir min/max e mostrar contadores.
+  const anosSet = new Set();
+  bank.forEach(q => { const a = extractAno(q); if(a) anosSet.add(a); });
+  if(anosSet.size >= 2){
+    const anoMin = Math.min(...anosSet);
+    const anoMax = Math.max(...anosSet);
+    const aRow = mk('div','filter-row');
+    const lbl = mk('span','filter-row-lbl');lbl.textContent='Ano';
+    aRow.appendChild(lbl);
+    const inpFrom = mk('input');inpFrom.type='number';inpFrom.min=String(anoMin);inpFrom.max=String(anoMax);
+    inpFrom.placeholder='de '+anoMin;inpFrom.value=f.anoFrom||'';
+    inpFrom.style.cssText='width:80px;padding:5px 8px;font-size:11.5px';
+    inpFrom.addEventListener('change',e=>{f.anoFrom=e.target.value;render();});
+    aRow.appendChild(inpFrom);
+    const sep = mk('span');sep.textContent='—';sep.style.cssText='color:var(--text3);padding:0 4px';
+    aRow.appendChild(sep);
+    const inpTo = mk('input');inpTo.type='number';inpTo.min=String(anoMin);inpTo.max=String(anoMax);
+    inpTo.placeholder='até '+anoMax;inpTo.value=f.anoTo||'';
+    inpTo.style.cssText='width:80px;padding:5px 8px;font-size:11.5px';
+    inpTo.addEventListener('change',e=>{f.anoTo=e.target.value;render();});
+    aRow.appendChild(inpTo);
+    if(f.anoFrom || f.anoTo){
+      const clr = mk('button','filter-chip');clr.textContent='✕';clr.title='Limpar';clr.style.marginLeft='4px';
+      clr.addEventListener('click',()=>{f.anoFrom='';f.anoTo='';render();});
+      aRow.appendChild(clr);
+    }
+    chipRows.appendChild(aRow);
   }
 
   // Active topic filter — show as removable chip above other filters
@@ -22279,6 +22427,60 @@ function notebooksContaining(questionId){
   return (DATA.notebooks||[]).filter(n=>n.questionIds.includes(questionId));
 }
 
+// V15.12.34 — HELPERS DE EXCLUSÃO EM MASSA
+// Lista batches recentes (agrupando por importBatchId).
+// Retorna array ordenado do mais recente ao mais antigo.
+function listImportBatches(){
+  const bank = DATA.importedQuestions || [];
+  const grouped = {};
+  bank.forEach(q => {
+    const bId = q.importBatchId;
+    if(!bId) return;  // questão sem batch (legacy ou IA) — não aparece
+    if(!grouped[bId]){
+      grouped[bId] = {
+        batchId: bId,
+        importedAt: q.importedAt || q.createdAt || 0,
+        importSource: q.importSource || 'imported',
+        count: 0,
+        questionIds: []
+      };
+    }
+    grouped[bId].count++;
+    grouped[bId].questionIds.push(q.id);
+  });
+  return Object.values(grouped).sort((a,b)=>b.importedAt-a.importedAt);
+}
+
+// V15.12.34 — Exclui questões e remove referências dos cadernos.
+// Recebe array de IDs; retorna { removedQuestions, affectedNotebooks }.
+function bulkDeleteQuestions(ids){
+  if(!Array.isArray(ids) || ids.length === 0) return { removedQuestions: 0, affectedNotebooks: 0 };
+  const idSet = new Set(ids);
+  const before = (DATA.importedQuestions||[]).length;
+  DATA.importedQuestions = (DATA.importedQuestions||[]).filter(q => !idSet.has(q.id));
+  const removed = before - DATA.importedQuestions.length;
+  // Remove referências de TODOS os cadernos
+  let affected = 0;
+  (DATA.notebooks||[]).forEach(nb => {
+    const beforeLen = nb.questionIds.length;
+    nb.questionIds = nb.questionIds.filter(id => !idSet.has(id));
+    if(nb.questionIds.length !== beforeLen){
+      nb.lastModifiedAt = Date.now();
+      affected++;
+    }
+  });
+  save();
+  return { removedQuestions: removed, affectedNotebooks: affected };
+}
+
+// V15.12.34 — Conta quantas questões foram importadas em um intervalo.
+// Útil pra "excluir últimas N horas".
+function listQuestionsByPeriod(hoursBack){
+  const bank = DATA.importedQuestions || [];
+  const cutoff = Date.now() - hoursBack * 3600 * 1000;
+  return bank.filter(q => (q.importedAt || q.createdAt || 0) >= cutoff);
+}
+
 // Clean TEC Concursos PDF export artifacts.
 // V15.12.32 — REESCRITA pra cobrir todos os padrões reportados pelo Jean:
 //   - Cabeçalho "Tec Concursos - Questões para concursos, provas, editais, simulados."
@@ -22298,36 +22500,47 @@ function cleanTecPdfText(text){
 
   // === REGRAS DE LIMPEZA — aplicadas em TODO o texto ===
   // V15.12.32 padrões expandidos (cobrem cabeçalho/rodapé que repete por página)
+  // V15.12.34 — removida a ancoragem ^$ pra também pegar ruído INLINE
+  // (ex: URL de impressão grudada no meio de uma linha do enunciado)
   const KILL_PATTERNS = [
-    // Cabeçalho institucional repetido
+    // === URLs de impressão / cadernos / shortlinks (inline OU em linha) ===
+    // Captura URL inteira, incluindo paginação grudada tipo "...imprimir 2/5"
+    /https?:\/\/(?:www\.)?tecconcursos\.com\.br\/(?:questoes\/cadernos|cadernos|c|s)\/[^\s]+(?:\s+\d{1,3}\s*\/\s*\d{1,3})?/gi,
+    // Domínio com path /imprimir sem protocolo
+    /(?:www\.)?tecconcursos\.com\.br\/(?:questoes\/cadernos|cadernos|c|s)\/[^\s]+(?:\s+\d{1,3}\s*\/\s*\d{1,3})?/gi,
+
+    // === Cabeçalho institucional repetido (linha inteira) ===
     /^.*Tec\s*Concursos\s*-\s*Quest(?:õ|o)es\s+para\s+concursos.*$/gmi,
     /^.*tecconcursos\.com\.br\s*$/gmi,
     /^\s*tecconcursos\s*$/gmi,
 
-    // URLs de impressão e shortlinks
-    /https?:\/\/(?:www\.)?tecconcursos\.com\.br\/(?:cadernos|c|s)\/[^\s]+/gi,
-
-    // Paginação: "1/5", "23/45" (linha inteira ou no fim de linha)
+    // === Paginação ===
+    // "1/5", "23/45" (linha inteira)
     /^\s*\d{1,3}\s*\/\s*\d{1,3}\s*$/gm,
+    // Paginação INLINE no fim de linha após espaço (ex: "...texto 2/5")
+    // CUIDADO: só captura quando vem precedido de espaço/início, pra não
+    // quebrar frações reais como "1/2 da população".
+    // Heurística: paginação tem números até 999, vem isolada no fim.
+    / +\d{1,3}\/\d{1,3}\s*$/gm,
     /^\s*Página\s+\d+\s+de\s+\d+\s*$/gmi,
     /^\s*P[áa]g\.\s*\d+(?:\s*de\s*\d+)?\s*$/gmi,
 
-    // Datas e horários comuns no rodapé do TEC
+    // === Datas e horários ===
     // BR: "12/05/2024", "12/05/2024 14:30", "12/05/2024 14:30:00"
     /^\s*\d{1,2}\/\d{1,2}\/\d{2,4}(?:[\s,]+\d{1,2}:\d{2}(?::\d{2})?)?\s*$/gm,
     // ISO: "2024-05-12 14:30"
     /^\s*\d{4}-\d{2}-\d{2}(?:[T\s]\d{2}:\d{2}(?::\d{2})?)?\s*$/gm,
 
-    // Cabeçalho "Crimin. | Balística Forense" e variações de pasta
+    // === Cabeçalho "Crimin. | Balística Forense" e variações de pasta ===
     /^[A-Z][a-zçãéõ.]+\s*\|\s*[A-Z].*$/gm,
 
-    // Linhas com apenas pipes/separadores
+    // === Linhas com apenas pipes/separadores ===
     /^\s*[\|\u2502\u2500\u2014_-]+\s*$/gm,
 
-    // "Ordenação:" residual
+    // === "Ordenação:" residual ===
     /^.*Ordenação\s*:.*$/gmi,
 
-    // QR code residue (sequências de chars não-alfanuméricos isolados)
+    // === QR code residue (sequências de chars não-alfanuméricos isolados) ===
     /^[^a-zA-Z0-9çÇãÃõÕéÉáÁíÍóÓúÚâÂêÊîÎôÔûÛàÀèÈìÌòÒùÙ\s.,()\[\]:?!"'\/-]{3,}$/gm,
   ];
 
@@ -22340,6 +22553,49 @@ function cleanTecPdfText(text){
   // Remove linhas em branco do começo/fim
   cleaned = cleaned.replace(/^\s+|\s+$/g,'');
   return cleaned;
+}
+
+// V15.12.34 — Cleanup AGRESSIVO aplicado SÓ no enunciado (q.enunciado),
+// depois do parser ter isolado o bloco da questão.
+// Diferente do cleanTecPdfText (que opera no texto bruto inteiro do PDF),
+// este aqui opera por questão e remove ruídos que escaparam.
+//
+// Casos cobertos:
+//   - URL de impressão/caderno residual ("https://...tecconcursos.../imprimir 2/5")
+//   - URL individual da questão DENTRO do enunciado (não deve aparecer no texto)
+//   - Paginação solta "2/5" (mesmo isolada no meio de uma frase)
+//   - Cabeçalho "Tec Concursos - Questões para concursos..."
+//   - Datas/horários inline
+//   - Linhas em branco extras após remoção
+function _finalEnunciadoCleanup(enun){
+  if(!enun) return enun;
+  let t = enun;
+
+  // 1. URLs do TEC inline (mesmo padrão do KILL_PATTERNS, mas re-aplicado por garantia)
+  t = t.replace(/https?:\/\/(?:www\.)?tecconcursos\.com\.br\/[^\s]+(?:\s+\d{1,3}\s*\/\s*\d{1,3})?/gi, '');
+  t = t.replace(/(?:www\.)?tecconcursos\.com\.br\/[^\s]+/gi, '');
+
+  // 2. Cabeçalho institucional inline
+  t = t.replace(/Tec\s*Concursos\s*-\s*Quest(?:õ|o)es\s+para\s+concursos[^.]*?\./gi, '');
+
+  // 3. Paginação solta tipo "2/5" no meio de texto (se isolada por espaços)
+  // Mantém frações reais como "1/2 da população" — exigimos que seja max 3 dígitos
+  // e que esteja claramente isolada (espaços ao redor ou início/fim de linha).
+  t = t.replace(/(?:^|\s)\d{1,3}\/\d{1,3}(?=\s|$)/gm, ' ');
+
+  // 4. Datas inline
+  t = t.replace(/\b\d{1,2}\/\d{1,2}\/\d{2,4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?\b/g, '');
+
+  // 5. Quaisquer URLs http(s) que sobraram (não-TEC)
+  // Conservador: só remove se isolada (espaços ao redor)
+  // Pra não quebrar URL legítima que faça parte do enunciado, deixamos elas.
+
+  // 6. Limpeza final: espaços múltiplos, linhas vazias, espaço antes de pontuação
+  t = t.replace(/[ \t]{2,}/g, ' ');
+  t = t.replace(/\s+([.,;:!?])/g, '$1');
+  t = t.replace(/\n{3,}/g, '\n\n');
+  t = t.replace(/^\s+|\s+$/g, '');
+  return t;
 }
 
 // V13: Extrator inteligente de questões via IA.
@@ -22642,6 +22898,128 @@ Se NÃO conseguir extrair nada, retorne literalmente: null`;
 
   onProgress({phase:'done', total, processed:total, questionsFound:recovered.length, creditsUsed: total * costPerBlock});
   return recovered;
+}
+
+// V15.12.34 — Modal de gerenciamento de importações recentes.
+// Permite excluir batches inteiros, questões dos últimos N dias, ou
+// limpar tudo. Sempre confirma antes de excluir.
+function showManageImportsModal(){
+  const m = mk('div','manage-imports-modal');
+  m.style.cssText = 'max-width:580px;max-height:85vh;overflow-y:auto';
+
+  const h = mk('h3');
+  h.style.cssText = 'margin:0 0 .375rem;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px';
+  h.innerHTML = '🗑️ Gerenciar importações recentes';
+  m.appendChild(h);
+
+  const sub = mk('p','txt3');
+  sub.style.cssText = 'margin:0 0 1rem;font-size:12px;line-height:1.5';
+  sub.textContent = 'Apague questões importadas em massa por importação ou por período. Referências dos cadernos serão atualizadas automaticamente.';
+  m.appendChild(sub);
+
+  // === Seção 1: por importação (batch) ===
+  const batches = listImportBatches();
+  const sec1 = mk('div');sec1.style.cssText = 'margin-bottom:1.25rem';
+  const sec1Title = mk('h4');sec1Title.style.cssText='margin:0 0 .5rem;font-size:13.5px;font-weight:700;color:var(--text)';
+  sec1Title.textContent = 'Por importação';
+  sec1.appendChild(sec1Title);
+
+  if(batches.length === 0){
+    const p = mk('p','txt3');p.style.cssText='font-size:12px;padding:.5rem .75rem;background:var(--surface2);border-radius:6px';
+    p.textContent = 'Nenhuma importação rastreada por batch (questões antigas não têm essa marcação). Use a seção abaixo pra excluir por período.';
+    sec1.appendChild(p);
+  } else {
+    batches.slice(0, 10).forEach(b => {
+      const item = mk('div','manage-batch-item');
+      item.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px;padding:.625rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:.4rem';
+      const date = new Date(b.importedAt);
+      const dateStr = date.toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'});
+      const sourceLabels = { 'pdf-ai':'✨ PDF c/ IA', 'text':'📝 Texto', 'pdf':'📄 PDF', 'imported':'📋 Imp.' };
+      const srcLbl = sourceLabels[b.importSource] || b.importSource;
+      const left = mk('div');left.style.cssText='flex:1;min-width:0';
+      left.innerHTML = `<div style="font-size:13px;color:var(--text);font-weight:600">${b.count} ${b.count===1?'questão':'questões'} · ${srcLbl}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${dateStr}</div>`;
+      item.appendChild(left);
+      const delBtn = mkBtn('Excluir','btn btn-sm');
+      delBtn.style.cssText = 'color:var(--red);border-color:var(--red);font-size:11px';
+      delBtn.addEventListener('click', async ()=>{
+        const inNotebooks = b.questionIds.filter(id => notebooksContaining(id).length > 0).length;
+        const msg = `Confirmar exclusão de ${b.count} ${b.count===1?'questão':'questões'} desta importação?` +
+          (inNotebooks > 0 ? `\n\n⚠ ${inNotebooks} ${inNotebooks===1?'está':'estão'} em caderno(s) — ${inNotebooks===1?'a referência será removida':'as referências serão removidas'}.` : '');
+        if(!confirm(msg)) return;
+        const res = bulkDeleteQuestions(b.questionIds);
+        showToast(`✓ ${res.removedQuestions} questões excluídas${res.affectedNotebooks>0?` · ${res.affectedNotebooks} caderno(s) atualizado(s)`:''}`);
+        closeModal();
+        render();
+      });
+      item.appendChild(delBtn);
+      sec1.appendChild(item);
+    });
+    if(batches.length > 10){
+      const p = mk('p','txt3');p.style.cssText='font-size:11px;margin-top:.5rem';
+      p.textContent = `+ ${batches.length-10} importações mais antigas (use seção por período)`;
+      sec1.appendChild(p);
+    }
+  }
+  m.appendChild(sec1);
+
+  // === Seção 2: por período ===
+  const sec2 = mk('div');sec2.style.cssText = 'margin-bottom:1rem';
+  const sec2Title = mk('h4');sec2Title.style.cssText='margin:0 0 .5rem;font-size:13.5px;font-weight:700;color:var(--text)';
+  sec2Title.textContent = 'Por período';
+  sec2.appendChild(sec2Title);
+
+  const periodOpts = [
+    {label:'Última hora', hours:1},
+    {label:'Últimas 24h', hours:24},
+    {label:'Últimos 7 dias', hours:24*7},
+    {label:'Últimos 30 dias', hours:24*30}
+  ];
+  periodOpts.forEach(opt => {
+    const qs = listQuestionsByPeriod(opt.hours);
+    if(qs.length === 0) return;
+    const item = mk('div');
+    item.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px;padding:.625rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:.4rem';
+    const left = mk('div');left.style.cssText='flex:1';
+    left.innerHTML = `<div style="font-size:13px;color:var(--text);font-weight:600">${qs.length} ${qs.length===1?'questão':'questões'}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">${opt.label}</div>`;
+    item.appendChild(left);
+    const delBtn = mkBtn('Excluir','btn btn-sm');
+    delBtn.style.cssText='color:var(--red);border-color:var(--red);font-size:11px';
+    delBtn.addEventListener('click',()=>{
+      const ids = qs.map(q => q.id);
+      const inNotebooks = ids.filter(id => notebooksContaining(id).length > 0).length;
+      // Pra ações com >20 questões, exigimos digitação de "EXCLUIR" pra confirmar
+      const requireType = qs.length > 20;
+      let confirmed = false;
+      if(requireType){
+        const typed = prompt(`⚠ Você está prestes a excluir ${qs.length} questões (${opt.label}).\n\n` +
+          (inNotebooks > 0 ? `${inNotebooks} ${inNotebooks===1?'está':'estão'} em caderno(s) — referências serão removidas.\n\n` : '') +
+          'Para confirmar, digite EXCLUIR:');
+        confirmed = typed && typed.trim().toUpperCase() === 'EXCLUIR';
+      } else {
+        confirmed = confirm(`Excluir ${qs.length} questões de ${opt.label.toLowerCase()}?` +
+          (inNotebooks > 0 ? `\n\n⚠ ${inNotebooks} em caderno(s) — referências serão removidas.` : ''));
+      }
+      if(!confirmed) return;
+      const res = bulkDeleteQuestions(ids);
+      showToast(`✓ ${res.removedQuestions} questões excluídas${res.affectedNotebooks>0?` · ${res.affectedNotebooks} caderno(s) atualizado(s)`:''}`);
+      closeModal();
+      render();
+    });
+    item.appendChild(delBtn);
+    sec2.appendChild(item);
+  });
+  m.appendChild(sec2);
+
+  // Fechar
+  const btnRow = mk('div');btnRow.style.cssText='display:flex;justify-content:flex-end;margin-top:1rem';
+  const closeBtn = mkBtn('Fechar','btn btn-sm');
+  closeBtn.addEventListener('click',()=>closeModal());
+  btnRow.appendChild(closeBtn);
+  m.appendChild(btnRow);
+
+  showModal(m);
 }
 
 // V15.12.31 — Modal de confirmação de custo ANTES de processar PDF com IA.
@@ -23166,13 +23544,28 @@ function normalizeQuestionText(q, opts){
   if(!q || !q.enunciado) return q;
   opts = opts || {};
   const original = q.enunciado;
-  const reflowed = reflowText(original);
-  const blocks = splitIntoSemanticBlocks(reflowed, q.kind);
+  // V15.12.34 — pipeline:
+  //   1. _finalEnunciadoCleanup remove ruídos residuais (URLs, paginação, etc)
+  //   2. reflowText junta linhas quebradas pelo wrap do PDF
+  //   3. _finalEnunciadoCleanup de novo (fail-safe pós-reflow)
+  //   4. splitIntoSemanticBlocks divide em context/instruction/statement
+  let cleaned = _finalEnunciadoCleanup(original);
+  cleaned = reflowText(cleaned);
+  cleaned = _finalEnunciadoCleanup(cleaned);
+  const blocks = splitIntoSemanticBlocks(cleaned, q.kind);
 
-  // Atualiza enunciado pra versão reflowed (texto canônico que vai pro banco)
-  q.enunciado = reflowed;
+  // Atualiza enunciado pra versão limpa (texto canônico que vai pro banco)
+  q.enunciado = cleaned;
   // Adiciona blocks pra render (não vai pro hash — hash usa enunciado)
   q.blocks = blocks;
+
+  // V15.12.34 — também limpa alternativas de MC
+  if(q.kind === 'MC' && Array.isArray(q.alternatives)){
+    q.alternatives = q.alternatives.map(a => ({
+      letter: a.letter,
+      text: _finalEnunciadoCleanup(a.text || '')
+    }));
+  }
 
   return q;
 }
@@ -23201,6 +23594,71 @@ function renderQuestionBlocks(q, opts){
   const wrap = mk('div','q-blocks');
   // Espaçamento e tipografia confortáveis
   wrap.style.cssText = 'display:flex;flex-direction:column;gap:.65rem;line-height:1.65;font-size:14px;color:var(--text)';
+
+  // V15.12.34 — Header premium opcional (banca/cargo/ano/assunto + abrir no TEC)
+  // Renderiza apenas se opts.showHeader === true E pelo menos 1 metadado existe.
+  if(opts.showHeader && q){
+    const banca = q.banca || (q.meta ? extractBanca(q) : null);
+    const ano = (typeof extractAno === 'function') ? extractAno(q) : (q.ano || null);
+    const cargo = q.cargo || (q.meta ? extractCargo(q) : null);
+    const disciplina = q.disciplinaName || q.disciplina || null;
+    const assunto = q.assunto || q.topic || null;
+
+    if(banca || ano || cargo || disciplina || assunto || q.sourceUrl){
+      const header = mk('div','q-block-header');
+      header.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:.25rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)';
+
+      // Tags compactas: banca · ano · cargo
+      const _tag = (text, color) => {
+        const t = mk('span','q-meta-tag');
+        t.textContent = text;
+        t.style.cssText = `display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:10.5px;font-weight:600;line-height:1.4;background:${color || 'var(--surface2)'};color:var(--text2);border:1px solid var(--border);font-variant-numeric:tabular-nums`;
+        return t;
+      };
+
+      if(banca){
+        const t = _tag(banca, 'rgba(124,92,255,.10)');
+        t.style.color = 'var(--gralia-purple)';
+        t.style.borderColor = 'rgba(124,92,255,.25)';
+        header.appendChild(t);
+      }
+      if(ano) header.appendChild(_tag(String(ano)));
+      if(cargo){
+        const cargoText = cargo.length > 40 ? cargo.slice(0,40)+'…' : cargo;
+        const t = _tag(cargoText);
+        t.title = cargo;
+        header.appendChild(t);
+      }
+      if(disciplina){
+        const t = _tag(disciplina, 'rgba(16,185,129,.10)');
+        t.style.color = 'var(--accent-text)';
+        t.style.borderColor = 'rgba(16,185,129,.25)';
+        header.appendChild(t);
+      }
+      if(assunto && assunto !== disciplina){
+        const assText = assunto.length > 40 ? assunto.slice(0,40)+'…' : assunto;
+        header.appendChild(_tag(assText));
+      }
+
+      // Spacer + botão "Abrir no TEC" (discreto, à direita)
+      if(q.sourceUrl && /tecconcursos\.com\.br/i.test(q.sourceUrl)){
+        const spacer = mk('div');spacer.style.flex = '1';
+        header.appendChild(spacer);
+        const link = mk('a','q-source-link');
+        link.href = q.sourceUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.title = 'Abrir questão no TEC Concursos';
+        link.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:10.5px;color:var(--text3);text-decoration:none;border-radius:5px;transition:background .15s';
+        link.innerHTML = '🔗 <span style="text-decoration:underline">TEC' + (q.questionId ? ' #'+q.questionId : '') + '</span>';
+        link.addEventListener('mouseenter',()=>{link.style.background = 'var(--surface2)';link.style.color = 'var(--text2)';});
+        link.addEventListener('mouseleave',()=>{link.style.background = 'transparent';link.style.color = 'var(--text3)';});
+        header.appendChild(link);
+      }
+
+      wrap.appendChild(header);
+    }
+  }
 
   // Seleciona blocos: se existe q.blocks usa, senão fallback do enunciado
   let blocks = (q && Array.isArray(q.blocks) && q.blocks.length > 0)
@@ -23277,13 +23735,24 @@ function assessQuestionQuality(q){
   }
 
   // Ruído de cabeçalho/rodapé dentro do enunciado
-  // (regras parecidas com cleanTecPdfText, mas pra detecção)
+  // V15.12.34 — patterns reforçados pra pegar resíduos que escaparam da limpeza
   const noisePatterns = [
+    // Cabeçalho institucional (qualquer lugar)
     /Tec\s*Concursos\s*-\s*Quest(?:õ|o)es/i,
-    /tecconcursos\.com\.br\/(?:cadernos|c|s)\//i,
-    /^\d{1,2}\/\d{1,2}\/\d{2,4}/m,
+    // URL de impressão / caderno (qualquer lugar)
+    /tecconcursos\.com\.br\/(?:questoes\/cadernos|cadernos|c|s)\//i,
+    // /imprimir
+    /\/imprimir\b/i,
+    // Qualquer http(s) URL completa (suspeita)
+    /https?:\/\/[^\s]+/i,
+    // Paginação inline "X/Y" isolada (max 3 dígitos cada lado)
+    /(?:^|\s)\d{1,3}\/\d{1,3}(?:\s|$)/m,
+    // Datas BR ou ISO inline
+    /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/,
+    // Página X de Y
     /Página\s+\d+\s+de\s+\d+/i,
-    /^\s*\d{1,3}\s*\/\s*\d{1,3}\s*$/m,
+    // Pasta com pipe
+    /^[A-Z][a-zçãéõ.]+\s*\|\s*[A-Z]/m,
   ];
   if(noisePatterns.some(re => re.test(q.enunciado))){
     issues.push('ruido-no-enunciado');
@@ -23370,6 +23839,53 @@ function _startsWithContinuation(s){
   return false;
 }
 
+// V15.12.34 — Extrai metadados estruturados do header TEC.
+// Header típico do TEC:
+//   "CEBRASPE (CESPE) - AJ (TJ PA)/TJ PA/Comunicação Social/2025"
+//   "FCC - 2023 - TRT - Analista"
+//   "FGV - 2024 - PF - Escrivão"
+//   "CEBRASPE - 2023 - PCDF - Agente"
+// Retorna: { banca, ano, cargo, sourceName }
+function _extractTecMeta(metaHeader, metaTopic){
+  const out = { banca: null, ano: null, cargo: null, sourceName: null, disciplina: null, assunto: null };
+  if(metaHeader){
+    const parts = metaHeader.split(/\s-\s|\s\u2013\s|\s\u2014\s/).map(p=>p.trim()).filter(Boolean);
+    // Banca = primeira parte. Pode ter parêntese tipo "CEBRASPE (CESPE)"
+    if(parts[0]) out.banca = parts[0];
+    // Procura ano (4 dígitos 19xx ou 20xx) em qualquer parte ou no header todo
+    const anoMatch = metaHeader.match(/\b(19|20)\d{2}\b/);
+    if(anoMatch) out.ano = parseInt(anoMatch[0], 10);
+    // V15.12.34 fix: cargo é a próxima parte que NÃO seja só ano (4 dígitos).
+    // Antes pegava parts[1] cegamente, mas em "CEBRASPE - 2023 - PCDF - Agente"
+    // parts[1] = "2023" (ano), e o cargo real está em parts[2] ou junção parts[2]+parts[3].
+    let cargo = null;
+    for(let i = 1; i < parts.length; i++){
+      const p = parts[i].split('/')[0].trim();
+      if(/^(19|20)\d{2}$/.test(p)) continue;  // pula ano puro
+      cargo = p;
+      // Se houver mais partes não-ano, junta (ex: "PCDF - Agente" → "PCDF - Agente")
+      const rest = [];
+      for(let j = i+1; j < parts.length; j++){
+        const pj = parts[j].split('/')[0].trim();
+        if(/^(19|20)\d{2}$/.test(pj)) continue;
+        if(pj) rest.push(pj);
+      }
+      if(rest.length > 0) cargo = cargo + ' - ' + rest.join(' - ');
+      break;
+    }
+    if(cargo) out.cargo = cargo;
+    // sourceName: header completo limpo (útil pra display)
+    out.sourceName = metaHeader.trim();
+  }
+  // metaTopic geralmente é "Disciplina / Assunto" ou só "Disciplina"
+  if(metaTopic){
+    const topicParts = metaTopic.split('/').map(s=>s.trim()).filter(Boolean);
+    if(topicParts[0]) out.disciplina = topicParts[0];
+    if(topicParts[1]) out.assunto = topicParts[1];
+  }
+  return out;
+}
+
 function parseTecBlock(block, sourceUrl){
   const lines = block.split('\n').map(l=>l.trim()).filter(l=>l.length>0);
   if(lines.length < 2) return null;
@@ -23446,6 +23962,9 @@ function parseTecBlock(block, sourceUrl){
     return s.replace(/^\s*\d+\s*\)\s*/, '');
   };
 
+  // V15.12.34 — extrai metadados estruturados do header
+  const tecMeta = _extractTecMeta(metaHeader, metaTopic);
+
   // === Monta enunciado ===
   if(hasCertoErrado && altLineIdxs.length === 0){
     // C/E
@@ -23458,7 +23977,14 @@ function parseTecBlock(block, sourceUrl){
     return {
       enunciado, answer, kind:'CE',
       meta: metaHeader, topic: metaTopic, source: sourceUrl,
-      questionId
+      questionId,
+      // V15.12.34 — campos estruturados
+      banca: tecMeta.banca,
+      ano: tecMeta.ano,
+      cargo: tecMeta.cargo,
+      disciplina: tecMeta.disciplina,
+      assunto: tecMeta.assunto,
+      sourceName: tecMeta.sourceName
     };
   }
 
@@ -23482,7 +24008,14 @@ function parseTecBlock(block, sourceUrl){
     return {
       enunciado, answer: answerLetter, kind:'MC', alternatives: alts,
       meta: metaHeader, topic: metaTopic, source: sourceUrl,
-      questionId
+      questionId,
+      // V15.12.34 — campos estruturados
+      banca: tecMeta.banca,
+      ano: tecMeta.ano,
+      cargo: tecMeta.cargo,
+      disciplina: tecMeta.disciplina,
+      assunto: tecMeta.assunto,
+      sourceName: tecMeta.sourceName
     };
   }
 
@@ -26336,7 +26869,22 @@ function renderImportedList(wrap){
 
   const stats = mk('p','txt3');stats.style.marginBottom='.75rem';
   stats.textContent = `${filtered.length} ${filtered.length===1?'questão':'questões'} (de ${bank.length} no total)`;
-  wrap.appendChild(stats);
+  // V15.12.34 — Botão "Gerenciar importações" pra exclusão em massa
+  const headerRow = mk('div');
+  headerRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;gap:8px;flex-wrap:wrap';
+  stats.style.margin = '0';
+  headerRow.appendChild(stats);
+  // Só mostra o botão se há questões com batch (vem de import recente)
+  const hasBatches = bank.some(q => q.importBatchId);
+  const hasRecent = listQuestionsByPeriod(24*30).length > 0;
+  if(hasBatches || hasRecent){
+    const mgmtBtn = mkBtn('🗑️ Gerenciar importações','btn btn-sm');
+    mgmtBtn.style.cssText = 'font-size:11.5px;color:var(--text2)';
+    mgmtBtn.title = 'Excluir em massa importações recentes ou por período';
+    mgmtBtn.addEventListener('click', ()=>showManageImportsModal());
+    headerRow.appendChild(mgmtBtn);
+  }
+  wrap.appendChild(headerRow);
 
   if(filtered.length===0){
     wrap.appendChild(infoBox('Nenhuma questão corresponde aos filtros aplicados.'));
@@ -26434,6 +26982,7 @@ function renderImportedList(wrap){
     }
     // Add to notebook button
     const addNbBtn = mkBtn('+ Caderno','btn btn-sm');addNbBtn.style.marginLeft='auto';
+    addNbBtn.title = 'Adicionar a um caderno';
     addNbBtn.addEventListener('click',()=>showAddToNotebookModal(q.id));
     meta.appendChild(addNbBtn);
     // Ver na matéria
@@ -26442,7 +26991,10 @@ function renderImportedList(wrap){
       mapBtn.addEventListener('click',()=>mapNavigate(q.disciplineId,q.topic));
       meta.appendChild(mapBtn);
     }
+    // V15.12.34 — Botão excluir com tooltip claro (era "×" solto sem contexto)
     const del = mkBtn('×','icon-btn del');
+    del.title = 'Excluir esta questão';
+    del.setAttribute('aria-label','Excluir esta questão');
     del.addEventListener('click',()=>{if(confirm('Remover esta questão? Será removida também de todos os cadernos.')){
       DATA.importedQuestions=DATA.importedQuestions.filter(x=>x.id!==q.id);
       // Also clean from notebooks
@@ -26451,14 +27003,17 @@ function renderImportedList(wrap){
     }});
     meta.appendChild(del);
     it.appendChild(meta);
-    if(q.meta){
+    // V15.12.34: Render rico no card da lista — header com banca/ano/cargo + botão TEC
+    // O q.meta string antiga é redundante com banca/ano/cargo estruturados, então só mostramos
+    // se NÃO temos os campos estruturados (compat com questões antigas).
+    const hasStructuredMeta = !!(q.banca || q.ano || q.cargo);
+    if(q.meta && !hasStructuredMeta){
       const mt = mk('p','txt3');mt.style.cssText='margin-bottom:4px;font-size:10.5px';
       mt.textContent=q.meta;
       it.appendChild(mt);
     }
-    const qt = mk('p','txt');qt.style.cssText='margin:0;white-space:pre-wrap';
-    qt.textContent=q.enunciado;
-    it.appendChild(qt);
+    // Render rico (com header se tem metadados)
+    it.appendChild(renderQuestionBlocks(q, {showHeader: hasStructuredMeta}));
     if(q.kind==='MC'&&q.alternatives){
       const altWrap = mk('div');altWrap.style.cssText='margin-top:.5rem;padding-left:4px';
       q.alternatives.forEach(alt=>{
@@ -26469,7 +27024,9 @@ function renderImportedList(wrap){
       });
       it.appendChild(altWrap);
     }
-    if(q.sourceUrl){
+    // V15.12.34: Se TEM header estruturado, o link do TEC já vai no header.
+    // Se NÃO tem (legacy), mostramos o link "Ver no TEC ↗" abaixo como antes.
+    if(q.sourceUrl && !hasStructuredMeta){
       const srcLink = mk('a');
       srcLink.href = q.sourceUrl.startsWith('http')?q.sourceUrl:'https://'+q.sourceUrl;
       srcLink.target='_blank';srcLink.rel='noopener';
@@ -27267,6 +27824,14 @@ function renderImportedImport(wrap){
     let addedCount = 0;
     let skippedCount = 0;
     let autoDisciplinesCreated = new Set();
+    // V15.12.34 — batchId único pra esta importação (permite excluir em massa depois)
+    const batchId = 'batch_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    const batchAt = Date.now();
+    // Detecta origem mais específica
+    let batchSource = 'imported';
+    if(ST.importMode === 'pdf-ai') batchSource = 'pdf-ai';
+    else if(ST.importMode === 'pdf') batchSource = 'pdf';
+    else if(ST.importMode === 'text') batchSource = 'text';
     valid.forEach(q=>{
       const targetNorm = norm(q.enunciado);
       const hash = simpleHash(targetNorm).toString(36);
@@ -27293,6 +27858,10 @@ function renderImportedImport(wrap){
         topic: ST.importInput.topic || q.topicHint || q.topic || '',
         source:'imported',
         createdAt:Date.now(),
+        // V15.12.34 — campos pra exclusão em massa
+        importBatchId: batchId,
+        importedAt: batchAt,
+        importSource: batchSource,
         attempts:0,correctCount:0,
         contentHash: hash
       };
@@ -27304,6 +27873,13 @@ function renderImportedImport(wrap){
       if(q.blocks && Array.isArray(q.blocks)) rec.blocks = q.blocks;
       // V15.12.33: também persiste questionId do TEC se houver (rastreabilidade)
       if(q.questionId) rec.questionId = q.questionId;
+      // V15.12.34 — campos estruturados de metadados (usados pra filtros)
+      if(q.banca) rec.banca = q.banca;
+      if(q.ano) rec.ano = q.ano;
+      if(q.cargo) rec.cargo = q.cargo;
+      if(q.disciplina) rec.disciplinaName = q.disciplina;  // não confundir com disciplineId interno
+      if(q.assunto) rec.assunto = q.assunto;
+      if(q.sourceName) rec.sourceName = q.sourceName;
       DATA.importedQuestions.push(rec);
       addedCount++;
     });
@@ -27386,8 +27962,8 @@ function renderImportedPractice(wrap){
   wrap.appendChild(meta);
 
   const qc = mk('div','card fade');
-  // V15.12.33: render rico em blocos semânticos
-  qc.appendChild(renderQuestionBlocks(q));
+  // V15.12.34: render rico com header premium (banca/ano/cargo/assunto + abrir no TEC)
+  qc.appendChild(renderQuestionBlocks(q, {showHeader: true}));
   // Render alternatives inside the card if MC
   if(q.kind==='MC'&&q.alternatives){
     const altWrap = mk('div');altWrap.style.cssText='margin-top:.875rem;display:flex;flex-direction:column;gap:6px';
@@ -29150,8 +29726,8 @@ function renderNotebookPractice(wrap){
   wrap.appendChild(meta);
 
   const qc = mk('div','card fade');
-  // V15.12.33: render rico em blocos semânticos
-  qc.appendChild(renderQuestionBlocks(q));
+  // V15.12.34: render rico com header premium (banca/ano/cargo/assunto + abrir no TEC)
+  qc.appendChild(renderQuestionBlocks(q, {showHeader: true}));
   if(q.kind==='MC'&&q.alternatives){
     const altWrap = mk('div');altWrap.style.cssText='margin-top:.875rem;display:flex;flex-direction:column;gap:6px';
     q.alternatives.forEach(alt=>{
