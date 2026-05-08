@@ -444,6 +444,37 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
 .brand-bird-dark{display:none}
 :root[data-theme="dark"] .brand-bird-light{display:none}
 :root[data-theme="dark"] .brand-bird-dark{display:block}
+
+/* V15.12.45 — Animação da logo nominal da topbar.
+   Mesma lógica do mascote do Painel (.dash-mascot), mas adaptada à topbar:
+   - 3 estados mutuamente exclusivos (playing / static / reduced-motion)
+   - WebM toca uma vez e faz fade pra imagem estática do tema
+   - Imagens light/dark dentro do container trocam via data-theme
+   - Vídeos light/dark separados (escolha feita no JS conforme tema atual)
+   Tamanho casado com .brand .brand-bird (height:27px, max-width:122px) pra
+   não causar shift de layout entre estados. */
+.brand-anim{position:relative;display:inline-flex;align-items:center;flex-shrink:0}
+.brand-anim-video,.brand-anim .brand-bird{display:none}
+.brand-anim-video{
+  height:27px;width:auto;max-width:122px;object-fit:contain;
+  background:transparent;
+  user-select:none;pointer-events:none;
+  transition:opacity .45s ease;
+}
+/* Estado playing: vídeo visível, imagens ocultas */
+.brand-anim.brand-anim-playing .brand-anim-video{display:block}
+/* Estado static: imagem do tema atual visível, vídeo oculto */
+.brand-anim.brand-anim-static .brand-bird-light{display:block}
+:root[data-theme="dark"] .brand-anim.brand-anim-static .brand-bird-light{display:none}
+:root[data-theme="dark"] .brand-anim.brand-anim-static .brand-bird-dark{display:block}
+/* Defesa em CSS pra reduced-motion: força estado estático mesmo se JS falhar */
+@media (prefers-reduced-motion: reduce){
+  .brand-anim-video{display:none !important}
+  .brand-anim .brand-bird-light{display:block}
+  :root[data-theme="dark"] .brand-anim .brand-bird-light{display:none}
+  :root[data-theme="dark"] .brand-anim .brand-bird-dark{display:block}
+}
+
 .brand-name{font-family:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:22px;font-weight:800;letter-spacing:-1px;line-height:1;display:inline-flex;align-items:baseline}
 
 /* Fallback de texto da logo — invisível por padrão; aparece só se imagem falhar (via JS) */
@@ -10371,7 +10402,14 @@ const BRAND = {
   // ambos os temas (assume transparência alpha + contraste próprio).
   // Fallback automático para mascotLogo/mascotLogoDark se WebM falhar
   // ou se prefers-reduced-motion estiver ativo.
-  mascotVideo: '/animacao-mascote.webm'
+  mascotVideo: '/animacao-mascote.webm',
+  // V15.12.45 — Animação WebM da logo da topbar. Diferente do mascote: tem
+  // arquivos separados pra cada tema (a logo nominal tem cores específicas).
+  // Fallback automático para topbarLogo/topbarLogoDark se WebM falhar ou se
+  // prefers-reduced-motion estiver ativo. Toca uma vez por sessão (controlado
+  // por ST._topbarLogoPlayed pra não animar a cada re-render da topbar).
+  topbarVideoLight: '/animacao-nome-light.webm',
+  topbarVideoDark: '/animacao-nome-dark.webm'
 };
 const STORAGE_KEY = 'nexus_pl_v4';
 const REFERRAL_KEY = 'gralia_referral';
@@ -17775,7 +17813,60 @@ function renderTopbar(){
   brand.setAttribute('role','button');
   brand.setAttribute('tabindex','0');
   brand.setAttribute('aria-label','Sobre o Gralia');
-  brand.innerHTML = `<img src="${BRAND.topbarLogo}" alt="Gralia" class="brand-bird brand-bird-light"><img src="${BRAND.topbarLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark"><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
+  // V15.12.45 — Logo nominal da topbar com animação WebM por tema.
+  // Mesmo padrão do mascote do Painel: vídeo toca uma vez e faz fade pra
+  // imagem estática. Diferente do mascote, tem 2 vídeos (light/dark) — a
+  // escolha é feita no momento da renderização conforme tema atual.
+  // Toca apenas 1x por sessão (controlado por ST._topbarLogoPlayed) pra
+  // não animar a cada re-render da topbar (que acontece em quase toda interação).
+  const reducedMotion = (typeof window.matchMedia === 'function')
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const videoSrc = isDark ? BRAND.topbarVideoDark : BRAND.topbarVideoLight;
+  const shouldAnimate = !reducedMotion && !ST._topbarLogoPlayed;
+  if(shouldAnimate){
+    brand.innerHTML = `<div class="brand-anim brand-anim-playing">
+      <video class="brand-anim-video" autoplay muted playsinline preload="metadata" aria-hidden="true">
+        <source src="${videoSrc}" type="video/webm">
+      </video>
+      <img src="${BRAND.topbarLogo}" alt="Gralia" class="brand-bird brand-bird-light">
+      <img src="${BRAND.topbarLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark">
+    </div><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
+    setTimeout(()=>{
+      const animBox = brand.querySelector('.brand-anim');
+      const v = brand.querySelector('.brand-anim-video');
+      if(!animBox || !v) return;
+      const switchToStatic = ()=>{
+        try{
+          v.style.opacity = '0';
+          setTimeout(()=>{
+            animBox.classList.remove('brand-anim-playing');
+            animBox.classList.add('brand-anim-static');
+            try{ v.pause && v.pause(); }catch(_){}
+            v.style.display = 'none';
+          }, 450);
+        }catch(_){
+          animBox.classList.remove('brand-anim-playing');
+          animBox.classList.add('brand-anim-static');
+        }
+        ST._topbarLogoPlayed = true;
+      };
+      v.addEventListener('error', switchToStatic);
+      v.addEventListener('ended', switchToStatic);
+      const src = v.querySelector('source');
+      if(src) src.addEventListener('error', switchToStatic);
+      v.addEventListener('loadedmetadata', ()=>{
+        if(!v.duration || isNaN(v.duration) || v.duration === 0) switchToStatic();
+      });
+    }, 0);
+  } else {
+    // Estado estático direto: já tocou nesta sessão OU prefers-reduced-motion.
+    // CSS .brand-anim-static + data-theme cuidam de mostrar a imagem certa.
+    brand.innerHTML = `<div class="brand-anim brand-anim-static">
+      <img src="${BRAND.topbarLogo}" alt="Gralia" class="brand-bird brand-bird-light">
+      <img src="${BRAND.topbarLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark">
+    </div><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
+  }
   // Tooltip de marca com info da gralha-azul
   const brandTip = mk('div','brand-tooltip');
   brandTip.innerHTML = `
@@ -53344,6 +53435,14 @@ function renderSettings(){
       render();
     });
     accBtns.appendChild(forceSyncBtn);
+    // V15.12.43 — Botão "Alterar senha" disponível pra todo usuário logado.
+    // Para contas via Google OAuth (sem senha local), o Supabase aceita o
+    // updateUser({password}) e cria a senha — passa a aceitar ambos os métodos.
+    const changePwBtn = mkBtn('🔒 Alterar senha','btn btn-sm');
+    changePwBtn.addEventListener('click', ()=>{
+      showChangePasswordModal();
+    });
+    accBtns.appendChild(changePwBtn);
     const logoutBtn = mkBtn('Sair da conta','btn btn-sm');
     logoutBtn.style.color='var(--red-text)';
     logoutBtn.addEventListener('click',async()=>{
@@ -57727,6 +57826,55 @@ async function authSignInWithGoogle(){
   return data;
 }
 
+// V15.12.43 — Envia email de redefinição de senha. O Supabase manda link mágico
+// que volta pra mesma URL com hash `type=recovery&access_token=...`. O SDK detecta
+// automaticamente e dispara o evento `PASSWORD_RECOVERY` no onAuthStateChange,
+// onde abrimos o modal pra digitar a nova senha.
+async function authResetPassword(email){
+  if(!supa) throw new Error('Supabase não configurado');
+  const em = (email||'').trim();
+  if(!em) throw new Error('Informe o email da conta');
+  const {error} = await supa.auth.resetPasswordForEmail(em, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+  if(error) throw error;
+  return true;
+}
+
+// V15.12.43 — Atualiza senha do usuário logado (ou em sessão de recovery).
+// Funciona em 2 fluxos: (1) usuário logado normalmente que quer trocar a senha
+// pelo botão "Alterar senha" da Conta; (2) usuário que veio do email de
+// recuperação e está numa sessão temporária de recovery.
+async function authUpdatePassword(newPassword){
+  if(!supa) throw new Error('Supabase não configurado');
+  if(!newPassword || newPassword.length < 6){
+    throw new Error('A nova senha precisa ter ao menos 6 caracteres');
+  }
+  const {data, error} = await supa.auth.updateUser({password: newPassword});
+  if(error) throw error;
+  return data;
+}
+
+// V15.12.43 — Reautenticação leve: confirma que a senha atual do usuário bate.
+// Usado no fluxo "Alterar senha" da Conta pra evitar troca em sessões esquecidas
+// abertas. Faz signInWithPassword com o mesmo email — se falhar, a senha
+// atual está errada. Se passar, a sessão é renovada (efeito colateral inofensivo).
+async function authVerifyCurrentPassword(currentPassword){
+  if(!supa) throw new Error('Supabase não configurado');
+  if(!AUTH.user || !AUTH.user.email) throw new Error('Sessão inválida');
+  const {error} = await supa.auth.signInWithPassword({
+    email: AUTH.user.email,
+    password: currentPassword
+  });
+  if(error){
+    if((error.message||'').toLowerCase().includes('invalid')){
+      throw new Error('Senha atual incorreta');
+    }
+    throw error;
+  }
+  return true;
+}
+
 // Logout
 async function authSignOut(){
   if(!supa)return;
@@ -57880,6 +58028,22 @@ function renderAuthScreen(){
   });
   form.appendChild(submitBtn);
 
+  // V15.12.43 — Link "Esqueci minha senha" — só no modo login
+  if(mode === 'login'){
+    const forgotRow = mk('div');
+    forgotRow.style.cssText = 'text-align:right;margin-top:.5rem';
+    const forgotLink = mk('a');
+    forgotLink.href = '#';
+    forgotLink.textContent = 'Esqueci minha senha';
+    forgotLink.style.cssText = 'font-size:12.5px;color:var(--gralia-purple);text-decoration:none;font-weight:500';
+    forgotLink.addEventListener('click', e => {
+      e.preventDefault();
+      showForgotPasswordModal();
+    });
+    forgotRow.appendChild(forgotLink);
+    form.appendChild(forgotRow);
+  }
+
   // === Divisor "ou" + Botão Google OAuth ===
   const divider = mk('div','auth-divider');
   divider.innerHTML = '<span>ou</span>';
@@ -57940,6 +58104,608 @@ function renderAuthScreen(){
 }
 
 /* ============================================================
+   V15.12.43 — RECUPERAÇÃO E ALTERAÇÃO DE SENHA
+   ============================================================
+   Três fluxos:
+   1. showForgotPasswordModal()    — abre do login, manda email de reset
+   2. showPasswordRecoveryModal()  — abre quando user volta do link do email
+                                     (disparado por event PASSWORD_RECOVERY)
+   3. showChangePasswordModal()    — abre da Conta pra trocar senha logado
+   ============================================================ */
+
+// Modal "Esqueci minha senha" — chamado a partir do link no auth screen
+function showForgotPasswordModal(){
+  const m = mk('div');
+  m.style.cssText = 'max-width:440px;width:100%';
+
+  // Header
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;padding-bottom:.625rem;border-bottom:1px solid var(--border)';
+  const headIcon = mk('span');headIcon.style.cssText='font-size:22px;line-height:1';
+  headIcon.textContent = '🔑';
+  head.appendChild(headIcon);
+  const headTitle = mk('h2');headTitle.style.cssText='margin:0;font-size:17px;font-weight:700;letter-spacing:-.2px';
+  headTitle.textContent = 'Recuperar senha';
+  head.appendChild(headTitle);
+  m.appendChild(head);
+
+  const intro = mk('p','txt2');
+  intro.style.cssText = 'margin:0 0 .875rem;font-size:13px;line-height:1.55';
+  intro.textContent = 'Vamos enviar um link pro seu email pra você criar uma nova senha. Confira a caixa de entrada e a pasta de spam.';
+  m.appendChild(intro);
+
+  // Form state
+  const state = {email: (ST.authEmail || '').trim(), sending: false, sent: false};
+
+  // Email input
+  const emailLbl = mk('label');
+  emailLbl.style.cssText = 'display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;letter-spacing:.4px;text-transform:uppercase';
+  emailLbl.textContent = 'Email da conta';
+  m.appendChild(emailLbl);
+
+  const emailIn = mk('input');
+  emailIn.type = 'email';
+  emailIn.autocomplete = 'email';
+  emailIn.placeholder = 'voce@email.com';
+  emailIn.value = state.email;
+  emailIn.style.cssText = 'width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--surface);color:var(--text);font-family:inherit';
+  emailIn.addEventListener('input', e => {state.email = e.target.value;});
+  m.appendChild(emailIn);
+
+  const errBox = mk('div','auth-error');
+  errBox.style.cssText = 'margin-top:.625rem;display:none';
+  m.appendChild(errBox);
+
+  const okBox = mk('div','auth-ok');
+  okBox.style.cssText = 'margin-top:.625rem;display:none';
+  m.appendChild(okBox);
+
+  // Actions
+  const actions = mk('div');
+  actions.style.cssText = 'display:flex;gap:8px;margin-top:1rem';
+  const cancel = mkBtn('Cancelar','btn btn-sm');
+  cancel.style.flex = '1';
+  cancel.addEventListener('click', closeModal);
+  actions.appendChild(cancel);
+
+  const sendBtn = mkBtn('Enviar link','btn btn-sm btn-p');
+  sendBtn.style.flex = '2';
+  sendBtn.addEventListener('click', async () => {
+    if(state.sending) return;
+    const em = (state.email || '').trim();
+    if(!em){
+      errBox.textContent = 'Informe o email da sua conta.';
+      errBox.style.display = 'block';
+      okBox.style.display = 'none';
+      return;
+    }
+    errBox.style.display = 'none';
+    state.sending = true;
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Enviando...';
+    try{
+      await authResetPassword(em);
+      state.sent = true;
+      okBox.innerHTML = '✓ Link enviado pro seu email. Confira a caixa de entrada (e o spam) — o link funciona por 1 hora.';
+      okBox.style.display = 'block';
+      sendBtn.textContent = 'Enviado ✓';
+      cancel.textContent = 'Fechar';
+    }catch(e){
+      errBox.textContent = e.message || 'Não foi possível enviar o email. Tente de novo em instantes.';
+      errBox.style.display = 'block';
+      sendBtn.disabled = false;
+      sendBtn.textContent = 'Enviar link';
+      state.sending = false;
+    }
+  });
+  actions.appendChild(sendBtn);
+  m.appendChild(actions);
+
+  // Hint
+  const hint = mk('p','txt3');
+  hint.style.cssText = 'margin:.75rem 0 0;font-size:11.5px;line-height:1.55;color:var(--text3)';
+  hint.textContent = 'Se você não receber o email em alguns minutos, o endereço pode não estar cadastrado. Verifique se digitou certo.';
+  m.appendChild(hint);
+
+  showModal(m);
+  setTimeout(() => emailIn.focus(), 80);
+}
+
+// V15.12.43 — Modal de definição de nova senha após clicar no link de recovery
+// do email. É LOCKED (não fecha clicando fora) porque o user precisa concluir
+// ou cancelar explicitamente. Cancelar = sair da sessão temporária de recovery.
+function showPasswordRecoveryModal(){
+  const m = mk('div');
+  m.style.cssText = 'max-width:440px;width:100%';
+
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;padding-bottom:.625rem;border-bottom:1px solid var(--border)';
+  const headIcon = mk('span');headIcon.style.cssText='font-size:22px;line-height:1';
+  headIcon.textContent = '🔐';
+  head.appendChild(headIcon);
+  const headTitle = mk('h2');headTitle.style.cssText='margin:0;font-size:17px;font-weight:700;letter-spacing:-.2px';
+  headTitle.textContent = 'Definir nova senha';
+  head.appendChild(headTitle);
+  m.appendChild(head);
+
+  const intro = mk('p','txt2');
+  intro.style.cssText = 'margin:0 0 .875rem;font-size:13px;line-height:1.55';
+  intro.textContent = 'Você chegou aqui pelo link de recuperação. Crie uma senha nova pra continuar acessando sua conta.';
+  m.appendChild(intro);
+
+  const state = {pw1: '', pw2: '', saving: false};
+
+  // Senha 1
+  const lbl1 = mk('label');
+  lbl1.style.cssText = 'display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;letter-spacing:.4px;text-transform:uppercase';
+  lbl1.textContent = 'Nova senha';
+  m.appendChild(lbl1);
+  const in1 = mk('input');
+  in1.type = 'password';
+  in1.autocomplete = 'new-password';
+  in1.placeholder = 'mínimo 6 caracteres';
+  in1.style.cssText = 'width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--surface);color:var(--text);font-family:inherit';
+  in1.addEventListener('input', e => {state.pw1 = e.target.value;});
+  m.appendChild(in1);
+
+  // Senha 2
+  const lbl2 = mk('label');
+  lbl2.style.cssText = 'display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin:.75rem 0 6px;letter-spacing:.4px;text-transform:uppercase';
+  lbl2.textContent = 'Confirme a nova senha';
+  m.appendChild(lbl2);
+  const in2 = mk('input');
+  in2.type = 'password';
+  in2.autocomplete = 'new-password';
+  in2.placeholder = 'digite de novo';
+  in2.style.cssText = 'width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--surface);color:var(--text);font-family:inherit';
+  in2.addEventListener('input', e => {state.pw2 = e.target.value;});
+  m.appendChild(in2);
+
+  const errBox = mk('div','auth-error');
+  errBox.style.cssText = 'margin-top:.625rem;display:none';
+  m.appendChild(errBox);
+
+  const actions = mk('div');
+  actions.style.cssText = 'display:flex;gap:8px;margin-top:1rem';
+
+  const cancel = mkBtn('Cancelar e sair','btn btn-sm');
+  cancel.style.flex = '1';
+  cancel.addEventListener('click', async () => {
+    if(state.saving) return;
+    closeModal();
+    // Sai da sessão temporária — força user a tentar de novo se quiser
+    try{await supa.auth.signOut();}catch(_){}
+    showToast('Recuperação cancelada. Você pode tentar de novo a qualquer momento.', 5000);
+  });
+  actions.appendChild(cancel);
+
+  const saveBtn = mkBtn('Salvar nova senha','btn btn-sm btn-p');
+  saveBtn.style.flex = '2';
+  saveBtn.addEventListener('click', async () => {
+    if(state.saving) return;
+    if(!state.pw1 || state.pw1.length < 6){
+      errBox.textContent = 'A nova senha precisa ter ao menos 6 caracteres.';
+      errBox.style.display = 'block';
+      return;
+    }
+    if(state.pw1 !== state.pw2){
+      errBox.textContent = 'As senhas não conferem. Digite a mesma senha nos dois campos.';
+      errBox.style.display = 'block';
+      return;
+    }
+    errBox.style.display = 'none';
+    state.saving = true;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Salvando...';
+    try{
+      await authUpdatePassword(state.pw1);
+      closeModal();
+      showToast('✓ Senha atualizada. Você já está logado com a nova senha.', 6000);
+      // Após salvar, joga pro dashboard
+      ST.view = 'dashboard';
+      render();
+    }catch(e){
+      errBox.textContent = e.message || 'Não foi possível salvar a nova senha. Tente de novo.';
+      errBox.style.display = 'block';
+      state.saving = false;
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Salvar nova senha';
+    }
+  });
+  actions.appendChild(saveBtn);
+  m.appendChild(actions);
+
+  showModal(m, {locked: true});
+  setTimeout(() => in1.focus(), 80);
+}
+
+// V15.12.43 — Modal "Alterar senha" pra usuário logado. Pede senha atual
+// (reautenticação leve) + nova senha + confirmação. Disponível na seção Conta.
+function showChangePasswordModal(){
+  if(!isAuthed()){
+    showToast('Você precisa estar logado pra alterar a senha.', 4000);
+    return;
+  }
+
+  const m = mk('div');
+  m.style.cssText = 'max-width:440px;width:100%';
+
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;padding-bottom:.625rem;border-bottom:1px solid var(--border)';
+  const headIcon = mk('span');headIcon.style.cssText='font-size:22px;line-height:1';
+  headIcon.textContent = '🔒';
+  head.appendChild(headIcon);
+  const headTitle = mk('h2');headTitle.style.cssText='margin:0;font-size:17px;font-weight:700;letter-spacing:-.2px';
+  headTitle.textContent = 'Alterar senha';
+  head.appendChild(headTitle);
+  m.appendChild(head);
+
+  const intro = mk('p','txt2');
+  intro.style.cssText = 'margin:0 0 .875rem;font-size:13px;line-height:1.55';
+  intro.innerHTML = `Pra trocar a senha da conta <b>${escapeHTML(AUTH.user.email||'')}</b>, confirme a senha atual e escolha uma nova.`;
+  m.appendChild(intro);
+
+  const state = {curr: '', pw1: '', pw2: '', saving: false};
+
+  // Senha atual
+  const lblC = mk('label');
+  lblC.style.cssText = 'display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;letter-spacing:.4px;text-transform:uppercase';
+  lblC.textContent = 'Senha atual';
+  m.appendChild(lblC);
+  const inC = mk('input');
+  inC.type = 'password';
+  inC.autocomplete = 'current-password';
+  inC.placeholder = 'sua senha de hoje';
+  inC.style.cssText = 'width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--surface);color:var(--text);font-family:inherit';
+  inC.addEventListener('input', e => {state.curr = e.target.value;});
+  m.appendChild(inC);
+
+  // Senha nova 1
+  const lbl1 = mk('label');
+  lbl1.style.cssText = 'display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin:.75rem 0 6px;letter-spacing:.4px;text-transform:uppercase';
+  lbl1.textContent = 'Nova senha';
+  m.appendChild(lbl1);
+  const in1 = mk('input');
+  in1.type = 'password';
+  in1.autocomplete = 'new-password';
+  in1.placeholder = 'mínimo 6 caracteres';
+  in1.style.cssText = 'width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--surface);color:var(--text);font-family:inherit';
+  in1.addEventListener('input', e => {state.pw1 = e.target.value;});
+  m.appendChild(in1);
+
+  // Senha nova 2
+  const lbl2 = mk('label');
+  lbl2.style.cssText = 'display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin:.75rem 0 6px;letter-spacing:.4px;text-transform:uppercase';
+  lbl2.textContent = 'Confirme a nova senha';
+  m.appendChild(lbl2);
+  const in2 = mk('input');
+  in2.type = 'password';
+  in2.autocomplete = 'new-password';
+  in2.placeholder = 'digite de novo';
+  in2.style.cssText = 'width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--surface);color:var(--text);font-family:inherit';
+  in2.addEventListener('input', e => {state.pw2 = e.target.value;});
+  m.appendChild(in2);
+
+  const errBox = mk('div','auth-error');
+  errBox.style.cssText = 'margin-top:.625rem;display:none';
+  m.appendChild(errBox);
+
+  // Atalho: link "Esqueci minha senha" caso o user não lembre da atual
+  const forgotLink = mk('a');
+  forgotLink.href = '#';
+  forgotLink.textContent = 'Esqueci minha senha atual — enviar email de recuperação';
+  forgotLink.style.cssText = 'display:inline-block;margin-top:.75rem;font-size:12px;color:var(--gralia-purple);text-decoration:none;font-weight:500';
+  forgotLink.addEventListener('click', e => {
+    e.preventDefault();
+    closeModal();
+    setTimeout(()=> showForgotPasswordModal(), 80);
+  });
+  m.appendChild(forgotLink);
+
+  const actions = mk('div');
+  actions.style.cssText = 'display:flex;gap:8px;margin-top:1rem';
+  const cancel = mkBtn('Cancelar','btn btn-sm');
+  cancel.style.flex = '1';
+  cancel.addEventListener('click', closeModal);
+  actions.appendChild(cancel);
+
+  const saveBtn = mkBtn('Salvar nova senha','btn btn-sm btn-p');
+  saveBtn.style.flex = '2';
+  saveBtn.addEventListener('click', async () => {
+    if(state.saving) return;
+    if(!state.curr){
+      errBox.textContent = 'Informe sua senha atual.';
+      errBox.style.display = 'block';
+      return;
+    }
+    if(!state.pw1 || state.pw1.length < 6){
+      errBox.textContent = 'A nova senha precisa ter ao menos 6 caracteres.';
+      errBox.style.display = 'block';
+      return;
+    }
+    if(state.pw1 !== state.pw2){
+      errBox.textContent = 'As senhas não conferem. Digite a mesma senha nos dois campos.';
+      errBox.style.display = 'block';
+      return;
+    }
+    if(state.pw1 === state.curr){
+      errBox.textContent = 'A nova senha precisa ser diferente da senha atual.';
+      errBox.style.display = 'block';
+      return;
+    }
+    errBox.style.display = 'none';
+    state.saving = true;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Verificando...';
+    try{
+      // 1. Confirma a senha atual via signInWithPassword
+      await authVerifyCurrentPassword(state.curr);
+      // 2. Atualiza pra nova
+      saveBtn.textContent = 'Salvando...';
+      await authUpdatePassword(state.pw1);
+      closeModal();
+      showToast('✓ Senha alterada com sucesso.', 5000);
+    }catch(e){
+      errBox.textContent = e.message || 'Não foi possível alterar a senha. Tente de novo.';
+      errBox.style.display = 'block';
+      state.saving = false;
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Salvar nova senha';
+    }
+  });
+  actions.appendChild(saveBtn);
+  m.appendChild(actions);
+
+  showModal(m);
+  setTimeout(() => inC.focus(), 80);
+}
+
+/* ============================================================
+   V15.12.44 — GOOGLE OAUTH: callback cleanup + setup de perfil
+   ============================================================
+   Quando user volta do redirect Google, a URL fica com `?code=xxx&state=...`
+   (PKCE) ou `#access_token=...` (implicit). Limpamos pra não vazar tokens
+   no histórico do browser. Além disso, novos usuários OAuth não passam pelo
+   form de signup, então não escolheram username — abrimos modal pra completar.
+   ============================================================ */
+
+// Detecta se a URL atual tem artefatos de callback OAuth do Supabase.
+// Importante: o fluxo de PASSWORD_RECOVERY também usa hash (#access_token=...
+// &type=recovery), mas é tratado ANTES no onAuthStateChange (evento próprio),
+// então não entra aqui.
+function isOAuthCallback(){
+  try{
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    // Implicit/Hash flow: #access_token=... ou #provider_token=...
+    if(/access_token=|provider_token=/.test(hash)) return true;
+    // PKCE flow: ?code=...&state=...
+    if(/[?&](code|state)=/.test(search)) return true;
+    return false;
+  }catch(_){ return false; }
+}
+
+// Remove ?code=, ?state=, #access_token, etc. da URL sem recarregar.
+function cleanOAuthArtifacts(){
+  try{
+    if(window.history && window.history.replaceState){
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }catch(_){}
+}
+
+// Decide se o user precisa completar o setup do perfil (username faltando).
+// Só pede se: tem sessão, profile carregou, e profile NÃO tem username.
+// Não pede de novo na mesma sessão se o user explicitamente pulou.
+function isProfileSetupNeeded(){
+  if(!isAuthed()) return false;
+  if(AUTH.profileLoading) return false;
+  if(ST._profileSetupDismissed) return false;
+  // profile === null → trigger não criou ou falhou; profile sem username → caso OAuth
+  if(!AUTH.profile) return true;
+  if(!AUTH.profile.username) return true;
+  return false;
+}
+
+// V15.12.44 — Modal "Complete seu perfil" para usuários que entraram via Google
+// e ainda não escolheram username. Reutiliza a lógica de validação do
+// renderCreateForm (em renderSocialProfileCard) mas em formato modal.
+// Soft-locked: tem botão "Pular por enquanto" mas com aviso explícito.
+function showCompleteProfileModal(){
+  if(!isAuthed()) return;
+  if(!AUTH.user) return;
+
+  const m = mk('div');
+  m.style.cssText = 'max-width:480px;width:100%';
+
+  // Header
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;padding-bottom:.625rem;border-bottom:1px solid var(--border)';
+  const headIcon = mk('span');headIcon.style.cssText='font-size:24px;line-height:1';
+  headIcon.textContent = '👋';
+  head.appendChild(headIcon);
+  const headTitle = mk('h2');headTitle.style.cssText='margin:0;font-size:17px;font-weight:700;letter-spacing:-.2px';
+  headTitle.textContent = 'Falta pouco — escolha seu @username';
+  head.appendChild(headTitle);
+  m.appendChild(head);
+
+  const intro = mk('p','txt2');
+  intro.style.cssText = 'margin:0 0 .75rem;font-size:13px;line-height:1.55';
+  intro.innerHTML = 'Você entrou via Google. Pra finalizar a conta, escolha um <b>@username</b> (único) e um <b>nome de exibição</b>. Sem isso, não dá pra compartilhar cadernos, fontes nem aparecer pra outros estudantes.';
+  m.appendChild(intro);
+
+  const state = {
+    username: suggestUsernameFromEmail(AUTH.user.email||''),
+    displayName: (AUTH.user.user_metadata && (AUTH.user.user_metadata.full_name || AUTH.user.user_metadata.name)) || (DATA.config?.userName || ''),
+    available: false,
+    lastChecked: '',
+    saving: false
+  };
+
+  // Username
+  const uLbl = mk('label');
+  uLbl.style.cssText = 'display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;letter-spacing:.4px;text-transform:uppercase';
+  uLbl.textContent = 'Username';
+  m.appendChild(uLbl);
+
+  const uWrap = mk('div','sp-username-wrap');
+  const uPrefix = mk('span','sp-username-prefix');uPrefix.textContent='@';
+  const uIn = mk('input');
+  uIn.type = 'text';
+  uIn.placeholder = 'ex: jeanf';
+  uIn.maxLength = 20;
+  uIn.autocomplete = 'off';
+  uIn.value = state.username;
+  uWrap.appendChild(uPrefix);
+  uWrap.appendChild(uIn);
+  m.appendChild(uWrap);
+
+  const uHint = mk('div','sp-hint');
+  uHint.textContent = '3-20 caracteres, apenas letras minúsculas, números e _. Não pode começar com número.';
+  m.appendChild(uHint);
+  const uStatus = mk('div','sp-status');
+  m.appendChild(uStatus);
+
+  // Display name
+  const dLbl = mk('label');
+  dLbl.style.cssText = 'display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin:.875rem 0 6px;letter-spacing:.4px;text-transform:uppercase';
+  dLbl.textContent = 'Nome de exibição';
+  m.appendChild(dLbl);
+  const dIn = mk('input');
+  dIn.type = 'text';
+  dIn.placeholder = 'ex: Jean Furtado';
+  dIn.maxLength = 40;
+  dIn.value = state.displayName.slice(0,40);
+  dIn.style.cssText = 'width:100%;padding:10px 12px;font-size:14px;border:1px solid var(--border2);border-radius:var(--rs);background:var(--surface);color:var(--text);font-family:inherit';
+  dIn.addEventListener('input', e => {state.displayName = e.target.value;});
+  m.appendChild(dIn);
+  const dHint = mk('div','sp-hint');
+  dHint.textContent = 'Como seu nome aparece pra outros estudantes. Pode editar quando quiser.';
+  m.appendChild(dHint);
+
+  const errBox = mk('div','auth-error');
+  errBox.style.cssText = 'margin-top:.75rem;display:none';
+  m.appendChild(errBox);
+
+  // Validação em tempo real (mesma lógica do renderCreateForm em renderSocialProfileCard)
+  let availTimer = null;
+  function checkAvail(){
+    const v = uIn.value.trim().toLowerCase();
+    state.username = v;
+    const validation = validateUsername(v);
+    if(!validation.ok){
+      uStatus.className = 'sp-status err';
+      uStatus.textContent = '✗ ' + validation.error;
+      state.available = false;
+      return;
+    }
+    uStatus.className = 'sp-status checking';
+    uStatus.textContent = 'Verificando disponibilidade...';
+    clearTimeout(availTimer);
+    availTimer = setTimeout(async () => {
+      if(uIn.value.trim().toLowerCase() !== v) return;
+      const result = await checkUsernameAvailable(v);
+      if(uIn.value.trim().toLowerCase() !== v) return;
+      state.lastChecked = v;
+      if(result.available){
+        uStatus.className = 'sp-status ok';
+        uStatus.textContent = '✓ Disponível';
+        state.available = true;
+      } else {
+        uStatus.className = 'sp-status err';
+        uStatus.textContent = '✗ ' + (result.error || 'Indisponível');
+        state.available = false;
+      }
+    }, 450);
+  }
+  uIn.addEventListener('input', () => {
+    uIn.value = uIn.value.toLowerCase().replace(/[^a-z0-9_]/g,'');
+    checkAvail();
+  });
+  // Roda na abertura pra já validar a sugestão
+  setTimeout(() => checkAvail(), 50);
+
+  // Actions
+  const actions = mk('div');
+  actions.style.cssText = 'display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap';
+
+  const skipBtn = mkBtn('Pular por enquanto','btn btn-sm');
+  skipBtn.style.flex = '1';
+  skipBtn.style.minWidth = '140px';
+  skipBtn.title = 'Você pode criar o perfil depois em Conta → Perfil público';
+  skipBtn.addEventListener('click', () => {
+    if(state.saving) return;
+    ST._profileSetupDismissed = true;
+    closeModal();
+    showToast('Você pode criar seu perfil depois em Conta → Perfil público.', 6000);
+  });
+  actions.appendChild(skipBtn);
+
+  const saveBtn = mkBtn('Concluir cadastro','btn btn-sm btn-p');
+  saveBtn.style.flex = '2';
+  saveBtn.style.minWidth = '180px';
+  saveBtn.addEventListener('click', async () => {
+    if(state.saving) return;
+    const u = (state.username || '').trim().toLowerCase();
+    const dn = (state.displayName || '').trim();
+    if(!state.available || state.lastChecked !== u){
+      errBox.textContent = 'Aguarde a verificação do username terminar (ou tente outro).';
+      errBox.style.display = 'block';
+      return;
+    }
+    if(dn.length < 2){
+      errBox.textContent = 'Informe um nome de exibição com ao menos 2 caracteres.';
+      errBox.style.display = 'block';
+      dIn.focus();
+      return;
+    }
+    errBox.style.display = 'none';
+    state.saving = true;
+    saveBtn.disabled = true;
+    skipBtn.disabled = true;
+    saveBtn.textContent = 'Salvando...';
+    try{
+      await createProfile(u, dn);
+      // Sincroniza nome local também
+      if(!DATA.config) DATA.config = {};
+      if(!DATA.config.userName) DATA.config.userName = dn;
+      save();
+      closeModal();
+      showToast('✓ Perfil criado! Bem-vindo ao Gralia, @' + u + '.', 6000);
+      render();
+    }catch(err){
+      errBox.textContent = (err && err.message) ? err.message : 'Erro ao criar perfil. Tente de novo.';
+      errBox.style.display = 'block';
+      state.saving = false;
+      saveBtn.disabled = false;
+      skipBtn.disabled = false;
+      saveBtn.textContent = 'Concluir cadastro';
+    }
+  });
+  actions.appendChild(saveBtn);
+  m.appendChild(actions);
+
+  showModal(m);
+  setTimeout(() => uIn.focus(), 80);
+}
+
+// V15.12.44 — Roda checagem após login. Espera o profile carregar e abre
+// o modal de setup se for necessário. Tolerante a timing: se o profile
+// ainda está carregando, espera mais um pouco.
+function maybePromptProfileSetup(retries){
+  retries = retries || 0;
+  if(!isAuthed()) return;
+  if(AUTH.profileLoading && retries < 5){
+    setTimeout(() => maybePromptProfileSetup(retries + 1), 600);
+    return;
+  }
+  if(isProfileSetupNeeded()){
+    try{ showCompleteProfileModal(); }catch(e){console.warn('[profile-setup]', e);}
+  }
+}
+
+/* ============================================================
    AUTH INIT — roda no boot
    ============================================================ */
 async function initAuth(){
@@ -57977,9 +58743,38 @@ async function initAuth(){
     AUTH.loading = false;
     AUTH.authReady = true;
 
+    // V15.12.43 — Usuário voltou do link de recuperação de senha do email.
+    // Supabase cria sessão temporária e dispara este evento. Abrimos modal
+    // locked pra forçar a definição da nova senha (ou cancelar e sair).
+    // Tratado ANTES do SIGNED_IN inicial pra não cair no fluxo normal de boot.
+    if(event === 'PASSWORD_RECOVERY'){
+      _initialSessionHandled = true; // não dispara fluxo de "sessão restaurada"
+      ST.showAuth = false;
+      // Limpa hash da URL (Supabase deixa #access_token=...&type=recovery)
+      try{
+        if(window.history && window.history.replaceState){
+          const cleanUrl = window.location.pathname + window.location.search;
+          window.history.replaceState({}, document.title, cleanUrl);
+        }
+      }catch(_){}
+      // Dá um tick pro DOM estar pronto antes de abrir o modal
+      setTimeout(()=>{
+        try{ showPasswordRecoveryModal(); }catch(e){console.warn('[recovery]', e);}
+      }, 200);
+      render();
+      return;
+    }
+
     // SIGNED_IN dispara também na inicialização quando há sessão válida no localStorage.
     // Distinguimos: se já processamos a sessão inicial, esse SIGNED_IN é um login novo de fato.
-    const isInitialAutoSignIn = event==='SIGNED_IN' && !_initialSessionHandled;
+    // V15.12.44 — Quando user volta de redirect Google OAuth, o evento é SIGNED_IN
+    // mas com `?code=` ou `#access_token=` na URL. Tratamos como login novo,
+    // não como restauração de sessão (que tem outro fluxo, sem boas-vindas).
+    const oauthCallback = isOAuthCallback();
+    if(oauthCallback){
+      cleanOAuthArtifacts();
+    }
+    const isInitialAutoSignIn = event==='SIGNED_IN' && !_initialSessionHandled && !oauthCallback;
     if(isInitialAutoSignIn){
       _initialSessionHandled = true;
       // Sessão já existente — apenas carrega dados, sem prompt de merge
@@ -58019,7 +58814,12 @@ async function initAuth(){
       fetchQuota().then(()=>render()).catch(()=>{});
       // V15.12.11 (Fase B): sincroniza catálogo de custos com o servidor
       loadActionCatalog().catch(()=>{});
-      fetchUserProfile(true).then(()=>render()).catch(()=>{});
+      fetchUserProfile(true).then(()=>{
+        render();
+        // V15.12.44 — Sessão restaurada de user que ainda não tem username
+        // (típico: logou via Google antes, fechou sem completar). Pede pra completar.
+        setTimeout(() => maybePromptProfileSetup(), 2500);
+      }).catch(()=>{});
       // V12: Carrega dados de assinatura do usuário + checa notificações
       fetchSubscription(true).then(()=>{
         render();
@@ -58036,6 +58836,9 @@ async function initAuth(){
 
     if(event==='SIGNED_IN' && !wasAuthed){
       // Login novo de fato (usuário acabou de fazer signin/signup nesta sessão)
+      // V15.12.44 — Inclui callbacks OAuth (Google), que entram aqui após
+      // serem desviados do branch isInitialAutoSignIn pelo cleanOAuthArtifacts.
+      _initialSessionHandled = true; // evita reentrância pelo getSession() final
       ST.showAuth = false;
       DATA.welcomeShown = true;
       // V12: se usuário veio da landing escolhendo um plano, redireciona pra Plans
@@ -58054,7 +58857,13 @@ async function initAuth(){
       // First login of this session — merge data
       await handleFirstLoginMerge();
       fetchQuota().then(()=>render()).catch(()=>{});
-      fetchUserProfile(true).then(()=>render()).catch(err=>{
+      fetchUserProfile(true).then(()=>{
+        render();
+        // V15.12.44 — Após carregar o profile, verifica se precisa completar
+        // (caso típico: signup via Google OAuth, sem username escolhido).
+        // Delay pra rodar depois do toast de boas-vindas (1500ms) e antes do tutorial (3500ms).
+        setTimeout(() => maybePromptProfileSetup(), 2500);
+      }).catch(err=>{
         console.warn('[profile] failed to load on SIGNED_IN:', err.message);
       });
       // V12: Carrega dados de assinatura do usuário + checa notificações
@@ -58087,6 +58896,8 @@ async function initAuth(){
       AUTH.syncError = null;
       AUTH.lastSyncAt = null;
       ST.showAuth = false;
+      // V15.12.44 — Reseta flag de "pulou setup do perfil" pra próximo login pedir de novo
+      ST._profileSetupDismissed = false;
       // Reset quota
       QUOTA.remaining = null;
       QUOTA.plan = 'trial';
