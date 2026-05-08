@@ -10603,6 +10603,11 @@ const ST = {
   // Practice source: 'ai' = generated via API, 'imported' = from imported bank
   practiceSource:'ai',
   importedIdx:0,importedCurrent:null,importedAnswered:false,importedAnswer:null,
+  // V15.12.36 — Banco: seleção em massa, modo expandido, paginação, filtros recolhíveis
+  bankSelectedIds:{},        // {questionId: true} — seleção em massa
+  bankExpandedIds:{},        // {questionId: true} — questões com enunciado expandido
+  bankFiltersCollapsed:false,// se filtros estão recolhidos
+  bankRenderLimit:50,        // limite de render inicial (paginação)
   // Notebooks (cadernos)
   notebookSubview:'list', // 'list' | 'manage' | 'practice'
   notebookCurrentId:null, // id do caderno aberto / em prática
@@ -14353,6 +14358,14 @@ function render(){
       }, 0);
     }
     ST._preserveScroll = false; // sempre limpa
+    // V15.12.36: ao mudar de tela, limpa seleção em massa do banco e estados de UI temporários
+    if(_currentScreen !== 'imported'){
+      ST.bankSelectedIds = {};
+      ST.bankRenderLimit = 50;
+      // Esconde botão "voltar ao topo" quando sai do banco
+      const btToTop = document.getElementById('back-to-top-btn');
+      if(btToTop) btToTop.style.display = 'none';
+    }
   }
   // V15.12: data-view no body permite CSS customizar layout por tela
   // (ex.: cronograma usa largura maior pra tabela semanal não apertar).
@@ -21956,6 +21969,91 @@ function renderBankFilters(stateKey,bank){
   const f = getBankFilters(stateKey);
   const wrap = mk('div','bank-filters');
 
+  // V15.12.36 — Cabeçalho de filtros recolhível com chips dos ativos
+  // Conta quantos filtros estão ativos pra exibir badge
+  const activeFilters = [];
+  if(f.disc !== 'all') {
+    const d = (DATA.disciplines||[]).find(d=>d.id===f.disc);
+    if(d) activeFilters.push({key:'disc', label: 'Disciplina: '+d.name, reset:()=>{f.disc='all';}});
+  }
+  if(f.source !== 'all'){
+    const srcLabels = {imported:'TEC','__pdf-ai':'PDF c/ IA','__text':'Texto','__pdf':'PDF',ai:'IA'};
+    activeFilters.push({key:'source', label: 'Origem: '+(srcLabels[f.source]||f.source), reset:()=>{f.source='all';}});
+  }
+  if(f.kind !== 'all') activeFilters.push({key:'kind', label: 'Tipo: '+(f.kind==='CE'?'C/E':'Múltipla'), reset:()=>{f.kind='all';}});
+  if(f.banca && f.banca !== 'all') activeFilters.push({key:'banca', label: 'Banca: '+f.banca, reset:()=>{f.banca='all';}});
+  if(f.cargo && f.cargo !== 'all') activeFilters.push({key:'cargo', label: 'Cargo: '+f.cargo.slice(0,30)+(f.cargo.length>30?'…':''), reset:()=>{f.cargo='all';}});
+  if(f.topic && f.topic !== 'all') activeFilters.push({key:'topic', label: 'Tópico: '+f.topic, reset:()=>{f.topic='all';}});
+  if(f.perf !== 'all'){
+    const perfLabels = {never:'Nunca praticadas', high:'≥70%', low:'<50%'};
+    activeFilters.push({key:'perf', label: 'Desempenho: '+(perfLabels[f.perf]||f.perf), reset:()=>{f.perf='all';}});
+  }
+  if(f.period !== 'all'){
+    const pLabels = {'7d':'Últimos 7d','30d':'Últimos 30d'};
+    activeFilters.push({key:'period', label: 'Período: '+(pLabels[f.period]||f.period), reset:()=>{f.period='all';}});
+  }
+  if(f.anoFrom || f.anoTo){
+    activeFilters.push({key:'ano', label: 'Ano: '+(f.anoFrom||'…')+' — '+(f.anoTo||'…'), reset:()=>{f.anoFrom='';f.anoTo='';}});
+  }
+  if(f.quality && f.quality !== 'all'){
+    const qLabels = {ok:'OK', suspicious:'Suspeitas', incomplete:'Incompletas'};
+    activeFilters.push({key:'quality', label: 'Qualidade: '+(qLabels[f.quality]||f.quality), reset:()=>{f.quality='all';}});
+  }
+  if(f.practiced && f.practiced !== 'all'){
+    const prLabels = {no:'Não praticada', yes:'Praticada', right:'Sempre acertei', wrong:'Errei pelo menos 1×'};
+    activeFilters.push({key:'practiced', label: prLabels[f.practiced]||f.practiced, reset:()=>{f.practiced='all';}});
+  }
+  if(f.search && f.search.trim()){
+    activeFilters.push({key:'search', label: 'Busca: "'+f.search.slice(0,20)+(f.search.length>20?'…':'')+'"', reset:()=>{f.search='';}});
+  }
+
+  // Header da seção de filtros: botão de toggle + chips ativos + limpar
+  const filtersHead = mk('div');
+  filtersHead.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:.625rem;flex-wrap:wrap';
+
+  const toggleBtn = mkBtn(
+    (ST.bankFiltersCollapsed ? '▶ Filtros' : '▼ Filtros') + (activeFilters.length>0 ? ` (${activeFilters.length})` : ''),
+    'btn btn-sm'
+  );
+  toggleBtn.style.cssText = 'font-size:12px;font-weight:600';
+  toggleBtn.title = ST.bankFiltersCollapsed ? 'Expandir filtros' : 'Recolher filtros';
+  toggleBtn.addEventListener('click', ()=>{ ST.bankFiltersCollapsed = !ST.bankFiltersCollapsed; render(); });
+  filtersHead.appendChild(toggleBtn);
+
+  // Chips dos filtros ativos (sempre visíveis, mesmo recolhido)
+  activeFilters.forEach(af => {
+    const chip = mk('span');
+    chip.style.cssText = 'display:inline-flex;align-items:center;gap:5px;padding:3px 8px 3px 10px;background:rgba(124,92,255,.10);color:var(--gralia-purple);border:1px solid rgba(124,92,255,.30);border-radius:14px;font-size:11px;font-weight:600;line-height:1.4';
+    const lbl = mk('span');lbl.textContent = af.label;
+    chip.appendChild(lbl);
+    const x = mk('button');
+    x.style.cssText = 'background:none;border:none;color:var(--gralia-purple);cursor:pointer;padding:0 0 0 2px;font-size:13px;line-height:1';
+    x.textContent = '×';
+    x.title = 'Remover este filtro';
+    x.addEventListener('click', ()=>{ af.reset(); render(); });
+    chip.appendChild(x);
+    filtersHead.appendChild(chip);
+  });
+
+  // Botão "limpar tudo" só aparece se tem filtro ativo
+  if(activeFilters.length > 0){
+    const clearAll = mkBtn('Limpar filtros','btn btn-sm');
+    clearAll.style.cssText = 'font-size:11px;color:var(--text3);margin-left:auto';
+    clearAll.title = 'Remover todos os filtros';
+    clearAll.addEventListener('click', ()=>{
+      activeFilters.forEach(af => af.reset());
+      render();
+    });
+    filtersHead.appendChild(clearAll);
+  }
+
+  wrap.appendChild(filtersHead);
+
+  // Se filtros estão recolhidos, retorna aqui (só mostra header + chips)
+  if(ST.bankFiltersCollapsed){
+    return wrap;
+  }
+
   // Search box — debounced + focus preservation
   const searchRow = mk('div');searchRow.style.marginBottom='.5rem';
   const searchInp = mk('input');searchInp.type='text';
@@ -22425,6 +22523,95 @@ function notebookQuestions(notebookId){
 // How many notebooks contain this question
 function notebooksContaining(questionId){
   return (DATA.notebooks||[]).filter(n=>n.questionIds.includes(questionId));
+}
+
+// V15.12.36 — Botão flutuante "voltar ao topo".
+// Aparece quando o usuário rola >300px e desaparece no topo.
+// Singleton: chama em cada render() relevante; reusa o nó existente.
+function ensureBackToTopButton(){
+  let btn = document.getElementById('back-to-top-btn');
+  if(!btn){
+    btn = document.createElement('button');
+    btn.id = 'back-to-top-btn';
+    btn.title = 'Voltar ao topo';
+    btn.setAttribute('aria-label', 'Voltar ao topo');
+    btn.innerHTML = '↑';
+    // Estilo via inline pra não precisar de CSS global
+    btn.style.cssText = 'position:fixed;bottom:24px;right:24px;width:44px;height:44px;border-radius:50%;background:var(--gralia-purple);color:#fff;border:none;cursor:pointer;font-size:20px;font-weight:700;line-height:1;display:none;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(124,92,255,.35);z-index:9000;transition:transform .15s,opacity .2s;opacity:.92';
+    btn.addEventListener('mouseenter', ()=>{ btn.style.transform = 'translateY(-2px)'; btn.style.opacity = '1'; });
+    btn.addEventListener('mouseleave', ()=>{ btn.style.transform = 'translateY(0)'; btn.style.opacity = '.92'; });
+    btn.addEventListener('click', ()=>{
+      try{ window.scrollTo({top:0, behavior:'smooth'}); }
+      catch(_){ window.scrollTo(0,0); }
+    });
+    document.body.appendChild(btn);
+    // Listener de scroll com throttle simples
+    let ticking = false;
+    window.addEventListener('scroll', ()=>{
+      if(ticking) return;
+      ticking = true;
+      requestAnimationFrame(()=>{
+        const show = window.scrollY > 300;
+        btn.style.display = show ? 'flex' : 'none';
+        ticking = false;
+      });
+    }, {passive:true});
+  }
+  return btn;
+}
+
+// V15.12.36 — Cria caderno a partir de uma lista de IDs.
+// Usado por "criar a partir de filtro" e "criar a partir de batch".
+// Abre modal pra editar nome/descrição antes de salvar.
+function showCreateNotebookFromIdsModal(questionIds, suggestedName, suggestedDesc){
+  if(!Array.isArray(questionIds) || questionIds.length === 0){
+    showToast('Nenhuma questão selecionada', 3000);
+    return;
+  }
+  const m = mk('div');m.style.maxWidth='460px';
+  const head = mk('div','modal-head');
+  const h = mk('h3');h.textContent = '+ Criar caderno com ' + questionIds.length + ' ' + (questionIds.length===1?'questão':'questões');
+  const cl = mkBtn('×','modal-close');cl.addEventListener('click',closeModal);
+  head.appendChild(h);head.appendChild(cl);
+  m.appendChild(head);
+
+  const lblN = mk('label');lblN.textContent='Nome do caderno';
+  const inpN = mk('input');inpN.type='text';inpN.placeholder='Ex: LAI - Disposições Gerais';
+  inpN.value = suggestedName || '';
+  m.appendChild(lblN);m.appendChild(inpN);
+
+  const lblD = mk('label');lblD.textContent='Descrição (opcional)';lblD.style.marginTop='.75rem';
+  const inpD = mk('textarea');inpD.rows=2;inpD.placeholder='Ex: Questões CESPE 2020-2025 sobre arts. 1-5';
+  inpD.value = suggestedDesc || '';
+  m.appendChild(lblD);m.appendChild(inpD);
+
+  const previewBox = mk('div');previewBox.style.cssText='margin-top:.75rem;padding:.625rem .875rem;background:var(--surface2);border-radius:7px;font-size:11.5px;color:var(--text2);line-height:1.5';
+  previewBox.innerHTML = `<b>${questionIds.length}</b> ${questionIds.length===1?'questão será adicionada':'questões serão adicionadas'} a este caderno. As questões NÃO serão duplicadas — apenas referenciadas.`;
+  m.appendChild(previewBox);
+
+  const actions = mk('div','flex');actions.style.cssText='margin-top:1rem;gap:8px';
+  const saveB = mkBtn('Criar e adicionar','btn btn-p');
+  saveB.addEventListener('click',()=>{
+    const name = inpN.value.trim();
+    if(!name){alert('Dê um nome ao caderno.');return;}
+    const nb = createNotebook(name, inpD.value);
+    if(!nb){ alert('Falha ao criar caderno.'); return; }
+    // Add IDs (filtra IDs que ainda existem no banco)
+    const existingIds = new Set((DATA.importedQuestions||[]).map(q=>q.id));
+    const validIds = questionIds.filter(id => existingIds.has(id));
+    addQuestionsToNotebook(nb.id, validIds);
+    closeModal();
+    showToast(`✓ Caderno "${name}" criado com ${validIds.length} ${validIds.length===1?'questão':'questões'}`);
+    // Limpa seleção do banco
+    ST.bankSelectedIds = {};
+    render();
+  });
+  const cancelB = mkBtn('Cancelar','btn');
+  cancelB.addEventListener('click',closeModal);
+  actions.appendChild(saveB);actions.appendChild(cancelB);
+  m.appendChild(actions);
+  showModal(m);
+  setTimeout(()=>inpN.focus(),50);
 }
 
 // V15.12.34 — HELPERS DE EXCLUSÃO EM MASSA
@@ -22940,6 +23127,17 @@ function showManageImportsModal(){
       left.innerHTML = `<div style="font-size:13px;color:var(--text);font-weight:600">${b.count} ${b.count===1?'questão':'questões'} · ${srcLbl}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px">${dateStr}</div>`;
       item.appendChild(left);
+      // V15.12.36 — Botão "Criar caderno desta importação"
+      const createNbBtn = mkBtn('+ Caderno','btn btn-sm');
+      createNbBtn.style.cssText = 'font-size:11px;color:var(--gralia-purple);border-color:rgba(124,92,255,.40)';
+      createNbBtn.title = 'Criar um caderno com as questões desta importação';
+      createNbBtn.addEventListener('click', ()=>{
+        const suggestedName = srcLbl + ' · ' + dateStr;
+        const suggestedDesc = `Caderno criado a partir da importação de ${b.count} ${b.count===1?'questão':'questões'} (${srcLbl}, ${dateStr}).`;
+        closeModal();
+        showCreateNotebookFromIdsModal(b.questionIds, suggestedName, suggestedDesc);
+      });
+      item.appendChild(createNbBtn);
       const delBtn = mkBtn('Excluir','btn btn-sm');
       delBtn.style.cssText = 'color:var(--red);border-color:var(--red);font-size:11px';
       delBtn.addEventListener('click', async ()=>{
@@ -26981,6 +27179,9 @@ function renderTurbo(){
 /* IMPORTED QUESTIONS — manual import without AI */
 function renderImported(){
   const wrap = mk('div','fade');
+  // V15.12.36: garante que o botão "voltar ao topo" está registrado quando o user
+  // está nesta view (banco, cadernos, prática, importar)
+  ensureBackToTopButton();
   const h = mk('h1');h.textContent='📥 Cadernos de prática';
   const sub = mk('p','txt2');sub.style.marginBottom='1rem';
   sub.textContent='Importe questões reais (TEC Concursos, texto colado) ou questões da IA, organize em cadernos temáticos e refaça pra fixar conteúdo.';
@@ -27035,11 +27236,42 @@ function renderImportedList(wrap){
 
   const stats = mk('p','txt3');stats.style.marginBottom='.75rem';
   stats.textContent = `${filtered.length} ${filtered.length===1?'questão':'questões'} (de ${bank.length} no total)`;
-  // V15.12.34 — Botão "Gerenciar importações" pra exclusão em massa
+  // V15.12.36 — Header com stats + ações
   const headerRow = mk('div');
   headerRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;gap:8px;flex-wrap:wrap';
   stats.style.margin = '0';
   headerRow.appendChild(stats);
+
+  // Right side: ações
+  const headerActions = mk('div');
+  headerActions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center';
+
+  // V15.12.36 — Criar caderno com resultado atual (se há filtro ativo + questões)
+  const hasActiveFilter = (f.disc!=='all' || f.source!=='all' || f.kind!=='all'
+    || (f.banca && f.banca!=='all') || (f.cargo && f.cargo!=='all') || (f.topic && f.topic!=='all')
+    || f.perf!=='all' || f.period!=='all' || f.anoFrom || f.anoTo
+    || (f.quality && f.quality!=='all') || (f.practiced && f.practiced!=='all')
+    || (f.search && f.search.trim()));
+  if(hasActiveFilter && filtered.length > 0 && filtered.length < bank.length){
+    const createFilterBtn = mkBtn(`+ Criar caderno com ${filtered.length} ${filtered.length===1?'questão':'questões'}`,'btn btn-sm');
+    createFilterBtn.style.cssText = 'font-size:11.5px;color:var(--gralia-purple);border-color:rgba(124,92,255,.40)';
+    createFilterBtn.title = 'Cria um caderno com todas as questões que correspondem aos filtros atuais';
+    createFilterBtn.addEventListener('click', ()=>{
+      const ids = filtered.map(q=>q.id);
+      // Sugere nome baseado em filtros ativos
+      const parts = [];
+      if(f.banca && f.banca!=='all') parts.push(f.banca);
+      if(f.disc !== 'all'){ const d = (DATA.disciplines||[]).find(d=>d.id===f.disc); if(d) parts.push(d.name); }
+      if(f.topic && f.topic!=='all') parts.push(f.topic);
+      if(f.anoFrom || f.anoTo) parts.push((f.anoFrom||'')+'-'+(f.anoTo||''));
+      const suggestedName = parts.length>0 ? parts.join(' · ') : 'Filtro do banco';
+      const suggestedDesc = `Caderno criado a partir de filtro do banco (${ids.length} questões).`;
+      showCreateNotebookFromIdsModal(ids, suggestedName, suggestedDesc);
+    });
+    headerActions.appendChild(createFilterBtn);
+  }
+
+  // V15.12.34 — Botão "Gerenciar importações" pra exclusão em massa
   // Só mostra o botão se há questões com batch (vem de import recente)
   const hasBatches = bank.some(q => q.importBatchId);
   const hasRecent = listQuestionsByPeriod(24*30).length > 0;
@@ -27048,9 +27280,92 @@ function renderImportedList(wrap){
     mgmtBtn.style.cssText = 'font-size:11.5px;color:var(--text2)';
     mgmtBtn.title = 'Excluir em massa importações recentes ou por período';
     mgmtBtn.addEventListener('click', ()=>showManageImportsModal());
-    headerRow.appendChild(mgmtBtn);
+    headerActions.appendChild(mgmtBtn);
   }
+  headerRow.appendChild(headerActions);
   wrap.appendChild(headerRow);
+
+  // V15.12.36 — Barra de ações em lote (só aparece se há seleção)
+  const selIds = ST.bankSelectedIds || (ST.bankSelectedIds = {});
+  const selectedCount = Object.keys(selIds).filter(id => selIds[id]).length;
+  if(selectedCount > 0){
+    const bulkBar = mk('div');
+    bulkBar.style.cssText = 'position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:.625rem .875rem;background:linear-gradient(135deg,rgba(124,92,255,.10),var(--surface));border:1px solid rgba(124,92,255,.30);border-radius:9px;margin-bottom:.75rem;box-shadow:0 2px 8px rgba(0,0,0,.06)';
+    const lbl = mk('span');
+    lbl.style.cssText = 'font-size:13px;color:var(--gralia-purple);font-weight:700';
+    lbl.textContent = `${selectedCount} ${selectedCount===1?'selecionada':'selecionadas'}`;
+    bulkBar.appendChild(lbl);
+
+    // Praticar selecionadas
+    const practiceBulkBtn = mkBtn('▶ Praticar','btn btn-sm btn-p');
+    practiceBulkBtn.style.cssText = 'font-size:11.5px';
+    practiceBulkBtn.title = 'Praticar apenas as questões selecionadas';
+    practiceBulkBtn.addEventListener('click', ()=>{
+      const ids = Object.keys(selIds).filter(id => selIds[id]);
+      // Inicia a prática em modo "lista filtrada por IDs". Reusa importedSubview=practice.
+      ST.importedPracticeIds = ids;  // marca quais IDs praticar
+      ST.importedSubview = 'practice';
+      ST.importedAnswered = false;
+      ST.importedCurrent = null;
+      ST.importedIdx = 0;
+      render();
+    });
+    bulkBar.appendChild(practiceBulkBtn);
+
+    // Adicionar a caderno
+    const addBulkBtn = mkBtn('+ Adicionar a caderno','btn btn-sm');
+    addBulkBtn.style.cssText = 'font-size:11.5px';
+    addBulkBtn.addEventListener('click', ()=>{
+      const ids = Object.keys(selIds).filter(id => selIds[id]);
+      // Reusa o modal existente, mas em modo bulk: passamos array de IDs.
+      showAddToNotebookModal(ids);
+    });
+    bulkBar.appendChild(addBulkBtn);
+
+    // Criar caderno com selecionadas
+    const createBulkBtn = mkBtn('+ Criar caderno','btn btn-sm');
+    createBulkBtn.style.cssText = 'font-size:11.5px';
+    createBulkBtn.addEventListener('click', ()=>{
+      const ids = Object.keys(selIds).filter(id => selIds[id]);
+      showCreateNotebookFromIdsModal(ids, 'Seleção do banco', `${ids.length} questões selecionadas manualmente.`);
+    });
+    bulkBar.appendChild(createBulkBtn);
+
+    // Excluir selecionadas
+    const delBulkBtn = mkBtn('🗑 Excluir','btn btn-sm');
+    delBulkBtn.style.cssText = 'font-size:11.5px;color:var(--red);border-color:var(--red)';
+    delBulkBtn.addEventListener('click', ()=>{
+      const ids = Object.keys(selIds).filter(id => selIds[id]);
+      const inNotebooks = ids.filter(id => notebooksContaining(id).length > 0).length;
+      const requireType = ids.length > 20;
+      let confirmed = false;
+      if(requireType){
+        const typed = prompt(`⚠ Excluir ${ids.length} questões selecionadas?\n` +
+          (inNotebooks > 0 ? `${inNotebooks} ${inNotebooks===1?'está':'estão'} em caderno(s) — referências serão removidas.\n\n` : '\n') +
+          'Para confirmar, digite EXCLUIR:');
+        confirmed = typed && typed.trim().toUpperCase() === 'EXCLUIR';
+      } else {
+        confirmed = confirm(`Excluir ${ids.length} ${ids.length===1?'questão selecionada':'questões selecionadas'}?` +
+          (inNotebooks > 0 ? `\n\n⚠ ${inNotebooks} em caderno(s) — referências serão removidas.` : ''));
+      }
+      if(!confirmed) return;
+      const res = bulkDeleteQuestions(ids);
+      ST.bankSelectedIds = {};
+      showToast(`✓ ${res.removedQuestions} questões excluídas${res.affectedNotebooks>0?` · ${res.affectedNotebooks} caderno(s) atualizado(s)`:''}`);
+      render();
+    });
+    bulkBar.appendChild(delBulkBtn);
+
+    // Spacer + limpar seleção
+    const spacer = mk('div');spacer.style.flex='1';
+    bulkBar.appendChild(spacer);
+    const clearSelBtn = mkBtn('Limpar seleção','btn btn-sm');
+    clearSelBtn.style.cssText = 'font-size:11px;color:var(--text3)';
+    clearSelBtn.addEventListener('click', ()=>{ ST.bankSelectedIds = {}; render(); });
+    bulkBar.appendChild(clearSelBtn);
+
+    wrap.appendChild(bulkBar);
+  }
 
   if(filtered.length===0){
     wrap.appendChild(infoBox('Nenhuma questão corresponde aos filtros aplicados.'));
@@ -27078,8 +27393,14 @@ function renderImportedList(wrap){
     sorted = filtered.slice().reverse();
   }
 
-  sorted.forEach(q=>{
-    const it = mk('div','card card-pad');it.style.marginBottom='.5rem';
+  // V15.12.36 — Paginação simples: render inicial limitado, botão "carregar mais"
+  const renderLimit = ST.bankRenderLimit || 50;
+  const visibleQs = sorted.slice(0, renderLimit);
+  const remaining = sorted.length - visibleQs.length;
+
+  visibleQs.forEach(q=>{
+    const it = mk('div','card card-pad');it.style.marginBottom='.625rem';
+    it.style.cssText += ';position:relative';
     // Highlight if we navigated here from an error
     if(ST.bankHighlightId===q.id){
       it.classList.add('card-highlighted');
@@ -27091,8 +27412,27 @@ function renderImportedList(wrap){
       });
       setTimeout(()=>{delete ST.bankHighlightId;},4000);
     }
-    const meta = mk('div','flex');meta.style.cssText='gap:6px;margin-bottom:.5rem;flex-wrap:wrap';
-    // Source badge — distinguishes AI from imported
+
+    // V15.12.36 — Layout em 4 zonas: header / status / corpo / ações
+    // Linha 1 (HEADER): checkbox + ID/banca/ano/cargo/tipo + status badges
+    const headerLine = mk('div');
+    headerLine.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:.5rem';
+
+    // Checkbox de seleção em massa
+    const cb = mk('input');
+    cb.type = 'checkbox';
+    cb.checked = !!(ST.bankSelectedIds && ST.bankSelectedIds[q.id]);
+    cb.style.cssText = 'cursor:pointer;width:16px;height:16px;flex-shrink:0;accent-color:var(--gralia-purple)';
+    cb.title = 'Selecionar para ações em lote';
+    cb.addEventListener('change', e=>{
+      if(!ST.bankSelectedIds) ST.bankSelectedIds = {};
+      if(e.target.checked) ST.bankSelectedIds[q.id] = true;
+      else delete ST.bankSelectedIds[q.id];
+      render();
+    });
+    headerLine.appendChild(cb);
+
+    // Origem
     const srcChip = mk('span','badge');
     if(q.source==='ai'){
       srcChip.style.cssText='background:rgba(108,92,231,.15);color:#6C5CE7';
@@ -27101,128 +27441,246 @@ function renderImportedList(wrap){
       srcChip.style.cssText='background:rgba(24,95,165,.15);color:var(--blue-text)';
       srcChip.textContent='📋 TEC';
     }
-    meta.appendChild(srcChip);
+    headerLine.appendChild(srcChip);
+
+    // Banca / Ano / Cargo (de q.banca etc estruturado)
+    if(q.banca){ const t = mk('span','badge'); t.style.cssText='background:rgba(124,92,255,.10);color:var(--gralia-purple);border:1px solid rgba(124,92,255,.25);font-size:10.5px;font-weight:600'; t.textContent=q.banca; headerLine.appendChild(t); }
+    if(q.ano){ const t = mk('span','badge'); t.style.cssText='background:var(--surface2);color:var(--text2);font-size:10.5px;font-variant-numeric:tabular-nums'; t.textContent=String(q.ano); headerLine.appendChild(t); }
+    if(q.cargo){ const t = mk('span','badge'); t.style.cssText='background:var(--surface2);color:var(--text2);font-size:10.5px'; const cargoTxt = q.cargo.length>30?q.cargo.slice(0,30)+'…':q.cargo; t.textContent=cargoTxt; t.title=q.cargo; headerLine.appendChild(t); }
+
+    // Tipo
     const kindChip = mk('span','badge b-info');
-    kindChip.textContent = q.kind==='MC'?'Múltipla escolha':'C/E';
-    meta.appendChild(kindChip);
-    const disc = getDiscipline(q.disciplineId);
-    if(disc){
-      const dTag = mk('span','disc-tag');dTag.style.background=disc.color+'22';dTag.style.color=disc.color;
-      const dot = mk('span','disc-dot');dot.style.background=disc.color;
-      const dn = mk('span');dn.textContent=disc.name;
-      dTag.appendChild(dot);dTag.appendChild(dn);meta.appendChild(dTag);
-    }
-    if(q.topic){const tp = mk('span','topic-tag');tp.textContent=q.topic;tp.style.marginBottom='0';meta.appendChild(tp);}
+    kindChip.style.fontSize='10.5px';
+    kindChip.textContent = q.kind==='MC'?'MC':'C/E';
+    headerLine.appendChild(kindChip);
+
+    // Gabarito
     const gb = mk('span','badge '+(q.kind==='MC'||q.answer==='C'?'b-ok':'b-err'));
+    gb.style.fontSize='10.5px';
     gb.textContent='Gab: '+(q.answer||'?');
-    meta.appendChild(gb);
-    // Tentativas + aproveitamento (sempre visível pra debugging de ordenação)
+    headerLine.appendChild(gb);
+
+    // Status de prática (à direita)
+    const spacerH = mk('div');spacerH.style.flex='1';
+    headerLine.appendChild(spacerH);
     if(q.attempts){
       const pct = Math.round((q.correctCount||0)/q.attempts*100);
       const at = mk('span','badge '+(pct>=60?'b-ok':'b-err'));
-      at.title = `${q.correctCount||0} acertos em ${q.attempts} ${q.attempts===1?'tentativa':'tentativas'} (${pct}% de aproveitamento)`;
-      at.textContent=`🎯 ${q.attempts} ${q.attempts===1?'tent':'tents'} · ${pct}%`;
-      meta.appendChild(at);
+      at.style.cssText='font-size:10.5px';
+      at.title = `${q.correctCount||0} acertos em ${q.attempts} ${q.attempts===1?'tentativa':'tentativas'} (${pct}%)`;
+      at.textContent=`🎯 ${q.attempts} · ${pct}%`;
+      headerLine.appendChild(at);
     } else {
       const at = mk('span','badge');at.style.cssText='background:var(--surface2);color:var(--text3);font-size:10.5px';
       at.textContent='🎯 Não praticada';
-      at.title = 'Esta questão ainda não foi respondida';
-      meta.appendChild(at);
+      headerLine.appendChild(at);
     }
-    // Data (importadas têm importedAt; AI têm createdAt)
+
+    // Quality flag (suspeitas/incompletas)
+    if(q.quality && q.quality.status === 'suspicious'){
+      const qual = mk('span','badge');qual.style.cssText='background:rgba(245,158,11,.15);color:var(--amber-text);font-size:10.5px;font-weight:600';
+      qual.textContent='⚠ Suspeita';
+      qual.title = (q.quality.issues||[]).join(' · ');
+      headerLine.appendChild(qual);
+    } else if(q.quality && q.quality.status === 'incomplete'){
+      const qual = mk('span','badge');qual.style.cssText='background:rgba(232,76,76,.10);color:var(--red);font-size:10.5px;font-weight:600';
+      qual.textContent='✗ Incompleta';
+      qual.title = (q.quality.issues||[]).join(' · ');
+      headerLine.appendChild(qual);
+    }
+    it.appendChild(headerLine);
+
+    // Linha 2 (META): disciplina + tópico + cadernos + data
+    const metaLine = mk('div');
+    metaLine.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:.625rem;font-size:11px';
+
+    const disc = getDiscipline(q.disciplineId);
+    if(disc){
+      const dTag = mk('span','disc-tag');dTag.style.cssText=`background:${disc.color}22;color:${disc.color};font-size:10.5px;padding:2px 8px`;
+      const dot = mk('span','disc-dot');dot.style.cssText=`background:${disc.color};width:6px;height:6px;border-radius:50%`;
+      const dn = mk('span');dn.textContent=disc.name;
+      dTag.appendChild(dot);dTag.appendChild(dn);metaLine.appendChild(dTag);
+    }
+    if(q.topic){
+      const tp = mk('span');tp.style.cssText='font-size:10.5px;color:var(--text2);padding:2px 6px;background:var(--surface2);border-radius:4px';
+      tp.textContent='#'+q.topic;
+      metaLine.appendChild(tp);
+    }
+    // Cadernos containing
+    const inNbs = notebooksContaining(q.id);
+    if(inNbs.length>0){
+      const nbsTag = mk('span','badge');nbsTag.style.cssText='background:rgba(108,92,231,.10);color:#6C5CE7;font-size:10.5px';
+      nbsTag.textContent='📒 '+inNbs.length;
+      nbsTag.title = inNbs.map(n=>n.name).join(', ');
+      metaLine.appendChild(nbsTag);
+    }
+    // Data à direita
     const ts = q.importedAt || q.createdAt;
     if(ts){
-      const dateChip = mk('span','badge');dateChip.style.cssText='background:var(--surface2);color:var(--text3);font-size:10.5px';
+      const dateChip = mk('span');dateChip.style.cssText='margin-left:auto;font-size:10.5px;color:var(--text3)';
       const d = new Date(ts);
       dateChip.textContent = '🕒 ' + formatRelativeDate(d.toISOString());
       dateChip.title = `Adicionada em ${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
-      meta.appendChild(dateChip);
+      metaLine.appendChild(dateChip);
     }
-    // Show notebooks containing this question
-    const inNbs = notebooksContaining(q.id);
-    if(inNbs.length>0){
-      const nbsTag = mk('span','badge');nbsTag.style.cssText='background:rgba(108,92,231,.15);color:#6C5CE7';
-      nbsTag.textContent='📒 '+inNbs.length+' caderno'+(inNbs.length>1?'s':'');
-      nbsTag.title = inNbs.map(n=>n.name).join(', ');
-      meta.appendChild(nbsTag);
-    }
-    // Add to notebook button
-    const addNbBtn = mkBtn('+ Caderno','btn btn-sm');addNbBtn.style.marginLeft='auto';
-    addNbBtn.title = 'Adicionar a um caderno';
-    addNbBtn.addEventListener('click',()=>showAddToNotebookModal(q.id));
-    meta.appendChild(addNbBtn);
-    // Ver na matéria
-    if(q.topic){
-      const mapBtn = mkBtn('🗺️','btn btn-sm');mapBtn.title='Ver no Mapa da Matéria';
-      mapBtn.addEventListener('click',()=>mapNavigate(q.disciplineId,q.topic));
-      meta.appendChild(mapBtn);
-    }
-    // V15.12.34 — Botão excluir com tooltip claro (era "×" solto sem contexto)
-    const del = mkBtn('×','icon-btn del');
-    del.title = 'Excluir esta questão';
-    del.setAttribute('aria-label','Excluir esta questão');
-    del.addEventListener('click',()=>{if(confirm('Remover esta questão? Será removida também de todos os cadernos.')){
-      DATA.importedQuestions=DATA.importedQuestions.filter(x=>x.id!==q.id);
-      // Also clean from notebooks
-      (DATA.notebooks||[]).forEach(nb=>{nb.questionIds=nb.questionIds.filter(id=>id!==q.id);});
-      save();render();
-    }});
-    meta.appendChild(del);
-    it.appendChild(meta);
-    // V15.12.34: Render rico no card da lista — header com banca/ano/cargo + botão TEC
-    // O q.meta string antiga é redundante com banca/ano/cargo estruturados, então só mostramos
-    // se NÃO temos os campos estruturados (compat com questões antigas).
-    const hasStructuredMeta = !!(q.banca || q.ano || q.cargo);
-    if(q.meta && !hasStructuredMeta){
-      const mt = mk('p','txt3');mt.style.cssText='margin-bottom:4px;font-size:10.5px';
-      mt.textContent=q.meta;
-      it.appendChild(mt);
-    }
-    // Render rico (com header se tem metadados)
-    it.appendChild(renderQuestionBlocks(q, {showHeader: hasStructuredMeta}));
-    if(q.kind==='MC'&&q.alternatives){
-      const altWrap = mk('div');altWrap.style.cssText='margin-top:.5rem;padding-left:4px';
-      q.alternatives.forEach(alt=>{
-        const line = mk('p','txt2');line.style.cssText='margin:2px 0';
-        const isCorrect = q.answer===alt.letter;
-        line.innerHTML=`<b${isCorrect?' style="color:var(--accent-text)"':''}>${alt.letter})</b> ${alt.text}`;
-        altWrap.appendChild(line);
+    if(metaLine.children.length > 0) it.appendChild(metaLine);
+
+    // CORPO: enunciado em modo compacto/expandido
+    const isExpanded = !!(ST.bankExpandedIds && ST.bankExpandedIds[q.id]);
+    const enunWrap = mk('div');
+    enunWrap.style.cssText = 'position:relative';
+
+    // Strategy: por default mostra full, mas se enunciado >300 chars E não está expandido, trunca
+    const enunText = (q.enunciado || '');
+    const isLong = enunText.length > 300;
+    if(isLong && !isExpanded){
+      // Modo compacto: mostra primeiros 250 chars + fade + botão
+      const compactText = enunText.slice(0, 250);
+      const p = mk('p');p.style.cssText='margin:0;line-height:1.55;color:var(--text);font-size:13.5px;white-space:pre-wrap';
+      p.textContent = compactText + '…';
+      enunWrap.appendChild(p);
+      const expandBtn = mkBtn('▼ Ver completo','btn btn-sm');
+      expandBtn.style.cssText='margin-top:.4rem;font-size:11.5px;color:var(--gralia-purple);border-color:rgba(124,92,255,.30)';
+      expandBtn.addEventListener('click', ()=>{
+        if(!ST.bankExpandedIds) ST.bankExpandedIds = {};
+        ST.bankExpandedIds[q.id] = true;
+        render();
       });
-      it.appendChild(altWrap);
+      enunWrap.appendChild(expandBtn);
+    } else {
+      // Modo expandido: render rico completo
+      enunWrap.appendChild(renderQuestionBlocks(q, {showHeader: false}));
+      // Alternativas se MC
+      if(q.kind==='MC' && q.alternatives){
+        const altWrap = mk('div');altWrap.style.cssText='margin-top:.5rem;padding-left:4px;display:flex;flex-direction:column;gap:3px';
+        q.alternatives.forEach(alt=>{
+          const line = mk('p','txt2');line.style.cssText='margin:0;font-size:12.5px;line-height:1.5';
+          const isCorrect = q.answer===alt.letter;
+          line.innerHTML=`<b${isCorrect?' style="color:var(--accent-text)"':''}>${alt.letter})</b> ${escapeHTML(alt.text)}`;
+          altWrap.appendChild(line);
+        });
+        enunWrap.appendChild(altWrap);
+      }
+      if(isLong){
+        const collapseBtn = mkBtn('▲ Recolher','btn btn-sm');
+        collapseBtn.style.cssText='margin-top:.4rem;font-size:11.5px;color:var(--text3)';
+        collapseBtn.addEventListener('click', ()=>{
+          if(ST.bankExpandedIds) delete ST.bankExpandedIds[q.id];
+          render();
+        });
+        enunWrap.appendChild(collapseBtn);
+      }
     }
-    // V15.12.34: Se TEM header estruturado, o link do TEC já vai no header.
-    // Se NÃO tem (legacy), mostramos o link "Ver no TEC ↗" abaixo como antes.
-    if(q.sourceUrl && !hasStructuredMeta){
-      const srcLink = mk('a');
-      srcLink.href = q.sourceUrl.startsWith('http')?q.sourceUrl:'https://'+q.sourceUrl;
-      srcLink.target='_blank';srcLink.rel='noopener';
-      srcLink.textContent='Ver no TEC ↗';
-      srcLink.style.cssText='font-size:11.5px;display:inline-block;margin-top:6px';
-      it.appendChild(srcLink);
-    }
-    if(q.source==='ai'&&q.seenCount>1){
-      const sn = mk('p','txt3');sn.style.cssText='margin-top:6px;font-size:10.5px;color:var(--text3)';
-      sn.textContent=`A IA tentou gerar esta questão ${q.seenCount}× (deduplicada automaticamente).`;
-      it.appendChild(sn);
-    }
-    // Link contextual: se essa questão já gerou erro(s), mostra chip pra ir até o histórico
+    it.appendChild(enunWrap);
+
+    // Link contextual: erro relacionado (compacto)
     const relatedErrors = findErrorsFromBankQuestion(q.id);
     if(relatedErrors.length>0){
-      const row = mk('div');row.style.cssText='margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center';
-      const lbl = mk('span','txt3');lbl.style.cssText='font-size:11px';
-      lbl.textContent = relatedErrors.length===1?'Você errou esta questão antes:':`Você errou esta questão ${relatedErrors.length}× antes:`;
+      const row = mk('div');row.style.cssText='margin-top:.5rem;display:flex;gap:6px;flex-wrap:wrap;align-items:center';
+      const lbl = mk('span');lbl.style.cssText='font-size:11px;color:var(--text3)';
+      lbl.textContent = relatedErrors.length===1?'Errou antes:':`Errou ${relatedErrors.length}× antes:`;
       row.appendChild(lbl);
-      // Pega o erro mais recente
       const lastErr = relatedErrors.sort((a,b)=>(b.date||0)-(a.date||0))[0];
       const link = mk('button','entity-link');
-      link.innerHTML = '<span class="el-icon">✗</span><span>Ver no histórico</span>';
+      link.innerHTML = '<span class="el-icon">✗</span><span>Ver histórico</span>';
       link.title='Abrir o erro registrado para esta questão';
       link.addEventListener('click',()=>navigateToError(lastErr.id,{label:'Cadernos de prática'}));
       row.appendChild(link);
       it.appendChild(row);
     }
+
+    // RODAPÉ DE AÇÕES — sempre na mesma linha, ação principal proeminente
+    const actionsRow = mk('div');
+    actionsRow.style.cssText = 'margin-top:.75rem;padding-top:.625rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+
+    // Ação principal: Praticar (ícone + texto)
+    const practiceBtn = mkBtn('▶ Praticar','btn btn-sm btn-p');
+    practiceBtn.style.cssText='font-size:11.5px;font-weight:600';
+    practiceBtn.title = 'Praticar esta questão';
+    practiceBtn.addEventListener('click', ()=>{
+      ST.importedPracticeIds = [q.id];
+      ST.importedSubview = 'practice';
+      ST.importedAnswered = false;
+      ST.importedCurrent = null;
+      ST.importedIdx = 0;
+      render();
+    });
+    actionsRow.appendChild(practiceBtn);
+
+    // Adicionar ao caderno
+    const addNbBtn = mkBtn('+ Caderno','btn btn-sm');
+    addNbBtn.style.cssText='font-size:11.5px';
+    addNbBtn.title='Adicionar a um caderno';
+    addNbBtn.addEventListener('click',()=>showAddToNotebookModal(q.id));
+    actionsRow.appendChild(addNbBtn);
+
+    // Ações secundárias compactas (ícones)
+    if(q.topic){
+      const mapBtn = mkBtn('🗺️','btn btn-sm icon-btn');mapBtn.title='Ver no Mapa da Matéria';
+      mapBtn.style.cssText='font-size:13px;padding:4px 8px';
+      mapBtn.addEventListener('click',()=>mapNavigate(q.disciplineId,q.topic));
+      actionsRow.appendChild(mapBtn);
+    }
+    if(q.sourceUrl && /tecconcursos\.com\.br/i.test(q.sourceUrl)){
+      const tecBtn = mk('a');
+      tecBtn.href = q.sourceUrl.startsWith('http')?q.sourceUrl:'https://'+q.sourceUrl;
+      tecBtn.target='_blank';tecBtn.rel='noopener';
+      tecBtn.title = 'Abrir questão no TEC Concursos';
+      tecBtn.className='btn btn-sm';
+      tecBtn.style.cssText='font-size:11.5px;text-decoration:none;display:inline-flex;align-items:center;gap:3px;color:var(--text2)';
+      tecBtn.innerHTML = '🔗 TEC' + (q.questionId ? ' #'+q.questionId : '');
+      actionsRow.appendChild(tecBtn);
+    }
+
+    // Spacer + excluir (à direita, descreto)
+    const spacerA = mk('div');spacerA.style.flex='1';
+    actionsRow.appendChild(spacerA);
+    const del = mkBtn('🗑','btn btn-sm icon-btn del');
+    del.title = 'Excluir esta questão';
+    del.setAttribute('aria-label','Excluir esta questão');
+    del.style.cssText='font-size:13px;padding:4px 8px;color:var(--text3)';
+    del.addEventListener('click',()=>{
+      const inNbs = notebooksContaining(q.id);
+      const msg = 'Remover esta questão?' + (inNbs.length>0 ? `\n\n⚠ Está em ${inNbs.length} caderno(s) — referência será removida.` : '');
+      if(confirm(msg)){
+        DATA.importedQuestions=DATA.importedQuestions.filter(x=>x.id!==q.id);
+        (DATA.notebooks||[]).forEach(nb=>{nb.questionIds=nb.questionIds.filter(id=>id!==q.id);});
+        save();render();
+      }
+    });
+    actionsRow.appendChild(del);
+
+    it.appendChild(actionsRow);
     wrap.appendChild(it);
   });
+
+  // V15.12.36 — Botão "carregar mais" se houver mais que renderLimit
+  if(remaining > 0){
+    const loadMoreRow = mk('div');
+    loadMoreRow.style.cssText = 'margin-top:1rem;padding:.75rem;text-align:center;background:var(--surface2);border:1px dashed var(--border);border-radius:8px';
+    const loadInfo = mk('p','txt3');loadInfo.style.cssText='margin:0 0 .5rem;font-size:12px';
+    loadInfo.textContent = `Mostrando ${visibleQs.length} de ${sorted.length} questões`;
+    loadMoreRow.appendChild(loadInfo);
+    const loadBtn = mkBtn(`+ Carregar mais 50 (faltam ${remaining})`,'btn btn-sm');
+    loadBtn.addEventListener('click', ()=>{
+      ST.bankRenderLimit = (ST.bankRenderLimit || 50) + 50;
+      render();
+    });
+    loadMoreRow.appendChild(loadBtn);
+    if(remaining > 100){
+      const loadAllBtn = mkBtn('Carregar todas','btn btn-sm');
+      loadAllBtn.style.cssText = 'margin-left:.5rem;font-size:11.5px;color:var(--text3)';
+      loadAllBtn.addEventListener('click', ()=>{
+        ST.bankRenderLimit = sorted.length + 100;
+        render();
+      });
+      loadMoreRow.appendChild(loadAllBtn);
+    }
+    wrap.appendChild(loadMoreRow);
+  }
+
+  // V15.12.36 — Garante botão "voltar ao topo" presente
+  ensureBackToTopButton();
   return wrap;
 }
 
@@ -28087,10 +28545,38 @@ function renderImportedPractice(wrap){
     wrap.appendChild(infoBox('Importe questões primeiro para praticar.'));
     return wrap;
   }
+
+  // V15.12.36 — Modo "praticar IDs específicos" (vem de seleção em massa ou botão Praticar do card).
+  // Quando ativo, ignora o filtro de disciplina e o pool é só esses IDs.
+  const practiceIds = (ST.importedPracticeIds && ST.importedPracticeIds.length > 0) ? ST.importedPracticeIds : null;
+  let _customPool = null;
+  if(practiceIds){
+    const idSet = new Set(practiceIds);
+    _customPool = bank.filter(q => idSet.has(q.id));
+    if(_customPool.length === 0){
+      wrap.appendChild(infoBox('Nenhuma das questões selecionadas existe no banco.'));
+      ST.importedPracticeIds = null;
+      return wrap;
+    }
+    // Banner indicando modo seleção
+    const banner = mk('div');
+    banner.style.cssText = 'padding:.625rem .875rem;background:linear-gradient(135deg,rgba(124,92,255,.10),var(--surface));border:1px solid rgba(124,92,255,.30);border-left:3px solid var(--gralia-purple);border-radius:8px;margin-bottom:1rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+    const lbl = mk('span');lbl.style.cssText='font-size:12.5px;color:var(--gralia-purple);font-weight:600';
+    lbl.textContent = `Praticando ${_customPool.length} ${_customPool.length===1?'questão selecionada':'questões selecionadas'}`;
+    banner.appendChild(lbl);
+    const sp = mk('div');sp.style.flex='1';banner.appendChild(sp);
+    const exitBtn = mkBtn('Voltar a todas','btn btn-sm');
+    exitBtn.style.cssText='font-size:11px;color:var(--text3)';
+    exitBtn.addEventListener('click',()=>{ ST.importedPracticeIds = null; ST.importedCurrent = null; ST.importedAnswered = false; render(); });
+    banner.appendChild(exitBtn);
+    wrap.appendChild(banner);
+  }
+
   const actDiscs = activeDisciplines();
   const discsWithQ = actDiscs.filter(d=>bank.some(q=>q.disciplineId===d.id));
   const filter = ST.importedPracticeDisc||'all';
-  if(discsWithQ.length>=2){
+  // V15.12.36: esconde filtro de disciplinas se está em modo "praticar IDs específicos"
+  if(!_customPool && discsWithQ.length>=2){
     const fr = mk('div','disc-filter');fr.style.marginBottom='1rem';
     const allChip = mk('button','disc-chip'+(filter==='all'?' on':''));
     if(filter==='all'){allChip.style.background='var(--surface2)';allChip.style.color='var(--text)';}
@@ -28110,7 +28596,8 @@ function renderImportedPractice(wrap){
     });
     wrap.appendChild(fr);
   }
-  const pool = filter==='all'?bank:bank.filter(q=>q.disciplineId===filter);
+  // V15.12.36: pool customizado tem prioridade sobre filtro de disciplina
+  const pool = _customPool ? _customPool : (filter==='all'?bank:bank.filter(q=>q.disciplineId===filter));
   if(pool.length===0){wrap.appendChild(infoBox('Sem questões nessa disciplina.'));return wrap;}
   if(!ST.importedCurrent||!pool.find(q=>q.id===ST.importedCurrent.id)){
     ST.importedCurrent = pool[Math.floor(Math.random()*pool.length)];
@@ -29097,55 +29584,224 @@ function renderNotebooksList(wrap){
     return wrap;
   }
 
-  const list = mk('div');list.style.cssText='display:flex;flex-direction:column;gap:.625rem';
-  nbs.slice().sort((a,b)=>b.createdAt-a.createdAt).forEach(nb=>{
-    const total = nb.questionIds.length;
-    // Count actual existing (in case some were deleted from bank)
-    const valid = notebookQuestions(nb.id).length;
-    const stats = nb.questionIds.length>0 ? notebookStatsHTML(nb.id) : '';
-
-    const card = mk('div','notebook-card');
-    const head = mk('div','notebook-head');
-    const titleCol = mk('div');titleCol.style.flex='1';titleCol.style.minWidth='0';
-    const tName = mk('div','notebook-name');tName.textContent='📒 '+nb.name;
-    titleCol.appendChild(tName);
-    if(nb.description){
-      const dsc = mk('div','txt3');dsc.style.cssText='margin-top:2px;font-size:12px';dsc.textContent=nb.description;
-      titleCol.appendChild(dsc);
+  // V15.12.36 — AGRUPA cadernos por seriesParent (id da fonte)
+  // Cadernos sem seriesParent = avulsos
+  // Cadernos com seriesParent = série; ordenados por seriesIndex
+  const series = {}; // seriesParent → { srcId, name, notebooks: [] }
+  const standalone = [];
+  nbs.forEach(nb => {
+    if(nb.seriesParent){
+      const key = nb.seriesParent;
+      if(!series[key]){
+        const src = (DATA.sources||[]).find(s => s.id === key);
+        series[key] = {
+          srcId: key,
+          srcName: src ? src.name : 'Fonte removida',
+          srcExists: !!src,
+          notebooks: []
+        };
+      }
+      series[key].notebooks.push(nb);
+    } else {
+      standalone.push(nb);
     }
-    const counter = mk('span','badge b-info');counter.style.flexShrink='0';
-    counter.textContent = `${valid} ${valid===1?'questão':'questões'}`;
-    head.appendChild(titleCol);head.appendChild(counter);
-    card.appendChild(head);
+  });
+  // Ordena cadernos dentro de cada série por seriesIndex
+  Object.values(series).forEach(s => {
+    s.notebooks.sort((a,b)=>(a.seriesIndex||0) - (b.seriesIndex||0));
+  });
 
-    if(stats){
-      const statsRow = mk('div');statsRow.style.cssText='margin-top:6px;font-size:11.5px;color:var(--text2)';
-      statsRow.innerHTML=stats;
-      card.appendChild(statsRow);
+  const list = mk('div');list.style.cssText='display:flex;flex-direction:column;gap:1rem';
+
+  // === SÉRIES PRIMEIRO (mais destaque) ===
+  const seriesArr = Object.values(series).sort((a,b)=>{
+    // Mais recente da série primeiro
+    const lastA = Math.max(...a.notebooks.map(n=>n.createdAt||0));
+    const lastB = Math.max(...b.notebooks.map(n=>n.createdAt||0));
+    return lastB - lastA;
+  });
+  seriesArr.forEach(s => {
+    const seriesBox = mk('div','series-group');
+    seriesBox.style.cssText = 'background:linear-gradient(135deg,rgba(124,92,255,.04),var(--surface));border:1px solid rgba(124,92,255,.25);border-left:3px solid var(--gralia-purple);border-radius:10px;padding:.875rem 1rem';
+
+    // Header da série
+    const seriesHead = mk('div');
+    seriesHead.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:.75rem;flex-wrap:wrap';
+    const seriesIcon = mk('span');seriesIcon.textContent='🪄';seriesIcon.style.fontSize='15px';
+    seriesHead.appendChild(seriesIcon);
+    const seriesTitle = mk('span');seriesTitle.style.cssText='font-size:13.5px;font-weight:700;color:var(--gralia-purple)';
+    seriesTitle.textContent = 'Série · '+s.srcName;
+    seriesHead.appendChild(seriesTitle);
+
+    // Stats agregadas da série
+    const totalQs = s.notebooks.reduce((acc, nb) => acc + notebookQuestions(nb.id).length, 0);
+    const totalAttempts = s.notebooks.reduce((acc, nb) => {
+      return acc + notebookQuestions(nb.id).reduce((a,q)=>a+(q.attempts||0), 0);
+    }, 0);
+    const totalCorrect = s.notebooks.reduce((acc, nb) => {
+      return acc + notebookQuestions(nb.id).reduce((a,q)=>a+(q.correctCount||0), 0);
+    }, 0);
+    const allPracticed = s.notebooks.reduce((acc, nb) => {
+      return acc + notebookQuestions(nb.id).filter(q => (q.attempts||0) > 0).length;
+    }, 0);
+
+    const seriesStats = mk('span');seriesStats.style.cssText='font-size:11.5px;color:var(--text2);margin-left:auto';
+    if(totalAttempts > 0){
+      const pct = Math.round(totalCorrect / totalAttempts * 100);
+      seriesStats.innerHTML = `<b>${s.notebooks.length}</b> cadernos · <b>${totalQs}</b> questões · <b>${allPracticed}/${totalQs}</b> praticadas · <b>${pct}%</b> acertos`;
+    } else {
+      seriesStats.innerHTML = `<b>${s.notebooks.length}</b> cadernos · <b>${totalQs}</b> questões`;
+    }
+    seriesHead.appendChild(seriesStats);
+    seriesBox.appendChild(seriesHead);
+
+    // Próximo caderno não totalmente praticado (primeiro com questões pendentes)
+    const nextNb = s.notebooks.find(nb => {
+      const qs = notebookQuestions(nb.id);
+      return qs.length > 0 && qs.some(q => (q.attempts||0) === 0);
+    });
+
+    // Lista de cadernos aninhada
+    const inner = mk('div');inner.style.cssText='display:flex;flex-direction:column;gap:.5rem';
+    s.notebooks.forEach(nb => {
+      const qs = notebookQuestions(nb.id);
+      const valid = qs.length;
+      const practiced = qs.filter(q=>(q.attempts||0)>0).length;
+      const pctNb = practiced > 0 ? Math.round((qs.reduce((a,q)=>a+(q.correctCount||0),0) / qs.reduce((a,q)=>a+(q.attempts||0),0)) * 100) : 0;
+
+      const nbCard = mk('div');
+      nbCard.style.cssText = 'display:flex;align-items:center;gap:10px;padding:.55rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:7px';
+      const idxBadge = mk('span');
+      idxBadge.style.cssText = 'flex-shrink:0;width:24px;height:24px;border-radius:50%;background:rgba(124,92,255,.15);color:var(--gralia-purple);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700';
+      idxBadge.textContent = nb.seriesIndex || '?';
+      nbCard.appendChild(idxBadge);
+
+      const txtCol = mk('div');txtCol.style.cssText='flex:1;min-width:0';
+      const nName = mk('div');nName.style.cssText='font-size:12.5px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      // Remove o prefixo do source name pra encurtar (ex: "Fonte X — Caderno 1/3" → "Caderno 1/3")
+      const cleanName = nb.name.replace(s.srcName + ' — ', '');
+      nName.textContent = cleanName;
+      txtCol.appendChild(nName);
+      const subStats = mk('div');subStats.style.cssText='font-size:10.5px;color:var(--text3);margin-top:1px';
+      if(valid === 0){
+        subStats.textContent = '⚠ vazio';
+      } else if(practiced === 0){
+        subStats.textContent = `${valid} ${valid===1?'questão':'questões'} · não praticado`;
+      } else if(practiced === valid){
+        subStats.innerHTML = `${valid} ${valid===1?'questão':'questões'} · <b style="color:var(--accent-text)">✓ todas praticadas</b> · ${pctNb}%`;
+      } else {
+        subStats.textContent = `${practiced}/${valid} praticadas · ${pctNb}%`;
+      }
+      txtCol.appendChild(subStats);
+      nbCard.appendChild(txtCol);
+
+      // Botões compactos
+      if(valid > 0){
+        const pBtn = mkBtn('▶','btn btn-sm btn-p');
+        pBtn.style.cssText='font-size:12px;padding:3px 10px';
+        pBtn.title = 'Praticar este caderno';
+        pBtn.addEventListener('click',()=>startNotebookPractice(nb.id));
+        nbCard.appendChild(pBtn);
+      }
+      const mBtn = mkBtn('🛠','btn btn-sm');
+      mBtn.style.cssText='font-size:12px;padding:3px 8px';
+      mBtn.title = 'Gerenciar caderno';
+      mBtn.addEventListener('click',()=>{ST.notebookCurrentId=nb.id;ST.notebookSubview='manage';ST.notebookSelectedIds={};render();});
+      nbCard.appendChild(mBtn);
+
+      inner.appendChild(nbCard);
+    });
+    seriesBox.appendChild(inner);
+
+    // Ações da série (footer)
+    const seriesFooter = mk('div');
+    seriesFooter.style.cssText = 'display:flex;align-items:center;gap:6px;margin-top:.75rem;padding-top:.625rem;border-top:1px solid var(--border);flex-wrap:wrap';
+
+    if(nextNb){
+      const continueBtn = mkBtn(`▶ Praticar próximo (${nextNb.seriesIndex||''})`,'btn btn-sm btn-p');
+      continueBtn.style.cssText='font-size:11.5px';
+      continueBtn.title = `Continua na ${nextNb.name}`;
+      continueBtn.addEventListener('click',()=>startNotebookPractice(nextNb.id));
+      seriesFooter.appendChild(continueBtn);
+    } else if(totalQs > 0){
+      const completeMsg = mk('span');completeMsg.style.cssText='font-size:11px;color:var(--accent-text);font-weight:600';
+      completeMsg.textContent = '✓ Série completa';
+      seriesFooter.appendChild(completeMsg);
     }
 
-    const actions = mk('div','flex');actions.style.cssText='gap:6px;margin-top:.75rem;flex-wrap:wrap';
-    const manageBtn = mkBtn('🛠 Gerenciar','btn btn-sm');
-    manageBtn.addEventListener('click',()=>{ST.notebookCurrentId=nb.id;ST.notebookSubview='manage';ST.notebookSelectedIds={};render();});
-    actions.appendChild(manageBtn);
-    if(valid>0){
-      const practiceBtn = mkBtn('▶ Praticar','btn btn-sm btn-p');
-      practiceBtn.addEventListener('click',()=>startNotebookPractice(nb.id));
-      actions.appendChild(practiceBtn);
-    }
-    const editBtn = mkBtn('✎ Editar nome','btn btn-sm');
-    editBtn.addEventListener('click',()=>showEditNotebookModal(nb));
-    actions.appendChild(editBtn);
-    const delBtn = mkBtn('🗑','btn btn-sm btn-danger');delBtn.style.marginLeft='auto';
-    delBtn.addEventListener('click',()=>{
-      if(confirm(`Excluir o caderno "${nb.name}"? As questões em si NÃO serão removidas do banco — só a referência neste caderno.`)){
-        deleteNotebook(nb.id);render();
+    const sp = mk('div');sp.style.flex='1';seriesFooter.appendChild(sp);
+
+    // Excluir série inteira
+    const delSeries = mkBtn('🗑 Excluir série','btn btn-sm');
+    delSeries.style.cssText='font-size:11px;color:var(--text3)';
+    delSeries.addEventListener('click',()=>{
+      if(confirm(`Excluir a série "${s.srcName}" inteira? Os ${s.notebooks.length} cadernos serão removidos. As questões NÃO serão removidas do banco.`)){
+        s.notebooks.forEach(nb => deleteNotebook(nb.id));
+        render();
       }
     });
-    actions.appendChild(delBtn);
-    card.appendChild(actions);
-    list.appendChild(card);
+    seriesFooter.appendChild(delSeries);
+    seriesBox.appendChild(seriesFooter);
+
+    list.appendChild(seriesBox);
   });
+
+  // === CADERNOS AVULSOS ===
+  if(standalone.length > 0){
+    if(seriesArr.length > 0){
+      const sep = mk('h4');sep.style.cssText='margin:.5rem 0 0;font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.05em';
+      sep.textContent = 'Cadernos avulsos';
+      list.appendChild(sep);
+    }
+    standalone.slice().sort((a,b)=>b.createdAt-a.createdAt).forEach(nb=>{
+      const total = nb.questionIds.length;
+      const valid = notebookQuestions(nb.id).length;
+      const stats = nb.questionIds.length>0 ? notebookStatsHTML(nb.id) : '';
+
+      const card = mk('div','notebook-card');
+      const head = mk('div','notebook-head');
+      const titleCol = mk('div');titleCol.style.flex='1';titleCol.style.minWidth='0';
+      const tName = mk('div','notebook-name');tName.textContent='📒 '+nb.name;
+      titleCol.appendChild(tName);
+      if(nb.description){
+        const dsc = mk('div','txt3');dsc.style.cssText='margin-top:2px;font-size:12px';dsc.textContent=nb.description;
+        titleCol.appendChild(dsc);
+      }
+      const counter = mk('span','badge b-info');counter.style.flexShrink='0';
+      counter.textContent = `${valid} ${valid===1?'questão':'questões'}`;
+      head.appendChild(titleCol);head.appendChild(counter);
+      card.appendChild(head);
+
+      if(stats){
+        const statsRow = mk('div');statsRow.style.cssText='margin-top:6px;font-size:11.5px;color:var(--text2)';
+        statsRow.innerHTML=stats;
+        card.appendChild(statsRow);
+      }
+
+      const actions = mk('div','flex');actions.style.cssText='gap:6px;margin-top:.75rem;flex-wrap:wrap';
+      const manageBtn = mkBtn('🛠 Gerenciar','btn btn-sm');
+      manageBtn.addEventListener('click',()=>{ST.notebookCurrentId=nb.id;ST.notebookSubview='manage';ST.notebookSelectedIds={};render();});
+      actions.appendChild(manageBtn);
+      if(valid>0){
+        const practiceBtn = mkBtn('▶ Praticar','btn btn-sm btn-p');
+        practiceBtn.addEventListener('click',()=>startNotebookPractice(nb.id));
+        actions.appendChild(practiceBtn);
+      }
+      const editBtn = mkBtn('✎ Editar nome','btn btn-sm');
+      editBtn.addEventListener('click',()=>showEditNotebookModal(nb));
+      actions.appendChild(editBtn);
+      const delBtn = mkBtn('🗑','btn btn-sm btn-danger');delBtn.style.marginLeft='auto';
+      delBtn.addEventListener('click',()=>{
+        if(confirm(`Excluir o caderno "${nb.name}"? As questões em si NÃO serão removidas do banco — só a referência neste caderno.`)){
+          deleteNotebook(nb.id);render();
+        }
+      });
+      actions.appendChild(delBtn);
+      card.appendChild(actions);
+      list.appendChild(card);
+    });
+  }
+
   wrap.appendChild(list);
   return wrap;
 }
@@ -29513,19 +30169,39 @@ function showCreateNotebookModal(){
   setTimeout(()=>inpN.focus(),50);
 }
 
-function showAddToNotebookModal(questionId){
-  const q = (DATA.importedQuestions||[]).find(x=>x.id===questionId);
-  if(!q){alert('Questão não encontrada.');return;}
+function showAddToNotebookModal(questionIdOrIds){
+  // V15.12.36 — Aceita ID único (string) OU array de IDs (modo bulk)
+  const isBulk = Array.isArray(questionIdOrIds);
+  const questionIds = isBulk ? questionIdOrIds : [questionIdOrIds];
+  if(questionIds.length === 0){alert('Nenhuma questão selecionada.');return;}
+
+  const bankMap = new Map((DATA.importedQuestions||[]).map(q=>[q.id, q]));
+  const validQs = questionIds.filter(id => bankMap.has(id)).map(id => bankMap.get(id));
+  if(validQs.length === 0){alert('Nenhuma das questões existe no banco.');return;}
+
   const m = mk('div');
   const head = mk('div','modal-head');
-  const h = mk('h3');h.textContent='Adicionar ao caderno';
+  const h = mk('h3');
+  h.textContent = isBulk
+    ? `Adicionar ${validQs.length} ${validQs.length===1?'questão':'questões'} ao caderno`
+    : 'Adicionar ao caderno';
   const cl = mkBtn('×','modal-close');cl.addEventListener('click',closeModal);
   head.appendChild(h);head.appendChild(cl);
   m.appendChild(head);
 
-  const preview = mk('p','txt2');preview.style.cssText='margin-bottom:1rem;padding:.5rem .75rem;background:var(--surface2);border-radius:var(--rs);font-size:12.5px;max-height:80px;overflow-y:auto';
-  preview.textContent = q.enunciado.slice(0,200) + (q.enunciado.length>200?'...':'');
-  m.appendChild(preview);
+  if(isBulk){
+    // Preview compacto: lista os primeiros 3 enunciados truncados
+    const previewBox = mk('div');previewBox.style.cssText='margin-bottom:1rem;padding:.5rem .75rem;background:var(--surface2);border-radius:var(--rs);font-size:11.5px;color:var(--text2);line-height:1.5;max-height:120px;overflow-y:auto';
+    const lines = validQs.slice(0,3).map((q,i)=>`<div style="margin-bottom:3px"><b>${i+1}.</b> ${escapeHTML((q.enunciado||'').slice(0,80))}${(q.enunciado||'').length>80?'…':''}</div>`).join('');
+    const more = validQs.length > 3 ? `<div style="color:var(--text3);margin-top:4px">+ ${validQs.length-3} ${validQs.length-3===1?'outra':'outras'}</div>` : '';
+    previewBox.innerHTML = lines + more;
+    m.appendChild(previewBox);
+  } else {
+    const q = validQs[0];
+    const preview = mk('p','txt2');preview.style.cssText='margin-bottom:1rem;padding:.5rem .75rem;background:var(--surface2);border-radius:var(--rs);font-size:12.5px;max-height:80px;overflow-y:auto';
+    preview.textContent = q.enunciado.slice(0,200) + (q.enunciado.length>200?'...':'');
+    m.appendChild(preview);
+  }
 
   const nbs = DATA.notebooks||[];
   if(nbs.length===0){
@@ -29533,45 +30209,97 @@ function showAddToNotebookModal(questionId){
     empty.textContent='Você ainda não tem cadernos criados. Crie um agora:';
     m.appendChild(empty);
     const newBtn = mkBtn('+ Criar caderno','btn btn-p');
-    newBtn.addEventListener('click',()=>{closeModal();ST.importedSubview='notebooks';render();setTimeout(()=>showCreateNotebookModal(),50);});
+    newBtn.addEventListener('click',()=>{
+      closeModal();
+      // Em bulk, abre direto o modal de "criar com IDs". Em single, vai pra notebooks.
+      if(isBulk){
+        showCreateNotebookFromIdsModal(questionIds, '', '');
+      } else {
+        ST.importedSubview='notebooks';
+        render();
+        setTimeout(()=>showCreateNotebookModal(),50);
+      }
+    });
     m.appendChild(newBtn);
     showModal(m);return;
   }
 
-  const lbl = mk('label');lbl.textContent='Marque os cadernos onde quer incluir esta questão:';
+  const lbl = mk('label');
+  lbl.textContent = isBulk
+    ? 'Marque os cadernos onde quer incluir estas questões:'
+    : 'Marque os cadernos onde quer incluir esta questão:';
   m.appendChild(lbl);
 
   const list = mk('div');list.style.cssText='display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;margin-top:.5rem';
-  const initialState = {};
-  nbs.forEach(nb=>{initialState[nb.id]=nb.questionIds.includes(questionId);});
-  const toggleState = {...initialState};
+
+  // V15.12.36: estado mais rico em bulk — não dá pra inferir initialState binário
+  // (cada caderno pode ter ALGUMAS questões da seleção). Tratamos como "vai adicionar".
+  const checkState = {};
+  if(isBulk){
+    nbs.forEach(nb => { checkState[nb.id] = false; });
+  } else {
+    nbs.forEach(nb => { checkState[nb.id] = nb.questionIds.includes(questionIds[0]); });
+  }
+  const initialState = {...checkState};
 
   nbs.forEach(nb=>{
     const row = mk('label');row.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;font-size:13px;font-weight:500';
-    const cb = mk('input');cb.type='checkbox';cb.checked=toggleState[nb.id];cb.style.cssText='width:16px;height:16px;cursor:pointer;margin:0';
-    cb.addEventListener('change',e=>{toggleState[nb.id]=e.target.checked;});
+    const cb = mk('input');cb.type='checkbox';cb.checked=checkState[nb.id];cb.style.cssText='width:16px;height:16px;cursor:pointer;margin:0';
+    cb.addEventListener('change',e=>{checkState[nb.id]=e.target.checked;});
     const txt = mk('span');txt.style.flex='1';
-    txt.innerHTML = '📒 '+nb.name+`<span style="color:var(--text3);font-weight:400;font-size:11.5px;margin-left:6px">(${nb.questionIds.length} questões)</span>`;
+    // Em bulk, mostra quantas das selecionadas já estão no caderno (info útil)
+    let extra = '';
+    if(isBulk){
+      const alreadyIn = questionIds.filter(id => nb.questionIds.includes(id)).length;
+      if(alreadyIn > 0) extra = `<span style="color:var(--text3);font-weight:400;font-size:11px;margin-left:6px">(${alreadyIn} já ${alreadyIn===1?'está':'estão'})</span>`;
+    }
+    txt.innerHTML = '📒 '+escapeHTML(nb.name)+`<span style="color:var(--text3);font-weight:400;font-size:11.5px;margin-left:6px">(${nb.questionIds.length} ${nb.questionIds.length===1?'questão':'questões'})</span>` + extra;
     row.appendChild(cb);row.appendChild(txt);
     list.appendChild(row);
   });
   m.appendChild(list);
 
   const actions = mk('div','flex');actions.style.cssText='margin-top:1rem;gap:8px';
-  const saveB = mkBtn('Salvar','btn btn-p');
+  const saveB = mkBtn(isBulk ? 'Adicionar' : 'Salvar','btn btn-p');
   saveB.addEventListener('click',()=>{
-    let added=0,removed=0;
+    let totalAdded = 0, totalRemoved = 0, affectedNbs = 0;
     nbs.forEach(nb=>{
-      const want = toggleState[nb.id];
+      const want = checkState[nb.id];
       const has = initialState[nb.id];
-      if(want&&!has){nb.questionIds.push(questionId);nb.lastModifiedAt=Date.now();added++;}
-      else if(!want&&has){nb.questionIds=nb.questionIds.filter(id=>id!==questionId);nb.lastModifiedAt=Date.now();removed++;}
+      if(isBulk){
+        // Bulk: se want=true, adiciona TODAS as questões que ainda não estão
+        if(want){
+          const before = nb.questionIds.length;
+          questionIds.forEach(id => {
+            if(!nb.questionIds.includes(id)) nb.questionIds.push(id);
+          });
+          const added = nb.questionIds.length - before;
+          if(added > 0){ nb.lastModifiedAt = Date.now(); totalAdded += added; affectedNbs++; }
+        }
+        // Em bulk, nunca removemos por desmarcar (UX seria confusa)
+      } else {
+        // Single: comportamento antigo
+        if(want&&!has){nb.questionIds.push(questionIds[0]);nb.lastModifiedAt=Date.now();totalAdded++;}
+        else if(!want&&has){nb.questionIds=nb.questionIds.filter(id=>id!==questionIds[0]);nb.lastModifiedAt=Date.now();totalRemoved++;}
+      }
     });
-    if(added>0||removed>0)save();
-    closeModal();render();
+    if(totalAdded>0||totalRemoved>0)save();
+    closeModal();
+    if(isBulk){
+      showToast(`✓ ${totalAdded} adições em ${affectedNbs} caderno(s)`);
+      ST.bankSelectedIds = {};
+    }
+    render();
   });
   const newBtn = mkBtn('+ Novo caderno','btn');
-  newBtn.addEventListener('click',()=>{closeModal();showCreateNotebookModal();});
+  newBtn.addEventListener('click',()=>{
+    closeModal();
+    if(isBulk){
+      showCreateNotebookFromIdsModal(questionIds, '', '');
+    } else {
+      showCreateNotebookModal();
+    }
+  });
   const cancelB = mkBtn('Cancelar','btn');cancelB.style.marginLeft='auto';
   cancelB.addEventListener('click',closeModal);
   actions.appendChild(saveB);actions.appendChild(newBtn);actions.appendChild(cancelB);
