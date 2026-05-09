@@ -445,27 +445,22 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
 :root[data-theme="dark"] .brand-bird-light{display:none}
 :root[data-theme="dark"] .brand-bird-dark{display:block}
 
-/* V15.12.56 — Efeitos minimalistas na logo da topbar.
-   Substituiu V15.12.48 que tinha animation no .brand-bird sem controle —
-   resultado: piscava a cada re-render da topbar (acontece em quase todo render()).
-   Agora a animação só roda quando .brand-bird-anim-once está presente, e essa
-   classe é setada APENAS uma vez por sessão via JS (ST._topbarLogoPlayed).
-   Hover scale aumentado de 1.04 → 1.08 pra ser perceptível. */
+/* V15.12.57 — Hover sutil sem efeito roxo, conforme feedback.
+   Antes V15.12.56 tinha scale 1.08 + drop-shadow roxo (chamativo demais).
+   Agora: scale 1.03, sem filter, transição suave. */
 .brand-interactive{cursor:pointer}
 .brand-interactive .brand-bird{
-  transition:transform .2s cubic-bezier(.34,1.2,.5,1), filter .2s ease;
+  transition:transform .18s ease;
   transform-origin:left center;
 }
 .brand-interactive .brand-bird.brand-bird-anim-once{
   animation:brand-fade-in .4s cubic-bezier(.2,.6,.3,1) both;
 }
 .brand-interactive:hover .brand-bird{
-  transform:scale(1.08) translateY(-1px);
-  filter:drop-shadow(0 3px 10px rgba(124,92,255,.35));
+  transform:scale(1.03);
 }
 .brand-interactive:active .brand-bird{
-  transform:scale(1.04) translateY(0);
-  filter:drop-shadow(0 1px 5px rgba(124,92,255,.2));
+  transform:scale(1.01);
 }
 @keyframes brand-fade-in{
   from{opacity:0;transform:translateY(-4px)}
@@ -474,7 +469,7 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
 @media (prefers-reduced-motion: reduce){
   .brand-interactive .brand-bird{animation:none;transition:none}
   .brand-interactive:hover .brand-bird,
-  .brand-interactive:active .brand-bird{transform:none;filter:none}
+  .brand-interactive:active .brand-bird{transform:none}
 }
 
 .brand-name{font-family:'Sora',system-ui,-apple-system,'Segoe UI',sans-serif;font-size:22px;font-weight:800;letter-spacing:-1px;line-height:1;display:inline-flex;align-items:baseline}
@@ -4719,6 +4714,22 @@ input[type="month"]::-webkit-calendar-picker-indicator{
   .forest-bird-wing-r{animation:none}
 }
 
+/* V15.12.58 — Araucárias com WebM + fallback SVG.
+   Mesmo padrão da gralha: foreignObject visível por default, SVG fallback
+   escondido. JS pós-mount adiciona .araucaria-fallback no <g> do grupo se
+   o vídeo falhar. prefers-reduced-motion força SVG estático. */
+.araucaria-video-fo{overflow:visible}
+.araucaria-video-wrap{width:100%;height:100%;display:flex;align-items:flex-end;justify-content:center;pointer-events:none}
+.araucaria-video{width:100%;height:100%;object-fit:contain;background:transparent;display:block;pointer-events:none}
+/* SVG fallback escondido por default */
+.araucaria .araucaria-svg{display:none}
+.araucaria.araucaria-fallback .araucaria-video-fo{display:none}
+.araucaria.araucaria-fallback .araucaria-svg{display:block}
+@media (prefers-reduced-motion: reduce){
+  .araucaria .araucaria-video-fo{display:none}
+  .araucaria .araucaria-svg{display:block}
+}
+
 .forest-list-sec{margin-bottom:1.5rem}
 .forest-list-sec h3,.forest-next-sec h3{margin:0 0 .75rem;font-size:14px;font-weight:700;letter-spacing:-.2px;color:var(--text)}
 .forest-list{display:flex;flex-direction:column;gap:6px}
@@ -5303,7 +5314,11 @@ body.pomo-float-visible .faq-floating-btn{display:none !important}
 
 /* ====== AUTENTICAÇÃO (Supabase) ====== */
 .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem 1rem;background:var(--bg)}
-.auth-card{max-width:420px;width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2.25rem 1.75rem;box-shadow:0 4px 24px rgba(0,0,0,.04)}
+/* V15.12.57 — Altura mínima estável evita "salto" do card ao trocar entre
+   Login e Criar conta. Antes o card encolhia (login tem menos campos) e
+   crescia (signup tem campos a mais ou success-msg), passando visão de
+   plataforma bugada. min-height calculado pra acomodar a maior variante. */
+.auth-card{max-width:420px;width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:2.25rem 1.75rem;box-shadow:0 4px 24px rgba(0,0,0,.04);min-height:520px;display:flex;flex-direction:column}
 /* .auth-logo definido no bloco Welcome V3 com identidade Gralia */
 .auth-eyebrow{font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);text-align:center;margin-bottom:1.75rem}
 .auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--surface2);border-radius:var(--rs);padding:4px;margin-bottom:1.5rem}
@@ -10443,7 +10458,15 @@ const BRAND = {
   // O movimento pelo cenário continua via CSS (.forest-bird-fly), o vídeo
   // só substitui o desenho SVG da ave. Fallback automático: se WebM falhar
   // ou prefers-reduced-motion estiver ativo, renderiza o SVG original.
-  forestBirdVideo: '/animacao-mascote-pinhal.webm'
+  forestBirdVideo: '/animacao-mascote-pinhal.webm',
+  // V15.12.58 — WebMs das araucárias por estágio de crescimento. Render
+  // dentro de foreignObject no SVG do pinhal. Fallback automático pro SVG
+  // desenhado em drawAraucaria se o vídeo falhar ou prefers-reduced-motion
+  // estiver ativo.
+  araucariaCentenaria: '/araucaria-centenaria.webm',
+  araucariaAdulta: '/araucaria-adulta.webm',
+  araucariaJovem: '/araucaria-jovem.webm',
+  araucariaMuda: '/araucaria-muda.webm'
   // V15.12.45 → V15.12.46: chaves topbarVideoLight/topbarVideoDark removidas.
   // O experimento de logo animada na topbar foi revertido pra logo estática
   // por dificuldade de calibrar tamanho/timing. Voltamos pro <img> direto
@@ -15686,6 +15709,27 @@ function buildAppSidebar(){
 /* RENDER */
 const APP = $('app');
 function render(){
+  // V15.12.58 — Reset onboarding usa ?showLogin=1 pra forçar tela de login após logout.
+  // Detecta uma vez (flag de sessão), aplica e limpa a URL. Sem isso, regra de
+  // "se welcomeShown=false e !isAuthed → landing" levaria pra landing após reset.
+  if(!render._showLoginHandled){
+    try{
+      const params = new URLSearchParams(window.location.search);
+      if(params.get('showLogin') === '1'){
+        ST.showAuth = true;
+        ST.authMode = 'login';
+        // Limpa o param da URL pra não ficar pendurado em F5
+        try{
+          params.delete('showLogin');
+          const newSearch = params.toString();
+          const newUrl = window.location.pathname + (newSearch?'?'+newSearch:'') + window.location.hash;
+          window.history.replaceState({}, document.title, newUrl);
+        }catch(_){}
+      }
+    }catch(_){}
+    render._showLoginHandled = true;
+  }
+
   // Scroll to top quando trocar de "tela" (não em re-renders da mesma).
   // Bug clássico de SPA: o conteúdo é trocado mas o scroll do window mantém posição.
   // Calcula a "tela atual" considerando todos os estados (landing, auth, setup, view).
@@ -18351,13 +18395,19 @@ function buildOnboardingChecklist(){
       key:'discipline', done: hasDiscipline,
       icon:'📚', title:'Crie sua primeira disciplina',
       desc:'Ex: Direito Constitucional, Português, Informática.',
-      cta:'Ir pra disciplinas', action:()=>{ST.view='settings';render();setTimeout(()=>{const sec=document.querySelector('[data-section="disciplines"]');if(sec)sec.scrollIntoView({behavior:'smooth',block:'center'});},200);}
+      // V15.12.58 — Antes mandava pra view='settings' e tentava scrollar até
+      // [data-section="disciplines"] que não existe. Agora vai direto pra
+      // Fontes → sub-aba Disciplinas, onde o usuário cria de verdade.
+      cta:'Ir pra disciplinas',
+      action:()=>{ST.view='sources';ST.srcSubview='disc';render();}
     },
     {
       key:'source', done: hasSource,
       icon:'📖', title:'Adicione uma fonte de estudo',
       desc:'Cole texto, suba PDF ou importe um caderno da comunidade.',
-      cta:'Adicionar fonte', action:()=>{ST.view='sources';render();}
+      // V15.12.58 — Pula direto pra sub-aba "Adicionar" em vez da listagem
+      cta:'Adicionar fonte',
+      action:()=>{ST.view='sources';ST.srcSubview='add';render();}
     },
     {
       key:'practice', done: hasPracticed,
@@ -18375,7 +18425,23 @@ function buildOnboardingChecklist(){
       key:'exam', done: hasExamSet,
       icon:'📅', title:'Defina sua prova alvo',
       desc:'Nome, data e banca — destrava o contador regressivo no painel.',
-      cta:'Definir prova', action:()=>{ST.view='settings';render();}
+      // V15.12.58 — Antes só mandava pra settings sem scrollar. Agora vai
+      // pra settings E rola até #sec-perfil (onde fica o card de prova).
+      cta:'Definir prova',
+      action:()=>{
+        ST.view='settings';
+        render();
+        setTimeout(()=>{
+          const sec = document.querySelector('#sec-perfil');
+          if(sec){
+            sec.scrollIntoView({behavior:'smooth', block:'start'});
+            // Destaque visual breve pra chamar atenção pro card
+            sec.style.transition = 'box-shadow .3s ease';
+            sec.style.boxShadow = '0 0 0 3px rgba(124,92,255,.35)';
+            setTimeout(()=>{ sec.style.boxShadow = ''; }, 1500);
+          }
+        }, 250);
+      }
     }
   ];
 
@@ -23588,10 +23654,15 @@ function applyBankFilters(bank,f){
   //   'imported'    → q.source==='imported' E sem importSource (legacy) OU explicitamente imported
   //   'ai'          → q.source==='ai' (gerada por IA)
   //   '__pdf-ai'    → q.importSource === 'pdf-ai'
-  //   '__text'      → q.importSource === 'text'
-  //   '__pdf'       → q.importSource === 'pdf'
+  // V15.12.57 — Origem simplificada: 'ai' = IA, 'imported' = qualquer outra coisa.
+  // Antes tinha sub-categorias '__pdf-ai', '__text', '__pdf' que fragmentavam.
   if(f.source && f.source !== 'all'){
-    if(f.source.startsWith('__')){
+    if(f.source === 'ai'){
+      r = r.filter(q => q.source === 'ai');
+    } else if(f.source === 'imported'){
+      r = r.filter(q => q.source !== 'ai');
+    } else if(f.source.startsWith('__')){
+      // Compat com filtros antigos salvos (ST.importedFilters persiste em DATA)
       const target = f.source.slice(2);
       r = r.filter(q => q.importSource === target);
     } else {
@@ -23729,17 +23800,8 @@ function renderBankFilters(stateKey,bank){
     activeFilters.push({key:'favorite', label: 'Sem favoritar', reset:()=>{f.favorite='all';}});
   }
   // V15.12.56 — Filtros do P1 reconhecidos pelo "Limpar filtros" e contador.
-  // Antes V15.12.53 introduziu os 3 chips mas esqueceu de registrar aqui.
-  if(f.hasExplanation === 'yes'){
-    activeFilters.push({key:'hasExplanation', label: '📖 Com explicação', reset:()=>{f.hasExplanation='all';}});
-  } else if(f.hasExplanation === 'no'){
-    activeFilters.push({key:'hasExplanation', label: 'Sem explicação', reset:()=>{f.hasExplanation='all';}});
-  }
-  if(f.hasFlashcard === 'yes'){
-    activeFilters.push({key:'hasFlashcard', label: '🎴 Com flashcard', reset:()=>{f.hasFlashcard='all';}});
-  } else if(f.hasFlashcard === 'no'){
-    activeFilters.push({key:'hasFlashcard', label: 'Sem flashcard', reset:()=>{f.hasFlashcard='all';}});
-  }
+  // V15.12.57 — Os 2 filtros "hasExplanation" e "hasFlashcard" foram desabilitados
+  // (TODO no buildChipGroup explica). Só "inNotebooks" continua.
   if(f.inNotebooks === 'none'){
     activeFilters.push({key:'inNotebooks', label: '📭 Em nenhum caderno', reset:()=>{f.inNotebooks='all';}});
   } else if(f.inNotebooks === '1'){
@@ -23889,15 +23951,16 @@ function renderBankFilters(stateKey,bank){
   };
 
   // Source filter
-  // V15.12.34: origem mais granular (pdf-ai, text, ai, imported antigo)
+  // V15.12.57 — Simplificação: 2 categorias só: "Geradas IA" vs "Importadas".
+  // Antes a granularidade pdf-ai/text/imported confundia (chip "Importadas"
+  // só contava a ausência de importSource, então questões importadas com
+  // importSource='text' caíam num chip que podia não aparecer dependendo de
+  // outros filtros). Agora: tudo q.source==='ai' é IA; resto é importada,
+  // independente de importSource. Garantia: total = aiCount + importedCount.
   const aiCount = bank.filter(q=>q.source==='ai').length;
-  const pdfAiCount = bank.filter(q=>q.importSource==='pdf-ai').length;
-  const textCount = bank.filter(q=>q.importSource==='text').length;
-  const importedLegacy = bank.filter(q=>(q.source||'imported')==='imported' && !q.importSource).length;
+  const importedCount = bank.length - aiCount;
   const sourceOpts = [['all','Todas',bank.length]];
-  if(pdfAiCount>0) sourceOpts.push(['__pdf-ai','✨ PDF c/ IA',pdfAiCount]);
-  if(textCount>0) sourceOpts.push(['__text','📝 Texto colado',textCount]);
-  if(importedLegacy>0) sourceOpts.push(['imported','📋 Importadas',importedLegacy]);
+  if(importedCount>0) sourceOpts.push(['imported','📋 Importadas',importedCount]);
   if(aiCount>0) sourceOpts.push(['ai','🤖 Geradas IA',aiCount]);
   // Construímos manualmente porque source pode ser composto (importSource ou source)
   const srcRow = mk('div','filter-row');
@@ -23957,9 +24020,19 @@ function renderBankFilters(stateKey,bank){
     ]));
   }
 
-  // V15.12.53 — Filtro "Com explicação". Computado a partir de q.explanation.
-  // Útil porque questões importadas raramente têm explicação, e questões IA
-  // ou explicadas via comando dedicado têm. Mostra só se houver mistura no banco.
+  // V15.12.57 — Filtros "Com explicação" e "Com flashcard" temporariamente
+  // ESCONDIDOS porque mostravam contagem inconsistente com o que aparece
+  // de fato na prática:
+  //   - "Com explicação" detectava q.explanation populado, mas a prática
+  //     histórica de questão importada não exibe esse campo (regenera via
+  //     IA paga). Resultado: filtro promete e prática não entrega.
+  //   - "Com flashcard" indexa via DATA.errors[].sourceBankId+hasCard, mas
+  //     muitas questões com hasCard antigas não têm sourceBankId preenchido.
+  // O filtro "Em N cadernos" continua porque é confiável.
+  // TODO: rodada própria — consolidar exibição de explicação na prática
+  // (q.explanation ou error.explanation, sem regenerar via IA quando já
+  // existe local) + backfill de error.sourceBankId pra flashcards antigos.
+  /*
   const expYes = bank.filter(q=>!!(q.explanation && String(q.explanation).trim())).length;
   const expNo = bank.length - expYes;
   if(expYes > 0 && expNo > 0){
@@ -23970,9 +24043,6 @@ function renderBankFilters(stateKey,bank){
     ]));
   }
 
-  // V15.12.53 — Filtro "Com flashcard derivado". Constrói índice questão→flashcard
-  // via DATA.errors (erro com hasCard=true e sourceBankId=q.id indica que a
-  // questão errada virou flashcard).
   const errsForFc = DATA.errors || [];
   const fcSet = new Set();
   for(const e of errsForFc){
@@ -23987,6 +24057,7 @@ function renderBankFilters(stateKey,bank){
       ['no','Sem flashcard',fcNo]
     ]));
   }
+  */
 
   // V15.12.53 — Filtro "Em N cadernos". Útil pra ver questões "compartilhadas"
   // entre múltiplos cadernos (estudo recorrente) vs órfãs (não aproveitadas).
@@ -47406,17 +47477,24 @@ async function loadAdminUsersData(container){
 
     // V12 fix: vagas BETA contam ASSINANTES PAGOS (não signups). O desconto
     // BETA só vale pra quem realmente assinou — então a vaga só é "consumida"
-    // quando há subscription com plano não-trial.
+    // V15.12.58 — Atualizado conforme decisão:
+    //   - Total beta: 100 vagas (antes 200)
+    //   - Distribuição: 30 mensal + 30 trimestral + 40 anual = 100
+    //   - Exclui assinaturas marcadas como is_test_subscription=true
+    //     (resolve queixa "minha conta admin sendo contada como assinante")
     let betaUsed = 0;
     try{
       const {count: paidSubs, error: eb} = await supa
         .from('subscriptions')
         .select('*', {count:'exact', head:true})
         .neq('plan_id', 'trial')
-        .in('status', ['active','trialing']);
+        .in('status', ['active','trialing'])
+        .or('is_test_subscription.is.null,is_test_subscription.eq.false');
       if(!eb) betaUsed = paidSubs || 0;
     }catch(_e){ betaUsed = 0; }
-    const betaSlotsRemaining = Math.max(0, 200 - betaUsed);
+    const BETA_TOTAL = 100;
+    const betaSlotsRemaining = Math.max(0, BETA_TOTAL - betaUsed);
+    const betaPctUsed = Math.min(100, Math.round((betaUsed / BETA_TOTAL) * 100));
 
     container.innerHTML = '';
 
@@ -47440,8 +47518,9 @@ async function loadAdminUsersData(container){
         <div class="ast-value">${publicCount||0}</div>
       </div>
       <div class="ast-cell">
-        <div class="ast-label">Vagas BETA restantes</div>
-        <div class="ast-value" style="color:${betaSlotsRemaining < 50 ? 'var(--amber-text)' : 'var(--accent-text)'}">${betaSlotsRemaining}</div>
+        <div class="ast-label">Vagas BETA</div>
+        <div class="ast-value" style="color:${betaSlotsRemaining < 25 ? 'var(--amber-text)' : 'var(--accent-text)'}">${betaUsed}<span style="font-size:.55em;opacity:.55">/${BETA_TOTAL}</span></div>
+        <div class="ast-sub" style="font-size:10.5px;color:var(--text3);margin-top:2px">${betaSlotsRemaining} restante${betaSlotsRemaining===1?'':'s'} · ${betaPctUsed}% ocupado</div>
       </div>
     `;
     container.appendChild(stats);
@@ -53090,21 +53169,56 @@ function buildForestScene(trees){
   svg += `<rect x="0" y="0" width="${W}" height="${H}" fill="url(#forSky)"/>`;
 
   // === SOL/LUA — disco suave no horizonte ===
-  const sunCx = W*0.72, sunCy = H*0.42;
-  svg += `<circle cx="${sunCx}" cy="${sunCy}" r="80" fill="url(#forSun)"/>`;
-  svg += `<circle cx="${sunCx}" cy="${sunCy}" r="22" fill="url(#forSunCore)"/>`;
+  // V15.12.57 — Dinâmico baseado no horário local do usuário:
+  //   06:00-18:00 → SOL (amarelo quente, no canto direito)
+  //   18:00-06:00 → LUA (cinza-prata frio, no canto esquerdo)
+  // Permite usuário ver "passar do tempo" no pinhal conforme estuda.
+  const hour = new Date().getHours();
+  const isDay = hour >= 6 && hour < 18;
+  const sunCx = isDay ? W*0.72 : W*0.18;
+  const sunCy = H*0.42;
+  if(isDay){
+    // Sol: amarelo-laranja brilhante
+    svg += `<circle cx="${sunCx}" cy="${sunCy}" r="80" fill="url(#forSun)"/>`;
+    svg += `<circle cx="${sunCx}" cy="${sunCy}" r="22" fill="url(#forSunCore)"/>`;
+  } else {
+    // Lua: prata-azulada com sombra crescente
+    svg += `<defs>
+      <radialGradient id="forMoonGlow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#e8edf5" stop-opacity="0.6"/>
+        <stop offset="50%" stop-color="#b8c5d8" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="#7a8aa3" stop-opacity="0"/>
+      </radialGradient>
+      <radialGradient id="forMoonCore" cx="40%" cy="40%" r="55%">
+        <stop offset="0%" stop-color="#f4f6fa"/>
+        <stop offset="100%" stop-color="#cdd5e2"/>
+      </radialGradient>
+    </defs>`;
+    svg += `<circle cx="${sunCx}" cy="${sunCy}" r="65" fill="url(#forMoonGlow)"/>`;
+    svg += `<circle cx="${sunCx}" cy="${sunCy}" r="20" fill="url(#forMoonCore)"/>`;
+    // Crateras pequenas pra sensação de lua
+    svg += `<circle cx="${sunCx-6}" cy="${sunCy-4}" r="2.2" fill="#a8b3c5" opacity="0.4"/>`;
+    svg += `<circle cx="${sunCx+5}" cy="${sunCy+3}" r="1.8" fill="#a8b3c5" opacity="0.4"/>`;
+    svg += `<circle cx="${sunCx-2}" cy="${sunCy+6}" r="1.3" fill="#a8b3c5" opacity="0.35"/>`;
+  }
 
   // === ESTRELAS — pontos discretos no alto ===
+  // V15.12.57 — Mais visíveis à noite, sutis de dia
+  const starOpacity = isDay ? 0.3 : 0.85;
   const stars = [
     [0.08, 0.10, 1.2], [0.18, 0.06, 0.9], [0.26, 0.13, 1.0],
     [0.42, 0.08, 1.1], [0.55, 0.05, 0.8], [0.88, 0.12, 0.9]
   ];
   stars.forEach(([sx, sy, r])=>{
-    svg += `<circle cx="${W*sx}" cy="${H*sy}" r="${r}" fill="#fff5dc" opacity="0.7"/>`;
+    svg += `<circle cx="${W*sx}" cy="${H*sy}" r="${r}" fill="#fff5dc" opacity="${starOpacity}"/>`;
   });
 
-  // === MONTANHAS DISTANTES (camada mais clara, atrás) ===
-  // Path suave com curvas Bezier, não polígono geométrico
+  // === MONTANHAS DISTANTES (camada única, perfil suave alto) ===
+  // V15.12.57 — Antes 2 camadas com formato similar (queixa: pareciam duplicadas).
+  // Agora mantém apenas a camada distante, mais clara, com perfil mais alto e
+  // suave. A "camada próxima" foi removida — a transição agora vai direto pra
+  // neblina + linha de árvores. Resultado: profundidade preservada, sem
+  // sensação de duplicidade.
   const groundY = H*0.72;
   svg += `<path d="M 0 ${H*0.55}
     Q ${W*0.08} ${H*0.42}, ${W*0.16} ${H*0.50}
@@ -53115,15 +53229,14 @@ function buildForestScene(trees){
     L ${W} ${H*0.55} L ${W} ${groundY} L 0 ${groundY} Z"
     fill="url(#forMtnFar)"/>`;
 
-  // === MONTANHAS PRÓXIMAS (camada mais escura, mais densa) ===
-  svg += `<path d="M 0 ${H*0.65}
-    Q ${W*0.10} ${H*0.55}, ${W*0.20} ${H*0.62}
-    T ${W*0.36} ${H*0.58}
-    Q ${W*0.48} ${H*0.50}, ${W*0.58} ${H*0.60}
-    T ${W*0.76} ${H*0.56}
-    Q ${W*0.88} ${H*0.48}, ${W} ${H*0.62}
+  // === COLINAS BAIXAS — mais perto do observador, perfil distinto da montanha ===
+  // Em vez de outra "montanha igual", uma onda baixa suave que sugere relevo
+  // sem competir com as montanhas atrás. Mais natural pra paisagem do Paraná.
+  svg += `<path d="M 0 ${H*0.66}
+    C ${W*0.15} ${H*0.62}, ${W*0.30} ${H*0.69}, ${W*0.45} ${H*0.65}
+    S ${W*0.75} ${H*0.68}, ${W} ${H*0.64}
     L ${W} ${groundY} L 0 ${groundY} Z"
-    fill="url(#forMtnNear)"/>`;
+    fill="url(#forMtnNear)" opacity="0.85"/>`;
 
   // === NEBLINA ENTRE MONTANHAS E ÁRVORES ===
   svg += `<rect x="0" y="${H*0.55}" width="${W}" height="${H*0.20}" fill="url(#forMist)"/>`;
@@ -53320,25 +53433,63 @@ function buildForestScene(trees){
   }
 
   // Camadas (mais distantes maiores e atrás, mais próximos menores e na frente)
+  // V15.12.58 — Cada árvore vira uma estrutura híbrida: <foreignObject> com
+  // <video> WebM (visual primário) + <g> com SVG desenhado (fallback).
+  // CSS controla qual está visível. JS pós-mount adiciona .araucaria-fallback
+  // no grupo externo se o vídeo falhar.
+  function drawAraucariaHybrid(cx, cy, scale, type, treeId){
+    const videoSrc = type === 'ancient' ? BRAND.araucariaCentenaria :
+                     type === 'mature'  ? BRAND.araucariaAdulta :
+                     type === 'young'   ? BRAND.araucariaJovem :
+                                          BRAND.araucariaMuda;
+    // Bounding box do foreignObject: dimensiona pra cobrir aproximadamente
+    // a mesma área visual do SVG desenhado (que usa scale * altura aprox).
+    // Adultas/centenárias mais altas e largas, jovem/muda menores.
+    const sizeMap = {
+      ancient: { w: 70 * scale, h: 110 * scale, dy: 0.95 },
+      mature:  { w: 55 * scale, h: 90 * scale, dy: 0.95 },
+      young:   { w: 38 * scale, h: 65 * scale, dy: 0.95 },
+      seed:    { w: 22 * scale, h: 38 * scale, dy: 0.95 }
+    };
+    const size = sizeMap[type] || sizeMap.seed;
+    const foX = cx - size.w / 2;
+    const foY = cy - size.h * size.dy;
+    const safeId = (treeId||'').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0, 24);
+    const groupId = 'arau_' + type + '_' + safeId;
+
+    // Estrutura: g com classes que controlam qual filho mostra
+    let s = `<g class="araucaria araucaria-${type}" data-tree-id="${groupId}">`;
+    s += `<foreignObject class="araucaria-video-fo" x="${foX}" y="${foY}" width="${size.w}" height="${size.h}">`;
+    s += `<div xmlns="http://www.w3.org/1999/xhtml" class="araucaria-video-wrap">`;
+    s += `<video class="araucaria-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true">`;
+    s += `<source src="${videoSrc}" type="video/webm">`;
+    s += `</video></div></foreignObject>`;
+    // Fallback SVG dentro de um g escondido por default
+    s += `<g class="araucaria-svg">`;
+    s += drawAraucaria(cx, cy, scale, type);
+    s += `</g></g>`;
+    return s;
+  }
+
   grouped.ancient.forEach((t, i)=>{
     const x = 80 + hashPos(t.id, W - 160);
     const y = H * 0.76 + hashPos(t.id+'y', 14);
-    svg += drawAraucaria(x, y, 1.5, 'ancient');
+    svg += drawAraucariaHybrid(x, y, 1.5, 'ancient', t.id);
   });
   grouped.mature.forEach((t, i)=>{
     const x = 60 + hashPos(t.id, W - 120);
     const y = H * 0.82 + hashPos(t.id+'y', 18);
-    svg += drawAraucaria(x, y, 1.1, 'mature');
+    svg += drawAraucariaHybrid(x, y, 1.1, 'mature', t.id);
   });
   grouped.young.forEach((t, i)=>{
     const x = 40 + hashPos(t.id, W - 80);
     const y = H * 0.89 + hashPos(t.id+'y', 14);
-    svg += drawAraucaria(x, y, 0.75, 'young');
+    svg += drawAraucariaHybrid(x, y, 0.75, 'young', t.id);
   });
   grouped.seed.forEach((t, i)=>{
     const x = 25 + hashPos(t.id, W - 50);
     const y = H * 0.94 + hashPos(t.id+'y', 10);
-    svg += drawAraucaria(x, y, 0.5, 'seed');
+    svg += drawAraucariaHybrid(x, y, 0.5, 'seed', t.id);
   });
 
   // === GRALHA — alinhada à identidade da marca ===
@@ -53404,17 +53555,36 @@ function buildForestScene(trees){
   setTimeout(()=>{
     const birdGroup = container.querySelector('.forest-bird');
     const v = container.querySelector('.forest-bird-video');
-    if(!birdGroup || !v) return;
-    const activateFallback = ()=>{
-      birdGroup.classList.add('bird-fallback');
-      try{ v.pause && v.pause(); }catch(_){}
-    };
-    v.addEventListener('error', activateFallback);
-    const src = v.querySelector('source');
-    if(src) src.addEventListener('error', activateFallback);
-    v.addEventListener('loadedmetadata', ()=>{
-      // Catch: WebM corrompido pode reportar metadata mas com dimensões zeradas
-      if(!v.videoWidth || !v.videoHeight) activateFallback();
+    if(birdGroup && v){
+      const activateFallback = ()=>{
+        birdGroup.classList.add('bird-fallback');
+        try{ v.pause && v.pause(); }catch(_){}
+      };
+      v.addEventListener('error', activateFallback);
+      const src = v.querySelector('source');
+      if(src) src.addEventListener('error', activateFallback);
+      v.addEventListener('loadedmetadata', ()=>{
+        if(!v.videoWidth || !v.videoHeight) activateFallback();
+      });
+    }
+
+    // V15.12.58 — Mesmo hook pra cada araucária. Cada <g.araucaria> tem seu
+    // próprio video, então cada um tem seu listener individual. Falha
+    // independente: se 1 vídeo falhar, só aquela árvore vira SVG.
+    const araucarias = container.querySelectorAll('.araucaria');
+    araucarias.forEach(group => {
+      const av = group.querySelector('.araucaria-video');
+      if(!av) return;
+      const activate = ()=>{
+        group.classList.add('araucaria-fallback');
+        try{ av.pause && av.pause(); }catch(_){}
+      };
+      av.addEventListener('error', activate);
+      const asrc = av.querySelector('source');
+      if(asrc) asrc.addEventListener('error', activate);
+      av.addEventListener('loadedmetadata', ()=>{
+        if(!av.videoWidth || !av.videoHeight) activate();
+      });
     });
   }, 0);
 
@@ -54616,24 +54786,31 @@ function renderSettings(){
           roBtn.textContent = 'Resetar onboarding';
           return;
         }
-        // V15.12.56 — Faz logout DEPOIS do sync. Antes só recarregava, mas
-        // a sessão ativa do Supabase fazia cair no branch "sessão restaurada"
-        // que mostra "bem-vindo de volta" (não bem-vindo novo). Pra ver os
-        // fluxos de signup novo (toast de boas-vindas, modal username, tutorial),
-        // precisa REALMENTE deslogar e logar de novo.
+        // V15.12.58 — Abordagem simplificada e robusta:
+        // 1. Faz signOut
+        // 2. Aguarda evento processar
+        // 3. window.location.replace pra mesma URL com ?showLogin=1
+        //    (force a tela de login mesmo se DATA.welcomeShown=false ou setup=false)
         showToast('✓ Onboarding resetado. Deslogando...', 3000);
         setTimeout(async ()=>{
           try{
             await supa.auth.signOut();
           }catch(_){}
-          // signOut dispara onAuthStateChange → SIGNED_OUT → mostra tela de auth.
-          // Se por algum motivo não disparar, fallback é forçar reload.
+          // Aguarda 400ms pro signOut processar localStorage do Supabase
           setTimeout(()=>{
-            if(isAuthed()){
-              window.location.reload();
+            // Limpa localStorage do app (não do Supabase) pra zerar flags voláteis
+            // que sobrevivem entre reloads (welcomeShown está em DATA, mas eu já
+            // zerei e syncUp propagou). Isso é apenas seguro extra.
+            try{
+              const url = new URL(window.location.href);
+              url.searchParams.set('showLogin','1');
+              window.location.replace(url.toString());
+            }catch(_){
+              // Fallback se URL API não disponível
+              window.location.href = window.location.pathname + '?showLogin=1';
             }
-          }, 600);
-        }, 800);
+          }, 500);
+        }, 600);
       }catch(err){
         roBtn.disabled = false;
         roBtn.textContent = 'Resetar onboarding';
@@ -54695,12 +54872,13 @@ function renderSettings(){
     atSqlBtn.textContent = 'Copiar SQL de auditoria';
     atSqlBtn.title = 'Copia query SQL pra rodar no Supabase Editor';
     atSqlBtn.addEventListener('click', async ()=>{
-      const sql = `-- V15.12.51: Auditoria do trial bonus
--- Lista usuários criados nos últimos 14 dias e o saldo deles.
--- Quem aparecer com saldo 0 ou sem linha: o trigger handle_new_user falhou.
--- V15.12.55: ajustado pro schema real (user_credits NÃO tem coluna 'balance' —
--- o saldo é a soma de plan_credits + topup_credits + promotional_credits).
--- O trial bonus de 40 créditos é creditado em promotional_credits.
+      const sql = `-- V15.12.58: Auditoria do trial bonus (CORRIGIDA)
+-- Descoberta da rodada anterior: o trial bonus de 40 créditos é creditado
+-- em PLAN_CREDITS, não em promotional_credits como assumido antes.
+-- promotional_credits é pra cupons promocionais ("ganhe 50 créditos com X").
+-- Plano "trial" inicial usa plan_credits = 40.
+--
+-- Lista usuários criados nos últimos 14 dias com diagnóstico do trial.
 
 SELECT
   u.id,
@@ -54717,15 +54895,13 @@ SELECT
   CASE
     WHEN uc.user_id IS NULL
       THEN '⚠ sem linha em user_credits — trigger NÃO rodou'
-    WHEN COALESCE(uc.promotional_credits, 0) >= 40
-      THEN '✓ trial intacto'
-    WHEN COALESCE(uc.promotional_credits, 0) > 0 AND COALESCE(uc.total_used_lifetime, 0) > 0
-      THEN '✓ trial parcialmente usado (normal)'
-    WHEN COALESCE(uc.promotional_credits, 0) = 0 AND COALESCE(uc.total_used_lifetime, 0) >= 40
-      THEN '✓ trial totalmente usado (normal)'
-    WHEN COALESCE(uc.promotional_credits, 0) = 0 AND COALESCE(uc.total_used_lifetime, 0) = 0
-      THEN '⚠ trial NUNCA creditado — trigger falhou'
-    ELSE '? estado incomum, investigar'
+    WHEN COALESCE(uc.plan_credits, 0) + COALESCE(uc.total_used_lifetime, 0) >= 40
+      THEN '✓ trial creditado (saldo + usado >= 40)'
+    WHEN COALESCE(uc.plan_credits, 0) > 0 AND COALESCE(uc.total_used_lifetime, 0) = 0
+      THEN '✓ trial intacto (' || uc.plan_credits || ' créditos)'
+    WHEN COALESCE(uc.plan_credits, 0) = 0 AND COALESCE(uc.total_used_lifetime, 0) = 0
+      THEN '⚠ saldo zero E nada usado — trigger pode ter falhado'
+    ELSE '✓ usuário ativo (saldo: ' || (COALESCE(uc.plan_credits,0) + COALESCE(uc.topup_credits,0) + COALESCE(uc.promotional_credits,0)) || ', usado: ' || COALESCE(uc.total_used_lifetime,0) || ')'
   END AS status_trial
 FROM auth.users u
 LEFT JOIN user_credits uc ON uc.user_id = u.id
@@ -54733,21 +54909,21 @@ WHERE u.created_at > NOW() - INTERVAL '14 days'
 ORDER BY u.created_at DESC
 LIMIT 50;
 
--- Pra inspecionar a definição do trigger:
+-- Inspecionar trigger handle_new_user:
 -- SELECT tgname, pg_get_triggerdef(oid)
 -- FROM pg_trigger
--- WHERE NOT tgisinternal AND (tgname ILIKE '%new_user%' OR tgname ILIKE '%handle%');
+-- WHERE NOT tgisinternal AND tgname ILIKE '%new_user%';
 
--- Pra ver a função associada:
+-- Função associada:
 -- SELECT pg_get_functiondef(oid)
 -- FROM pg_proc
--- WHERE proname IN ('handle_new_user','grant_trial_bonus','grant_welcome_bonus','add_credits');
+-- WHERE proname IN ('handle_new_user','grant_trial_bonus','add_credits');
 
--- Pra creditar manualmente um trial pendente (substituir USER_ID_AQUI):
+-- Creditar manualmente trial pendente (substituir USER_ID_AQUI):
 -- INSERT INTO user_credits (user_id, plan_credits, topup_credits, promotional_credits, updated_at)
--- VALUES ('USER_ID_AQUI'::uuid, 0, 0, 40, NOW())
+-- VALUES ('USER_ID_AQUI'::uuid, 40, 0, 0, NOW())
 -- ON CONFLICT (user_id) DO UPDATE SET
---   promotional_credits = user_credits.promotional_credits + 40,
+--   plan_credits = user_credits.plan_credits + 40,
 --   updated_at = NOW();`;
       try{
         await navigator.clipboard.writeText(sql);
@@ -60082,16 +60258,22 @@ function maybePromptProfileSetup(retries){
 }
 
 // V15.12.48 — Helper que abre o tutorial visual se aplicável.
-// Extraído do setTimeout do onAuthStateChange pra ser reusado depois do
-// modal de profile setup fechar (evita os dois aparecerem em paralelo).
-// Também não abre se já existe outro modal aberto (cuidado com pilhas).
-function maybeShowTutorial(){
+// V15.12.58 — Mais robusto: se outro modal estiver aberto, tenta de novo
+// em 2s (até 3 retries) em vez de desistir silenciosamente.
+function maybeShowTutorial(retries){
+  retries = retries || 0;
   try{
-    if(ST.modal) return; // outro modal aberto — não atropela
+    if(!isAuthed()) return;
     const noSources = !(DATA.sources||[]).length;
-    if(noSources && !DATA.tutorialOffered){
-      showTutorialModal();
+    if(!noSources || DATA.tutorialOffered) return;
+    if(ST.modal){
+      // Outro modal aberto — espera ele fechar
+      if(retries < 3){
+        setTimeout(()=> maybeShowTutorial(retries + 1), 2000);
+      }
+      return;
     }
+    showTutorialModal();
   }catch(e){console.warn('[tutorial]', e);}
 }
 
@@ -60170,10 +60352,14 @@ async function initAuth(){
       // Sessão já existente — apenas carrega dados, sem prompt de merge
       ST.showAuth = false;
       // V14: Detecta ausência prolongada e mostra toast de "Bem-vindo de volta"
-      // antes de atualizar o lastVisitAt
+      // V15.12.57 — Antes >= 3 dias e sem guarda de sessão, então aparecia toda
+      // recarga. Agora exige >= 7 dias E só uma vez por sessão de browser
+      // (sessionStorage limpa ao fechar aba).
       const lastVisit = DATA.lastVisitAt || Date.now();
       const daysAway = Math.floor((Date.now() - lastVisit) / 86400000);
-      if(daysAway >= 3){
+      let alreadyShownThisSession = false;
+      try{ alreadyShownThisSession = sessionStorage.getItem('welcomeBackShown') === '1'; }catch(_){}
+      if(daysAway >= 7 && !alreadyShownThisSession){
         const profileName = (AUTH.profile && AUTH.profile.display_name) ? AUTH.profile.display_name.trim() : '';
         const userName = profileName || (DATA.config.userName||'').trim();
         const dueSrs = DATA.srs.cards.filter(c=>(c.nextReview||0)<=Date.now() && c.active!==false).length;
@@ -60183,6 +60369,7 @@ async function initAuth(){
         setTimeout(()=>{
           try{ showToast('👋 ' + greeting + context, 8000); }catch(_){}
         }, 1800);
+        try{ sessionStorage.setItem('welcomeBackShown','1'); }catch(_){}
       }
       // Atualiza última visita
       DATA.lastVisitAt = Date.now();
@@ -60295,7 +60482,18 @@ async function initAuth(){
       // Clear sync state. Keep DATA as-is — user may log in to another account
       AUTH.syncError = null;
       AUTH.lastSyncAt = null;
-      ST.showAuth = false;
+      // V15.12.57 — Antes ST.showAuth=false. Resultado: caía na landing.
+      // Se houver flag de "veio de reset onboarding", mostra tela de login direto.
+      // Caso contrário, mantém comportamento padrão (deixa render() decidir).
+      if(ST._fromOnboardingReset){
+        ST.showAuth = true;
+        ST._fromOnboardingReset = false;
+        // Reset volátil pra simular conta nova ao logar de novo
+        ST._profileSetupDismissed = false;
+        ST._topbarLogoPlayed = false;
+      } else {
+        ST.showAuth = false;
+      }
       // V15.12.44 — Reseta flag de "pulou setup do perfil" pra próximo login pedir de novo
       ST._profileSetupDismissed = false;
       // Reset quota
