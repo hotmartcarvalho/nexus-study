@@ -445,26 +445,27 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
 :root[data-theme="dark"] .brand-bird-light{display:none}
 :root[data-theme="dark"] .brand-bird-dark{display:block}
 
-/* V15.12.48 — Efeitos minimalistas na logo da topbar.
-   Substituiu V15.12.47 (shimmer sweep periódico que ficava chamando atenção).
-   Dois efeitos discretos:
-   1. Fade-in inicial: logo aparece com opacity 0→1 + slide 4px de cima (350ms).
-   2. Hover scale: ao passar o mouse, logo cresce sutilmente (1.04x) com lift
-      de 1px e brilho roxo bem leve, reforçando que é clicável (leva pra Sobre).
-   Respeita prefers-reduced-motion: desativa ambos os efeitos. */
+/* V15.12.56 — Efeitos minimalistas na logo da topbar.
+   Substituiu V15.12.48 que tinha animation no .brand-bird sem controle —
+   resultado: piscava a cada re-render da topbar (acontece em quase todo render()).
+   Agora a animação só roda quando .brand-bird-anim-once está presente, e essa
+   classe é setada APENAS uma vez por sessão via JS (ST._topbarLogoPlayed).
+   Hover scale aumentado de 1.04 → 1.08 pra ser perceptível. */
 .brand-interactive{cursor:pointer}
 .brand-interactive .brand-bird{
-  transition:transform .25s cubic-bezier(.34,1.2,.5,1), filter .25s ease;
-  animation:brand-fade-in .35s cubic-bezier(.2,.6,.3,1) both;
+  transition:transform .2s cubic-bezier(.34,1.2,.5,1), filter .2s ease;
   transform-origin:left center;
 }
+.brand-interactive .brand-bird.brand-bird-anim-once{
+  animation:brand-fade-in .4s cubic-bezier(.2,.6,.3,1) both;
+}
 .brand-interactive:hover .brand-bird{
-  transform:scale(1.04) translateY(-1px);
-  filter:drop-shadow(0 2px 8px rgba(124,92,255,.28));
+  transform:scale(1.08) translateY(-1px);
+  filter:drop-shadow(0 3px 10px rgba(124,92,255,.35));
 }
 .brand-interactive:active .brand-bird{
-  transform:scale(1.02) translateY(0);
-  filter:drop-shadow(0 1px 4px rgba(124,92,255,.18));
+  transform:scale(1.04) translateY(0);
+  filter:drop-shadow(0 1px 5px rgba(124,92,255,.2));
 }
 @keyframes brand-fade-in{
   from{opacity:0;transform:translateY(-4px)}
@@ -12937,14 +12938,15 @@ async function fetchQuota(){
 
 const TRIAL_AMOUNT = 40; // valor referenciado na landing/FAQ — manter sincronizado
 
-// Detecta se o usuário foi criado há menos de 2 minutos (heurística de "signup novo").
+// V15.12.56 — Detecta se o usuário foi criado há menos de 10 minutos.
+// Antes era 2 min, mas signup com confirmação de email pode levar mais.
 // Usado pra evitar disparar verificação de trial em logins de usuário antigo.
 function isFreshlyCreatedUser(){
   if(!AUTH.user || !AUTH.user.created_at) return false;
   try{
     const createdAt = new Date(AUTH.user.created_at).getTime();
     const ageMs = Date.now() - createdAt;
-    return ageMs >= 0 && ageMs < 120000;
+    return ageMs >= 0 && ageMs < 600000; // 10 min
   }catch(_){
     return false;
   }
@@ -17947,10 +17949,15 @@ function renderTopbar(){
   brand.setAttribute('role','button');
   brand.setAttribute('tabindex','0');
   brand.setAttribute('aria-label','Sobre o Gralia');
-  // V15.12.48 — Logo estática com efeitos sutis em CSS (fade-in + hover scale).
-  // Reverteu V15.12.45 (vídeo WebM), V15.12.46 (lift) e V15.12.47 (shimmer rotativo).
-  // Os efeitos minimalistas estão definidos no bloco CSS .brand-interactive.
-  brand.innerHTML = `<img src="${BRAND.topbarLogo}" alt="Gralia" class="brand-bird brand-bird-light"><img src="${BRAND.topbarLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark"><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
+  // V15.12.56 — Logo estática com efeitos em CSS controlados por classe.
+  // Fade-in só roda na PRIMEIRA renderização da topbar nesta sessão. Antes
+  // V15.12.48 colocava `animation` no .brand-bird sem flag, fazia piscar a
+  // cada re-render (que acontece em quase todo render() do app).
+  const animClass = ST._topbarLogoPlayed ? '' : ' brand-bird-anim-once';
+  brand.innerHTML = `<img src="${BRAND.topbarLogo}" alt="Gralia" class="brand-bird brand-bird-light${animClass}"><img src="${BRAND.topbarLogoDark}" alt="Gralia" class="brand-bird brand-bird-dark${animClass}"><span class="brand-name brand-fallback"><span class="bn-base">GRAL</span><span class="bn-accent">IA</span></span>`;
+  if(!ST._topbarLogoPlayed){
+    ST._topbarLogoPlayed = true;
+  }
   // Tooltip de marca com info da gralha-azul
   const brandTip = mk('div','brand-tooltip');
   brandTip.innerHTML = `
@@ -23161,7 +23168,7 @@ function buildAiFeedbackRow(question){
   lbl.textContent = 'Essa questão foi útil?';
   row.appendChild(lbl);
 
-  const myVote = getAiVote(canonicalHash);
+  let myVote = getAiVote(canonicalHash);
   const myReport = getAiReport(canonicalHash);
 
   // Botão 👍
@@ -23176,8 +23183,24 @@ function buildAiFeedbackRow(question){
   }
   upBtn.addEventListener('click', async () => {
     upBtn.disabled = true;
-    await setAiVote(canonicalHash, myVote === 'up' ? null : 'up');
-    render();
+    downBtn.disabled = true;
+    const newVote = (myVote === 'up') ? null : 'up';
+    await setAiVote(canonicalHash, newVote);
+    // V15.12.56 — Atualiza só os 2 botões em vez de chamar render() global
+    // (que estava causando piscada da tela inteira).
+    if(newVote === 'up'){
+      upBtn.style.borderColor = 'var(--accent)';
+      upBtn.style.background = 'rgba(34,197,94,.08)';
+      downBtn.style.borderColor = 'var(--border2)';
+      downBtn.style.background = 'var(--surface)';
+    } else {
+      upBtn.style.borderColor = 'var(--border2)';
+      upBtn.style.background = 'var(--surface)';
+    }
+    upBtn.disabled = false;
+    downBtn.disabled = false;
+    // Atualiza estado pra próximo clique
+    myVote = newVote;
   });
   row.appendChild(upBtn);
 
@@ -23193,8 +23216,21 @@ function buildAiFeedbackRow(question){
   }
   downBtn.addEventListener('click', async () => {
     downBtn.disabled = true;
-    await setAiVote(canonicalHash, myVote === 'down' ? null : 'down');
-    render();
+    upBtn.disabled = true;
+    const newVote = (myVote === 'down') ? null : 'down';
+    await setAiVote(canonicalHash, newVote);
+    if(newVote === 'down'){
+      downBtn.style.borderColor = 'var(--amber)';
+      downBtn.style.background = 'rgba(245,158,11,.08)';
+      upBtn.style.borderColor = 'var(--border2)';
+      upBtn.style.background = 'var(--surface)';
+    } else {
+      downBtn.style.borderColor = 'var(--border2)';
+      downBtn.style.background = 'var(--surface)';
+    }
+    upBtn.disabled = false;
+    downBtn.disabled = false;
+    myVote = newVote;
   });
   row.appendChild(downBtn);
 
@@ -23692,16 +23728,40 @@ function renderBankFilters(stateKey,bank){
   } else if(f.favorite === 'no'){
     activeFilters.push({key:'favorite', label: 'Sem favoritar', reset:()=>{f.favorite='all';}});
   }
+  // V15.12.56 — Filtros do P1 reconhecidos pelo "Limpar filtros" e contador.
+  // Antes V15.12.53 introduziu os 3 chips mas esqueceu de registrar aqui.
+  if(f.hasExplanation === 'yes'){
+    activeFilters.push({key:'hasExplanation', label: '📖 Com explicação', reset:()=>{f.hasExplanation='all';}});
+  } else if(f.hasExplanation === 'no'){
+    activeFilters.push({key:'hasExplanation', label: 'Sem explicação', reset:()=>{f.hasExplanation='all';}});
+  }
+  if(f.hasFlashcard === 'yes'){
+    activeFilters.push({key:'hasFlashcard', label: '🎴 Com flashcard', reset:()=>{f.hasFlashcard='all';}});
+  } else if(f.hasFlashcard === 'no'){
+    activeFilters.push({key:'hasFlashcard', label: 'Sem flashcard', reset:()=>{f.hasFlashcard='all';}});
+  }
+  if(f.inNotebooks === 'none'){
+    activeFilters.push({key:'inNotebooks', label: '📭 Em nenhum caderno', reset:()=>{f.inNotebooks='all';}});
+  } else if(f.inNotebooks === '1'){
+    activeFilters.push({key:'inNotebooks', label: '📁 Em 1 caderno', reset:()=>{f.inNotebooks='all';}});
+  } else if(f.inNotebooks === '2plus'){
+    activeFilters.push({key:'inNotebooks', label: '📚 Em 2+ cadernos', reset:()=>{f.inNotebooks='all';}});
+  }
   if(f.search && f.search.trim()){
     activeFilters.push({key:'search', label: 'Busca: "'+f.search.slice(0,20)+(f.search.length>20?'…':'')+'"', reset:()=>{f.search='';}});
   }
 
-  // V15.12.42 — Filtro de disciplinas sempre visível (item 5 do prompt).
-  // Mesmo com filtros recolhidos, o user vê e clica direto. Antes ele só
-  // aparecia dentro do bloco expandido — pouco acessível.
+  // V15.12.56 — Antes exigia >= 2 disciplinas pra mostrar a barra. Agora mostra
+  // sempre que tem disciplinas ativas com questões. Resolve queixa "antes via
+  // disciplinas, agora não vejo mais": o usuário pode ter aplicado filtro que
+  // restringiu pra 1 disciplina e a barra sumia, parecendo bug.
   const actDiscsTop = activeDisciplines();
-  const discsWithQTop = actDiscsTop.filter(d=>bank.some(q=>q.disciplineId===d.id));
-  if(discsWithQTop.length >= 2){
+  // Calcula contagem PRE-filtros pra evitar barra sumir após filtro reduzir tudo
+  // a 1 disciplina. Usa DATA.importedQuestions direto (todas as questões antes
+  // dos filtros aplicados pelo applyBankFilters).
+  const allBank = (DATA.importedQuestions || []);
+  const discsWithQTop = actDiscsTop.filter(d => allBank.some(q => q.disciplineId === d.id));
+  if(discsWithQTop.length >= 1){
     const discQuickRow = mk('div');
     discQuickRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:.625rem;flex-wrap:wrap;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px';
     const lblD = mk('span');
@@ -24178,6 +24238,8 @@ function saveAIQuestion(method, q, modelId, opts){
   // V15.12.54: payload enriquecido com metadados pra cache futuro funcionar
   // bem. Status 'draft' entra no pool mas não é elegível pra cache até virar
   // 'active' (via voto humano ou revisão admin).
+  // V15.12.56: log explícito quando publicação falha por flag desligada ou
+  // por usuário desautenticado. Ajuda diagnóstico ("por que pool não cresce?").
   if(supa && AUTH.user && DATA.config.shareAIQuestions !== false){
     const payload = {
       content_hash: canonicalHash || legacyHash, // primary key — usa canonical quando disponível
@@ -24206,11 +24268,26 @@ function saveAIQuestion(method, q, modelId, opts){
         onConflict: 'content_hash',
         ignoreDuplicates: true
       }).then(({error})=>{
-        if(error && !/(does not exist|relation|permission denied|column)/i.test(error.message||'')){
-          console.warn('[ai_pool] publish failed:', error.message);
+        if(error){
+          // V15.12.56: log do erro pra rastrear (antes silenciava muitas categorias)
+          if(/(does not exist|relation|permission denied|column)/i.test(error.message||'')){
+            console.warn('[ai_pool] schema desatualizado ('+method+'):', error.message);
+          } else {
+            console.warn('[ai_pool] publish failed ('+method+'):', error.message);
+          }
+        } else {
+          // Sucesso silencioso — descomente pra debug:
+          // console.info('[ai_pool] published:', method, canonicalHash || legacyHash);
         }
-      }).catch(()=>{});
+      }).catch(e=>{
+        console.warn('[ai_pool] exception ('+method+'):', e.message);
+      });
     }, 0);
+  } else {
+    // V15.12.56 — Diagnóstico: por que NÃO publicou
+    if(!supa) console.warn('[ai_pool] não publicou: supabase não inicializado');
+    else if(!AUTH.user) console.warn('[ai_pool] não publicou: usuário não autenticado');
+    else if(DATA.config.shareAIQuestions === false) console.warn('[ai_pool] não publicou: shareAIQuestions desligado em Conta → Privacidade');
   }
 
   return rec;
@@ -53279,7 +53356,7 @@ function buildForestScene(trees){
   // Silhueta mais esguia, mais elegante — tipo das ilustrações de logo
   svg += `
     <g class="forest-bird" filter="url(#birdShadow)">
-      <foreignObject class="forest-bird-video-fo" x="-22" y="-18" width="44" height="32">
+      <foreignObject class="forest-bird-video-fo" x="-26" y="-22" width="53" height="38">
         <div xmlns="http://www.w3.org/1999/xhtml" class="forest-bird-video-wrap">
           <video class="forest-bird-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
             <source src="${BRAND.forestBirdVideo}" type="video/webm">
@@ -54514,7 +54591,7 @@ function renderSettings(){
     roBtn.textContent = 'Resetar onboarding';
     roBtn.style.cssText = 'color:var(--amber);border-color:var(--amber)';
     roBtn.addEventListener('click', async ()=>{
-      if(!confirm('Zerar flags de onboarding?\n\nIsso vai:\n• Marcar tutorial como não-visto\n• Marcar welcome como não-visto\n• Forçar prompt de username de novo\n• Sincronizar com a nuvem\n• Recarregar a página\n\nSeus dados (fontes, flashcards, erros) NÃO serão apagados.')) return;
+      if(!confirm('Zerar flags de onboarding e fazer logout?\n\nIsso vai:\n• Marcar tutorial como não-visto\n• Marcar welcome como não-visto\n• Forçar prompt de username de novo\n• Sincronizar com a nuvem\n• DESLOGAR a sessão atual (pra você ver o fluxo "novo" no próximo login)\n\nSeus dados (fontes, flashcards, erros) NÃO serão apagados.\nVocê precisará logar de novo após resetar.')) return;
       roBtn.disabled = true;
       roBtn.textContent = 'Resetando...';
       try{
@@ -54539,8 +54616,24 @@ function renderSettings(){
           roBtn.textContent = 'Resetar onboarding';
           return;
         }
-        showToast('✓ Onboarding resetado. Recarregando...', 3000);
-        setTimeout(()=>{ window.location.reload(); }, 1200);
+        // V15.12.56 — Faz logout DEPOIS do sync. Antes só recarregava, mas
+        // a sessão ativa do Supabase fazia cair no branch "sessão restaurada"
+        // que mostra "bem-vindo de volta" (não bem-vindo novo). Pra ver os
+        // fluxos de signup novo (toast de boas-vindas, modal username, tutorial),
+        // precisa REALMENTE deslogar e logar de novo.
+        showToast('✓ Onboarding resetado. Deslogando...', 3000);
+        setTimeout(async ()=>{
+          try{
+            await supa.auth.signOut();
+          }catch(_){}
+          // signOut dispara onAuthStateChange → SIGNED_OUT → mostra tela de auth.
+          // Se por algum motivo não disparar, fallback é forçar reload.
+          setTimeout(()=>{
+            if(isAuthed()){
+              window.location.reload();
+            }
+          }, 600);
+        }, 800);
       }catch(err){
         roBtn.disabled = false;
         roBtn.textContent = 'Resetar onboarding';
@@ -59562,10 +59655,23 @@ function showPasswordRecoveryModal(){
     try{
       await authUpdatePassword(state.pw1);
       closeModal();
-      showToast('✓ Senha atualizada. Você já está logado com a nova senha.', 6000);
-      // Após salvar, joga pro dashboard
+      showToast('✓ Senha atualizada. Carregando seus dados...', 4000);
+      // V15.12.56 — Antes ia direto pro dashboard sem carregar profile/quota.
+      // Resultado: o user via tela vazia ou erro de carregamento por alguns
+      // segundos. Agora carrega tudo em paralelo antes de mostrar dashboard.
       ST.view = 'dashboard';
       render();
+      // Carrega em paralelo, não bloqueia o render do dashboard
+      Promise.allSettled([
+        fetchUserProfile(true),
+        fetchQuota(),
+        (typeof handleFirstLoginMerge === 'function') ? handleFirstLoginMerge() : Promise.resolve()
+      ]).then(()=>{
+        showToast('✓ Pronto! Seus dados foram sincronizados.', 3500);
+        render();
+      }).catch(err=>{
+        console.warn('[recovery] sync pós-senha falhou:', err);
+      });
     }catch(e){
       errBox.textContent = e.message || 'Não foi possível salvar a nova senha. Tente de novo.';
       errBox.style.display = 'block';
