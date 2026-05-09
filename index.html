@@ -4659,9 +4659,44 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 .fe-hints{display:flex;flex-direction:column;gap:6px;text-align:left;max-width:520px;margin:0 auto;font-size:12.5px;color:var(--text2);line-height:1.55}
 .fe-hints b{color:var(--text);font-weight:700}
 
-.forest-scene-card{padding:0;background:transparent;border:1px solid var(--border);border-radius:14px;margin-bottom:1.5rem;overflow:hidden}
+.forest-scene-card{padding:0;background:transparent;border:1px solid var(--border);border-radius:14px;margin-bottom:1.5rem;overflow:hidden;position:relative}
 .forest-svg-wrap{width:100%;display:block}
 .forest-svg{width:100%;height:auto;display:block;max-height:420px}
+
+/* V15.12.61 — Botões de zoom do pinhal (canto superior direito).
+   Permitem expandir pra ver melhor as araucárias animadas, conforme feedback. */
+.forest-zoom-btns{position:absolute;top:10px;right:10px;display:flex;gap:6px;z-index:5}
+.forest-zoom-btn{background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.18);width:34px;height:34px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1;font-family:inherit;transition:background .15s,transform .15s;backdrop-filter:blur(4px)}
+.forest-zoom-btn:hover{background:rgba(0,0,0,.75);transform:scale(1.05)}
+.forest-zoom-btn:active{transform:scale(.97)}
+
+/* Modo expandido: pinhal cobre quase toda a tela */
+body.forest-expanded{overflow:hidden}
+.forest-scene-card.forest-expanded{
+  position:fixed;
+  top:5vh;left:5vw;
+  width:90vw;height:90vh;
+  max-width:none;
+  z-index:9000;
+  box-shadow:0 20px 80px rgba(0,0,0,.5);
+  background:var(--bg);
+  margin:0;
+}
+.forest-scene-card.forest-expanded .forest-svg-wrap{height:100%}
+.forest-scene-card.forest-expanded .forest-svg{max-height:none;height:100%;width:100%}
+/* Backdrop escuro que cobre o restante da tela quando expandido */
+.forest-expanded-backdrop{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.65);
+  backdrop-filter:blur(2px);
+  z-index:8999;
+  cursor:pointer;
+  animation:forest-backdrop-in .2s ease;
+}
+@keyframes forest-backdrop-in{from{opacity:0}to{opacity:1}}
+@media (max-width: 600px){
+  .forest-scene-card.forest-expanded{top:2vh;left:2vw;width:96vw;height:96vh}
+}
 .forest-bird{transform-origin:0 0;animation:forest-bird-fly 22s ease-in-out infinite}
 @keyframes forest-bird-fly{
   0%{transform:translate(80px, 130px) scale(1.7) rotate(-4deg)}
@@ -47312,12 +47347,223 @@ function renderAdminDashboard(){
 
   wrap.appendChild(modCard);
 
+  // === V15.12.61 — Card: Moderação de questões IA reportadas ===
+  // Lista reports não-resolvidos da tabela ai_question_reports. Permite ao
+  // admin: ver detalhes da questão + motivo, marcar como resolvido, ou
+  // desabilitar a questão (status='disabled' no pool, sai do cache futuro).
+  // Esta página resolve a queixa: "preciso ver pra onde vão os reports e
+  // notificar o usuário sobre o que foi feito".
+  const reportsCard = mk('section','admin-card');
+  reportsCard.appendChild(adminSectionLabel('🚩 Moderação de questões IA'));
+  const reportsHead = mk('h2','admin-section-title');
+  reportsHead.textContent = 'Reports pendentes de revisão';
+  reportsCard.appendChild(reportsHead);
+  const reportsBody = mk('div','admin-reports-body');
+  reportsBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando reports...</div>';
+  reportsCard.appendChild(reportsBody);
+  wrap.appendChild(reportsCard);
+
+  loadAdminAIReports(reportsBody);
+
   // === Footer
   const footer = mk('div','admin-footer');
   footer.innerHTML = `<small>Logado como <b>${escapeHTML(AUTH.user.email)}</b> (admin) · Painel atualizado em ${new Date().toLocaleString('pt-BR')}</small>`;
   wrap.appendChild(footer);
 
   return wrap;
+}
+
+// V15.12.61 — Carrega e renderiza reports de questões IA no painel admin.
+// Lê de ai_question_reports (com filtro resolved_at IS NULL pra mostrar só
+// pendentes). Pra cada report busca a questão correspondente em
+// ai_question_pool. Permite marcar resolvido ou desabilitar a questão.
+async function loadAdminAIReports(container){
+  if(!supa){
+    container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>';
+    return;
+  }
+  try{
+    // Busca reports pendentes
+    const {data: reports, error: e1} = await supa
+      .from('ai_question_reports')
+      .select('id, content_hash, reason, created_at, user_id, resolved_at')
+      .is('resolved_at', null)
+      .order('created_at', {ascending: false})
+      .limit(50);
+
+    if(e1) throw e1;
+
+    if(!reports || reports.length === 0){
+      container.innerHTML = '<div class="txt3" style="padding:1rem 0;text-align:center;font-size:13px">✓ Nenhum report pendente.</div>';
+      return;
+    }
+
+    // Busca dados das questões correspondentes
+    const hashes = [...new Set(reports.map(r => r.content_hash))];
+    const {data: questions} = await supa
+      .from('ai_question_pool')
+      .select('content_hash, content_hash_canonical, enunciado, answer, explanation, status, ai_score, bank_id, discipline_id, reports_count, human_upvotes, human_downvotes, ai_method, created_at')
+      .or(hashes.map(h => `content_hash.eq.${h},content_hash_canonical.eq.${h}`).join(','));
+
+    const qByHash = new Map();
+    (questions||[]).forEach(q => {
+      if(q.content_hash) qByHash.set(q.content_hash, q);
+      if(q.content_hash_canonical) qByHash.set(q.content_hash_canonical, q);
+    });
+
+    container.innerHTML = '';
+
+    // Header de stats
+    const stats = mk('div');
+    stats.style.cssText = 'display:flex;gap:12px;flex-wrap:wrap;margin-bottom:1rem;padding:.625rem .875rem;background:var(--surface2);border-radius:8px;font-size:12px';
+    stats.innerHTML = `<span><b>${reports.length}</b> report${reports.length===1?'':'s'} pendente${reports.length===1?'':'s'}</span>
+                       <span style="color:var(--text3)">${hashes.length} questão${hashes.length===1?'':'ões'} única${hashes.length===1?'':'s'} afetada${hashes.length===1?'':'s'}</span>`;
+    container.appendChild(stats);
+
+    const reasonLabels = {
+      'gabarito_errado':'Gabarito errado',
+      'ambigua':'Ambígua',
+      'fora_da_fonte':'Fora da fonte',
+      'fora_estilo_banca':'Fora estilo da banca',
+      'mal_formulada':'Mal formulada',
+      'inventada':'Conteúdo inventado',
+      'outro':'Outro'
+    };
+
+    // Agrupa reports por content_hash (várias pessoas podem ter reportado a mesma questão)
+    const reportsByHash = new Map();
+    reports.forEach(r => {
+      const arr = reportsByHash.get(r.content_hash) || [];
+      arr.push(r);
+      reportsByHash.set(r.content_hash, arr);
+    });
+
+    reportsByHash.forEach((reportsForQ, hash) => {
+      const q = qByHash.get(hash);
+      const item = mk('div');
+      item.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:.875rem 1rem;margin-bottom:.75rem;background:var(--surface)';
+
+      // Header com hash + status
+      const head = mk('div');
+      head.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:.5rem';
+      const headLeft = mk('div');
+      headLeft.style.flex = '1';
+      const meta = mk('div');
+      meta.style.cssText = 'font-size:11px;color:var(--text3);font-family:ui-monospace,monospace;margin-bottom:4px';
+      meta.textContent = hash.slice(0, 16) + '...';
+      headLeft.appendChild(meta);
+      if(q){
+        const stats2 = mk('div');
+        stats2.style.cssText = 'font-size:11px;color:var(--text3)';
+        stats2.innerHTML = `Status: <b style="color:${q.status==='disabled'?'var(--red-text)':q.status==='flagged'?'var(--amber-text)':'var(--text2)'}">${q.status||'?'}</b> · IA: ${q.ai_score||'?'} · 👍 ${q.human_upvotes||0} · 👎 ${q.human_downvotes||0} · 🚩 ${q.reports_count||reportsForQ.length}`;
+        headLeft.appendChild(stats2);
+      }
+      head.appendChild(headLeft);
+      const reportCount = mk('span');
+      reportCount.style.cssText = 'background:var(--red-light);color:var(--red-text);padding:3px 9px;border-radius:14px;font-size:11px;font-weight:700';
+      reportCount.textContent = `${reportsForQ.length} ${reportsForQ.length===1?'report':'reports'}`;
+      head.appendChild(reportCount);
+      item.appendChild(head);
+
+      // Enunciado da questão
+      if(q && q.enunciado){
+        const enun = mk('div');
+        enun.style.cssText = 'font-size:13px;line-height:1.5;color:var(--text);padding:.625rem .75rem;background:var(--surface2);border-radius:7px;margin-bottom:.625rem;max-height:120px;overflow:auto';
+        enun.textContent = q.enunciado;
+        item.appendChild(enun);
+        if(q.answer){
+          const ansLine = mk('div');
+          ansLine.style.cssText = 'font-size:12px;color:var(--text2);margin-bottom:.625rem';
+          ansLine.innerHTML = `Gabarito oficial: <b>${escapeHTML(q.answer)}</b>`;
+          item.appendChild(ansLine);
+        }
+      } else {
+        const missing = mk('div');
+        missing.style.cssText = 'font-size:12px;color:var(--text3);font-style:italic;padding:.5rem 0;margin-bottom:.625rem';
+        missing.textContent = '⚠ Questão não encontrada no pool (pode ter sido removida).';
+        item.appendChild(missing);
+      }
+
+      // Lista de motivos reportados
+      const reasonsBox = mk('div');
+      reasonsBox.style.cssText = 'display:flex;flex-direction:column;gap:4px;margin-bottom:.75rem';
+      reportsForQ.forEach(r => {
+        const reasonLine = mk('div');
+        reasonLine.style.cssText = 'font-size:12px;color:var(--text2);padding:4px 8px;background:rgba(245,158,11,.06);border-left:3px solid var(--amber);border-radius:4px';
+        const date = new Date(r.created_at).toLocaleDateString('pt-BR', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+        reasonLine.innerHTML = `<b>${reasonLabels[r.reason]||r.reason}</b> <span style="color:var(--text3);font-size:11px">— ${date}</span>`;
+        reasonsBox.appendChild(reasonLine);
+      });
+      item.appendChild(reasonsBox);
+
+      // Ações
+      const actions = mk('div');
+      actions.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
+
+      const resolveBtn = mkBtn('✓ Marcar resolvido','btn btn-sm');
+      resolveBtn.title = 'Mantém a questão ativa, apenas marca os reports como resolvidos';
+      resolveBtn.addEventListener('click', async ()=>{
+        if(!confirm(`Marcar ${reportsForQ.length} report(s) desta questão como resolvido(s)? A questão continuará ativa.`)) return;
+        resolveBtn.disabled = true;
+        resolveBtn.textContent = 'Aplicando...';
+        try{
+          const ids = reportsForQ.map(r => r.id);
+          const {error} = await supa
+            .from('ai_question_reports')
+            .update({resolved_at: new Date().toISOString(), resolved_by: AUTH.user.id})
+            .in('id', ids);
+          if(error) throw error;
+          showToast('✓ Reports marcados como resolvidos.', 4000);
+          loadAdminAIReports(container);
+        }catch(e){
+          alert('Erro: ' + (e.message||e));
+          resolveBtn.disabled = false;
+          resolveBtn.textContent = '✓ Marcar resolvido';
+        }
+      });
+      actions.appendChild(resolveBtn);
+
+      if(q && q.status !== 'disabled'){
+        const disableBtn = mkBtn('🚫 Desabilitar questão','btn btn-sm');
+        disableBtn.style.cssText = 'color:var(--red-text);border-color:var(--red)';
+        disableBtn.title = 'Marca status=disabled no pool. Sai de circulação no cache futuro.';
+        disableBtn.addEventListener('click', async ()=>{
+          if(!confirm(`Desabilitar esta questão no pool?\n\nEla:\n• Não vai mais aparecer no cache compartilhado\n• Continuará nos bancos individuais dos usuários que já a tinham\n• Reports serão marcados como resolvidos\n\nAção pode ser revertida editando direto no Supabase Dashboard.`)) return;
+          disableBtn.disabled = true;
+          disableBtn.textContent = 'Aplicando...';
+          try{
+            // Atualiza pool
+            const {error: e1} = await supa
+              .from('ai_question_pool')
+              .update({status: 'disabled'})
+              .or(`content_hash.eq.${hash},content_hash_canonical.eq.${hash}`);
+            if(e1) throw e1;
+            // Marca reports como resolvidos
+            const ids = reportsForQ.map(r => r.id);
+            const {error: e2} = await supa
+              .from('ai_question_reports')
+              .update({resolved_at: new Date().toISOString(), resolved_by: AUTH.user.id})
+              .in('id', ids);
+            if(e2) throw e2;
+            showToast('🚫 Questão desabilitada.', 4000);
+            loadAdminAIReports(container);
+          }catch(e){
+            alert('Erro: ' + (e.message||e));
+            disableBtn.disabled = false;
+            disableBtn.textContent = '🚫 Desabilitar questão';
+          }
+        });
+        actions.appendChild(disableBtn);
+      }
+
+      item.appendChild(actions);
+      container.appendChild(item);
+    });
+
+  }catch(e){
+    console.error('[admin-reports]', e);
+    container.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro ao carregar reports: ${escapeHTML(e.message||String(e))}<br><br>Possíveis causas:<br>• Migration P1.1 não rodou (tabela ai_question_reports não existe)<br>• Policy de SELECT não permite admin<br>• RPC ai_question_report ainda não foi criada</div>`;
+  }
 }
 
 // Helper pra label das seções do admin
@@ -53071,6 +53317,64 @@ function renderForest(){
     // SVG do pinhal — gerado dinamicamente
     const sceneCard = mk('div','forest-scene-card');
     sceneCard.appendChild(buildForestScene(trees));
+    // V15.12.61 — Botão "expandir" pra ver pinhal em tela quase cheia.
+    // Uma queixa frequente era que as araucárias animadas ficavam pequenas
+    // e o usuário tinha que dar zoom no navegador. Agora um clique resolve.
+    const zoomBtns = mk('div','forest-zoom-btns');
+    const expandBtn = mk('button','forest-zoom-btn');
+    expandBtn.type = 'button';
+    expandBtn.title = 'Expandir pinhal';
+    expandBtn.setAttribute('aria-label', 'Expandir pinhal');
+    expandBtn.innerHTML = '⛶';
+    let backdrop = null;
+    const closeExpanded = ()=>{
+      sceneCard.classList.remove('forest-expanded');
+      document.body.classList.remove('forest-expanded');
+      if(backdrop){
+        backdrop.remove();
+        backdrop = null;
+      }
+      expandBtn.innerHTML = '⛶';
+      expandBtn.title = 'Expandir pinhal';
+      expandBtn.setAttribute('aria-label', 'Expandir pinhal');
+    };
+    const openExpanded = ()=>{
+      sceneCard.classList.add('forest-expanded');
+      document.body.classList.add('forest-expanded');
+      if(!backdrop){
+        backdrop = mk('div','forest-expanded-backdrop');
+        backdrop.addEventListener('click', closeExpanded);
+        document.body.appendChild(backdrop);
+      }
+      expandBtn.innerHTML = '×';
+      expandBtn.title = 'Fechar (Esc)';
+      expandBtn.setAttribute('aria-label', 'Fechar pinhal expandido');
+    };
+    expandBtn.addEventListener('click', ()=>{
+      if(sceneCard.classList.contains('forest-expanded')) closeExpanded();
+      else openExpanded();
+    });
+    // Esc fecha o modo expandido
+    const escHandler = (e)=>{
+      if(e.key === 'Escape' && sceneCard.classList.contains('forest-expanded')){
+        closeExpanded();
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+    // Cleanup quando o card sair do DOM (troca de página)
+    // MutationObserver leve: se o sceneCard for removido, remove handler
+    const cleanupObserver = new MutationObserver(()=>{
+      if(!document.body.contains(sceneCard)){
+        document.removeEventListener('keydown', escHandler);
+        document.body.classList.remove('forest-expanded');
+        if(backdrop){ backdrop.remove(); backdrop = null; }
+        cleanupObserver.disconnect();
+      }
+    });
+    cleanupObserver.observe(document.body, {childList:true, subtree:true});
+
+    zoomBtns.appendChild(expandBtn);
+    sceneCard.appendChild(zoomBtns);
     wrap.appendChild(sceneCard);
 
     // Lista de árvores (mais recentes primeiro)
