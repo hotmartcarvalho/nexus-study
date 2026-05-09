@@ -6971,6 +6971,11 @@ async function updateExamFields(opts){
   // Invalida cache
   AUTH.profileLastFetch = 0;
   await fetchUserProfile(true);
+  // V15.12.65 — Se mudou banca alvo, invalida questões/prefetch do contexto anterior
+  if(opts.target_exam_board !== undefined){
+    invalidateGenerationContext('target_exam_board-change');
+    _sessionBankFallbackWarned = false;
+  }
 }
 
 // === ESTÁGIO 3: MATERIAIS COMPARTILHADOS ===
@@ -7850,6 +7855,53 @@ function discardLegacyPrefetch(prefetchKey){
     }
   }
   return false;
+}
+
+// V15.12.65 — Invalidação de contexto de geração.
+// Quando o usuário troca banca, fonte ativa, disciplina, dificuldade ou
+// foco/seção, tudo que foi pré-carregado ou pré-fetched fica obsoleto: a
+// questão pendente foi gerada num contexto diferente. Sem invalidar,
+// usuário trocava de FCC pra Cebraspe e ainda recebia questão MC velha.
+//
+// O que invalida:
+//   - DATA.preloadedQuestions (todos os prefetches)
+//   - ST.practQ, ST.calibQ, ST.drillQ, ST.interQ, ST.examConcept (questões carregadas)
+//   - ST.practFb, ST.calibFb, ST.drillFb, ST.interFb (feedback antigo)
+//   - ST.practHist, ST.calibHist, ST.drillHist, ST.interHist (histórico de turno)
+//   - ST.practAnswered, etc (flags de resposta)
+//
+// Não invalida:
+//   - DATA.importedQuestions (banco do user — questões já salvas)
+//   - DATA.errors, DATA.notebooks, etc
+//   - QUOTA, AUTH, profile, sources catalog
+function invalidateGenerationContext(reason){
+  reason = reason || 'context-change';
+  let cleared = 0;
+  // Prefetches
+  if(DATA.preloadedQuestions){
+    cleared += Object.keys(DATA.preloadedQuestions).length;
+    DATA.preloadedQuestions = {};
+  }
+  // ST volátil
+  const stKeys = [
+    'practQ','practFb','practAnswered','practLoading','practHist',
+    'calibQ','calibFb','calibAnswered','calibLoading','calibHist',
+    'drillQ','drillFb','drillAnswered','drillLoading','drillHist',
+    'interQ','interFb','interAnswered','interLoading','interHist','interTopics',
+    'examConcept','examConceptLoading','examEval','examUserAnswer',
+    'elabQ','elabEval','elabUserAnswer','elabLoading'
+  ];
+  stKeys.forEach(k => {
+    if(ST[k] !== undefined && ST[k] !== null){
+      if(Array.isArray(ST[k])) ST[k] = [];
+      else if(typeof ST[k] === 'boolean') ST[k] = false;
+      else ST[k] = null;
+      cleared++;
+    }
+  });
+  save();
+  console.info('[invalidate-ctx]', reason, '— limpou', cleared, 'itens');
+  return cleared;
 }
 
 // Pré-flight pra prefetches: combina visibility + suspensão + saldo + lock.
@@ -12005,23 +12057,32 @@ function inferDiscipline(topic){
 // V12: Contexto de banca — adapta estilo de questão ao perfil da banca alvo
 // Sem isso, todas as questões saem no estilo Cebraspe (item 2 do feedback do Jean).
 // A banca é detectada via AUTO.profile.target_exam_board ou DATA.config.examBank
+// V15.12.65 — Normalização robusta. Aceita "Cespe/Cebraspe", "cespe_cebraspe",
+// "CESPE", "Cebraspe" etc. Antes a regex estava certa mas algumas variantes
+// com underscore/slash escapavam. Agora normaliza primeiro (lowercase, remove
+// pontuação/underscore), depois testa.
 function getBancaContext(){
   const profBank = (AUTH && AUTH.profile && AUTH.profile.target_exam_board) ? AUTH.profile.target_exam_board : '';
   const configBank = (DATA && DATA.config && DATA.config.examBank) || '';
-  const raw = (profBank || configBank || '').toLowerCase().trim();
+  const rawSrc = (profBank || configBank || '').toString();
+  // Normaliza: lowercase, remove acento, remove pontuação/underscore/slash, espaços únicos
+  const raw = rawSrc
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[_\/\.\-\\]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   if(!raw) return null;
-  // V15.12.64 — Função mantida pra compat (callers antigos), mas agora delega
-  // pra estrutura nova BANK_PROFILES. Retorna {id, name, style} pra compat.
-  // Novos callers devem usar getActiveBankProfile() que retorna o profile rico.
-  if(/cebraspe|cespe/i.test(raw)) return {id:'cebraspe', name:'Cebraspe', style:''};
-  if(/fcc/i.test(raw))            return {id:'fcc', name:'FCC', style:''};
-  if(/fgv/i.test(raw))            return {id:'fgv', name:'FGV', style:''};
-  if(/vunesp/i.test(raw))         return {id:'vunesp', name:'Vunesp', style:''};
-  if(/quadrix/i.test(raw))        return {id:'quadrix', name:'Quadrix', style:''};
-  if(/idecan/i.test(raw))         return {id:'idecan', name:'Idecan', style:''};
-  if(/ibfc/i.test(raw))           return {id:'ibfc', name:'IBFC', style:''};
-  if(/consulplan/i.test(raw))     return {id:'consulplan', name:'Consulplan', style:''};
-  if(/cesgranrio/i.test(raw))     return {id:'cesgranrio', name:'Cesgranrio', style:''};
+  // V15.12.64 — Função mantida pra compat. Novos callers usam getActiveBankProfile().
+  if(/cebraspe|cespe/.test(raw)) return {id:'cebraspe', name:'Cebraspe', style:''};
+  if(/fcc/.test(raw))            return {id:'fcc', name:'FCC', style:''};
+  if(/fgv/.test(raw))            return {id:'fgv', name:'FGV', style:''};
+  if(/vunesp/.test(raw))         return {id:'vunesp', name:'Vunesp', style:''};
+  if(/quadrix/.test(raw))        return {id:'quadrix', name:'Quadrix', style:''};
+  if(/idecan/.test(raw))         return {id:'idecan', name:'Idecan', style:''};
+  if(/ibfc/.test(raw))           return {id:'ibfc', name:'IBFC', style:''};
+  if(/consulplan/.test(raw))     return {id:'consulplan', name:'Consulplan', style:''};
+  if(/cesgranrio/.test(raw))     return {id:'cesgranrio', name:'Cesgranrio', style:''};
   return {id:'unknown', name:raw, style:''};
 }
 
@@ -12453,9 +12514,16 @@ function inferActiveDifficulty(){
 }
 
 // Aviso discreto ao gerar 1ª questão da sessão sem banca definida.
+// V15.12.65 — Não dispara se profile ainda está carregando (race condition
+// que fazia aviso aparecer mesmo com banca salva).
 let _sessionBankFallbackWarned = false;
 function maybeWarnNoBankSet(){
   if(_sessionBankFallbackWarned) return;
+  // Defesa: se profile ainda carregando, espera próxima chamada
+  if(AUTH && AUTH.profileLoading) return;
+  // Defesa: se temos AUTH mas profile ainda é null/undefined (não buscou),
+  // também adia. Só profile === false significa "buscou e não tem".
+  if(AUTH && AUTH.user && !AUTH.profile && AUTH.profile !== false) return;
   const ctx = getBancaContext();
   if(ctx) return; // tem banca definida, sem aviso
   _sessionBankFallbackWarned = true;
@@ -12818,6 +12886,16 @@ Questão nova (formato MC):
 
 Feedback+próxima:
 {"type":"feedback","is_correct":true,"trap_type":"...","explanation":"explicação seguindo o estilo do PERFIL DA BANCA injetado","trap":"qual armadilha foi usada (se errada)","keyword":"palavra-gatilho que denuncia","next":{...mesmo formato da questão nova...},"suggested_flashcard":{"front":"pergunta curta sobre o conceito","back":"resposta concisa, 1-2 frases"}}
+
+REGRA explanation (CRÍTICO pra MC):
+- Em CE: 2-3 frases objetivas seguindo o estilo da banca.
+- Em MC: estruture em até 4 partes curtas, separadas por quebra de linha (\\n):
+  • "Gabarito: <letra>" — linha curta
+  • "Por que está certa:" — 1-2 frases sobre por que a alternativa correta é correta
+  • Se errou: "Por que sua escolha errou:" — 1-2 frases sobre o erro específico (use o campo extra "user_choice_explanation" se quiser, mas pode estar dentro de explanation)
+  • "Pegadinha:" OU "Regra pra fixar:" — 1 linha sobre a armadilha ou regra
+- NUNCA explique todas as alternativas, só a correta e a do usuário (se errou).
+- Mantenha sempre curta — máximo 5 linhas no total.
 
 REGRA suggested_flashcard:
 - Inclua o campo "suggested_flashcard" APENAS quando is_correct=false (usuário errou).
@@ -14613,7 +14691,21 @@ function handleApiError(err, ctx){
       return;
     }
     if(err.status === 429){
-      showToast('Você está fazendo muitas requisições. Aguarde alguns segundos.', 5000);
+      // V15.12.65 — Diferencia rate limit upstream (Anthropic) vs backend (Gralia).
+      // O backend deve marcar code/error pra distinguir. Sem evidência clara,
+      // mensagem genérica.
+      const body = err.body || {};
+      const code = body.code || '';
+      const errMsg = (body.error || '').toLowerCase();
+      console.error('[api-error] 429 received', {code, errMsg, body});
+      if(code === 'ANTHROPIC_RATE_LIMIT' || /anthropic|upstream|tokens.*per.*minute/i.test(errMsg)){
+        showToast('⏳ A IA da Anthropic atingiu o limite de tokens por minuto. Aguarde 1-2 minutos e tente novamente.', 6000);
+      } else if(code === 'GRALIA_RATE_LIMIT' || /too many requests|rate limit/i.test(errMsg)){
+        showToast('⏳ Você fez muitas requisições muito rápido. Aguarde alguns segundos.', 5000);
+      } else {
+        // Mensagem cauta — não afirma que é Anthropic se não temos certeza
+        showToast('⏳ Requisição limitada (429). Aguarde alguns segundos e tente novamente.', 5000);
+      }
       return;
     }
     if(err.status === 400){
@@ -21705,6 +21797,10 @@ function renderSourceList(wrap){
     chip.addEventListener('click',()=>{
       d.active=!d.active;
       save();
+      // V15.12.65 — Mudou disciplina ativa → invalida questão pré-carregada
+      // do contexto anterior (ex: trocou de Penal pra Constitucional, não pode
+      // receber questão velha de Penal).
+      invalidateGenerationContext('discipline-toggle');
       try{
         if(d.active){
           showToast(`✓ ${d.name} ativada — questões e cards dessa disciplina vão aparecer no estudo`);
@@ -22784,6 +22880,7 @@ function renderDisciplines(wrap){
     chk.addEventListener('change',e=>{
       d.active=e.target.checked;
       save();
+      invalidateGenerationContext('discipline-toggle-checkbox');
       try{
         if(d.active){
           showToast(`✓ ${d.name} ativada`);
@@ -23913,8 +24010,32 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
   }
   topRow.appendChild(seal);
   card.appendChild(topRow);
-  const exp = mk('p','txt');exp.style.marginTop='.75rem';exp.style.marginBottom='.875rem';exp.textContent=explanation;
-  card.appendChild(exp);
+  // V15.12.65 — Se a explanation tem quebras (\n) é porque a IA seguiu o
+  // formato MC estruturado (Gabarito / Por que correta / Por que errada /
+  // Pegadinha). Renderiza linha por linha pra melhor leitura.
+  const expBox = mk('div');
+  expBox.style.cssText = 'margin-top:.75rem;margin-bottom:.875rem';
+  const expLines = String(explanation || '').split(/\n+/).map(l => l.trim()).filter(Boolean);
+  if(expLines.length > 1){
+    expLines.forEach(line => {
+      const lineEl = mk('p','txt');
+      lineEl.style.cssText = 'margin:0 0 4px;line-height:1.55';
+      // Detecta padrão "Rótulo: texto" — destaca o rótulo
+      const labelMatch = line.match(/^([^:]{2,30}):\s*(.+)$/);
+      if(labelMatch){
+        lineEl.innerHTML = `<b style="color:var(--text);font-weight:700">${escapeHTML(labelMatch[1])}:</b> ${escapeHTML(labelMatch[2])}`;
+      } else {
+        lineEl.textContent = line;
+      }
+      expBox.appendChild(lineEl);
+    });
+  } else {
+    const expEl = mk('p','txt');
+    expEl.style.cssText = 'margin:0;line-height:1.6';
+    expEl.textContent = explanation;
+    expBox.appendChild(expEl);
+  }
+  card.appendChild(expBox);
   if(trap||keyword){
     // V14: Layout mais visual — armadilha em destaque vermelho/amber, gatilho em ciano
     const meta = mk('div');
@@ -24874,14 +24995,28 @@ function saveAIQuestion(method, q, modelId, opts){
   // ID determinístico baseado no hash canônico (preferido) — facilita reusar
   // mesma id entre dispositivos/usuários quando a questão é idêntica.
   const stableId = 'aiq_' + (canonicalHash || legacyHash) + '_' + Math.random().toString(36).slice(2,5);
+
+  // V15.12.65 — Pra MC, embaralha alternativas no client antes de salvar.
+  // Resolve queixa "alternativa correta sempre B/C". Mesmo que a IA tenha
+  // viés interno, depois do embaralhamento o gabarito final é uniforme.
+  let finalAnswer = answer;
+  let finalAlternatives = (q.kind === 'MC' && q.alternatives) ? q.alternatives : null;
+  if(q.kind === 'MC' && finalAlternatives && answer && /^[A-E]$/.test(answer)){
+    try{
+      const shuffled = shuffleAlternatives(finalAlternatives, answer);
+      finalAlternatives = shuffled.alternatives;
+      finalAnswer = shuffled.answer;
+    }catch(shuffleErr){
+      console.warn('[shuffle] falhou, mantém ordem original:', shuffleErr.message);
+    }
+  }
+
   const rec = {
     id: stableId,
     enunciado: q.question,
-    answer: answer,
+    answer: finalAnswer,
     kind: q.kind || 'CE',
-    // V15.12.64 — Salva alternatives quando MC. Pra CE fica null/undefined
-    // porque não tem alternativas (apenas C/E).
-    alternatives: (q.kind === 'MC' && q.alternatives) ? q.alternatives : null,
+    alternatives: finalAlternatives,
     disciplineId: inferredDiscId,
     topic: q.topic||'',
     source:'ai',
@@ -24998,6 +25133,63 @@ function simpleHash(str){
 //     que questões com mesmo enunciado mas gabaritos diferentes (variantes)
 //     colidam no pool
 // ============================================================================
+
+// V15.12.65 — Embaralha alternativas MC, ajustando correct_answer.
+// Estratégia Fisher-Yates clássico nas chaves A-E, depois reaplica letras
+// na ordem nova. Com tracking opcional do histórico recente de gabaritos
+// pra reduzir aglomeração da MESMA letra (ex: 3 B's seguidos).
+//
+// Retorna {alternatives: {A:'...',B:'...',...}, answer: 'X'}
+function shuffleAlternatives(alts, originalAnswer){
+  if(!alts || typeof alts !== 'object') throw new Error('alternatives inválidas');
+  if(!/^[A-E]$/.test(originalAnswer)) throw new Error('answer fora do range A-E');
+  const letters = ['A','B','C','D','E'];
+  // Pega só as chaves que existem
+  const present = letters.filter(l => alts[l] !== undefined && alts[l] !== null && String(alts[l]).trim() !== '');
+  if(present.length < 2) throw new Error('precisa pelo menos 2 alternativas pra embaralhar');
+  if(!present.includes(originalAnswer)) throw new Error('answer não está no conjunto de alternativas');
+
+  // Texto de cada alternativa, na ordem original
+  const items = present.map(l => ({letter: l, text: alts[l], isCorrect: l === originalAnswer}));
+
+  // Fisher-Yates
+  for(let i = items.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+
+  // V15.12.65 — Anti-aglomeração: se últimos 2 gabaritos foram a mesma letra
+  // X, e o nosso novo gabarito também é X, troca com outro slot pra reduzir.
+  // Tracking em ST.recentMcAnswers (volátil, sem persistência).
+  if(!ST.recentMcAnswers) ST.recentMcAnswers = [];
+  const lastTwo = ST.recentMcAnswers.slice(-2);
+  const newAnswerLetter = letters[items.findIndex(it => it.isCorrect)];
+  if(lastTwo.length === 2 && lastTwo[0] === newAnswerLetter && lastTwo[1] === newAnswerLetter){
+    // Encontra um slot diferente e troca
+    const correctIdx = items.findIndex(it => it.isCorrect);
+    const otherIndices = items.map((_,idx)=>idx).filter(idx => idx !== correctIdx);
+    if(otherIndices.length > 0){
+      const swapWith = otherIndices[Math.floor(Math.random() * otherIndices.length)];
+      [items[correctIdx], items[swapWith]] = [items[swapWith], items[correctIdx]];
+    }
+  }
+
+  // Reconstrói no novo mapeamento A-E
+  const newAlts = {};
+  let newAnswer = '';
+  items.forEach((it, idx) => {
+    const newLetter = letters[idx];
+    newAlts[newLetter] = it.text;
+    if(it.isCorrect) newAnswer = newLetter;
+  });
+
+  // Atualiza histórico (limita a 10)
+  ST.recentMcAnswers.push(newAnswer);
+  if(ST.recentMcAnswers.length > 10) ST.recentMcAnswers = ST.recentMcAnswers.slice(-10);
+
+  return {alternatives: newAlts, answer: newAnswer};
+}
+
 
 function canonicalQuestionHash(enunciado, answer, bankId, disciplineId){
   if(!enunciado) return null;
@@ -33050,8 +33242,17 @@ function showGenerateSeriesModal(){
 
 // V13: Gera série de cadernos a partir de uma fonte
 // V14: Quando a fonte tem TOC (índice), usa as seções como divisão semântica
-//      em vez de divisão por bytes. Mais coerente porque cada caderno cobre
-//      um capítulo/tópico real, não um pedaço arbitrário do texto.
+//      em vez de divisão por bytes.
+// V15.12.65 — Refatorado pra proteger créditos:
+//   1. Status persistente em DATA.activeBatchOps (sobrevive a reload)
+//   2. Painel mini-status fixo no canto, recuperável ao voltar pra qualquer tela
+//   3. Resumo final detalhado (cadernos criados, questões, falhas)
+//   4. Se TODOS os cadernos falharem, registra em DATA.batchOpsLog pra usuário
+//      saber que perdeu créditos sem retorno (suporte vê e estorna)
+//   5. Não há mais "loader que some sem aviso" — a operação tem state machine.
+//
+// LOCALIZAÇÃO da UI desta feature: Banco de Prática → "Gerar série de cadernos"
+// (NÃO Fontes — corrigido em V15.12.65 documentação).
 async function generateNotebookSeries(srcId, nNotebooks, nQuestions){
   const src = (DATA.sources||[]).find(s => s.id === srcId);
   if(!src){alert('Fonte não encontrada');return;}
@@ -33062,15 +33263,32 @@ async function generateNotebookSeries(srcId, nNotebooks, nQuestions){
     return;
   }
 
-  // V14: Tenta usar TOC se houver — divisão semântica > divisão por bytes
+  // V15.12.65 — Marca operação ativa em DATA. Recovery e visualização persistente.
+  if(!DATA.activeBatchOps) DATA.activeBatchOps = [];
+  if(!DATA.batchOpsLog) DATA.batchOpsLog = [];
+  const opId = 'op_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  const opStart = Date.now();
+  const opRecord = {
+    id: opId,
+    type: 'series_batch',
+    sourceId: srcId,
+    sourceName: src.name,
+    nNotebooks: nNotebooks,
+    nQuestions: nQuestions,
+    creditsBudget: nNotebooks * 10,
+    progress: { current: 0, total: nNotebooks, generated: 0, errors: 0 },
+    startedAt: opStart,
+    status: 'running'
+  };
+  DATA.activeBatchOps.push(opRecord);
+  save();
+
   const toc = src.toc || [];
   const useToc = toc.length >= 2 && toc.length <= nNotebooks * 2;
-  let chunks; // array de {label, content}
+  let chunks;
   if(useToc){
-    // Agrupa seções do TOC em N grupos balanceados
     chunks = groupTocIntoChunks(toc, text, nNotebooks);
   } else {
-    // Fallback antigo: divisão por bytes
     const chunkSize = Math.floor(text.length / nNotebooks);
     chunks = [];
     for(let i = 0; i < nNotebooks; i++){
@@ -33086,23 +33304,25 @@ async function generateNotebookSeries(srcId, nNotebooks, nQuestions){
   const created = [];
   let totalGenerated = 0;
   let totalErrors = 0;
+  const errorReasons = []; // V15.12.65 — colecta motivos pra resumo final
   const total = chunks.length;
+  opRecord.progress.total = total;
+  save();
 
-  // Toast de progresso persistente
-  const progressEl = mk('div');
-  progressEl.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);box-shadow:0 4px 16px rgba(0,0,0,.12);padding:.75rem 1rem;border-radius:10px;z-index:10000;font-size:13px;font-weight:600';
-  progressEl.textContent = `🪄 Gerando série... 0/${total}`;
-  document.body.appendChild(progressEl);
+  // V15.12.65 — Mini-status persistente: sempre que renderizar uma view,
+  // showActiveBatchOpsPanel é chamado. Aqui só atualiza progresso. Inicialmente
+  // chama pra montar.
+  showActiveBatchOpsPanel();
 
   for(let i = 0; i < chunks.length; i++){
     const chunk = chunks[i];
-    progressEl.textContent = `🪄 Caderno ${i+1}/${total} (${chunk.label}) — gerando ${nQuestions} questões...`;
+    opRecord.progress.current = i + 1;
+    opRecord.progress.label = chunk.label;
+    save();
+    showActiveBatchOpsPanel();
     const sectionText = chunk.content;
 
     try{
-      // V15.12.64 — Antes hardcoded "C/E (Cebraspe)" mesmo se user fosse FCC.
-      // Agora monta profile completo (banca + disciplina + dificuldade) e
-      // injeta no system prompt. Suporta CE e MC conforme banca.
       const bank = getActiveBankProfile();
       const disc = getActiveDisciplineProfile(src && src.disciplineId);
       const difficulty = inferActiveDifficulty();
@@ -33117,10 +33337,11 @@ REGRAS UNIVERSAIS:
 3. Siga o PERFIL DA BANCA injetado abaixo (formato C/E ou MC, tamanho, casuística, armadilhas)
 4. Siga as armadilhas da DISCIPLINA injetada
 5. Calibre profundidade conforme DIFICULDADE injetada
+6. VARIE GABARITO entre as ${nQuestions} questões: distribuição balanceada, sem padrão previsível.
 
 ${profileBlock}
 
-Gere EXATAMENTE ${nQuestions} questões cobrindo o trecho fornecido. Varie tópicos e armadilhas. Distribuição de gabarito balanceada.
+Gere EXATAMENTE ${nQuestions} questões cobrindo o trecho fornecido. Varie tópicos e armadilhas. Distribuição de gabarito balanceada (em MC: não use a mesma letra mais de 3 vezes; em CE: alterne C e E ~50/50).
 
 SAÍDA — JSON puro array (sem markdown, sem texto antes/depois):
 [
@@ -33136,7 +33357,7 @@ Se kind=MC, INCLUA alternatives com 5 chaves (A-E).`;
         max_tokens: 4000,
         system: sys,
         messages: [{role:'user', content: userMsg}],
-        action_id: 'series_batch'  // V15.12.10: 10 créditos por caderno (era 1)
+        action_id: 'series_batch'
       };
       const r = await apiGenerate(body);
       if(!r.ok){
@@ -33154,23 +33375,28 @@ Se kind=MC, INCLUA alternatives com 5 chaves (A-E).`;
       }
       const txt = (d.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
       const clean = txt.replace(/```json\n?|\n?```/g,'').trim();
-      const questions = JSON.parse(clean);
+      let questions;
+      try{
+        questions = JSON.parse(clean);
+      }catch(parseErr){
+        totalErrors++;
+        errorReasons.push(`Caderno ${i+1}: parsing JSON falhou (${parseErr.message})`);
+        opRecord.progress.errors = totalErrors;
+        save();
+        continue;
+      }
       if(!Array.isArray(questions) || questions.length === 0){
         totalErrors++;
+        errorReasons.push(`Caderno ${i+1}: IA não retornou questões`);
+        opRecord.progress.errors = totalErrors;
+        save();
         continue;
       }
 
       if(!DATA.importedQuestions) DATA.importedQuestions = [];
       const qIds = [];
-      // V15.12.54 (P1.1): refatorado pra passar por saveAIQuestion comum.
-      // Antes: push direto em DATA.importedQuestions, NÃO publicava no pool,
-      // sem dedup, sem score, sem metadados. Cadernos custam 10 créditos cada
-      // mas o pool não crescia com eles. Agora todas as questões da série
-      // entram no pool (com canonical_hash, bank_id, discipline_id, status).
       questions.forEach(q=>{
         if(!q.enunciado || !q.gabarito) return;
-        // V15.12.64 — Aceita kind dinâmico (CE ou MC) vindo da IA conforme
-        // perfil da banca. alternatives é preservado se MC.
         const kind = (q.kind === 'MC' || q.kind === 'CE') ? q.kind : 'CE';
         const adapted = {
           question: q.enunciado,
@@ -33189,43 +33415,221 @@ Se kind=MC, INCLUA alternatives com 5 chaves (A-E).`;
         if(rec) qIds.push(rec.id);
       });
 
+      if(qIds.length === 0){
+        totalErrors++;
+        errorReasons.push(`Caderno ${i+1}: nenhuma questão válida pra salvar`);
+        opRecord.progress.errors = totalErrors;
+        save();
+        continue;
+      }
+
       const nbId = 'nbs_' + Date.now() + '_' + i;
       if(!DATA.notebooks) DATA.notebooks = [];
       DATA.notebooks.push({
         id: nbId,
-        // V14: nome do caderno usa o label da seção quando TOC disponível
-        name: useToc
-          ? `${src.name} — ${chunk.label}`
-          : `${src.name} — Caderno ${i+1}/${total}`,
+        name: useToc ? `${src.name} — ${chunk.label}` : `${src.name} — Caderno ${i+1}/${total}`,
         description: useToc
           ? `Gerado automaticamente da seção: ${chunk.label}`
           : `Gerado automaticamente da parte ${i+1} de ${total}`,
         questionIds: qIds,
         createdAt: Date.now(),
         seriesParent: src.id,
-        seriesIndex: i + 1
+        seriesIndex: i + 1,
+        seriesOpId: opId // V15.12.65 — link com a operação que gerou
       });
       created.push(nbId);
       totalGenerated += questions.length;
-
+      opRecord.progress.generated = totalGenerated;
       save();
     }catch(err){
-      console.warn('[series] Caderno '+i+' falhou:', err.message);
+      console.warn('[series] Caderno '+(i+1)+' falhou:', err.message);
       totalErrors++;
+      // V15.12.65 — Mensagem mais informativa, salva pra resumo final
+      let reason = err.message || 'erro desconhecido';
+      // Classifica erro pro user
+      if(err.code === 'INSUFFICIENT_CREDITS' || /402|sem.*credito|saldo/i.test(reason)){
+        reason = 'Saldo insuficiente — interrompendo série';
+        errorReasons.push(`Caderno ${i+1}: ${reason}`);
+        opRecord.progress.errors = totalErrors;
+        opRecord.haltedReason = 'insufficient_credits';
+        save();
+        break; // V15.12.65 — Para imediatamente em 402, não fica tentando
+      }
+      errorReasons.push(`Caderno ${i+1}: ${reason.slice(0, 80)}`);
+      opRecord.progress.errors = totalErrors;
+      save();
     }
     await new Promise(r => setTimeout(r, 500));
   }
 
-  if(progressEl.parentNode) progressEl.parentNode.removeChild(progressEl);
+  // V15.12.65 — Finaliza op
+  const opEnd = Date.now();
+  const opDuration = Math.round((opEnd - opStart) / 1000);
+  opRecord.status = created.length === 0 ? 'failed' : (totalErrors > 0 ? 'partial' : 'success');
+  opRecord.completedAt = opEnd;
+  opRecord.durationSec = opDuration;
+  opRecord.created = created.length;
+  opRecord.totalGenerated = totalGenerated;
+  opRecord.totalErrors = totalErrors;
+  opRecord.errorReasons = errorReasons;
 
-  if(created.length === 0){
-    showToast('Nenhum caderno foi gerado. Verifique seus créditos e tente novamente.', 5000);
-  } else {
-    const errMsg = totalErrors > 0 ? ` (${totalErrors} ${totalErrors===1?'falhou':'falharam'})` : '';
-    const tocMsg = useToc ? ' usando o índice da fonte' : '';
-    showToast(`✓ ${created.length}/${total} cadernos criados${tocMsg} · ${totalGenerated} questões${errMsg}`);
-  }
+  // Move da lista de ativas pra log
+  DATA.activeBatchOps = (DATA.activeBatchOps || []).filter(o => o.id !== opId);
+  DATA.batchOpsLog.unshift(opRecord);
+  if(DATA.batchOpsLog.length > 50) DATA.batchOpsLog = DATA.batchOpsLog.slice(0, 50);
+  save();
+
+  showActiveBatchOpsPanel(); // remove painel se vazio
+
+  // V15.12.65 — Resumo final em modal (não toast — info importante demais pra desaparecer)
+  showSeriesBatchSummary(opRecord);
+
   render();
+}
+
+// V15.12.65 — Painel mini-status fixo no canto inferior. Aparece quando há
+// operações ativas em DATA.activeBatchOps. Recriado a cada chamada (não há
+// otimização de DOM porque executa raramente).
+function showActiveBatchOpsPanel(){
+  const existing = document.getElementById('active-batch-ops-panel');
+  if(existing) existing.remove();
+  const ops = (DATA.activeBatchOps || []).filter(o => o.status === 'running');
+  if(ops.length === 0) return;
+  const panel = mk('div');
+  panel.id = 'active-batch-ops-panel';
+  panel.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--gralia-purple);box-shadow:0 8px 32px rgba(124,92,255,.25);padding:.875rem 1.125rem;border-radius:12px;z-index:10000;font-size:13px;line-height:1.5;max-width:480px;min-width:340px';
+  ops.forEach(op => {
+    const wrap = mk('div');
+    const head = mk('div');
+    head.style.cssText = 'font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:6px';
+    head.innerHTML = `<span class="loading-spinner" style="width:14px;height:14px"></span> Gerando série de cadernos`;
+    wrap.appendChild(head);
+    const sub = mk('div');
+    sub.style.cssText = 'font-size:11.5px;color:var(--text2);margin-bottom:8px';
+    sub.textContent = `${op.sourceName} · ${op.nNotebooks} cadernos × ${op.nQuestions} questões`;
+    wrap.appendChild(sub);
+    const prog = mk('div');
+    prog.style.cssText = 'font-size:12px;font-weight:600';
+    prog.textContent = `Caderno ${op.progress.current}/${op.progress.total} ${op.progress.label ? '— ' + op.progress.label : ''}`;
+    wrap.appendChild(prog);
+    if(op.progress.errors > 0){
+      const errs = mk('div');
+      errs.style.cssText = 'font-size:11px;color:var(--amber-text);margin-top:4px';
+      errs.textContent = `⚠ ${op.progress.errors} caderno${op.progress.errors===1?'':'s'} com falha`;
+      wrap.appendChild(errs);
+    }
+    const warn = mk('div');
+    warn.style.cssText = 'font-size:10.5px;color:var(--text3);margin-top:8px;font-style:italic';
+    warn.textContent = 'Não feche a aba — operação em andamento.';
+    wrap.appendChild(warn);
+    panel.appendChild(wrap);
+  });
+  document.body.appendChild(panel);
+}
+
+// V15.12.65 — Resumo final em modal claro
+function showSeriesBatchSummary(op){
+  const m = mk('div');
+  const isSuccess = op.status === 'success';
+  const isFailed = op.status === 'failed';
+
+  const head = mk('h3');
+  head.style.cssText = 'margin:0 0 .5rem;font-size:18px';
+  head.textContent = isSuccess
+    ? '✅ Série gerada com sucesso'
+    : isFailed
+      ? '❌ Geração falhou'
+      : '⚠️ Série gerada parcialmente';
+  m.appendChild(head);
+
+  const body = mk('div');
+  body.style.cssText = 'font-size:13px;line-height:1.7';
+  const created = op.created || 0;
+  const wanted = op.nNotebooks;
+  const totalQ = op.totalGenerated || 0;
+  const errs = op.totalErrors || 0;
+  const credits = created * 10; // só cobra os que viraram caderno (errors não chegam aqui)
+  const wastedCredits = errs * 10;
+
+  let html = `<div style="background:var(--surface2);padding:.875rem 1rem;border-radius:8px;margin-bottom:.875rem">
+    <div><b>Cadernos criados:</b> ${created} / ${wanted}</div>
+    <div><b>Questões geradas:</b> ${totalQ}</div>
+    <div><b>Falhas:</b> ${errs} ${errs > 0 ? '⚠' : ''}</div>
+    <div><b>Tempo:</b> ${op.durationSec}s</div>
+    <div><b>Fonte:</b> ${escapeHTML(op.sourceName||'?')}</div>
+  </div>`;
+
+  if(isFailed){
+    html += `<div style="background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.3);padding:.75rem .875rem;border-radius:8px;margin-bottom:.875rem;font-size:12.5px">
+      <b>⚠ Nenhum caderno foi criado.</b> ${wastedCredits > 0 ? `Foram cobrados <b>${wastedCredits} créditos</b> em tentativas falhas.` : ''} Anote o ID da operação abaixo e nos contate em jeancarvalho01@hotmail.com pra estorno se aplicável.
+      <div style="margin-top:6px;font-family:ui-monospace,monospace;font-size:11px;color:var(--text3)">ID: ${op.id}</div>
+    </div>`;
+  } else if(errs > 0){
+    html += `<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);padding:.75rem .875rem;border-radius:8px;margin-bottom:.875rem;font-size:12.5px">
+      ${errs} caderno${errs===1?'':'s'} ${errs===1?'falhou':'falharam'} — você foi cobrado por ${errs} × 10 = ${wastedCredits} créditos das tentativas. Os ${created} bem-sucedidos custaram ${credits} créditos.
+    </div>`;
+  }
+
+  if((op.errorReasons||[]).length > 0){
+    html += `<details style="margin-bottom:.875rem"><summary style="cursor:pointer;font-size:12px;color:var(--text2)">Detalhes das falhas (${op.errorReasons.length})</summary>
+      <div style="font-size:11.5px;color:var(--text2);padding:.5rem .75rem;background:var(--surface2);border-radius:6px;margin-top:6px;line-height:1.5">
+        ${op.errorReasons.map(r => '• ' + escapeHTML(r)).join('<br>')}
+      </div>
+    </details>`;
+  }
+
+  body.innerHTML = html;
+  m.appendChild(body);
+
+  const actions = mk('div');
+  actions.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:1rem';
+  if(created > 0){
+    const goBtn = mkBtn('Ver cadernos','btn btn-p');
+    goBtn.addEventListener('click', ()=>{
+      closeModal();
+      ST.view = 'sources';
+      ST.srcSubview = 'notebooks';
+      render();
+    });
+    actions.appendChild(goBtn);
+  }
+  const closeBtn = mkBtn('Fechar','btn');
+  closeBtn.addEventListener('click', closeModal);
+  actions.appendChild(closeBtn);
+  m.appendChild(actions);
+
+  showModal(m);
+}
+
+// V15.12.65 — Recovery: ao carregar o app, se há operação ativa "travada" há
+// mais de 5 min sem update, marca como possivelmente perdida (browser fechou
+// no meio). Não restaura automaticamente — só documenta no log pra usuário ver.
+function recoverActiveBatchOps(){
+  if(!DATA.activeBatchOps || DATA.activeBatchOps.length === 0) return;
+  const now = Date.now();
+  const stale = [];
+  const stillActive = [];
+  for(const op of DATA.activeBatchOps){
+    const startedAgoMs = now - (op.startedAt || 0);
+    // Se passou mais de 5 minutos desde o começo e não temos como saber se
+    // continua rodando (não rodando porque app foi fechado e reaberto),
+    // marca como "lost"
+    if(startedAgoMs > 5 * 60 * 1000){
+      stale.push({...op, status: 'lost', completedAt: now,
+        haltedReason: 'app_closed_during_op',
+        errorReasons: [`Operação interrompida — app fechado durante geração. Cadernos criados antes do fechamento foram preservados; créditos das tentativas posteriores podem ter sido perdidos sem retorno.`]
+      });
+    } else {
+      stillActive.push(op);
+    }
+  }
+  if(stale.length > 0){
+    if(!DATA.batchOpsLog) DATA.batchOpsLog = [];
+    DATA.batchOpsLog.unshift(...stale);
+    if(DATA.batchOpsLog.length > 50) DATA.batchOpsLog = DATA.batchOpsLog.slice(0, 50);
+  }
+  DATA.activeBatchOps = stillActive;
+  save();
 }
 
 // V14: Agrupa seções do TOC em N grupos balanceados (cada grupo = 1 caderno).
@@ -35210,10 +35614,24 @@ async function practSubmit(answer){
     ST.practAnswered=false;
     const errMsg = String(e.message||e);
     const lower = errMsg.toLowerCase();
-    if(lower.includes('429') || lower.includes('rate limit')){
-      ST.practError = '⏳ Limite da IA atingido. Aguarde 1-2 minutos e tente responder novamente. (Anthropic limita 50k tokens/min — gerar muitas questões seguidas dispara isso.)';
+    // V15.12.65 — Diferencia rate limit upstream vs interno; não afirma "Anthropic"
+    // sem evidência. Adiciona log estruturado pra diagnóstico.
+    console.error('[api-error] pratica handleErr:', {errMsg, errName: e?.name, errStatus: e?.status, errCode: e?.code});
+    if(e && e.name === 'CreditsError'){
+      ST.practError = '💳 Sem créditos suficientes pra processar. Recarregue ou aguarde reset do plano.';
+    } else if(lower.includes('429') || lower.includes('rate limit')){
+      const isAnthropic = /anthropic|tokens.*per.*minute|upstream/i.test(errMsg);
+      ST.practError = isAnthropic
+        ? '⏳ A IA da Anthropic atingiu o limite de tokens/minuto. Aguarde 1-2 minutos e responda novamente.'
+        : '⏳ Requisição limitada — aguarde alguns segundos e responda novamente.';
     } else if(lower.includes('timeout') || lower.includes('aborted')){
       ST.practError = '⌛ A IA demorou demais pra responder. Pode ser instabilidade de rede — tente responder de novo.';
+    } else if(lower.includes('failed to fetch') || lower.includes('network')){
+      ST.practError = '📡 Sem conexão com o servidor. Verifique sua internet e tente de novo.';
+    } else if(lower.includes('parse') || lower.includes('json')){
+      ST.practError = '🔧 A IA retornou resposta em formato inválido. Tente de novo — costuma resolver no segundo tentativa.';
+    } else if(e && e.status >= 500){
+      ST.practError = '🛠 Servidor instável ('+e.status+'). Tente em instantes.';
     } else {
       ST.practError = '⚠️ Não consegui processar sua resposta agora: ' + errMsg.slice(0, 200) + '. Tente novamente.';
     }
@@ -55064,7 +55482,15 @@ function renderSettings(){
     const lblB = mk('label');lblB.textContent='Banca examinadora';
     const inpB = mk('input');inpB.type='text';inpB.placeholder='Ex: Cebraspe, FGV, IBFC';
     inpB.value = DATA.config.examBank||'';
-    inpB.addEventListener('change',e=>{DATA.config.examBank=e.target.value.trim();save();render();});
+    inpB.addEventListener('change',e=>{
+      DATA.config.examBank=e.target.value.trim();
+      save();
+      // V15.12.65 — Invalida questões/prefetch de contexto anterior
+      invalidateGenerationContext('examBank-change');
+      // Reseta flag de aviso pra reavaliar
+      _sessionBankFallbackWarned = false;
+      render();
+    });
     col2.appendChild(lblB);col2.appendChild(inpB);
     examGrid.appendChild(col1);examGrid.appendChild(col2);
     examCard.appendChild(examGrid);
@@ -61601,7 +62027,20 @@ document.addEventListener('error', function(ev){
 // Initial render (may show loading state if auth still resolving)
 // V12: Restaura simulado em andamento se houver
 try{ restoreSimRunningIfAny(); }catch(e){ console.warn('[sim restore]', e); }
+// V15.12.65 — Recovery de operações de geração em série interrompidas (app fechou)
+try{ recoverActiveBatchOps(); }catch(e){ console.warn('[batch ops recover]', e); }
 render();
+// V15.12.65 — Reapresenta painel de ops ativas em cada render (caso usuário
+// navegue durante uma geração — mas como a função é async com await, isso só
+// pode acontecer se o user abriu múltiplas abas. Ainda assim, garante visual).
+const _origRender = render;
+window.addEventListener('beforeunload', (e)=>{
+  if((DATA.activeBatchOps||[]).some(o => o.status === 'running')){
+    e.preventDefault();
+    e.returnValue = 'Há uma geração de série em andamento. Sair agora pode perder créditos. Tem certeza?';
+    return e.returnValue;
+  }
+});
 
 // V14: Detector de offline — mostra banner quando perde conexão.
 // Importante porque várias features dependem de IA/Supabase. Avisa antes
