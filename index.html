@@ -12010,80 +12010,481 @@ function getBancaContext(){
   const configBank = (DATA && DATA.config && DATA.config.examBank) || '';
   const raw = (profBank || configBank || '').toLowerCase().trim();
   if(!raw) return null;
-
-  // Identifica banca por substring
-  if(/cebraspe|cespe/i.test(raw)){
-    return {
-      id: 'cebraspe',
-      name: 'Cebraspe',
-      style: '' // Padrão — já é Cebraspe nos prompts
-    };
-  }
-  if(/fcc/i.test(raw)){
-    return {
-      id: 'fcc',
-      name: 'FCC',
-      style: `--- AJUSTE PARA FCC ---
-A banca FCC tem estilo MUITO DIFERENTE da Cebraspe. Em vez de C/E, use formato múltipla escolha (5 alternativas A-E). Características FCC:
-- Enunciados mais longos (até 80 palavras), com mais contexto narrativo
-- Alternativas paralelas (mesma estrutura sintática) — torna comparação difícil
-- Erros sutis nas alternativas: troca de números, troca de "exclusivo" por "preferencial", etc.
-- Predomínio de letra de lei e doutrina clássica — evita jurisprudência recente
-- Cobra MUITA decoreba de prazos, percentuais e quóruns
-- Pegadinhas favoritas: 1) inverter beneficiário e devedor, 2) trocar "majoritário" por "absoluto", 3) adicionar "salvo disposição em contrário" onde não existe`
-    };
-  }
-  if(/fgv/i.test(raw)){
-    return {
-      id: 'fgv',
-      name: 'FGV',
-      style: `--- AJUSTE PARA FGV ---
-A banca FGV tem estilo INTERPRETATIVO e CONCEITUAL. Características:
-- Múltipla escolha com 5 alternativas, MAS com casos práticos longos no enunciado
-- Foco em raciocínio jurídico/lógico, não decoreba pura
-- Alternativas plausíveis — duas costumam parecer corretas
-- Cobra distinções doutrinárias finas (ex: discricionariedade vs vinculação, ato administrativo vs simples ato)
-- Pegadinhas favoritas: 1) confundir conceitos correlatos, 2) misturar duas teses doutrinárias, 3) cenários híbridos onde parece caber mais de uma resposta`
-    };
-  }
-  if(/vunesp/i.test(raw)){
-    return {
-      id: 'vunesp',
-      name: 'Vunesp',
-      style: `--- AJUSTE PARA VUNESP ---
-A banca Vunesp foca em literalidade da lei e súmulas. Características:
-- Múltipla escolha (5 alternativas)
-- Enunciados curtos e diretos
-- Alternativas testam conhecimento de prazos, valores e requisitos exatos
-- Predomínio de questões de letra de lei
-- Pegadinhas favoritas: 1) trocar "até" por "no mínimo", 2) alterar prazo (15 dias → 5 dias), 3) trocar "anuência" por "ciência"`
-    };
-  }
-  if(/quadrix/i.test(raw)){
-    return {
-      id: 'quadrix',
-      name: 'Quadrix',
-      style: `--- AJUSTE PARA QUADRIX ---
-A banca Quadrix mistura C/E (estilo Cebraspe) com múltipla escolha em proporção variável.
-Mantenha o estilo C/E quando solicitado, mas com armadilhas mais brandas que Cebraspe — Quadrix tende a ser menos "pegadinha pesada".`
-    };
-  }
-  if(/instituto americano|iades|iadhed|ibfc|cespe/i.test(raw)){
-    return {
-      id: 'outras',
-      name: raw,
-      style: `--- AJUSTE PARA ${raw.toUpperCase()} ---
-A banca alvo não é Cebraspe. Mantenha rigor técnico mas com armadilhas menos hostis: prefira erros por troca de números, trocas de termos similares e omissão de detalhes ao invés de "termo absoluto extremo" estilo Cebraspe.`
-    };
-  }
-  // Banca não reconhecida — usa nome como dica
-  return {
-    id: 'unknown',
-    name: raw,
-    style: `--- BANCA ALVO: ${raw.toUpperCase()} ---
-Aplique estilo geral de prova de concurso brasileiro. Mantenha rigor técnico, evite armadilhas excessivamente hostis (estilo Cebraspe puro). Se a banca for conhecida por múltipla escolha, prefira esse formato.`
-  };
+  // V15.12.64 — Função mantida pra compat (callers antigos), mas agora delega
+  // pra estrutura nova BANK_PROFILES. Retorna {id, name, style} pra compat.
+  // Novos callers devem usar getActiveBankProfile() que retorna o profile rico.
+  if(/cebraspe|cespe/i.test(raw)) return {id:'cebraspe', name:'Cebraspe', style:''};
+  if(/fcc/i.test(raw))            return {id:'fcc', name:'FCC', style:''};
+  if(/fgv/i.test(raw))            return {id:'fgv', name:'FGV', style:''};
+  if(/vunesp/i.test(raw))         return {id:'vunesp', name:'Vunesp', style:''};
+  if(/quadrix/i.test(raw))        return {id:'quadrix', name:'Quadrix', style:''};
+  if(/idecan/i.test(raw))         return {id:'idecan', name:'Idecan', style:''};
+  if(/ibfc/i.test(raw))           return {id:'ibfc', name:'IBFC', style:''};
+  if(/consulplan/i.test(raw))     return {id:'consulplan', name:'Consulplan', style:''};
+  if(/cesgranrio/i.test(raw))     return {id:'cesgranrio', name:'Cesgranrio', style:''};
+  return {id:'unknown', name:raw, style:''};
 }
+
+// ============================================================================
+// V15.12.64 — P1.2: BANK_PROFILES, DISCIPLINE_PROFILES, DIFFICULTY_GUIDE
+// ============================================================================
+// Estrutura centralizada que substitui as instruções de banca soltas como
+// string. Cada perfil é um objeto declarativo lido por buildGenerationProfile()
+// e injetado no prompt como bloco estruturado.
+//
+// Cebraspe é o default — mantém comportamento antigo intacto (defaultFormat: 'CE',
+// armadilhas Cebraspe, explicação curta). Outras bancas têm formato MC e
+// instruções específicas que conflitavam com prompts hardcoded — agora
+// resolvidas centralmente.
+// ============================================================================
+
+const BANK_PROFILES = {
+  cebraspe: {
+    id: 'cebraspe',
+    name: 'Cebraspe',
+    defaultFormat: 'CE',
+    enunciadoLength: '15-50 palavras (1 a 3 frases)',
+    casuistica: 'baixa',
+    sourcePref: 'lei e jurisprudência consolidada',
+    instructions: 'Estilo CESPE/Cebraspe clássico. Item C/E (Certo/Errado). Linguagem formal, impessoal, densa. Apenas UMA ideia central por item. Armadilhas embutidas naturalmente, nunca forçadas.',
+    trapTypes: [
+      '0=Termo Absoluto: "sempre/nunca/todos/apenas/exclusivamente" onde cabe ressalva',
+      '1=Inversão de Conceito: troca sujeito e objeto, causa e efeito, competências',
+      '2=Generalização Indevida: amplia regra específica a casos não cobertos',
+      '3=Omissão Essencial: remove condição, prazo ou ressalva que muda o gabarito',
+      '4=Troca de Competência: atribui a órgão/autoridade errada',
+      '5=Confusão de Nomenclatura: troca termos similares'
+    ],
+    comentarioStyle: 'curto e objetivo (2-3 frases), aponta o gatilho da armadilha e corrige',
+    flashcardStyle: 'concept ou comparison; foco na regra/exceção'
+  },
+  fcc: {
+    id: 'fcc',
+    name: 'FCC',
+    defaultFormat: 'MC',
+    alternativeCount: 5,
+    enunciadoLength: '30-80 palavras',
+    casuistica: 'baixa',
+    sourcePref: 'letra de lei, doutrina clássica',
+    instructions: 'Múltipla escolha com 5 alternativas (A-E). Alternativas paralelas (mesma estrutura sintática). Predomínio de letra de lei e doutrina clássica — evita jurisprudência muito recente. Cobra decoreba de prazos, percentuais e quóruns.',
+    trapTypes: [
+      'troca de números/prazos (ex: 15 dias virar 5 dias)',
+      'troca de termos próximos ("majoritário" vs "absoluto")',
+      'inverter beneficiário e devedor',
+      'adicionar "salvo disposição em contrário" onde não existe',
+      'omissão de ressalva da norma'
+    ],
+    comentarioStyle: 'objetivo, cita o dispositivo legal exato',
+    flashcardStyle: 'list de prazos/percentuais ou comparison'
+  },
+  fgv: {
+    id: 'fgv',
+    name: 'FGV',
+    defaultFormat: 'MC',
+    alternativeCount: 5,
+    enunciadoLength: '40-120 palavras (geralmente com cenário)',
+    casuistica: 'alta',
+    sourcePref: 'doutrina, casos práticos, jurisprudência aplicada',
+    instructions: 'Múltipla escolha com 5 alternativas. Casos práticos longos no enunciado. Foco em raciocínio jurídico/lógico, não decoreba pura. DUAS alternativas costumam parecer corretas — distinção fina entre conceitos correlatos.',
+    trapTypes: [
+      'confundir conceitos correlatos (discricionariedade vs vinculação)',
+      'misturar duas teses doutrinárias',
+      'cenários híbridos onde parece caber mais de uma resposta',
+      'pegadinhas semânticas em interpretação'
+    ],
+    comentarioStyle: 'detalhado, explica por que a correta resolve o caso e por que cada plausível erra',
+    flashcardStyle: 'comparison entre conceitos correlatos'
+  },
+  vunesp: {
+    id: 'vunesp',
+    name: 'Vunesp',
+    defaultFormat: 'MC',
+    alternativeCount: 5,
+    enunciadoLength: '20-60 palavras',
+    casuistica: 'baixa',
+    sourcePref: 'literalidade de lei e súmulas',
+    instructions: 'Múltipla escolha (5 alternativas). Enunciados curtos e diretos. Alternativas testam conhecimento de prazos, valores e requisitos EXATOS. Predomínio de questões de letra de lei.',
+    trapTypes: [
+      'trocar "até" por "no mínimo"',
+      'alterar prazo (15 → 5 dias)',
+      'trocar "anuência" por "ciência"',
+      'omitir requisito da norma'
+    ],
+    comentarioStyle: 'curto, literal, cita artigo/parágrafo',
+    flashcardStyle: 'list de prazos e requisitos'
+  },
+  quadrix: {
+    id: 'quadrix',
+    name: 'Quadrix',
+    defaultFormat: 'CE',
+    enunciadoLength: '20-50 palavras',
+    casuistica: 'média',
+    sourcePref: 'lei e doutrina',
+    instructions: 'Mistura C/E (estilo Cebraspe) com múltipla escolha. Use C/E como padrão. Armadilhas mais brandas que Cebraspe — menos "pegadinha pesada", mais foco em compreensão.',
+    trapTypes: [
+      'troca de termos similares',
+      'omissão de detalhe importante',
+      'inversão leve de conceitos'
+    ],
+    comentarioStyle: 'objetivo, didático',
+    flashcardStyle: 'concept ou list'
+  },
+  idecan: {
+    id: 'idecan',
+    name: 'Idecan',
+    defaultFormat: 'MC',
+    alternativeCount: 5,
+    enunciadoLength: '40-150 palavras (cenários práticos longos quando aplicável)',
+    casuistica: 'alta',
+    sourcePref: 'lei aplicada a casos concretos',
+    instructions: 'Múltipla escolha com 5 alternativas. Em Direito Penal, Processual Penal e Direito Civil, USE casos concretos no enunciado (Tício, João, Maria...). Alternativas plausíveis. Enunciado pode ser longo. Cobra aplicação prática da lei mais do que decoreba pura.',
+    trapTypes: [
+      'troca de tipificação penal próxima (furto vs roubo, dolo vs culpa)',
+      'erro de competência ou prazo no caso prático',
+      'mistura de elementos do tipo penal',
+      'alternativa correta exige aplicar exceção da norma'
+    ],
+    comentarioStyle: 'aplicado ao caso, explica por que a alternativa correta resolve o cenário',
+    flashcardStyle: 'concept aplicado (incluir mini-caso) ou comparison'
+  },
+  ibfc: {
+    id: 'ibfc',
+    name: 'IBFC',
+    defaultFormat: 'MC',
+    alternativeCount: 5,
+    enunciadoLength: '25-70 palavras',
+    casuistica: 'média',
+    sourcePref: 'letra de lei e doutrina básica',
+    instructions: 'Múltipla escolha (5 alternativas). Estilo intermediário — não tão literal quanto FCC, não tão interpretativo quanto FGV. Mistura literalidade com aplicação simples.',
+    trapTypes: [
+      'troca de termos similares',
+      'omissão de elemento da norma',
+      'troca de competência'
+    ],
+    comentarioStyle: 'objetivo, cita base normativa',
+    flashcardStyle: 'concept ou list'
+  },
+  consulplan: {
+    id: 'consulplan',
+    name: 'Consulplan',
+    defaultFormat: 'MC',
+    alternativeCount: 5,
+    enunciadoLength: '30-80 palavras',
+    casuistica: 'média',
+    sourcePref: 'lei e jurisprudência',
+    instructions: 'Múltipla escolha (5 alternativas). Estilo similar a FGV mas com cargas menores de interpretação. Mais foco em conhecimento normativo aplicado.',
+    trapTypes: [
+      'troca de prazo ou competência',
+      'inversão leve de conceitos',
+      'omissão de ressalva'
+    ],
+    comentarioStyle: 'didático, com base legal',
+    flashcardStyle: 'list ou comparison'
+  },
+  cesgranrio: {
+    id: 'cesgranrio',
+    name: 'Cesgranrio',
+    defaultFormat: 'MC',
+    alternativeCount: 5,
+    enunciadoLength: '35-100 palavras (forte em raciocínio técnico)',
+    casuistica: 'alta',
+    sourcePref: 'conhecimento técnico aplicado (forte em concursos de banco/petróleo)',
+    instructions: 'Múltipla escolha (5 alternativas). Forte em interpretação técnica e cálculo aplicado. Cobra raciocínio mais que memória. Em Português pode ter texto longo de base.',
+    trapTypes: [
+      'erro de cálculo ou raciocínio em alternativa próxima',
+      'interpretação ambígua proposital em alternativas',
+      'inversão sutil de causa-efeito'
+    ],
+    comentarioStyle: 'detalhado, mostra o raciocínio passo a passo',
+    flashcardStyle: 'concept com exemplo aplicado'
+  },
+  // Fallback para banca não definida (cebraspe_default — registrado no pool)
+  cebraspe_default: {
+    id: 'cebraspe_default',
+    name: 'Cebraspe (padrão sem banca definida)',
+    defaultFormat: 'CE',
+    enunciadoLength: '15-50 palavras',
+    casuistica: 'baixa',
+    sourcePref: 'lei e jurisprudência',
+    instructions: 'Estilo Cebraspe C/E padrão. Usuário não definiu banca alvo — usando Cebraspe como fallback explícito.',
+    trapTypes: ['mesmas armadilhas Cebraspe'],
+    comentarioStyle: 'curto e objetivo',
+    flashcardStyle: 'concept ou comparison',
+    isFallback: true
+  }
+};
+
+const DISCIPLINE_PROFILES = {
+  direito_constitucional: {
+    name: 'Direito Constitucional',
+    raciocinio: 'norma + exceções + jurisprudência do STF',
+    enunciadoForm: 'pode ser denso normativamente; assertiva direta com elemento da norma',
+    trapsCommon: ['confundir competência da União/Estados/Municípios', 'inverter rol exemplificativo vs taxativo', 'omissão de ressalva constitucional', 'confundir cláusulas pétreas'],
+    cuidados: 'não inventar súmulas; usar terminologia constitucional precisa; respeitar literalidade quando óbvia',
+    explanationStyle: 'cita artigo/inciso quando relevante; menciona STF/STJ se aplicável',
+    flashcardHint: 'comparison de competências, list de cláusulas, concept de princípio'
+  },
+  direito_administrativo: {
+    name: 'Direito Administrativo',
+    raciocinio: 'norma + ato administrativo + jurisprudência aplicada',
+    enunciadoForm: 'frequentemente cenário com servidor/ato administrativo; ou assertiva sobre princípio/regime',
+    trapsCommon: ['atos vinculados vs discricionários', 'troca de competência (anulação vs revogação)', 'estabilidade vs efetividade', 'requisitos de licitação'],
+    cuidados: 'distinguir conceitos próximos com clareza; não generalizar regimes',
+    explanationStyle: 'didático, cita princípio + base normativa',
+    flashcardHint: 'comparison de atos/princípios/competências'
+  },
+  direito_penal: {
+    name: 'Direito Penal',
+    raciocinio: 'tipificação + elementos do crime + causas de aumento/diminuição',
+    enunciadoForm: 'IDEAL com caso concreto (Tício, João...) descrevendo conduta; alternativa pede tipificação ou consequência',
+    trapsCommon: ['confundir tipos próximos (furto vs roubo, lesão vs tentativa de homicídio)', 'esquecer qualificadora ou causa de aumento', 'confundir dolo vs culpa', 'erro sobre tentativa vs consumação'],
+    cuidados: 'descrever conduta de forma neutra; não dar a tipificação no enunciado; não usar termos jurídicos que entreguem a resposta',
+    explanationStyle: 'aplica os elementos do tipo ao caso; cita artigo do CP se relevante',
+    flashcardHint: 'concept aplicado ao caso, comparison entre tipos próximos'
+  },
+  direito_processual_penal: {
+    name: 'Direito Processual Penal',
+    raciocinio: 'competência + prazos + nulidades + provas + medidas cautelares',
+    enunciadoForm: 'IDEAL com caso concreto (investigação, prisão, audiência...) descrevendo procedimento',
+    trapsCommon: ['confundir competência (Justiça comum vs Federal vs Eleitoral)', 'erro de prazo (5/10/15/30 dias)', 'nulidade absoluta vs relativa', 'flagrante próprio vs impróprio vs presumido'],
+    cuidados: 'cuidado com mudanças jurisprudenciais recentes; usar literalidade do CPP',
+    explanationStyle: 'cita artigo do CPP; explica consequência processual',
+    flashcardHint: 'list de prazos, comparison de espécies de prisão/flagrante'
+  },
+  direito_civil: {
+    name: 'Direito Civil',
+    raciocinio: 'norma + interpretação doutrinária + jurisprudência consolidada',
+    enunciadoForm: 'pode ser caso concreto sobre contrato/família/sucessões/responsabilidade civil',
+    trapsCommon: ['confundir prazos prescricionais', 'capacidade absoluta vs relativa', 'condições do negócio jurídico', 'sucessão legítima vs testamentária'],
+    cuidados: 'usar terminologia técnica do CC; cuidado com institutos próximos',
+    explanationStyle: 'cita artigo do CC; menciona Súmula se aplicável',
+    flashcardHint: 'list de prazos, comparison de institutos'
+  },
+  portugues: {
+    name: 'Português',
+    raciocinio: 'compreensão textual + sintaxe + coesão + reescrita',
+    enunciadoForm: 'IDEAL com texto-base; pergunta sobre passagem específica do texto OU sobre regra gramatical',
+    trapsCommon: ['troca sutil em reescrita (mantém vs altera sentido)', 'concordância oculta', 'pontuação que muda função sintática', 'figuras de linguagem confundíveis'],
+    cuidados: 'NÃO usar armadilhas Cebraspe genéricas (termo absoluto, inversão de competência) que não fazem sentido aqui; usar texto-base quando a questão exigir contexto',
+    explanationStyle: 'aponta a regra gramatical ou a evidência no texto',
+    flashcardHint: 'concept com exemplo certo/errado quando útil; sem emoji'
+  },
+  informatica: {
+    name: 'Informática',
+    raciocinio: 'cenário técnico + aplicação prática',
+    enunciadoForm: 'cenário curto descrevendo situação técnica (rede, sistema, segurança, banco de dados); alternativa pede ação correta ou identificação',
+    trapsCommon: ['troca de protocolo (HTTP vs HTTPS, TCP vs UDP)', 'inversão de função (firewall vs antivírus)', 'comportamento incorreto de SO/aplicação', 'permissões de arquivo erradas'],
+    cuidados: 'NÃO inventar comportamento técnico; basear-se no que está na fonte; cuidado com versões específicas',
+    explanationStyle: 'objetivo, técnico; explica o porquê do comportamento',
+    flashcardHint: 'comparison de protocolos/conceitos, concept com exemplo de comando'
+  },
+  contabilidade: {
+    name: 'Contabilidade',
+    raciocinio: 'lançamento + efeito patrimonial + competência',
+    enunciadoForm: 'cenário com operação contábil; pergunta sobre lançamento, conta afetada ou efeito no patrimônio',
+    trapsCommon: ['troca de natureza da conta (ativo vs passivo)', 'erro no lado do lançamento (débito vs crédito)', 'confusão entre regime de caixa e competência', 'erro no efeito sobre PL'],
+    cuidados: 'cuidado com números — se errar conta, a questão fica ambígua; usar terminologia da CPC/NBC',
+    explanationStyle: 'mostra o lançamento e o efeito; cita norma contábil se aplicável',
+    flashcardHint: 'concept com exemplo de lançamento, comparison de regimes'
+  },
+  rlm: {
+    name: 'Raciocínio Lógico-Matemático',
+    raciocinio: 'proposições, equivalências, negações, diagramas, contagem, problemas',
+    enunciadoForm: 'enunciado curto e estrutural; alternativas testam conclusão lógica',
+    trapsCommon: ['negação errada de quantificadores', 'falsa equivalência condicional', 'erro em diagrama de conjuntos', 'erro de contagem'],
+    cuidados: 'evitar explicações verbosas; usar estrutura lógica clara; NÃO aplicar armadilhas Cebraspe genéricas que não cabem aqui',
+    explanationStyle: 'estrutural, mostra passo a passo do raciocínio',
+    flashcardHint: 'concept de regra lógica com exemplo curto'
+  },
+  legislacao_especial: {
+    name: 'Legislação Especial',
+    raciocinio: 'literalidade da lei específica + jurisprudência aplicada',
+    enunciadoForm: 'assertiva ou cenário aplicado',
+    trapsCommon: ['troca de prazo ou requisito específico da lei', 'omissão de ressalva', 'confusão entre leis correlatas'],
+    cuidados: 'precisão na citação da lei; respeitar a literalidade',
+    explanationStyle: 'cita artigo da lei específica',
+    flashcardHint: 'list de prazos/requisitos específicos da lei'
+  },
+  direitos_humanos: {
+    name: 'Direitos Humanos',
+    raciocinio: 'norma internacional + Constituição + jurisprudência do STF',
+    enunciadoForm: 'assertiva sobre tratado/declaração/jurisprudência',
+    trapsCommon: ['confundir tratados com hierarquia constitucional vs supralegal', 'inverter direito vs garantia', 'omissão de fundamento'],
+    cuidados: 'usar terminologia precisa; respeitar status hierárquico dos tratados',
+    explanationStyle: 'cita tratado/artigo + entendimento do STF',
+    flashcardHint: 'comparison de hierarquias, list de direitos'
+  },
+  criminologia: {
+    name: 'Criminologia',
+    raciocinio: 'teorias criminológicas + escolas + métodos',
+    enunciadoForm: 'assertiva sobre teoria/escola ou cenário aplicado',
+    trapsCommon: ['confundir escolas (clássica vs positiva vs sociológica)', 'inverter autor com teoria', 'mistura de conceitos correlatos'],
+    cuidados: 'precisão histórica e doutrinária; não inventar autores',
+    explanationStyle: 'didático, contextualiza a escola/teoria',
+    flashcardHint: 'comparison de escolas, concept de teoria'
+  },
+  // Fallback genérico
+  generic: {
+    name: 'Disciplina genérica',
+    raciocinio: 'aplicação direta do conteúdo da fonte',
+    enunciadoForm: 'assertiva ou cenário curto baseado na fonte',
+    trapsCommon: ['troca de termos próximos', 'omissão de detalhe', 'inversão leve'],
+    cuidados: 'basear-se ESTRITAMENTE na fonte fornecida; não inventar conteúdo externo',
+    explanationStyle: 'objetivo, ancorado na fonte',
+    flashcardHint: 'concept ou list',
+    isFallback: true
+  }
+};
+
+const DIFFICULTY_GUIDE = {
+  easy: {
+    label: 'Fácil',
+    description: 'Conceito direto. Literalidade da fonte. Pouca inferência. Pegadinha simples (ex: troca de termo óbvia).',
+    enunciadoTip: 'curto e direto'
+  },
+  medium: {
+    label: 'Médio',
+    description: 'Distinção entre conceitos. Uma ou duas ressalvas embutidas. Aplicação simples. Padrão de prova normal.',
+    enunciadoTip: 'tamanho médio, com 1 elemento que exige atenção'
+  },
+  hard: {
+    label: 'Difícil',
+    description: 'Caso concreto curto. Cruzamento de dispositivos/conceitos. Exceção normativa. Pegadinha sutil. Alternativas/afirmações próximas.',
+    enunciadoTip: 'mais longo; requer 2 passos de raciocínio'
+  },
+  very_hard: {
+    label: 'Muito difícil',
+    description: 'Caso mais complexo. Múltiplas camadas. Jurisprudência + norma. Maior carga de leitura. Raciocínio cansativo.',
+    enunciadoTip: 'longo, com elementos cruzados; alternativas muito próximas'
+  }
+};
+
+// V15.12.64 — Helpers que retornam profile estruturado.
+function getActiveBankProfile(){
+  const ctx = getBancaContext();
+  if(!ctx) return BANK_PROFILES.cebraspe_default;
+  return BANK_PROFILES[ctx.id] || BANK_PROFILES.cebraspe_default;
+}
+
+function getActiveDisciplineProfile(disciplineId){
+  if(!disciplineId) return DISCIPLINE_PROFILES.generic;
+  const slug = disciplineSlug(disciplineId);
+  // Tenta match direto
+  if(DISCIPLINE_PROFILES[slug]) return DISCIPLINE_PROFILES[slug];
+  // Tenta match parcial (ex: "direito_administrativo_militar" → "direito_administrativo")
+  const knownKeys = Object.keys(DISCIPLINE_PROFILES);
+  for(const k of knownKeys){
+    if(k === 'generic') continue;
+    if(slug.startsWith(k) || slug.includes(k)) return DISCIPLINE_PROFILES[k];
+  }
+  return DISCIPLINE_PROFILES.generic;
+}
+
+// Monta bloco textual estruturado pra injetar no prompt.
+// Combina banca + disciplina + dificuldade.
+function buildGenerationProfile(opts){
+  opts = opts || {};
+  const bank = opts.bank || getActiveBankProfile();
+  const disc = opts.discipline || DISCIPLINE_PROFILES.generic;
+  const diffKey = opts.difficulty || 'medium';
+  const diff = DIFFICULTY_GUIDE[diffKey] || DIFFICULTY_GUIDE.medium;
+
+  // Formato JSON dependendo do defaultFormat da banca
+  const formatBlock = bank.defaultFormat === 'MC'
+    ? `FORMATO DE SAÍDA: Múltipla escolha com ${bank.alternativeCount || 5} alternativas (A-${String.fromCharCode(64 + (bank.alternativeCount || 5))}).`
+    : `FORMATO DE SAÍDA: Item C/E (Certo ou Errado).`;
+
+  const traps = (bank.trapTypes || []).map(t => '- ' + t).join('\n');
+  const discTraps = (disc.trapsCommon || []).map(t => '- ' + t).join('\n');
+
+  let block = `=== PERFIL DA BANCA: ${bank.name} ===
+${bank.instructions}
+Tamanho do enunciado: ${bank.enunciadoLength}
+Casuística: ${bank.casuistica}
+Fonte preferencial: ${bank.sourcePref}
+${formatBlock}
+Armadilhas típicas da banca:
+${traps}
+Estilo de explicação: ${bank.comentarioStyle}
+Estilo de flashcard: ${bank.flashcardStyle}`;
+
+  if(bank.isFallback){
+    block += `\n⚠ AVISO: usuário não definiu banca alvo. Usando Cebraspe como fallback.`;
+  }
+
+  if(disc && disc.name){
+    block += `\n\n=== DISCIPLINA: ${disc.name} ===
+Raciocínio cobrado: ${disc.raciocinio}
+Forma do enunciado: ${disc.enunciadoForm}
+Armadilhas típicas da matéria:
+${discTraps}
+Cuidados específicos: ${disc.cuidados}
+Estilo de explicação: ${disc.explanationStyle}
+Dica de flashcard: ${disc.flashcardHint}`;
+  }
+
+  block += `\n\n=== DIFICULDADE: ${diff.label} ===
+${diff.description}
+Tamanho do enunciado: ${diff.enunciadoTip}`;
+
+  return block;
+}
+
+// Resolve disciplina ativa atual (do foco ou da fonte ativa)
+function inferActiveDisciplineId(){
+  // Prioriza foco ativo
+  if(ST.activeFocus && ST.activeFocus.disciplineId) return ST.activeFocus.disciplineId;
+  // Fonte única ativa
+  const srcs = (typeof activeSources === 'function') ? activeSources() : [];
+  if(srcs.length === 1) return srcs[0].disciplineId;
+  // Disciplina ativa no banco
+  if(ST.bankDisciplineFilter && ST.bankDisciplineFilter !== 'all') return ST.bankDisciplineFilter;
+  return null;
+}
+
+// Resolve dificuldade ativa.
+// Hoje: padrão 'medium'. Futuramente UI permite escolher.
+function inferActiveDifficulty(){
+  if(ST.preferredDifficulty && DIFFICULTY_GUIDE[ST.preferredDifficulty]) return ST.preferredDifficulty;
+  if(DATA.config && DATA.config.preferredDifficulty && DIFFICULTY_GUIDE[DATA.config.preferredDifficulty]){
+    return DATA.config.preferredDifficulty;
+  }
+  return 'medium';
+}
+
+// Aviso discreto ao gerar 1ª questão da sessão sem banca definida.
+let _sessionBankFallbackWarned = false;
+function maybeWarnNoBankSet(){
+  if(_sessionBankFallbackWarned) return;
+  const ctx = getBancaContext();
+  if(ctx) return; // tem banca definida, sem aviso
+  _sessionBankFallbackWarned = true;
+  setTimeout(()=>{
+    try{
+      const toast = mk('div');
+      toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--amber);box-shadow:0 6px 24px rgba(0,0,0,.16);padding:.75rem 1rem;border-radius:10px;z-index:10001;font-size:13px;line-height:1.5;max-width:480px;display:flex;align-items:center;gap:10px';
+      toast.innerHTML = `<span style="font-size:18px">⚠️</span>
+        <div style="flex:1">
+          <div style="font-weight:600;margin-bottom:2px">Você ainda não definiu uma banca</div>
+          <div style="color:var(--text2);font-size:12px">Estamos usando o estilo <b>Cebraspe</b> por padrão. Defina a banca em Conta para questões adaptadas.</div>
+        </div>
+        <button class="btn btn-sm" style="white-space:nowrap">Definir agora</button>`;
+      const btn = toast.querySelector('button');
+      btn.addEventListener('click', ()=>{
+        toast.remove();
+        ST.view = 'settings';
+        render();
+        setTimeout(()=>{
+          const sec = document.querySelector('#sec-perfil');
+          if(sec) sec.scrollIntoView({behavior:'smooth',block:'start'});
+        }, 250);
+      });
+      document.body.appendChild(toast);
+      setTimeout(()=>{ toast.style.transition='opacity .3s'; toast.style.opacity='0'; setTimeout(()=>toast.remove(), 300); }, 9000);
+    }catch(_){}
+  }, 800);
+}
+
 
 function buildContent(){
   // V12: Se houver foco em seção específica de uma fonte (via TOC), usar só ela
@@ -12259,9 +12660,24 @@ function buildContent(){
   }
 
   return trimmedContent + directive + (function(){
-    const bc = getBancaContext();
-    if(bc && bc.style) return '\n\n' + bc.style;
-    return '';
+    // V15.12.64 — Antes injetava só bc.style (string solta).
+    // Agora monta profile completo (banca + disciplina + dificuldade) via
+    // buildGenerationProfile. Estrutura uniforme pros prompts SYS_*.
+    try{
+      const bank = getActiveBankProfile();
+      const discId = inferActiveDisciplineId();
+      const disc = getActiveDisciplineProfile(discId);
+      const difficulty = inferActiveDifficulty();
+      // Aviso discreto ao usuário sem banca, na primeira geração da sessão
+      if(bank.isFallback) maybeWarnNoBankSet();
+      const profileBlock = buildGenerationProfile({bank, discipline: disc, difficulty});
+      return '\n\n' + profileBlock;
+    }catch(_){
+      // Defesa: se algo quebrar no profile, cai no antigo bc.style
+      const bc = getBancaContext();
+      if(bc && bc.style) return '\n\n' + bc.style;
+      return '';
+    }
   })();
 }
 function hasContent(){return activeSources().length>0&&buildContent().length>50}
@@ -12369,23 +12785,50 @@ REGRAS DO GABARITO:
 - Item ERRADO = contém armadilha identificável (um dos 6 tipos acima)
 - NUNCA crie itens onde o erro depende de interpretação ambígua não ancorada no conteúdo`;
 
-// VERSÃO RÁPIDA — usada em Practice, Drill, Interleaving, Calibration, Simulado
-// Minimalista, sem auto-score, para volume
-const SYS_QUICK_CE = `Professor Cebraspe. Baseie-se APENAS no conteúdo fornecido.
+// V15.12.64 — Prompt agnóstico de banca: o estilo específico (Cebraspe, FCC,
+// FGV, Idecan etc) é injetado no CONTEÚDO via buildContent → buildGenerationProfile.
+// Aqui ficam apenas as regras universais de geração e o formato do JSON.
+// Aceita tanto C/E quanto MC. O perfil da banca decide qual usar via
+// "FORMATO DE SAÍDA" no bloco injetado.
+const SYS_QUICK_CE = `Você é examinador de concurso público brasileiro. Baseie-se APENAS no conteúdo fornecido.
 
-${CEBRASPE_RULES}
+REGRAS UNIVERSAIS:
+1. Linguagem formal, impessoal, técnica
+2. Apenas UMA ideia central por questão
+3. Use terminologia técnica do conteúdo (NUNCA invente nada externo)
+4. Armadilhas embutidas naturalmente, nunca forçadas
+5. Item ERRADO precisa ter armadilha identificável e ancorada no conteúdo
+6. NÃO use emoji no enunciado
+7. Siga ESTRITAMENTE o PERFIL DA BANCA injetado no conteúdo (formato, tamanho, casuística, armadilhas típicas)
+8. Siga as armadilhas da DISCIPLINA injetada no conteúdo
+9. Calibre a profundidade conforme a DIFICULDADE injetada no conteúdo
 
-SAÍDA: retorne APENAS o JSON, sem markdown, sem backticks, sem comentários, sem texto antes ou depois. Sua resposta deve começar com { e terminar com }.
-Questão nova: {"type":"question","topic":"tópico curto","question":"enunciado","correct_answer":"C|E","trap_type":0-5}
+GABARITO (proporção):
+- 50-60% das questões com gabarito CORRETO, 40-50% INCORRETO
+- Se formato C/E: correct_answer = "C" ou "E"
+- Se formato MC: correct_answer = "A"|"B"|"C"|"D"|"E"
+
+SAÍDA: APENAS o JSON, sem markdown, sem backticks, sem texto antes ou depois. Resposta começa com { e termina com }.
+
+Questão nova (formato C/E):
+{"type":"question","kind":"CE","topic":"tópico curto","question":"enunciado","correct_answer":"C|E","trap_type":0-5,"difficulty":"easy|medium|hard|very_hard"}
+
+Questão nova (formato MC):
+{"type":"question","kind":"MC","topic":"tópico curto","question":"enunciado","alternatives":{"A":"...","B":"...","C":"...","D":"...","E":"..."},"correct_answer":"A|B|C|D|E","trap_type":"descrição curta da pegadinha principal","difficulty":"easy|medium|hard|very_hard"}
+
 Feedback+próxima:
-{"type":"feedback","is_correct":true,"trap_type":0-5,"explanation":"2 frases objetivas","trap":"qual armadilha foi usada (se errada)","keyword":"palavra-gatilho que denuncia","next":{"topic":"...","question":"...","correct_answer":"E","trap_type":1},"suggested_flashcard":{"front":"pergunta curta sobre o conceito","back":"resposta concisa, 1-2 frases"}}
+{"type":"feedback","is_correct":true,"trap_type":"...","explanation":"explicação seguindo o estilo do PERFIL DA BANCA injetado","trap":"qual armadilha foi usada (se errada)","keyword":"palavra-gatilho que denuncia","next":{...mesmo formato da questão nova...},"suggested_flashcard":{"front":"pergunta curta sobre o conceito","back":"resposta concisa, 1-2 frases"}}
 
 REGRA suggested_flashcard:
 - Inclua o campo "suggested_flashcard" APENAS quando is_correct=false (usuário errou).
 - Quando is_correct=true, OMITA o campo.
 - O flashcard deve focar no CONCEITO que o usuário errou, não na questão específica.
-- front: pergunta curta e direta sobre o conceito (ex: "Quando o prazo X aplica-se a Y?")
-- back: resposta concisa, 1-2 frases, que ajude a memorizar a regra.`;
+- Estilo do flashcard segue o PERFIL DA BANCA injetado.
+- Sem emoji no flashcard, salvo se for útil pra retenção (no máximo 1).
+
+REGRA difficulty:
+- O campo difficulty deve refletir a dificuldade real da questão gerada.
+- Tente respeitar a DIFICULDADE pedida no perfil, mas se a fonte não permitir, ajuste.`;
 
 // VERSÃO COMPLETA — usada em SYS_SRS_GEN e SYS_CARD_FROM_ERROR
 // Com auto-avaliação e score
@@ -12404,53 +12847,84 @@ const SYS_CALIB = SYS_QUICK_CE;
 const SYS_PRACT = SYS_QUICK_CE;
 
 // Simulado — batch
-const SYS_SIM = `Professor Cebraspe montando simulado. Baseie-se APENAS no conteúdo.
+// V15.12.64 — Prompts agnósticos. Estilo da banca vem do PERFIL DA BANCA
+// injetado no conteúdo via buildContent. Aceitam tanto C/E quanto MC.
+const SYS_SIM = `Você é examinador de concurso público brasileiro montando simulado. Baseie-se APENAS no conteúdo.
 
-${CEBRASPE_RULES}
+REGRAS UNIVERSAIS:
+1. Linguagem formal, técnica
+2. Apenas UMA ideia central por questão
+3. Use terminologia técnica do conteúdo (NUNCA invente)
+4. Siga o PERFIL DA BANCA injetado (formato C/E ou MC, tamanho, casuística, armadilhas)
+5. Siga as armadilhas da DISCIPLINA injetada
+6. Calibre profundidade conforme DIFICULDADE injetada
 
 Gere EXATAMENTE a quantidade pedida, variando tópicos e tipos de armadilha.
 
 SAÍDA (JSON puro):
-{"type":"batch","questions":[{"topic":"...","question":"...","correct_answer":"C","trap_type":0,"explanation":"2 frases"}]}`;
+{"type":"batch","questions":[{"kind":"CE|MC","topic":"...","question":"...","alternatives":{"A":"...","B":"...","C":"...","D":"...","E":"..."},"correct_answer":"C ou A|B|C|D|E","trap_type":"descrição curta","explanation":"2 frases","difficulty":"easy|medium|hard|very_hard"}]}
+
+Se kind=CE, omita alternatives e use correct_answer = "C" ou "E".
+Se kind=MC, inclua alternatives e use correct_answer = "A"|"B"|"C"|"D"|"E".`;
 
 // Drill focado em um tipo específico
-const SYS_DRILL = `Professor Cebraspe. Drill focado em UM tipo de armadilha. Baseie-se APENAS no conteúdo.
+const SYS_DRILL = `Você é examinador de concurso público brasileiro. Drill focado em UM tipo de armadilha. Baseie-se APENAS no conteúdo.
 
-${CEBRASPE_RULES}
+REGRAS UNIVERSAIS:
+1. Apenas UMA ideia central
+2. Terminologia técnica do conteúdo
+3. Siga o PERFIL DA BANCA injetado (formato, tamanho, casuística)
+4. Siga as armadilhas da DISCIPLINA injetada
+5. Calibre conforme DIFICULDADE injetada
 
-IMPORTANTE: use EXCLUSIVAMENTE o tipo solicitado pelo candidato.
+IMPORTANTE: use EXCLUSIVAMENTE o tipo de armadilha solicitado pelo candidato.
 
 SAÍDA (JSON puro):
-Questão: {"type":"question","topic":"...","question":"...","correct_answer":"C|E","trap_type":X}
-Feedback+próxima: {"type":"feedback","is_correct":true,"trap_type":X,"explanation":"...","trap":"...","keyword":"...","next":{"topic":"...","question":"...","correct_answer":"E","trap_type":X}}`;
+Questão: {"type":"question","kind":"CE|MC","topic":"...","question":"...","alternatives":{...se MC},"correct_answer":"C|E ou A-E","trap_type":"...","difficulty":"medium"}
+Feedback+próxima: {"type":"feedback","is_correct":true,"trap_type":"...","explanation":"...","trap":"...","keyword":"...","next":{...mesma estrutura...}}`;
 
 // Interleaving (alterna tópicos)
-const SYS_INTER = `Professor Cebraspe aplicando Intercalação. Baseie-se APENAS no conteúdo.
+const SYS_INTER = `Você é examinador de concurso público brasileiro aplicando Intercalação. Baseie-se APENAS no conteúdo.
 
-${CEBRASPE_RULES}
+REGRAS UNIVERSAIS:
+1. Apenas UMA ideia central
+2. Terminologia técnica do conteúdo
+3. Siga o PERFIL DA BANCA injetado (formato, tamanho, casuística, armadilhas)
+4. Siga as armadilhas da DISCIPLINA injetada
+5. Calibre conforme DIFICULDADE injetada
 
 REGRA EXTRA: em cada feedback, o campo next.topic DEVE ser diferente do tópico anterior.
 
 SAÍDA (JSON puro):
-Questão: {"type":"question","topic":"...","question":"...","correct_answer":"C|E","trap_type":0-5}
-Feedback+próxima: {"type":"feedback","is_correct":true,"trap_type":0-5,"explanation":"...","trap":"...","keyword":"...","next":{"topic":"TÓPICO DIFERENTE","question":"...","correct_answer":"E","trap_type":1}}`;
+Questão: {"type":"question","kind":"CE|MC","topic":"...","question":"...","alternatives":{...se MC},"correct_answer":"...","trap_type":"...","difficulty":"medium"}
+Feedback+próxima: {"type":"feedback","is_correct":true,"trap_type":"...","explanation":"...","trap":"...","keyword":"...","next":{"kind":"CE|MC","topic":"TÓPICO DIFERENTE","question":"...","alternatives":{...se MC},"correct_answer":"...","trap_type":"...","difficulty":"medium"}}`;
 
-// Examiner Invertido — não usa C/E tradicional, mantém estrutura própria
-const SYS_EXAM = `Professor Cebraspe no modo Examinador Invertido. O candidato cria armadilhas a partir de um conceito. Baseie-se APENAS no conteúdo.
+// Examiner Invertido — usuário cria armadilhas. Mantém estrutura própria.
+// Sempre usa C/E na "real_question" gerada como modelo, independentemente da banca,
+// porque o conceito do método é específico de Cebraspe (treinar pensamento de pegadinha).
+const SYS_EXAM = `Você é examinador de concurso público brasileiro no modo Examinador Invertido. O candidato cria armadilhas a partir de um conceito. Baseie-se APENAS no conteúdo.
+
+Este método treina o pensamento Cebraspe (pegadinhas C/E). Use C/E mesmo se o PERFIL DA BANCA injetado for MC, pois o objetivo é treinar a mecânica de armadilha.
 
 SAÍDA (JSON puro):
 Pedir conceito: {"type":"concept","topic":"...","concept":"afirmação CORRETA, 1-2 frases, com elementos atacáveis (prazos, percentuais, competências)"}
-Avaliar armadilha: {"type":"evaluation","stars":1-3,"trap_quality":"Fraca|Boa|Excelente","feedback":"2 frases sobre a qualidade","real_question":"questão Cebraspe real sobre o conceito","real_answer":"C|E","why_real":"1 frase"}`;
+Avaliar armadilha: {"type":"evaluation","stars":1-3,"trap_quality":"Fraca|Boa|Excelente","feedback":"2 frases sobre a qualidade","real_question":"questão real C/E sobre o conceito","real_answer":"C|E","why_real":"1 frase"}`;
 
-// Interrogação Elaborativa
-const SYS_ELAB = `Professor Cebraspe aplicando Interrogação Elaborativa. Baseie-se APENAS no conteúdo.
+// Interrogação Elaborativa — pergunta aberta, sem questão objetiva
+const SYS_ELAB = `Você é examinador de concurso público brasileiro aplicando Interrogação Elaborativa. Baseie-se APENAS no conteúdo.
+
+Este método pede explicação aberta do candidato (não questão objetiva). Não depende do formato da banca.
 
 SAÍDA (JSON puro):
 Nova pergunta: {"type":"question","topic":"...","fact":"fato correto do conteúdo","question":"Por que X acontece? OU Como Y funciona? OU Qual o fundamento de Z?"}
 Avaliar explicação: {"type":"evaluation","depth":1-3,"feedback":"2 frases sobre profundidade e precisão","missing":"pontos que faltaram","ideal":"resposta modelo em 2-3 frases"}`;
 
-// Gerar lote de flashcards (com auto-score)
-const SYS_SRS_GEN = `Gerador de flashcards Cebraspe. Baseie-se APENAS no conteúdo.
+// V15.12.64 — Gerador de flashcards agnóstico de banca.
+// O estilo do flashcard vem do PERFIL DA BANCA injetado (ex: Cebraspe usa
+// concept/comparison de regras; FCC list de prazos; FGV comparison de
+// conceitos correlatos). Emoji apenas quando agrega retenção e nunca em
+// matérias formais (Português, RLM, Contabilidade).
+const SYS_SRS_GEN = `Você é gerador de flashcards de estudo. Baseie-se APENAS no conteúdo fornecido.
 
 TIPOS DE CARD:
 - concept: conceito fundamental com exemplo
@@ -12459,12 +12933,14 @@ TIPOS DE CARD:
 - comparison: A vs B facilmente confundíveis (use tabela textual)
 - why: causa/razão de uma regra
 
-REGRAS:
+REGRAS UNIVERSAIS:
 - Frente curta e específica (pergunta ou termo a lembrar)
 - Verso conciso, pode usar \\n para quebras
-- Use emojis moderados (0-2) APENAS quando ajudam retenção
+- Sem emoji por padrão. Use no máximo 1 emoji APENAS se ajudar retenção em concept/mnemonic informais. NÃO use emoji em Português, RLM, Contabilidade.
 - Inclua EXEMPLO prático quando relevante
 - Para mnemônicos, CRIE sigla ou frase original
+- Siga o ESTILO DE FLASHCARD do PERFIL DA BANCA injetado
+- Siga as DICAS DE FLASHCARD da DISCIPLINA injetada
 
 ${SYS_COMPLETE_EVAL}
 
@@ -12472,7 +12948,7 @@ SAÍDA (JSON puro):
 {"type":"cards","cards":[{"front":"...","back":"...","type":"concept|mnemonic|list|comparison|why","tags":["tópico"],"score":85}]}`;
 
 // Flashcard a partir de erro (com auto-score)
-const SYS_CARD_FROM_ERROR = `Gerador de UM flashcard que RESOLVA o erro do candidato.
+const SYS_CARD_FROM_ERROR = `Você é gerador de UM flashcard que RESOLVA o erro do candidato.
 
 MAPEAMENTO tipo de erro → tipo de card:
 - Termo Absoluto → list (exceções ao absoluto)
@@ -12482,11 +12958,13 @@ MAPEAMENTO tipo de erro → tipo de card:
 - Troca de Competência → comparison ou list (competências por órgão)
 - Confusão de Nomenclatura → comparison (termos similares)
 
-REGRAS:
+REGRAS UNIVERSAIS:
 - Frente clara e específica; verso conciso com \\n para quebras se necessário
-- 0-2 emojis se agregarem retenção
+- Sem emoji por padrão. No máximo 1 se agregar retenção. NÃO use em Português/RLM/Contabilidade.
 - Exemplo prático breve
 - Para listas, crie MNEMÔNICO
+- Siga o ESTILO DE FLASHCARD do PERFIL DA BANCA injetado
+- Siga a DICA DE FLASHCARD da DISCIPLINA injetada
 
 ${SYS_COMPLETE_EVAL}
 
@@ -23041,21 +23519,61 @@ function questionCard(q){
   const qc = mk('div','card fade');
   const qt = mk('p','txt');qt.style.margin='0';qt.textContent=q.question;
   qc.appendChild(qt);
+  // V15.12.64 — Renderiza alternativas A-E quando questão é MC.
+  // Aceita q.alternatives como objeto {A:'...',B:'...',...} ou array.
+  if(q.kind === 'MC' && q.alternatives){
+    const altsBox = mk('div');
+    altsBox.style.cssText = 'margin-top:.875rem;display:flex;flex-direction:column;gap:6px';
+    const letters = ['A','B','C','D','E'];
+    letters.forEach(letter => {
+      const text = q.alternatives[letter];
+      if(!text) return;
+      const altRow = mk('div');
+      altRow.style.cssText = 'display:flex;gap:10px;align-items:flex-start;padding:.5rem .625rem;background:var(--surface2);border-radius:7px;font-size:13.5px;line-height:1.5';
+      const lbl = mk('span');
+      lbl.style.cssText = 'font-weight:700;color:var(--gralia-purple);min-width:18px';
+      lbl.textContent = letter + ')';
+      const txt = mk('span');
+      txt.style.flex = '1';
+      txt.textContent = text;
+      altRow.appendChild(lbl);
+      altRow.appendChild(txt);
+      altsBox.appendChild(altRow);
+    });
+    qc.appendChild(altsBox);
+  }
   const wrap = mk('div');wrap.appendChild(tag);wrap.appendChild(qc);
   return wrap;
 }
-function answerButtons(onClick,disabled){
+function answerButtons(onClick, disabled, q){
   const r = mk('div','flex answer-btn-row');r.style.marginTop='.875rem';
-  ['C','E'].forEach(a=>{
-    const b = mkBtn(a==='C'?'Certo':'Errado','btn btn-ans '+(a==='C'?'btn-c':'btn-e'));
-    b.disabled = disabled;
-    // V12: Dica de atalho discreta no botão
-    const kbd = mk('span','btn-kbd-hint');
-    kbd.textContent = a;
-    b.appendChild(kbd);
-    b.addEventListener('click',()=>onClick(a));
-    r.appendChild(b);
-  });
+  // V15.12.64 — Quando MC, mostra A-E. Caso contrário mostra C/E (Cebraspe default).
+  // Recebe q opcional pra detectar kind. Sem q (callers antigos), assume CE.
+  const isMC = q && q.kind === 'MC' && q.alternatives;
+  if(isMC){
+    const letters = ['A','B','C','D','E'];
+    letters.forEach(a => {
+      if(!q.alternatives[a]) return;
+      const b = mkBtn(a, 'btn btn-ans');
+      b.style.cssText = 'flex:1;font-weight:700';
+      b.disabled = disabled;
+      const kbd = mk('span','btn-kbd-hint');
+      kbd.textContent = a;
+      b.appendChild(kbd);
+      b.addEventListener('click', () => onClick(a));
+      r.appendChild(b);
+    });
+  } else {
+    ['C','E'].forEach(a=>{
+      const b = mkBtn(a==='C'?'Certo':'Errado','btn btn-ans '+(a==='C'?'btn-c':'btn-e'));
+      b.disabled = disabled;
+      const kbd = mk('span','btn-kbd-hint');
+      kbd.textContent = a;
+      b.appendChild(kbd);
+      b.addEventListener('click',()=>onClick(a));
+      r.appendChild(b);
+    });
+  }
   return r;
 }
 // V15.12.54 — P1.1: Voto humano e report nas questões IA
@@ -24361,6 +24879,9 @@ function saveAIQuestion(method, q, modelId, opts){
     enunciado: q.question,
     answer: answer,
     kind: q.kind || 'CE',
+    // V15.12.64 — Salva alternatives quando MC. Pra CE fica null/undefined
+    // porque não tem alternativas (apenas C/E).
+    alternatives: (q.kind === 'MC' && q.alternatives) ? q.alternatives : null,
     disciplineId: inferredDiscId,
     topic: q.topic||'',
     source:'ai',
@@ -29663,7 +30184,7 @@ function renderTurbo(){
   if(t.step==='question'&&t.q){
     wrap.appendChild(questionCard(t.q));
     if(!t.fb){
-      wrap.appendChild(answerButtons(turboSubmitAnswer,t.answered||t.loading));
+      wrap.appendChild(answerButtons(turboSubmitAnswer,t.answered||t.loading, t.q));
     } else {
       wrap.appendChild(feedbackCard(t.fb,turboNext,'Próximo item →', t.q));
     }
@@ -32579,15 +33100,36 @@ async function generateNotebookSeries(srcId, nNotebooks, nQuestions){
     const sectionText = chunk.content;
 
     try{
-      const sys = `Você gera questões de concurso público em formato C/E (Cebraspe).
+      // V15.12.64 — Antes hardcoded "C/E (Cebraspe)" mesmo se user fosse FCC.
+      // Agora monta profile completo (banca + disciplina + dificuldade) e
+      // injeta no system prompt. Suporta CE e MC conforme banca.
+      const bank = getActiveBankProfile();
+      const disc = getActiveDisciplineProfile(src && src.disciplineId);
+      const difficulty = inferActiveDifficulty();
+      const profileBlock = buildGenerationProfile({bank, discipline: disc, difficulty});
+      if(bank.isFallback) maybeWarnNoBankSet();
 
-Gere EXATAMENTE ${nQuestions} questões cobrindo o trecho fornecido. Variando os tópicos e armadilhas.
+      const sys = `Você é examinador de concurso público brasileiro montando caderno de questões. Baseie-se APENAS no trecho fornecido.
 
-SAÍDA — JSON puro array:
+REGRAS UNIVERSAIS:
+1. Apenas UMA ideia central por questão
+2. Terminologia técnica do conteúdo (NUNCA invente)
+3. Siga o PERFIL DA BANCA injetado abaixo (formato C/E ou MC, tamanho, casuística, armadilhas)
+4. Siga as armadilhas da DISCIPLINA injetada
+5. Calibre profundidade conforme DIFICULDADE injetada
+
+${profileBlock}
+
+Gere EXATAMENTE ${nQuestions} questões cobrindo o trecho fornecido. Varie tópicos e armadilhas. Distribuição de gabarito balanceada.
+
+SAÍDA — JSON puro array (sem markdown, sem texto antes/depois):
 [
-  {"enunciado":"...","gabarito":"C" ou "E","explicacao":"...","topico":"..."},
+  {"kind":"CE|MC","enunciado":"...","alternatives":{"A":"...","B":"...","C":"...","D":"...","E":"..."},"gabarito":"C ou E (se kind=CE) OU A|B|C|D|E (se kind=MC)","explicacao":"...","topico":"...","difficulty":"easy|medium|hard|very_hard"},
   ...
-]`;
+]
+
+Se kind=CE, OMITA alternatives.
+Se kind=MC, INCLUA alternatives com 5 chaves (A-E).`;
       const userMsg = 'Trecho da fonte (' + chunk.label + '):\n\n' + sectionText.slice(0, 6000);
       const body = {
         model: DATA.config.model || 'claude-haiku-4-5-20251001',
@@ -32627,19 +33169,22 @@ SAÍDA — JSON puro array:
       // entram no pool (com canonical_hash, bank_id, discipline_id, status).
       questions.forEach(q=>{
         if(!q.enunciado || !q.gabarito) return;
-        // Adapta formato do JSON (series_batch usa "enunciado/gabarito/explicacao/topico"
-        // enquanto saveAIQuestion espera "question/correct_answer/explanation/topic")
+        // V15.12.64 — Aceita kind dinâmico (CE ou MC) vindo da IA conforme
+        // perfil da banca. alternatives é preservado se MC.
+        const kind = (q.kind === 'MC' || q.kind === 'CE') ? q.kind : 'CE';
         const adapted = {
           question: q.enunciado,
           correct_answer: q.gabarito,
           explanation: q.explicacao || '',
           topic: q.topico || chunk.label,
-          kind: 'CE',
-          difficulty: 'medium' // series_batch hoje não controla nível
+          kind: kind,
+          alternatives: kind === 'MC' ? (q.alternatives || null) : null,
+          difficulty: q.difficulty || inferActiveDifficulty()
         };
         const rec = saveAIQuestion('series', adapted, body.model, {
           disciplineId: src.disciplineId,
-          sourceId: src.id
+          sourceId: src.id,
+          difficulty: adapted.difficulty
         });
         if(rec) qIds.push(rec.id);
       });
@@ -33693,7 +34238,7 @@ function renderCalibration(){
     wrap.appendChild(cg);
     if(ST.calibConf){
       wrap.appendChild(sLabel('Agora responda'));
-      wrap.appendChild(answerButtons(calibSubmit,ST.calibAnswered||ST.calibLoading));
+      wrap.appendChild(answerButtons(calibSubmit,ST.calibAnswered||ST.calibLoading, ST.calibQ));
     }
   }
   if(ST.calibLoading&&ST.calibAnswered)wrap.appendChild(dynamicLoading('explanation','Avaliando...'));
@@ -34030,7 +34575,7 @@ function renderDrill(){
     wrap.appendChild(methodTopStrip('drill','question'));
     if(s.total>0)wrap.appendChild(progressBar(Math.round(s.correct/s.total*100)));
     wrap.appendChild(questionCard(ST.drillQ));
-    if(!ST.drillFb&&!ST.drillLoading)wrap.appendChild(answerButtons(drillSubmit,ST.drillAnswered));
+    if(!ST.drillFb&&!ST.drillLoading)wrap.appendChild(answerButtons(drillSubmit,ST.drillAnswered, ST.drillQ));
     if(ST.drillLoading&&ST.drillAnswered)wrap.appendChild(dynamicLoading('explanation','Avaliando...'));
     if(ST.drillFb&&!ST.drillLoading)wrap.appendChild(feedbackCard(ST.drillFb,drillNext,'Próxima questão →', ST.drillQ));
   }
@@ -34484,7 +35029,7 @@ function renderPractice(){
     errBanner.appendChild(dismiss);
     wrap.appendChild(errBanner);
   }
-  if(!ST.practFb&&!ST.practLoading)wrap.appendChild(answerButtons(practSubmit,ST.practAnswered));
+  if(!ST.practFb&&!ST.practLoading)wrap.appendChild(answerButtons(practSubmit,ST.practAnswered, ST.practQ));
   if(ST.practLoading&&ST.practAnswered)wrap.appendChild(dynamicLoading('explanation','Avaliando...'));
   if(ST.practFb&&!ST.practLoading)wrap.appendChild(feedbackCard(ST.practFb,practNext,'Próxima questão →', ST.practQ));
   return wrap;
@@ -34993,7 +35538,7 @@ function renderInterleaving(){
     wrap.appendChild(ch);
   }
   wrap.appendChild(questionCard(ST.interQ));
-  if(!ST.interFb&&!ST.interLoading)wrap.appendChild(answerButtons(interSubmit,ST.interAnswered));
+  if(!ST.interFb&&!ST.interLoading)wrap.appendChild(answerButtons(interSubmit,ST.interAnswered, ST.interQ));
   if(ST.interLoading&&ST.interAnswered)wrap.appendChild(loading('Avaliando + trocando tópico...'));
   if(ST.interFb&&!ST.interLoading)wrap.appendChild(feedbackCard(ST.interFb,interNext,'Próxima (novo tópico) →', ST.interQ));
   return wrap;
@@ -54012,8 +54557,11 @@ function buildForestScene(trees){
           swapping = true;
           swapActive();
           // Quando o vídeo "antigo" (standby agora) terminar, libera flag pra
-          // próximo ciclo. Ou em 1.5s como fallback.
-          setTimeout(()=>{ swapping = false; }, 1500);
+          // V15.12.63 — Antes liberava em 1.5s fixo, mas se duração total
+          // fosse curta (<1.5s) podia disparar dois swaps no mesmo ciclo.
+          // Agora usa duração real do vídeo + 200ms de margem.
+          const releaseDelay = ((v.duration || 4) * 1000) + 200;
+          setTimeout(()=>{ swapping = false; }, releaseDelay);
         }
       };
       [va, vb].forEach(v => v.addEventListener('timeupdate', onTime));
