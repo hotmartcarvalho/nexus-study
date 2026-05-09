@@ -4697,7 +4697,7 @@ body.forest-expanded{overflow:hidden}
 @media (max-width: 600px){
   .forest-scene-card.forest-expanded{top:2vh;left:2vw;width:96vw;height:96vh}
 }
-.forest-bird{transform-origin:0 0;animation:forest-bird-fly 22s ease-in-out infinite}
+.forest-bird{transform-origin:0 0;animation:forest-bird-fly 36s ease-in-out infinite}
 @keyframes forest-bird-fly{
   0%{transform:translate(80px, 130px) scale(1.7) rotate(-4deg)}
   15%{transform:translate(180px, 100px) scale(1.8) rotate(-2deg)}
@@ -4754,8 +4754,15 @@ body.forest-expanded{overflow:hidden}
    escondido. JS pós-mount adiciona .araucaria-fallback no <g> do grupo se
    o vídeo falhar. prefers-reduced-motion força SVG estático. */
 .araucaria-video-fo{overflow:visible}
-.araucaria-video-wrap{width:100%;height:100%;display:flex;align-items:flex-end;justify-content:center;pointer-events:none}
-.araucaria-video{width:100%;height:100%;object-fit:contain;background:transparent;display:block;pointer-events:none}
+.araucaria-video-wrap{width:100%;height:100%;position:relative;pointer-events:none}
+/* V15.12.62 — Os 2 vídeos ficam sobrepostos no mesmo espaço.
+   transition de opacity controlada pelo JS pra fazer crossfade nos loops. */
+.araucaria-video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent;display:block;pointer-events:none;transition:opacity .6s ease}
+.araucaria-video-a{opacity:1;z-index:2}
+.araucaria-video-b{opacity:0;z-index:1}
+/* Quando JS trocar de A pra B, inverte z-index e opacity */
+.araucaria.crossfade-active .araucaria-video-a{opacity:0;z-index:1}
+.araucaria.crossfade-active .araucaria-video-b{opacity:1;z-index:2}
 /* SVG fallback escondido por default */
 .araucaria .araucaria-svg{display:none}
 .araucaria.araucaria-fallback .araucaria-video-fo{display:none}
@@ -53820,12 +53827,23 @@ function buildForestScene(trees){
     const groupId = 'arau_' + type + '_' + safeId;
 
     // Estrutura: g com classes que controlam qual filho mostra
+    // V15.12.62 — Crossfade entre 2 vídeos sobrepostos pra eliminar a "queda"
+    // visível quando o loop reinicia. Vídeo A toca; quando chega perto do fim,
+    // vídeo B (reseted pra 0) começa a tocar com fade-in enquanto A faz fade-out.
+    // Hook JS pós-mount controla o crossover. Sem crossfade, o usuário percebia
+    // o vídeo cortar bruscamente a cada loop curto.
     let s = `<g class="araucaria araucaria-${type}" data-tree-id="${groupId}">`;
     s += `<foreignObject class="araucaria-video-fo" x="${foX}" y="${foY}" width="${size.w}" height="${size.h}">`;
     s += `<div xmlns="http://www.w3.org/1999/xhtml" class="araucaria-video-wrap">`;
-    s += `<video class="araucaria-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true">`;
+    // Vídeo A — primário, começa visível
+    s += `<video class="araucaria-video araucaria-video-a" muted playsinline preload="auto" aria-hidden="true">`;
     s += `<source src="${videoSrc}" type="video/webm">`;
-    s += `</video></div></foreignObject>`;
+    s += `</video>`;
+    // Vídeo B — secundário, começa invisível e desfasado
+    s += `<video class="araucaria-video araucaria-video-b" muted playsinline preload="auto" aria-hidden="true">`;
+    s += `<source src="${videoSrc}" type="video/webm">`;
+    s += `</video>`;
+    s += `</div></foreignObject>`;
     // Fallback SVG dentro de um g escondido por default
     s += `<g class="araucaria-svg">`;
     s += drawAraucaria(cx, cy, scale, type);
@@ -53933,20 +53951,87 @@ function buildForestScene(trees){
     // V15.12.58 — Mesmo hook pra cada araucária. Cada <g.araucaria> tem seu
     // próprio video, então cada um tem seu listener individual. Falha
     // independente: se 1 vídeo falhar, só aquela árvore vira SVG.
+    // V15.12.62 — Agora cada árvore tem 2 vídeos (A e B) pra crossfade.
+    // Lógica: A começa tocando. Quando chega aos últimos 0.6s, B é resetado
+    // pra 0 e começa a tocar com fade-in (CSS transition). A faz fade-out.
+    // No próximo loop, B vira o "ativo" e A começa quando B chegar perto do
+    // fim. Resultado: nunca há corte brusco no loop.
+    const CROSSFADE_THRESHOLD = 0.6; // segundos antes do fim pra começar transição
     const araucarias = container.querySelectorAll('.araucaria');
     araucarias.forEach(group => {
-      const av = group.querySelector('.araucaria-video');
-      if(!av) return;
+      const va = group.querySelector('.araucaria-video-a');
+      const vb = group.querySelector('.araucaria-video-b');
+      if(!va || !vb) return;
+
       const activate = ()=>{
         group.classList.add('araucaria-fallback');
-        try{ av.pause && av.pause(); }catch(_){}
+        try{ va.pause && va.pause(); }catch(_){}
+        try{ vb.pause && vb.pause(); }catch(_){}
       };
-      av.addEventListener('error', activate);
-      const asrc = av.querySelector('source');
-      if(asrc) asrc.addEventListener('error', activate);
-      av.addEventListener('loadedmetadata', ()=>{
-        if(!av.videoWidth || !av.videoHeight) activate();
+      // Detecta falha em qualquer um dos 2 vídeos
+      [va, vb].forEach(v => {
+        v.addEventListener('error', activate);
+        const src = v.querySelector('source');
+        if(src) src.addEventListener('error', activate);
+        v.addEventListener('loadedmetadata', ()=>{
+          if(!v.videoWidth || !v.videoHeight) activate();
+        });
       });
+
+      // Estado de qual vídeo está ativo agora
+      let activeVideo = va;
+      let standbyVideo = vb;
+
+      const swapActive = () => {
+        // Reset standby pro início
+        try{ standbyVideo.currentTime = 0; }catch(_){}
+        // Toca standby (que vai virar o ativo após o fade)
+        const playPromise = standbyVideo.play();
+        if(playPromise && typeof playPromise.catch === 'function'){
+          playPromise.catch(()=>{}); // silencia erros de autoplay
+        }
+        // Toggle classe — CSS faz o fade visual
+        group.classList.toggle('crossfade-active');
+        // Inverte refs
+        const tmp = activeVideo;
+        activeVideo = standbyVideo;
+        standbyVideo = tmp;
+      };
+
+      // timeupdate dispara muitas vezes por segundo. Quando o vídeo ativo
+      // chega aos últimos CROSSFADE_THRESHOLD segundos, dispara o swap UMA
+      // vez. Flag local impede múltiplos swaps no mesmo ciclo.
+      let swapping = false;
+      const onTime = (e) => {
+        const v = e.target;
+        if(v !== activeVideo) return; // só o ativo controla
+        if(swapping) return;
+        if(!v.duration || isNaN(v.duration)) return;
+        const remaining = v.duration - v.currentTime;
+        if(remaining <= CROSSFADE_THRESHOLD && remaining > 0){
+          swapping = true;
+          swapActive();
+          // Quando o vídeo "antigo" (standby agora) terminar, libera flag pra
+          // próximo ciclo. Ou em 1.5s como fallback.
+          setTimeout(()=>{ swapping = false; }, 1500);
+        }
+      };
+      [va, vb].forEach(v => v.addEventListener('timeupdate', onTime));
+
+      // Bonus: quando vídeo ativo chega ao fim natural (loop antigo), se o
+      // crossfade não pegou (timeupdate falho), reinicia ele mesmo pra evitar
+      // travar. NÃO usa loop nativo — controlamos manualmente.
+      [va, vb].forEach(v => {
+        v.addEventListener('ended', () => {
+          // Se o swap não rolou, reinicia o próprio vídeo
+          if(v === activeVideo){
+            try{ v.currentTime = 0; v.play().catch(()=>{}); }catch(_){}
+          }
+        });
+      });
+
+      // Inicia A; B fica em pause aguardando seu turno
+      try{ va.play().catch(()=>{}); }catch(_){}
     });
   }, 0);
 
