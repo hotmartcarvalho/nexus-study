@@ -15710,14 +15710,17 @@ function buildAppSidebar(){
 const APP = $('app');
 function render(){
   // V15.12.58 — Reset onboarding usa ?showLogin=1 pra forçar tela de login após logout.
-  // Detecta uma vez (flag de sessão), aplica e limpa a URL. Sem isso, regra de
-  // "se welcomeShown=false e !isAuthed → landing" levaria pra landing após reset.
+  // V15.12.59 — Quando consumimos o param, marcamos `_postResetLogin` em ST.
+  // Isso é consumido no SIGNED_IN pra forçar fluxo de "novo usuário" (modal
+  // de username + tutorial). Também garante que welcomeShown não fique false
+  // após login (causa raiz da queixa "vai pra landing após login").
   if(!render._showLoginHandled){
     try{
       const params = new URLSearchParams(window.location.search);
       if(params.get('showLogin') === '1'){
         ST.showAuth = true;
         ST.authMode = 'login';
+        ST._postResetLogin = true; // V15.12.59 — sinal pro SIGNED_IN forçar fluxo novo
         // Limpa o param da URL pra não ficar pendurado em F5
         try{
           params.delete('showLogin');
@@ -18625,67 +18628,71 @@ function showTutorialModal(){
   showVisualTutorial();
 }
 
+// V15.12.59 — Slides atualizados pra refletir features atuais.
+// Adicionados: Drill DNA, Examinador, Análise de provas, Métodos extras.
+// Atualizados: prática agora menciona voto/report; comunidade fala de cadernos
+// + perfis tópico; final inclui menção a edital + simulado.
 const TUTORIAL_SLIDES = [
   {
     icon: '👋',
     title: 'Bem-vindo ao Gralia',
-    body: 'Vou te mostrar em 90 segundos como funciona o app. São 8 telas curtas com exemplo prático. Pode pular a qualquer momento.',
+    body: 'Vou te mostrar em 90 segundos os principais recursos. São 9 telas curtas com exemplo prático. Você pode pular a qualquer momento.',
     visual: 'welcome',
     cta: 'Começar tour'
   },
   {
     icon: '📂',
-    title: '1. Adicione suas fontes',
-    body: 'Cole texto, suba PDF ou importe da comunidade. A IA limpa, classifica disciplina e organiza a estrutura automaticamente. Quanto melhor a fonte, melhores as questões.',
+    title: '1. Suas fontes alimentam tudo',
+    body: 'Cole texto, suba PDF ou importe da comunidade. A IA extrai disciplina, organiza e prepara o material. Quanto melhor a fonte, melhores as questões geradas.',
     visual: 'sources',
     cta: 'Próximo →'
   },
   {
     icon: '⚖️',
-    title: '2. Calibração — descubra suas zonas cegas',
-    body: 'Antes de cada questão, você diz "tenho certeza", "acho que sei" ou "vou chutar". O sistema mede sua falsa segurança — quando você acha que sabe e erra. Estudar isso é mais eficiente que estudar tópico novo.',
+    title: '2. Calibração antes da prática',
+    body: 'Antes de cada questão, você diz "tenho certeza", "acho que sei" ou "vou chutar". O sistema mede sua falsa segurança — onde você acha que sabe e erra. É aí que o ganho mora.',
     visual: 'calibration',
     cta: 'Próximo →'
   },
   {
     icon: '⚡',
-    title: '3. Prática — questões C/E estilo Cebraspe',
-    body: 'A IA gera questões a partir da sua fonte, com armadilhas reais que a banca usa. Cada questão vem com explicação, palavra-gatilho e tipo de armadilha identificado.',
+    title: '3. Métodos de prática variados',
+    body: 'Prática livre, Drill DNA (foco em armadilhas que você cai), Intercalação (mistura tópicos), Examinador (você inventa pegadinhas) e Pergunta Elaborativa (resposta aberta + autoavaliação). Cada um treina uma habilidade diferente.',
     visual: 'practice',
     cta: 'Próximo →'
   },
   {
     icon: '🎴',
-    title: '4. Flashcards — automáticos dos seus erros',
-    body: 'Errou? A IA cria um flashcard pensado pra resolver exatamente sua dificuldade. SRS (repetição espaçada) calcula quando você precisa rever. Sem manualidade.',
+    title: '4. Flashcards dos seus erros',
+    body: 'Errou uma questão? A IA sugere flashcard pensado pra resolver sua dificuldade específica. SRS calcula quando você revisa. Vote 👍/👎 nas questões pra calibrar a qualidade.',
     visual: 'flashcards',
     cta: 'Próximo →'
   },
   {
     icon: '🗺️',
-    title: '5. Mapa da matéria — onde você tá indo bem',
-    body: 'Ver qual tópico tem mais erros, qual tem flashcards, qual já tem fonte cadastrada. Visão integrada por disciplina pra não estudar cego.',
+    title: '5. Mapa da matéria',
+    body: 'Visão integrada por disciplina: tópicos com mais erros, com flashcards ativos, com fonte cadastrada. Não estuda no escuro — vê onde investir o tempo.',
     visual: 'mapa',
     cta: 'Próximo →'
   },
   {
     icon: '📋',
-    title: '6. Edital — IA lê o PDF e resume',
-    body: 'Coloca o PDF do edital. A IA extrai cargo, vagas, datas, peso por disciplina, mudanças vs editais anteriores. Você sabe em 1 minuto o que cai.',
+    title: '6. Edital + Análise de provas',
+    body: 'Cole o edital → IA extrai cargo, vagas, peso por disciplina, mudanças vs anteriores. Cole provas anteriores → IA mapeia frequência por tópico. Você sabe o que cai antes de estudar.',
     visual: 'edital',
     cta: 'Próximo →'
   },
   {
     icon: '🌐',
-    title: '7. Comunidade — descobrir e compartilhar',
-    body: 'Outros usuários publicam fontes, cadernos e perfis de tópico. Importe num clique. Forme grupos de até 25 pessoas com ranking de progresso. Sem mensagens — foco no estudo.',
+    title: '7. Comunidade Gralia',
+    body: 'Fontes, cadernos e perfis de tópico publicados por outros usuários. Importe num clique. Forme grupos de até 25 pessoas com ranking de progresso. Foco em estudo coletivo, sem distração.',
     visual: 'community',
     cta: 'Próximo →'
   },
   {
-    icon: '🚀',
-    title: 'Pronto para começar',
-    body: 'Você pode carregar uma fonte exemplo (Princípios Fundamentais da CF/88) pra testar todos os métodos antes de subir o seu próprio material. Ou já começar do zero.',
+    icon: '⏰',
+    title: '8. Simulado completo + Pinhal',
+    body: 'Quando estiver pronto, faça simulado cronometrado com questões reais ou geradas. Cada estudo planta uma araucária no seu Pinhal — visualização do seu progresso ao longo dos meses.',
     visual: 'final',
     cta: 'Carregar exemplo + começar'
   }
@@ -23716,24 +23723,39 @@ function applyBankFilters(bank,f){
   // V15.12.38 — Filtro de favoritas. Compatível com questões antigas (sem campo favorite).
   if(f.favorite === 'yes') r = r.filter(q => q.favorite === true);
   else if(f.favorite === 'no') r = r.filter(q => !q.favorite);
-  // V15.12.53 — Filtros do P1 (handoff):
-  //   hasExplanation: 'yes' = explanation não vazia | 'no' = sem explicação
-  //   hasFlashcard:   'yes' = tem flashcard derivado (erro com hasCard=true e sourceBankId=q.id)
+  // V15.12.53 → V15.12.59 — Filtros do P1 (handoff):
+  //   hasExplanation: 'yes' = q.explanation OR existe error vinculado com explanation
+  //   hasFlashcard:   'yes' = existe error vinculado com hasCard=true
   //   inNotebooks:    'none' = em nenhum | '1' = em 1 caderno | '2plus' = em 2+ cadernos
-  if(f.hasExplanation === 'yes'){
-    r = r.filter(q => !!(q.explanation && String(q.explanation).trim().length > 0));
-  } else if(f.hasExplanation === 'no'){
-    r = r.filter(q => !q.explanation || !String(q.explanation).trim());
-  }
-  if(f.hasFlashcard === 'yes' || f.hasFlashcard === 'no'){
-    // Index de questões com flashcard. Construído uma vez por chamada, O(N) em DATA.errors.
+  if(f.hasExplanation === 'yes' || f.hasExplanation === 'no' ||
+     f.hasFlashcard === 'yes'   || f.hasFlashcard === 'no'){
+    // Index de questão→errors uma vez (O(N) em DATA.errors)
     const errs = DATA.errors || [];
-    const withCard = new Set();
-    for(const e of errs){
-      if(e && e.hasCard && e.sourceBankId) withCard.add(e.sourceBankId);
+    const errsByBankId = new Map();
+    errs.forEach(e => {
+      if(e && e.sourceBankId){
+        const arr = errsByBankId.get(e.sourceBankId) || [];
+        arr.push(e);
+        errsByBankId.set(e.sourceBankId, arr);
+      }
+    });
+    if(f.hasExplanation === 'yes' || f.hasExplanation === 'no'){
+      const has = q => {
+        if(q.explanation && String(q.explanation).trim().length > 20) return true;
+        const eList = errsByBankId.get(q.id) || [];
+        return eList.some(e => e.explanation && String(e.explanation).trim().length > 20);
+      };
+      if(f.hasExplanation === 'yes') r = r.filter(has);
+      else                            r = r.filter(q => !has(q));
     }
-    if(f.hasFlashcard === 'yes') r = r.filter(q => withCard.has(q.id));
-    else                         r = r.filter(q => !withCard.has(q.id));
+    if(f.hasFlashcard === 'yes' || f.hasFlashcard === 'no'){
+      const has = q => {
+        const eList = errsByBankId.get(q.id) || [];
+        return eList.some(e => e.hasCard);
+      };
+      if(f.hasFlashcard === 'yes') r = r.filter(has);
+      else                          r = r.filter(q => !has(q));
+    }
   }
   if(f.inNotebooks && f.inNotebooks !== 'all'){
     // Index questionId → quantos cadernos. O(M) em DATA.notebooks.
@@ -23799,9 +23821,17 @@ function renderBankFilters(stateKey,bank){
   } else if(f.favorite === 'no'){
     activeFilters.push({key:'favorite', label: 'Sem favoritar', reset:()=>{f.favorite='all';}});
   }
-  // V15.12.56 — Filtros do P1 reconhecidos pelo "Limpar filtros" e contador.
-  // V15.12.57 — Os 2 filtros "hasExplanation" e "hasFlashcard" foram desabilitados
-  // (TODO no buildChipGroup explica). Só "inNotebooks" continua.
+  // V15.12.59 — Filtros reabilitados (V15.12.57 tinha desabilitado).
+  if(f.hasExplanation === 'yes'){
+    activeFilters.push({key:'hasExplanation', label: '📖 Com explicação', reset:()=>{f.hasExplanation='all';}});
+  } else if(f.hasExplanation === 'no'){
+    activeFilters.push({key:'hasExplanation', label: 'Sem explicação', reset:()=>{f.hasExplanation='all';}});
+  }
+  if(f.hasFlashcard === 'yes'){
+    activeFilters.push({key:'hasFlashcard', label: '🎴 Com flashcard', reset:()=>{f.hasFlashcard='all';}});
+  } else if(f.hasFlashcard === 'no'){
+    activeFilters.push({key:'hasFlashcard', label: 'Sem flashcard', reset:()=>{f.hasFlashcard='all';}});
+  }
   if(f.inNotebooks === 'none'){
     activeFilters.push({key:'inNotebooks', label: '📭 Em nenhum caderno', reset:()=>{f.inNotebooks='all';}});
   } else if(f.inNotebooks === '1'){
@@ -24020,20 +24050,38 @@ function renderBankFilters(stateKey,bank){
     ]));
   }
 
-  // V15.12.57 — Filtros "Com explicação" e "Com flashcard" temporariamente
-  // ESCONDIDOS porque mostravam contagem inconsistente com o que aparece
-  // de fato na prática:
-  //   - "Com explicação" detectava q.explanation populado, mas a prática
-  //     histórica de questão importada não exibe esse campo (regenera via
-  //     IA paga). Resultado: filtro promete e prática não entrega.
-  //   - "Com flashcard" indexa via DATA.errors[].sourceBankId+hasCard, mas
-  //     muitas questões com hasCard antigas não têm sourceBankId preenchido.
-  // O filtro "Em N cadernos" continua porque é confiável.
-  // TODO: rodada própria — consolidar exibição de explicação na prática
-  // (q.explanation ou error.explanation, sem regenerar via IA quando já
-  // existe local) + backfill de error.sourceBankId pra flashcards antigos.
-  /*
-  const expYes = bank.filter(q=>!!(q.explanation && String(q.explanation).trim())).length;
+  // V15.12.59 — Reabilitados após confirmar a fonte real dos dados.
+  //   - "Com explicação": q tem `q.explanation` PRÓPRIO OU existe um error
+  //     vinculado (error.sourceBankId === q.id) com explanation. Cobre tanto
+  //     questão IA (que tem `q.explanation` salvo no momento da geração)
+  //     quanto questão importada que o user já praticou e gerou explicação
+  //     manualmente (salva em error.explanation).
+  //   - "Com flashcard": q tem error vinculado com hasCard=true.
+  // Backfill automático: aplicado em getQuestionExplanation/jumpToErrorOfBankQ.
+  const errs = DATA.errors || [];
+
+  // Index questão→error pra ser O(1) por chave em vez de O(n*m)
+  const errsByBankId = new Map();
+  errs.forEach(e => {
+    if(e && e.sourceBankId){
+      const arr = errsByBankId.get(e.sourceBankId) || [];
+      arr.push(e);
+      errsByBankId.set(e.sourceBankId, arr);
+    }
+  });
+
+  const hasExplanationFor = (q) => {
+    if(q.explanation && String(q.explanation).trim().length > 20) return true;
+    const eList = errsByBankId.get(q.id) || [];
+    return eList.some(e => e.explanation && String(e.explanation).trim().length > 20);
+  };
+
+  const hasFlashcardFor = (q) => {
+    const eList = errsByBankId.get(q.id) || [];
+    return eList.some(e => e.hasCard);
+  };
+
+  const expYes = bank.filter(hasExplanationFor).length;
   const expNo = bank.length - expYes;
   if(expYes > 0 && expNo > 0){
     chipRows.appendChild(buildChipGroup('Explicação','hasExplanation',[
@@ -24043,21 +24091,14 @@ function renderBankFilters(stateKey,bank){
     ]));
   }
 
-  const errsForFc = DATA.errors || [];
-  const fcSet = new Set();
-  for(const e of errsForFc){
-    if(e && e.hasCard && e.sourceBankId) fcSet.add(e.sourceBankId);
-  }
-  const fcYes = bank.filter(q=>fcSet.has(q.id)).length;
-  const fcNo = bank.length - fcYes;
+  const fcYes = bank.filter(hasFlashcardFor).length;
   if(fcYes > 0){
     chipRows.appendChild(buildChipGroup('Flashcard','hasFlashcard',[
       ['all','Todas'],
       ['yes','🎴 Com flashcard',fcYes],
-      ['no','Sem flashcard',fcNo]
+      ['no','Sem flashcard',bank.length - fcYes]
     ]));
   }
-  */
 
   // V15.12.53 — Filtro "Em N cadernos". Útil pra ver questões "compartilhadas"
   // entre múltiplos cadernos (estudo recorrente) vs órfãs (não aproveitadas).
@@ -29076,7 +29117,21 @@ function renderErrorItem(e,recurrence,highlight24h){
     ansRow.innerHTML = `<span>Gabarito:</span> <b>${e.correctAnswer}</b>`;
     it.appendChild(ansRow);
     // Collapsible explanation
-    if(e.explanation){
+    // V15.12.59 — Fallback: se o erro não tem explicação própria mas a
+    // questão de origem (sourceBankId em DATA.importedQuestions) tem,
+    // usa a da questão. Resolve queixa "Ver histórico não mostra explicação".
+    let displayExplanation = e.explanation;
+    let displayKeyword = e.keyword;
+    let displayTrap = e.trap;
+    if((!displayExplanation || !String(displayExplanation).trim()) && e.sourceBankId){
+      const srcQ = (DATA.importedQuestions||[]).find(q => q.id === e.sourceBankId);
+      if(srcQ){
+        if(srcQ.explanation && String(srcQ.explanation).trim()) displayExplanation = srcQ.explanation;
+        if(!displayKeyword && srcQ.keyword) displayKeyword = srcQ.keyword;
+        if(!displayTrap && srcQ.trap) displayTrap = srcQ.trap;
+      }
+    }
+    if(displayExplanation){
       const expId = 'exp-'+e.id;
       const expanded = (ST.historyExpandedExpl||{})[e.id];
       const expBtn = mk('button','exp-toggle-btn');
@@ -29088,16 +29143,16 @@ function renderErrorItem(e,recurrence,highlight24h){
       it.appendChild(expBtn);
       if(expanded){
         const expBox = mk('div','history-expl-box');
-        const expTxt = mk('p');expTxt.style.cssText='margin:0;font-size:12.5px;line-height:1.6';expTxt.textContent=e.explanation;
+        const expTxt = mk('p');expTxt.style.cssText='margin:0;font-size:12.5px;line-height:1.6';expTxt.textContent=displayExplanation;
         expBox.appendChild(expTxt);
-        if(e.trap){
+        if(displayTrap){
           const trp = mk('p');trp.style.cssText='margin:6px 0 0;font-size:11.5px;color:var(--text2)';
-          trp.innerHTML = `<b>Armadilha:</b> ${escapeHTML(e.trap)}`;
+          trp.innerHTML = `<b>Armadilha:</b> ${escapeHTML(displayTrap)}`;
           expBox.appendChild(trp);
         }
-        if(e.keyword){
+        if(displayKeyword){
           const kw = mk('p');kw.style.cssText='margin:4px 0 0;font-size:11.5px;color:var(--text2)';
-          kw.innerHTML = `<b>Gatilho:</b> <mark class="kw-hl">${escapeHTML(e.keyword)}</mark>`;
+          kw.innerHTML = `<b>Gatilho:</b> <mark class="kw-hl">${escapeHTML(displayKeyword)}</mark>`;
           expBox.appendChild(kw);
         }
         it.appendChild(expBox);
@@ -53442,14 +53497,14 @@ function buildForestScene(trees){
                      type === 'mature'  ? BRAND.araucariaAdulta :
                      type === 'young'   ? BRAND.araucariaJovem :
                                           BRAND.araucariaMuda;
-    // Bounding box do foreignObject: dimensiona pra cobrir aproximadamente
-    // a mesma área visual do SVG desenhado (que usa scale * altura aprox).
-    // Adultas/centenárias mais altas e largas, jovem/muda menores.
+    // V15.12.59 — Tamanhos aumentados em 20% conforme feedback. Antes a
+    // animação de movimento ficava difícil de visualizar com as araucárias
+    // pequenas. Multiplicador 1.2 aplicado em w e h de cada tipo.
     const sizeMap = {
-      ancient: { w: 70 * scale, h: 110 * scale, dy: 0.95 },
-      mature:  { w: 55 * scale, h: 90 * scale, dy: 0.95 },
-      young:   { w: 38 * scale, h: 65 * scale, dy: 0.95 },
-      seed:    { w: 22 * scale, h: 38 * scale, dy: 0.95 }
+      ancient: { w: 84 * scale, h: 132 * scale, dy: 0.95 },
+      mature:  { w: 66 * scale, h: 108 * scale, dy: 0.95 },
+      young:   { w: 46 * scale, h: 78 * scale, dy: 0.95 },
+      seed:    { w: 26 * scale, h: 46 * scale, dy: 0.95 }
     };
     const size = sizeMap[type] || sizeMap.seed;
     const foX = cx - size.w / 2;
@@ -59560,20 +59615,28 @@ function renderAuthScreen(){
   form.appendChild(submitBtn);
 
   // V15.12.43 — Link "Esqueci minha senha" — só no modo login
+  // V15.12.59 — Linha SEMPRE renderizada pra estabilizar altura do card.
+  // No modo signup, fica invisible (ocupa espaço mas não mostra). Antes só
+  // existia no login, então o card encolhia/crescia ao trocar de tab,
+  // passando visão de plataforma bugada. Agora altura é idêntica nos 2 modos.
+  const forgotRow = mk('div');
+  forgotRow.style.cssText = 'text-align:right;margin-top:.5rem';
+  const forgotLink = mk('a');
+  forgotLink.href = '#';
+  forgotLink.textContent = 'Esqueci minha senha';
+  forgotLink.style.cssText = 'font-size:12.5px;color:var(--gralia-purple);text-decoration:none;font-weight:500';
   if(mode === 'login'){
-    const forgotRow = mk('div');
-    forgotRow.style.cssText = 'text-align:right;margin-top:.5rem';
-    const forgotLink = mk('a');
-    forgotLink.href = '#';
-    forgotLink.textContent = 'Esqueci minha senha';
-    forgotLink.style.cssText = 'font-size:12.5px;color:var(--gralia-purple);text-decoration:none;font-weight:500';
     forgotLink.addEventListener('click', e => {
       e.preventDefault();
       showForgotPasswordModal();
     });
-    forgotRow.appendChild(forgotLink);
-    form.appendChild(forgotRow);
+  } else {
+    // Modo signup: link invisível, sem interação, mas ocupa espaço
+    forgotRow.style.visibility = 'hidden';
+    forgotRow.setAttribute('aria-hidden', 'true');
   }
+  forgotRow.appendChild(forgotLink);
+  form.appendChild(forgotRow);
 
   // === Divisor "ou" + Botão Google OAuth ===
   const divider = mk('div','auth-divider');
@@ -60415,6 +60478,10 @@ async function initAuth(){
       // Login novo de fato (usuário acabou de fazer signin/signup nesta sessão)
       // V15.12.44 — Inclui callbacks OAuth (Google), que entram aqui após
       // serem desviados do branch isInitialAutoSignIn pelo cleanOAuthArtifacts.
+      // V15.12.59 — Consome ST._postResetLogin pra garantir fluxo "novo" após
+      // reset de onboarding (modal username + tutorial visual + checklist).
+      const isPostReset = !!ST._postResetLogin;
+      ST._postResetLogin = false;
       _initialSessionHandled = true; // evita reentrância pelo getSession() final
       ST.showAuth = false;
       DATA.welcomeShown = true;
@@ -60429,6 +60496,13 @@ async function initAuth(){
       // Garante que setup foi marcado (CTA da landing setou, mas se entrou direto no /auth pode não ter setado)
       if(DATA.setup === undefined || DATA.setup === false){
         DATA.setup = true;
+      }
+      // V15.12.59 — Após reset, força tutorial e checklist a aparecerem.
+      // Reset zerou tutorialOffered=false (necessário pra tutorial reaparecer).
+      // onboardingDismissed também zerado pra checklist voltar.
+      if(isPostReset){
+        DATA.tutorialOffered = false;
+        DATA.onboardingDismissed = false;
       }
       save();
       // First login of this session — merge data
