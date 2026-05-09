@@ -22936,7 +22936,290 @@ function answerButtons(onClick,disabled){
   });
   return r;
 }
-function feedbackCard(fb,onNext,nextLabel='Próxima questão →'){
+// V15.12.54 — P1.1: Voto humano e report nas questões IA
+// ============================================================================
+// O score gerado pela IA (ai_score) é apenas filtro inicial. A decisão final
+// sobre qualidade vem do voto humano:
+//   - 👍 (upvote): questão útil, gabarito justo, no estilo da banca
+//   - 👎 (downvote): questão fraca, mas sem problema grave
+//   - 🚩 (report): problema sério (gabarito errado, fora da fonte, ambígua)
+//
+// Estrutura local em DATA.aiVotes — Map de canonicalHash → estado do voto
+// do usuário. Permite trocar voto, bloqueia voto duplicado.
+//
+// Sincronização com Supabase via RPCs idempotentes:
+//   ai_question_vote(content_hash, vote)  — upsert do voto
+//   ai_question_report(content_hash, reason) — registra denúncia
+//
+// Se as RPCs ainda não existem no banco (migration não rodada), as funções
+// falham silenciosamente — o voto fica salvo local mesmo assim e propaga
+// quando a RPC for criada.
+// ============================================================================
+
+// Garante estrutura de voto no DATA
+function ensureAiVotesShape(){
+  if(!DATA.aiVotes) DATA.aiVotes = {};       // {canonicalHash: 'up'|'down'}
+  if(!DATA.aiReports) DATA.aiReports = {};   // {canonicalHash: 'reason_id'}
+}
+
+// Retorna o voto atual do usuário pra uma questão (ou null se não votou)
+function getAiVote(canonicalHash){
+  if(!canonicalHash) return null;
+  ensureAiVotesShape();
+  return DATA.aiVotes[canonicalHash] || null;
+}
+
+function getAiReport(canonicalHash){
+  if(!canonicalHash) return null;
+  ensureAiVotesShape();
+  return DATA.aiReports[canonicalHash] || null;
+}
+
+// Aplica voto. vote ∈ 'up'|'down'|null (null = remove voto).
+// Se já tinha o mesmo voto, não faz nada (idempotente).
+async function setAiVote(canonicalHash, vote){
+  if(!canonicalHash) return false;
+  ensureAiVotesShape();
+  const current = DATA.aiVotes[canonicalHash] || null;
+  if(current === vote) return true; // sem mudança
+  if(vote === null) delete DATA.aiVotes[canonicalHash];
+  else DATA.aiVotes[canonicalHash] = vote;
+  save();
+  // Tenta sincronizar com servidor (RPC idempotente)
+  if(supa && AUTH.user){
+    try{
+      const {error} = await supa.rpc('ai_question_vote', {
+        p_content_hash: canonicalHash,
+        p_vote: vote // 'up' | 'down' | null
+      });
+      if(error){
+        const msg = (error.message||'').toLowerCase();
+        if(!msg.includes('does not exist') && !msg.includes('not found') && !msg.includes('function')){
+          console.warn('[ai_vote] sync falhou:', error.message);
+        }
+        // Não desfaz local — voto fica armazenado e tenta de novo em rodadas futuras
+      }
+    }catch(_){}
+  }
+  return true;
+}
+
+// Reporta questão. Returns true se aceito, false se já tinha report (bloqueio
+// de duplicata local).
+async function reportAiQuestion(canonicalHash, reason){
+  if(!canonicalHash || !reason) return false;
+  ensureAiVotesShape();
+  if(DATA.aiReports[canonicalHash]){
+    return false; // já reportou — bloqueia duplicata
+  }
+  DATA.aiReports[canonicalHash] = {reason: reason, at: Date.now()};
+  save();
+  if(supa && AUTH.user){
+    try{
+      const {error} = await supa.rpc('ai_question_report', {
+        p_content_hash: canonicalHash,
+        p_reason: reason
+      });
+      if(error){
+        const msg = (error.message||'').toLowerCase();
+        if(!msg.includes('does not exist') && !msg.includes('not found') && !msg.includes('function')){
+          console.warn('[ai_report] sync falhou:', error.message);
+        }
+      }
+    }catch(_){}
+  }
+  return true;
+}
+
+// Motivos disponíveis pra report. Espelha enum do banco.
+const AI_REPORT_REASONS = [
+  ['gabarito_errado',    'Gabarito errado'],
+  ['ambigua',            'Questão ambígua (mais de uma resposta possível)'],
+  ['fora_da_fonte',      'Conteúdo não está na fonte que carreguei'],
+  ['fora_estilo_banca',  'Não parece estilo da banca alvo'],
+  ['mal_formulada',      'Mal formulada / confusa'],
+  ['inventada',          'Conteúdo inventado pela IA'],
+  ['outro',              'Outro motivo']
+];
+
+// Modal de report — pede motivo antes de confirmar
+function showReportAiQuestionModal(canonicalHash, qPreview){
+  if(!canonicalHash){
+    showToast('Não consegui identificar a questão pra reportar.', 4000);
+    return;
+  }
+  ensureAiVotesShape();
+  if(DATA.aiReports[canonicalHash]){
+    showToast('Você já reportou esta questão. Obrigado pelo feedback!', 4000);
+    return;
+  }
+
+  const m = mk('div');
+  m.style.cssText = 'max-width:460px;width:100%';
+
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;padding-bottom:.625rem;border-bottom:1px solid var(--border)';
+  const icon = mk('span');icon.style.cssText='font-size:22px';icon.textContent='🚩';
+  head.appendChild(icon);
+  const title = mk('h2');title.style.cssText='margin:0;font-size:17px;font-weight:700';
+  title.textContent = 'Reportar questão';
+  head.appendChild(title);
+  m.appendChild(head);
+
+  if(qPreview){
+    const preview = mk('div');
+    preview.style.cssText='padding:.625rem .75rem;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--text2);margin-bottom:.875rem;line-height:1.5;max-height:80px;overflow:auto';
+    preview.textContent = qPreview.slice(0, 300) + (qPreview.length > 300 ? '...' : '');
+    m.appendChild(preview);
+  }
+
+  const intro = mk('p','txt2');
+  intro.style.cssText = 'margin:0 0 .75rem;font-size:13px;line-height:1.55';
+  intro.textContent = 'Qual o problema? Seu report ajuda a manter a qualidade pra todos os usuários.';
+  m.appendChild(intro);
+
+  const state = {reason: null, sending: false};
+
+  const reasonsBox = mk('div');
+  reasonsBox.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-bottom:.875rem';
+  AI_REPORT_REASONS.forEach(([id, label]) => {
+    const optBtn = mk('button','btn btn-sm');
+    optBtn.type = 'button';
+    optBtn.style.cssText = 'text-align:left;justify-content:flex-start;font-weight:500';
+    optBtn.textContent = label;
+    optBtn.addEventListener('click', () => {
+      state.reason = id;
+      // Visual feedback: marca o selecionado
+      reasonsBox.querySelectorAll('button').forEach(b => {
+        b.style.borderColor = 'var(--border2)';
+        b.style.background = 'var(--surface)';
+      });
+      optBtn.style.borderColor = 'var(--gralia-purple)';
+      optBtn.style.background = 'rgba(124,92,255,.06)';
+    });
+    reasonsBox.appendChild(optBtn);
+  });
+  m.appendChild(reasonsBox);
+
+  const errBox = mk('div','auth-error');
+  errBox.style.cssText = 'margin-bottom:.625rem;display:none';
+  m.appendChild(errBox);
+
+  const actions = mk('div');
+  actions.style.cssText = 'display:flex;gap:8px';
+  const cancel = mkBtn('Cancelar','btn btn-sm');
+  cancel.style.flex = '1';
+  cancel.addEventListener('click', closeModal);
+  actions.appendChild(cancel);
+
+  const send = mkBtn('Enviar report','btn btn-sm btn-p');
+  send.style.flex = '2';
+  send.addEventListener('click', async () => {
+    if(state.sending) return;
+    if(!state.reason){
+      errBox.textContent = 'Selecione um motivo.';
+      errBox.style.display = 'block';
+      return;
+    }
+    errBox.style.display = 'none';
+    state.sending = true;
+    send.disabled = true;
+    send.textContent = 'Enviando...';
+    try{
+      const ok = await reportAiQuestion(canonicalHash, state.reason);
+      closeModal();
+      if(ok) showToast('🚩 Report enviado. Obrigado!', 4000);
+      else   showToast('Você já tinha reportado essa questão.', 4000);
+      render();
+    }catch(e){
+      errBox.textContent = 'Erro: ' + (e.message || e);
+      errBox.style.display = 'block';
+      state.sending = false;
+      send.disabled = false;
+      send.textContent = 'Enviar report';
+    }
+  });
+  actions.appendChild(send);
+  m.appendChild(actions);
+
+  showModal(m);
+}
+
+// V15.12.54 — Linha de feedback (👍/👎/🚩) compacta, pra renderizar dentro do
+// feedbackCard. Aparece apenas pra questões IA que tenham canonicalHash
+// (legacy sem hash não dá pra votar — sem como linkar com pool).
+function buildAiFeedbackRow(question){
+  if(!question || question.source !== 'ai') return null;
+  const canonicalHash = question.canonicalHash || question.contentHash;
+  if(!canonicalHash) return null;
+
+  const row = mk('div');
+  row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:.875rem;padding-top:.75rem;border-top:1px dashed var(--border);font-size:11.5px;color:var(--text3);flex-wrap:wrap';
+
+  const lbl = mk('span');
+  lbl.style.cssText = 'font-size:11.5px;color:var(--text3);margin-right:4px';
+  lbl.textContent = 'Essa questão foi útil?';
+  row.appendChild(lbl);
+
+  const myVote = getAiVote(canonicalHash);
+  const myReport = getAiReport(canonicalHash);
+
+  // Botão 👍
+  const upBtn = mk('button','btn btn-sm');
+  upBtn.type = 'button';
+  upBtn.style.cssText = 'padding:4px 10px;font-size:13px;line-height:1';
+  upBtn.textContent = '👍';
+  upBtn.title = 'Questão boa, gabarito justo';
+  if(myVote === 'up'){
+    upBtn.style.borderColor = 'var(--accent)';
+    upBtn.style.background = 'rgba(34,197,94,.08)';
+  }
+  upBtn.addEventListener('click', async () => {
+    upBtn.disabled = true;
+    await setAiVote(canonicalHash, myVote === 'up' ? null : 'up');
+    render();
+  });
+  row.appendChild(upBtn);
+
+  // Botão 👎
+  const downBtn = mk('button','btn btn-sm');
+  downBtn.type = 'button';
+  downBtn.style.cssText = 'padding:4px 10px;font-size:13px;line-height:1';
+  downBtn.textContent = '👎';
+  downBtn.title = 'Questão fraca';
+  if(myVote === 'down'){
+    downBtn.style.borderColor = 'var(--amber)';
+    downBtn.style.background = 'rgba(245,158,11,.08)';
+  }
+  downBtn.addEventListener('click', async () => {
+    downBtn.disabled = true;
+    await setAiVote(canonicalHash, myVote === 'down' ? null : 'down');
+    render();
+  });
+  row.appendChild(downBtn);
+
+  // Botão Reportar
+  const reportBtn = mk('button','btn btn-sm');
+  reportBtn.type = 'button';
+  reportBtn.style.cssText = 'padding:4px 10px;font-size:11.5px;line-height:1';
+  if(myReport){
+    reportBtn.textContent = '🚩 Reportada';
+    reportBtn.disabled = true;
+    reportBtn.title = 'Você já reportou esta questão';
+    reportBtn.style.opacity = '.6';
+  } else {
+    reportBtn.textContent = '🚩 Reportar';
+    reportBtn.title = 'Problema sério (gabarito errado, fora da fonte, etc)';
+    reportBtn.addEventListener('click', () => {
+      showReportAiQuestionModal(canonicalHash, question.enunciado || question.question || '');
+    });
+  }
+  row.appendChild(reportBtn);
+
+  return row;
+}
+
+function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion){
   const {ok,explanation,trap,keyword,errCtx,q,question} = fb;
   const card = mk('div','fb-card fade '+(ok?'ok':'err'));
   const topRow = mk('div','fb-top-row');
@@ -23084,6 +23367,24 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →'){
   }
   next.addEventListener('click',onNext);
   card.appendChild(next);
+  // V15.12.54 — Linha de feedback (👍/👎/🚩) abaixo do botão "Próxima".
+  // Aparece apenas pra questões IA com canonicalHash. Discreta, não atrapalha
+  // o fluxo. Voto/report sincronizam com Supabase via RPCs idempotentes.
+  if(sourceQuestion){
+    // Tenta achar a questão no banco local pra pegar canonicalHash + metadados
+    let qWithMeta = sourceQuestion;
+    if(!qWithMeta.canonicalHash){
+      const enun = qWithMeta.question || qWithMeta.enunciado || '';
+      if(enun){
+        const found = (DATA.importedQuestions||[]).find(x =>
+          (x.enunciado||'').trim() === enun.trim() && x.source === 'ai'
+        );
+        if(found) qWithMeta = found;
+      }
+    }
+    const fbRow = buildAiFeedbackRow(qWithMeta);
+    if(fbRow) card.appendChild(fbRow);
+  }
   return card;
 }
 function handleErr(e,container){
@@ -23788,54 +24089,98 @@ function renderBankFilters(stateKey,bank){
 // Save AI-generated question to bank if not already there.
 // Returns the bank record (with stable id). Used both for dedup detection later
 // and for notebook organization.
-function saveAIQuestion(method,q,modelId){
+//
+// V15.12.54 (P1.1): Refactored.
+// - Usa canonicalQuestionHash em vez de simpleHash bruto (dedup robusta)
+// - Detecta duplicata por canonical_hash (não só enunciado normalizado limitado)
+// - Salva metadados completos no pool: bank_id, discipline_id, difficulty,
+//   ai_score, status (draft/active/flagged/disabled), reports_count, votes
+// - opts pode passar overrides: {disciplineId, bankId, difficulty, sourceId}
+//   pra callers que sabem o contexto melhor (ex: series_batch sabe a fonte)
+function saveAIQuestion(method, q, modelId, opts){
   if(!q||!q.question)return null;
   if(!DATA.importedQuestions)DATA.importedQuestions=[];
-  // Detect duplicates by enunciado normalized (lowercase, collapsed spaces)
-  const norm = s=>(s||'').toLowerCase().replace(/\s+/g,' ').trim();
-  const target = norm(q.question);
-  if(target.length<20)return null;
-  const existing = DATA.importedQuestions.find(x=>norm(x.enunciado)===target);
+  opts = opts || {};
+
+  const text = (q.question || '').trim();
+  if(text.length<20)return null;
+
+  // V15.12.54 — Resolve metadados
+  const bankId = opts.bankId || inferBankIdForPool();
+  const inferredDiscId = opts.disciplineId || inferDiscipline(q.topic||'');
+  const discSlug = disciplineSlug(inferredDiscId);
+  const difficulty = opts.difficulty || q.difficulty || 'medium';
+  const answer = q.correct_answer || q.gabarito || '';
+
+  // Hash canônico — detecta near-duplicatas que o normalize antigo deixava passar
+  const canonicalHash = canonicalQuestionHash(text, answer, bankId, discSlug);
+  // Hash legacy (compat com questões antigas no DATA.importedQuestions)
+  const legacyHash = simpleHash(text.toLowerCase().replace(/\s+/g,' ').trim()).toString(36);
+
+  // Dedup local: prioriza canonical_hash, cai pro legacy se vier sem (questões muito antigas)
+  const existing = DATA.importedQuestions.find(x => {
+    if(canonicalHash && x.canonicalHash === canonicalHash) return true;
+    if(x.contentHash === legacyHash) return true;
+    return false;
+  });
   if(existing){
-    // Increment seenCount so AI seeding can avoid repeat
     existing.seenCount = (existing.seenCount||1)+1;
-    save();return existing;
+    save();
+    return existing;
   }
-  // V13: ID determinístico baseado em hash do enunciado.
-  // Permite identificar mesma questão entre múltiplos usuários/dispositivos
-  // (futura deduplicação global, indexação no banco compartilhado da comunidade).
-  const stableId = 'aiq_' + simpleHash(target).toString(36) + '_' + Math.random().toString(36).slice(2,5);
+
+  // Avaliação de qualidade local (sem custo)
+  const quality = evaluateQuestionQuality(q);
+
+  // Se score muito baixo, não salva nem local nem no pool. Caller pode regenerar
+  // ou aceitar que perdeu o crédito da geração ruim.
+  if(quality.status === 'rejected_local'){
+    console.warn('[saveAIQuestion] descartada por score baixo:', quality.score, quality.issues);
+    return null;
+  }
+
+  // ID determinístico baseado no hash canônico (preferido) — facilita reusar
+  // mesma id entre dispositivos/usuários quando a questão é idêntica.
+  const stableId = 'aiq_' + (canonicalHash || legacyHash) + '_' + Math.random().toString(36).slice(2,5);
   const rec = {
     id: stableId,
-    enunciado:q.question,
-    answer:q.correct_answer,
-    kind:'CE',
-    disciplineId:inferDiscipline(q.topic||''),
-    topic:q.topic||'',
+    enunciado: q.question,
+    answer: answer,
+    kind: q.kind || 'CE',
+    disciplineId: inferredDiscId,
+    topic: q.topic||'',
     source:'ai',
-    aiMethod:method,
-    aiModel:modelId||DATA.config.model,
-    explanation:q.explanation||'',
-    trap:q.trap||'',
-    keyword:q.keyword||'',
-    trapType:q.trap_type||0,
-    createdAt:Date.now(),
-    seenCount:1,
-    attempts:0,correctCount:0,
-    // V13: Hash do enunciado pra dedup global futura
-    contentHash: simpleHash(target).toString(36)
+    aiMethod: method,
+    aiModel: modelId||DATA.config.model,
+    explanation: q.explanation||'',
+    trap: q.trap||'',
+    keyword: q.keyword||'',
+    trapType: q.trap_type || 0,
+    createdAt: Date.now(),
+    seenCount: 1,
+    attempts: 0, correctCount: 0,
+    // V15.12.54: metadados novos
+    bankId: bankId,
+    disciplineSlug: discSlug,
+    difficulty: difficulty,
+    aiScore: quality.score,
+    qualityIssues: quality.issues,
+    status: quality.status, // 'active' | 'draft'
+    canonicalHash: canonicalHash,
+    contentHash: legacyHash, // compat com filtros que ainda olham contentHash
+    sourceId: opts.sourceId || null
   };
   DATA.importedQuestions.push(rec);
   if(DATA.importedQuestions.length>1500)DATA.importedQuestions=DATA.importedQuestions.slice(-1500);
   save();
 
-  // V13: Publica no pool comunitário em background (não bloqueia).
-  // Reduz custo coletivo: outras pessoas com mesmo hash não regeneram.
-  // O servidor deduplica por content_hash (PRIMARY KEY).
-  // Usuário pode optar por NÃO publicar via DATA.config.shareAIQuestions = false
+  // Publica no pool comunitário em background.
+  // V15.12.54: payload enriquecido com metadados pra cache futuro funcionar
+  // bem. Status 'draft' entra no pool mas não é elegível pra cache até virar
+  // 'active' (via voto humano ou revisão admin).
   if(supa && AUTH.user && DATA.config.shareAIQuestions !== false){
     const payload = {
-      content_hash: rec.contentHash,
+      content_hash: canonicalHash || legacyHash, // primary key — usa canonical quando disponível
       enunciado: rec.enunciado,
       answer: rec.answer,
       kind: rec.kind,
@@ -23846,18 +24191,22 @@ function saveAIQuestion(method,q,modelId){
       topic: rec.topic,
       ai_method: rec.aiMethod,
       ai_model: rec.aiModel,
-      contributor_id: AUTH.user.id
+      contributor_id: AUTH.user.id,
+      // V15.12.54: novos campos (migration adiciona colunas)
+      content_hash_canonical: canonicalHash,
+      bank_id: bankId,
+      discipline_id: discSlug,
+      difficulty: difficulty,
+      ai_score: quality.score,
+      status: quality.status,
+      created_by_user_id: AUTH.user.id
     };
-    // upsert por content_hash — se já existe, ignora (não polui com regravações)
     setTimeout(()=>{
       supa.from('ai_question_pool').upsert(payload, {
         onConflict: 'content_hash',
         ignoreDuplicates: true
       }).then(({error})=>{
-        // V15.3: silencia também erros de RLS (permission denied) — vão pra outro
-        // diagnóstico. Antes só silenciava "does not exist". A tabela existe mas as
-        // policies podem não estar configuradas. Não precisa poluir o console do usuário.
-        if(error && !/(does not exist|relation|permission denied)/i.test(error.message||'')){
+        if(error && !/(does not exist|relation|permission denied|column)/i.test(error.message||'')){
           console.warn('[ai_pool] publish failed:', error.message);
         }
       }).catch(()=>{});
@@ -23877,6 +24226,122 @@ function simpleHash(str){
   }
   return Math.abs(h);
 }
+
+// ============================================================================
+// V15.12.54 — P1.1: Hash canônico robusto + helpers de metadados do pool
+// ============================================================================
+// O hash anterior (simpleHash sobre enunciado bruto) deixava passar near-
+// duplicatas: pontuação diferente, espaço extra, acento variando, ordem de
+// alternativas embaralhada — todos gerando hashes distintos. Resultado: o
+// ai_question_pool ia entupir de questões "iguais" sem ser detectadas como
+// tal. Antes do cache, isso é desperdício; depois do cache, é veneno.
+//
+// canonicalQuestionHash NORMALIZA antes de hashear:
+//   - lowercase
+//   - remove acentos (NFD + diacritic strip)
+//   - troca pontuação por espaço único
+//   - remove caracteres invisíveis e quebras
+//   - colapsa espaços múltiplos
+//   - opcionalmente concatena gabarito + bank_id + discipline_id pra evitar
+//     que questões com mesmo enunciado mas gabaritos diferentes (variantes)
+//     colidam no pool
+// ============================================================================
+
+function canonicalQuestionHash(enunciado, answer, bankId, disciplineId){
+  if(!enunciado) return null;
+  const text = String(enunciado || '');
+  // Normalização: minúsculas, sem acento, sem pontuação, espaços colapsados.
+  // Mantém letras + números (preserva conceitos como "art. 5" ou "30 dias"
+  // que poderiam ser pontos críticos da armadilha).
+  let canon = text
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // tira acentos
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')                  // só letras/números/espaço
+    .replace(/\s+/g, ' ')                                // espaços únicos
+    .trim();
+  if(canon.length < 20) return null;
+  // Concatena fatores que distinguem questões "iguais mas com gabarito diferente"
+  const ans = (answer || '').toString().toUpperCase().slice(0, 4);
+  const bk = (bankId || 'unknown').toLowerCase();
+  const dc = (disciplineId || 'unknown').toLowerCase();
+  const composite = canon + '|' + ans + '|' + bk + '|' + dc;
+  return simpleHash(composite).toString(36);
+}
+
+// Identifica banca em formato canônico curto. Reusa lógica do getBancaContext
+// mas retorna apenas o id (cebraspe, fcc, fgv, vunesp, quadrix, outras, unknown).
+// Quando o usuário não tem banca definida, retorna 'cebraspe_default' — sinal
+// explícito de que é fallback, não escolha do user. Permite filtrar no painel
+// admin "quantas questões saíram em fallback" e priorizar ajuste.
+function inferBankIdForPool(){
+  try{
+    const ctx = (typeof getBancaContext === 'function') ? getBancaContext() : null;
+    if(ctx && ctx.id) return ctx.id;
+  }catch(_){}
+  // Sem banca — usa fallback explícito
+  return 'cebraspe_default';
+}
+
+// Mapeia disciplineId interno (que pode ser uuid local) pra slug normalizado.
+// Hoje DATA.disciplines têm name livre — o pool precisa de um id estável e
+// comparável entre usuários. Usamos slug do nome (lowercase, sem acento, sem
+// espaço). Resultado: "Direito Constitucional" → "direito_constitucional".
+function disciplineSlug(disciplineId){
+  if(!disciplineId) return 'unknown';
+  try{
+    const disc = (typeof getDiscipline === 'function') ? getDiscipline(disciplineId) : null;
+    if(!disc || !disc.name) return 'unknown';
+    return String(disc.name)
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }catch(_){
+    return 'unknown';
+  }
+}
+
+// V15.12.54 — Avaliação de qualidade local (não consome IA).
+// Quality gate "barato" feito em JS pra decidir status do pool sem custo.
+// Critérios objetivos: tamanho, presença de explicação, tipo válido, gabarito
+// consistente. Não substitui revisão humana, mas filtra geração óbvia ruim
+// antes de entrar no pool.
+function evaluateQuestionQuality(q){
+  const issues = [];
+  let score = 100;
+
+  const text = (q.enunciado || q.question || '').trim();
+  // Tamanho razoável (Cebraspe entre 15-50 palavras; mas aceita 30-400 chars
+  // pra cobrir outras bancas)
+  if(text.length < 30){ issues.push('enunciado_curto'); score -= 30; }
+  if(text.length > 800){ issues.push('enunciado_longo'); score -= 10; }
+  // Resposta presente e em formato esperado
+  const ans = (q.answer || q.correct_answer || '').toString().toUpperCase();
+  const validAns = /^(C|E|[A-E])$/.test(ans);
+  if(!validAns){ issues.push('gabarito_invalido'); score -= 30; }
+  // Explicação não vazia (importante pro user e pro pool)
+  const exp = (q.explanation || q.explicacao || '').trim();
+  if(!exp || exp.length < 20){ issues.push('explicacao_curta_ou_ausente'); score -= 15; }
+  // Repetição óbvia de palavras (sinal de geração boba/loop)
+  const words = text.toLowerCase().split(/\s+/);
+  if(words.length > 8){
+    const counts = {};
+    words.forEach(w => { if(w.length > 4) counts[w] = (counts[w]||0) + 1; });
+    const maxRep = Math.max(...Object.values(counts), 0);
+    if(maxRep >= 4){ issues.push('repeticao_palavras'); score -= 15; }
+  }
+  // Marca status com base no score
+  // >= 75: active (entra no pool prontinho)
+  // >= 50: draft (entra no pool, mas marcado pra revisão antes de virar cache)
+  // <  50: não entra no pool ('rejected_local' apenas como retorno)
+  let status;
+  if(score >= 75) status = 'active';
+  else if(score >= 50) status = 'draft';
+  else status = 'rejected_local';
+
+  return { score: Math.max(0, score), status, issues };
+}
+
 
 // V14: Fingerprint robusto pra busca no catálogo comunitário.
 // Normaliza o texto (remove espaços, pontuação, números de página, lowercase)
@@ -28955,7 +29420,7 @@ function renderTurbo(){
     if(!t.fb){
       wrap.appendChild(answerButtons(turboSubmitAnswer,t.answered||t.loading));
     } else {
-      wrap.appendChild(feedbackCard(t.fb,turboNext,'Próximo item →'));
+      wrap.appendChild(feedbackCard(t.fb,turboNext,'Próximo item →', t.q));
     }
     return wrap;
   }
@@ -31910,25 +32375,28 @@ SAÍDA — JSON puro array:
 
       if(!DATA.importedQuestions) DATA.importedQuestions = [];
       const qIds = [];
+      // V15.12.54 (P1.1): refatorado pra passar por saveAIQuestion comum.
+      // Antes: push direto em DATA.importedQuestions, NÃO publicava no pool,
+      // sem dedup, sem score, sem metadados. Cadernos custam 10 créditos cada
+      // mas o pool não crescia com eles. Agora todas as questões da série
+      // entram no pool (com canonical_hash, bank_id, discipline_id, status).
       questions.forEach(q=>{
         if(!q.enunciado || !q.gabarito) return;
-        const qId = 'sq_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-        DATA.importedQuestions.push({
-          id: qId,
-          enunciado: q.enunciado,
-          answer: q.gabarito,
-          kind: 'CE',
-          disciplineId: src.disciplineId,
-          topic: q.topico || chunk.label,
-          source: 'ai',
-          aiMethod: 'series',
-          aiModel: body.model,
+        // Adapta formato do JSON (series_batch usa "enunciado/gabarito/explicacao/topico"
+        // enquanto saveAIQuestion espera "question/correct_answer/explanation/topic")
+        const adapted = {
+          question: q.enunciado,
+          correct_answer: q.gabarito,
           explanation: q.explicacao || '',
-          createdAt: Date.now(),
-          attempts: 0,
-          correctCount: 0
+          topic: q.topico || chunk.label,
+          kind: 'CE',
+          difficulty: 'medium' // series_batch hoje não controla nível
+        };
+        const rec = saveAIQuestion('series', adapted, body.model, {
+          disciplineId: src.disciplineId,
+          sourceId: src.id
         });
-        qIds.push(qId);
+        if(rec) qIds.push(rec.id);
       });
 
       const nbId = 'nbs_' + Date.now() + '_' + i;
@@ -32986,7 +33454,7 @@ function renderCalibration(){
   if(ST.calibLoading&&ST.calibAnswered)wrap.appendChild(dynamicLoading('explanation','Avaliando...'));
   if(ST.calibFb&&!ST.calibLoading){
     const isOc = ST.calibFb.confKey==='certain'&&!ST.calibFb.ok;
-    const card = feedbackCard(ST.calibFb,calibNext);
+    const card = feedbackCard(ST.calibFb,calibNext,'Próxima questão →', ST.calibQ);
     if(isOc){
       const warn = mk('div','warn-box');
       warn.innerHTML='⚠ <b>Falsa segurança detectada.</b> Você disse "tenho certeza" e errou. Releia o enunciado — encontre a armadilha.';
@@ -33319,7 +33787,7 @@ function renderDrill(){
     wrap.appendChild(questionCard(ST.drillQ));
     if(!ST.drillFb&&!ST.drillLoading)wrap.appendChild(answerButtons(drillSubmit,ST.drillAnswered));
     if(ST.drillLoading&&ST.drillAnswered)wrap.appendChild(dynamicLoading('explanation','Avaliando...'));
-    if(ST.drillFb&&!ST.drillLoading)wrap.appendChild(feedbackCard(ST.drillFb,drillNext));
+    if(ST.drillFb&&!ST.drillLoading)wrap.appendChild(feedbackCard(ST.drillFb,drillNext,'Próxima questão →', ST.drillQ));
   }
   return wrap;
 }
@@ -33773,7 +34241,7 @@ function renderPractice(){
   }
   if(!ST.practFb&&!ST.practLoading)wrap.appendChild(answerButtons(practSubmit,ST.practAnswered));
   if(ST.practLoading&&ST.practAnswered)wrap.appendChild(dynamicLoading('explanation','Avaliando...'));
-  if(ST.practFb&&!ST.practLoading)wrap.appendChild(feedbackCard(ST.practFb,practNext));
+  if(ST.practFb&&!ST.practLoading)wrap.appendChild(feedbackCard(ST.practFb,practNext,'Próxima questão →', ST.practQ));
   return wrap;
 }
 async function practStart(container){
@@ -34282,7 +34750,7 @@ function renderInterleaving(){
   wrap.appendChild(questionCard(ST.interQ));
   if(!ST.interFb&&!ST.interLoading)wrap.appendChild(answerButtons(interSubmit,ST.interAnswered));
   if(ST.interLoading&&ST.interAnswered)wrap.appendChild(loading('Avaliando + trocando tópico...'));
-  if(ST.interFb&&!ST.interLoading)wrap.appendChild(feedbackCard(ST.interFb,interNext,'Próxima (novo tópico) →'));
+  if(ST.interFb&&!ST.interLoading)wrap.appendChild(feedbackCard(ST.interFb,interNext,'Próxima (novo tópico) →', ST.interQ));
   return wrap;
 }
 async function interStart(container){
@@ -54136,19 +54604,36 @@ function renderSettings(){
     atSqlBtn.addEventListener('click', async ()=>{
       const sql = `-- V15.12.51: Auditoria do trial bonus
 -- Lista usuários criados nos últimos 14 dias e o saldo deles.
--- Quem aparecer com balance 0 ou NULL: o trigger handle_new_user falhou.
+-- Quem aparecer com saldo 0 ou sem linha: o trigger handle_new_user falhou.
+-- V15.12.55: ajustado pro schema real (user_credits NÃO tem coluna 'balance' —
+-- o saldo é a soma de plan_credits + topup_credits + promotional_credits).
+-- O trial bonus de 40 créditos é creditado em promotional_credits.
 
 SELECT
   u.id,
   u.email,
-  u.created_at,
+  u.created_at::date AS criado_em,
   u.raw_app_meta_data->>'provider' AS provider,
-  COALESCE(uc.balance, 0) AS balance,
+  COALESCE(uc.plan_credits, 0)        AS plan_credits,
+  COALESCE(uc.topup_credits, 0)       AS topup_credits,
+  COALESCE(uc.promotional_credits, 0) AS promo_credits,
+  COALESCE(uc.plan_credits, 0)
+    + COALESCE(uc.topup_credits, 0)
+    + COALESCE(uc.promotional_credits, 0) AS saldo_total,
+  COALESCE(uc.total_used_lifetime, 0) AS total_usado,
   CASE
-    WHEN uc.balance IS NULL THEN 'sem linha em user_credits'
-    WHEN uc.balance = 0 THEN 'zerado (trigger falhou ou trial usado)'
-    ELSE 'ok'
-  END AS status
+    WHEN uc.user_id IS NULL
+      THEN '⚠ sem linha em user_credits — trigger NÃO rodou'
+    WHEN COALESCE(uc.promotional_credits, 0) >= 40
+      THEN '✓ trial intacto'
+    WHEN COALESCE(uc.promotional_credits, 0) > 0 AND COALESCE(uc.total_used_lifetime, 0) > 0
+      THEN '✓ trial parcialmente usado (normal)'
+    WHEN COALESCE(uc.promotional_credits, 0) = 0 AND COALESCE(uc.total_used_lifetime, 0) >= 40
+      THEN '✓ trial totalmente usado (normal)'
+    WHEN COALESCE(uc.promotional_credits, 0) = 0 AND COALESCE(uc.total_used_lifetime, 0) = 0
+      THEN '⚠ trial NUNCA creditado — trigger falhou'
+    ELSE '? estado incomum, investigar'
+  END AS status_trial
 FROM auth.users u
 LEFT JOIN user_credits uc ON uc.user_id = u.id
 WHERE u.created_at > NOW() - INTERVAL '14 days'
@@ -54158,17 +54643,19 @@ LIMIT 50;
 -- Pra inspecionar a definição do trigger:
 -- SELECT tgname, pg_get_triggerdef(oid)
 -- FROM pg_trigger
--- WHERE tgname ILIKE '%new_user%' OR tgname ILIKE '%handle%';
+-- WHERE NOT tgisinternal AND (tgname ILIKE '%new_user%' OR tgname ILIKE '%handle%');
 
 -- Pra ver a função associada:
 -- SELECT pg_get_functiondef(oid)
 -- FROM pg_proc
--- WHERE proname IN ('handle_new_user','grant_trial_bonus','grant_welcome_bonus');
+-- WHERE proname IN ('handle_new_user','grant_trial_bonus','grant_welcome_bonus','add_credits');
 
--- Pra creditar manualmente um trial pendente (substituir USER_ID):
--- INSERT INTO user_credits (user_id, balance, kind, created_at)
--- VALUES ('USER_ID', 40, 'trial_bonus', NOW())
--- ON CONFLICT (user_id) DO UPDATE SET balance = user_credits.balance + 40;`;
+-- Pra creditar manualmente um trial pendente (substituir USER_ID_AQUI):
+-- INSERT INTO user_credits (user_id, plan_credits, topup_credits, promotional_credits, updated_at)
+-- VALUES ('USER_ID_AQUI'::uuid, 0, 0, 40, NOW())
+-- ON CONFLICT (user_id) DO UPDATE SET
+--   promotional_credits = user_credits.promotional_credits + 40,
+--   updated_at = NOW();`;
       try{
         await navigator.clipboard.writeText(sql);
         atSqlBtn.textContent = '✓ Copiado!';
@@ -54394,6 +54881,251 @@ GRANT EXECUTE ON FUNCTION admin_get_test_subscription_status() TO authenticated;
 
     // Carrega status em background sem bloquear o resto da página
     setTimeout(()=>{ refreshTsStatus(); }, 100);
+
+    // V15.12.54 — P1.1: Migration do ai_question_pool com metadados de qualidade
+    // Adiciona colunas de status, score, banca, disciplina, dificuldade, votos,
+    // reports. Cria RPCs idempotentes pra voto/report. Sem leitura de cache —
+    // só preparação de estrutura.
+    const poolRow = mk('div');
+    poolRow.style.cssText = 'margin-top:.875rem;padding-top:.75rem;border-top:1px solid var(--border)';
+    const prTxt = mk('div');
+    const prTitle = mk('div');prTitle.style.cssText = 'font-size:12.5px;font-weight:600';
+    prTitle.textContent = '🧠 Pool de questões IA — quality gate (P1.1)';
+    const prDesc = mk('div','txt3');
+    prDesc.style.cssText = 'font-size:11px;margin-top:2px;line-height:1.55';
+    prDesc.innerHTML = 'Migration que adiciona <code>status</code>, <code>ai_score</code>, <code>bank_id</code>, <code>discipline_id</code>, <code>difficulty</code>, votos e reports na <code>ai_question_pool</code>. Cria RPCs <code>ai_question_vote</code> e <code>ai_question_report</code>. Sem leitura de cache — apenas estrutura.';
+    prTxt.appendChild(prTitle);prTxt.appendChild(prDesc);
+    poolRow.appendChild(prTxt);
+
+    const prBtnRow = mk('div');prBtnRow.style.cssText = 'display:flex;gap:8px;margin-top:.625rem;flex-wrap:wrap;align-items:center';
+    const prSqlBtn = mk('button','btn btn-sm');
+    prSqlBtn.textContent = 'Copiar SQL P1.1 (pool + voto/report)';
+    prSqlBtn.addEventListener('click', async ()=>{
+      const sql = `-- V15.12.54 (P1.1): Quality Gate do ai_question_pool
+-- Adiciona metadados de qualidade + RPCs de voto/report.
+-- Idempotente — pode rodar várias vezes. NÃO apaga dados existentes.
+
+-- ============================================================================
+-- 1) Colunas novas em ai_question_pool
+-- ============================================================================
+ALTER TABLE ai_question_pool
+  ADD COLUMN IF NOT EXISTS content_hash_canonical TEXT,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'draft'
+    CHECK (status IN ('draft','active','flagged','disabled')),
+  ADD COLUMN IF NOT EXISTS ai_score INT,
+  ADD COLUMN IF NOT EXISTS bank_id TEXT,
+  ADD COLUMN IF NOT EXISTS discipline_id TEXT,
+  ADD COLUMN IF NOT EXISTS difficulty TEXT
+    CHECK (difficulty IS NULL OR difficulty IN ('easy','medium','hard','very_hard')),
+  ADD COLUMN IF NOT EXISTS human_upvotes INT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS human_downvotes INT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS reports_count INT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS created_by_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
+
+-- Índices pra cache futuro (lookup rápido por banca+disciplina+status)
+CREATE INDEX IF NOT EXISTS idx_aiqp_status_bank_disc
+  ON ai_question_pool (status, bank_id, discipline_id)
+  WHERE status = 'active';
+
+CREATE INDEX IF NOT EXISTS idx_aiqp_canonical_hash
+  ON ai_question_pool (content_hash_canonical);
+
+CREATE INDEX IF NOT EXISTS idx_aiqp_difficulty
+  ON ai_question_pool (difficulty)
+  WHERE difficulty IS NOT NULL;
+
+-- ============================================================================
+-- 2) Tabela de votos (1 voto por user por questão)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS ai_question_votes (
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  content_hash TEXT NOT NULL,
+  vote TEXT NOT NULL CHECK (vote IN ('up','down')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, content_hash)
+);
+
+ALTER TABLE ai_question_votes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS aiqv_select_own ON ai_question_votes;
+CREATE POLICY aiqv_select_own ON ai_question_votes
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS aiqv_insert_own ON ai_question_votes;
+CREATE POLICY aiqv_insert_own ON ai_question_votes
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS aiqv_update_own ON ai_question_votes;
+CREATE POLICY aiqv_update_own ON ai_question_votes
+  FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS aiqv_delete_own ON ai_question_votes;
+CREATE POLICY aiqv_delete_own ON ai_question_votes
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- ============================================================================
+-- 3) Tabela de reports (1 report por user por questão)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS ai_question_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  content_hash TEXT NOT NULL,
+  reason TEXT NOT NULL CHECK (reason IN (
+    'gabarito_errado','ambigua','fora_da_fonte','fora_estilo_banca',
+    'mal_formulada','inventada','outro'
+  )),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  resolved_at TIMESTAMPTZ,
+  resolved_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  UNIQUE (user_id, content_hash)
+);
+
+ALTER TABLE ai_question_reports ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS aiqr_select_own ON ai_question_reports;
+CREATE POLICY aiqr_select_own ON ai_question_reports
+  FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS aiqr_insert_own ON ai_question_reports;
+CREATE POLICY aiqr_insert_own ON ai_question_reports
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS idx_aiqr_content_hash
+  ON ai_question_reports (content_hash);
+
+-- ============================================================================
+-- 4) RPC: voto idempotente
+--    Aceita vote IN ('up','down', NULL=remove). Faz UPSERT, atualiza
+--    contadores em ai_question_pool atomicamente.
+-- ============================================================================
+CREATE OR REPLACE FUNCTION ai_question_vote(
+  p_content_hash TEXT,
+  p_vote TEXT
+) RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_old_vote TEXT;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Não autenticado';
+  END IF;
+  IF p_vote IS NOT NULL AND p_vote NOT IN ('up','down') THEN
+    RAISE EXCEPTION 'vote inválido: %', p_vote;
+  END IF;
+
+  -- Lê voto anterior pra ajustar contadores corretamente
+  SELECT vote INTO v_old_vote
+  FROM ai_question_votes
+  WHERE user_id = auth.uid() AND content_hash = p_content_hash;
+
+  -- Remove ou atualiza ou insere
+  IF p_vote IS NULL THEN
+    DELETE FROM ai_question_votes
+    WHERE user_id = auth.uid() AND content_hash = p_content_hash;
+  ELSE
+    INSERT INTO ai_question_votes (user_id, content_hash, vote, updated_at)
+    VALUES (auth.uid(), p_content_hash, p_vote, NOW())
+    ON CONFLICT (user_id, content_hash) DO UPDATE
+    SET vote = EXCLUDED.vote, updated_at = NOW();
+  END IF;
+
+  -- Ajusta contadores em ai_question_pool. Considera content_hash OU
+  -- content_hash_canonical pra cobrir questões salvas antes da migration.
+  UPDATE ai_question_pool SET
+    human_upvotes = GREATEST(0, human_upvotes
+      - CASE WHEN v_old_vote = 'up' THEN 1 ELSE 0 END
+      + CASE WHEN p_vote = 'up' THEN 1 ELSE 0 END),
+    human_downvotes = GREATEST(0, human_downvotes
+      - CASE WHEN v_old_vote = 'down' THEN 1 ELSE 0 END
+      + CASE WHEN p_vote = 'down' THEN 1 ELSE 0 END)
+  WHERE content_hash = p_content_hash
+     OR content_hash_canonical = p_content_hash;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION ai_question_vote(TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ai_question_vote(TEXT, TEXT) TO authenticated;
+
+-- ============================================================================
+-- 5) RPC: report (1 por user, bloqueia duplicata, atualiza status do pool)
+-- ============================================================================
+CREATE OR REPLACE FUNCTION ai_question_report(
+  p_content_hash TEXT,
+  p_reason TEXT
+) RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_total_reports INT;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Não autenticado';
+  END IF;
+  IF p_reason NOT IN ('gabarito_errado','ambigua','fora_da_fonte','fora_estilo_banca','mal_formulada','inventada','outro') THEN
+    RAISE EXCEPTION 'reason inválido: %', p_reason;
+  END IF;
+
+  -- Bloqueia duplicata via UNIQUE constraint — se já reportou, nada acontece
+  INSERT INTO ai_question_reports (user_id, content_hash, reason)
+  VALUES (auth.uid(), p_content_hash, p_reason)
+  ON CONFLICT (user_id, content_hash) DO NOTHING;
+
+  -- Recalcula contagem total
+  SELECT COUNT(*) INTO v_total_reports
+  FROM ai_question_reports
+  WHERE content_hash = p_content_hash;
+
+  -- Atualiza pool: incrementa reports_count, ajusta status conforme regras
+  -- de produto:
+  --   1+ report → 'flagged' (deixa de ser elegível pra cache)
+  --   3+ reports → 'disabled' (sai de circulação)
+  UPDATE ai_question_pool SET
+    reports_count = v_total_reports,
+    status = CASE
+      WHEN v_total_reports >= 3 AND status NOT IN ('disabled') THEN 'disabled'
+      WHEN v_total_reports >= 1 AND status NOT IN ('disabled','flagged') THEN 'flagged'
+      ELSE status
+    END
+  WHERE content_hash = p_content_hash
+     OR content_hash_canonical = p_content_hash;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION ai_question_report(TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ai_question_report(TEXT, TEXT) TO authenticated;
+
+-- ============================================================================
+-- 6) (Opcional) Backfill de status pra questões existentes
+-- ============================================================================
+-- Questões anteriores à migration ficaram com status='draft' default.
+-- Como quality gate ainda não rodou nelas, deixa em draft mesmo. Quando
+-- usuários votarem, votos positivos podem promover pra 'active' via outra RPC
+-- futura (não nesta rodada).
+-- Se preferir, descomente abaixo pra promover automaticamente as que tiverem
+-- ai_method em ('practice','calibration','drill','interleaving') já que
+-- foram revisadas no fluxo principal:
+-- UPDATE ai_question_pool SET status = 'active'
+--   WHERE status = 'draft'
+--     AND ai_method IN ('practice','calibration','drill','interleaving','series')
+--     AND created_at < NOW();`;
+
+      try{
+        await navigator.clipboard.writeText(sql);
+        prSqlBtn.textContent = '✓ Copiado!';
+        setTimeout(()=>{ prSqlBtn.textContent = 'Copiar SQL P1.1 (pool + voto/report)'; }, 2000);
+      }catch(e){
+        prompt('Copie o SQL abaixo e rode no Supabase SQL Editor:', sql);
+      }
+    });
+    prBtnRow.appendChild(prSqlBtn);
+    poolRow.appendChild(prBtnRow);
+    adminCard.appendChild(poolRow);
 
     wrap.appendChild(adminCard);
   }
