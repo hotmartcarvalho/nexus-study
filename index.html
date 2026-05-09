@@ -53497,14 +53497,17 @@ function buildForestScene(trees){
                      type === 'mature'  ? BRAND.araucariaAdulta :
                      type === 'young'   ? BRAND.araucariaJovem :
                                           BRAND.araucariaMuda;
-    // V15.12.59 — Tamanhos aumentados em 20% conforme feedback. Antes a
-    // animação de movimento ficava difícil de visualizar com as araucárias
-    // pequenas. Multiplicador 1.2 aplicado em w e h de cada tipo.
+    // V15.12.60 — Aumentos diferenciados por tipo conforme feedback:
+    //   - centenária e adulta: +30% (animação fica mais fluida sem dominar)
+    //   - jovem: +60% (estavam pequenas demais pra ver detalhe da animação)
+    //   - muda: +100% (era a menos visível, dobrou de tamanho)
+    // Aplicado sobre os valores da V15.12.59. Mantém a hierarquia visual
+    // (centenária ainda é a maior) mas reduz o gap entre tipos.
     const sizeMap = {
-      ancient: { w: 84 * scale, h: 132 * scale, dy: 0.95 },
-      mature:  { w: 66 * scale, h: 108 * scale, dy: 0.95 },
-      young:   { w: 46 * scale, h: 78 * scale, dy: 0.95 },
-      seed:    { w: 26 * scale, h: 46 * scale, dy: 0.95 }
+      ancient: { w: 109 * scale, h: 172 * scale, dy: 0.95 },
+      mature:  { w: 86 * scale,  h: 140 * scale, dy: 0.95 },
+      young:   { w: 74 * scale,  h: 125 * scale, dy: 0.95 },
+      seed:    { w: 52 * scale,  h: 92 * scale,  dy: 0.95 }
     };
     const size = sizeMap[type] || sizeMap.seed;
     const foX = cx - size.w / 2;
