@@ -12920,6 +12920,103 @@ async function fetchQuota(){
   }
 }
 
+// ============================================================================
+// V15.12.51 — VERIFICAÇÃO E FALLBACK DO TRIAL BONUS NO SIGNUP
+// ============================================================================
+// Problema: o trial (40 créditos grátis) é creditado pelo trigger SQL
+// `handle_new_user` no Supabase. Se o trigger falhar (RLS, race condition,
+// permissão), o usuário cria conta e fica com 0 créditos sem aviso. Hoje
+// o app confia cegamente que o trigger rodou.
+//
+// Solução em 3 camadas:
+// 1. Após signup, espera o trigger e checa quota (verifyTrialActivation).
+// 2. Se chegou créditos, exibe toast confirmando (feedback positivo claro).
+// 3. Se NÃO chegou, tenta fallback via RPC add_credits (se existir).
+//    Falhando o fallback, exibe aviso pro user E loga pro admin via console.
+// ============================================================================
+
+const TRIAL_AMOUNT = 40; // valor referenciado na landing/FAQ — manter sincronizado
+
+// Detecta se o usuário foi criado há menos de 2 minutos (heurística de "signup novo").
+// Usado pra evitar disparar verificação de trial em logins de usuário antigo.
+function isFreshlyCreatedUser(){
+  if(!AUTH.user || !AUTH.user.created_at) return false;
+  try{
+    const createdAt = new Date(AUTH.user.created_at).getTime();
+    const ageMs = Date.now() - createdAt;
+    return ageMs >= 0 && ageMs < 120000;
+  }catch(_){
+    return false;
+  }
+}
+
+// Verifica se o trial foi creditado e exibe feedback ao usuário.
+// Tenta fallback automático se quota estiver zerada.
+async function verifyTrialActivation(){
+  if(!isAuthed()) return;
+  // Garante que temos quota fresca (não cacheada de antes do trigger rodar)
+  QUOTA.lastFetchedAt = 0;
+  await fetchQuota();
+  const remaining = QUOTA.remaining;
+  // Caso 1: créditos chegaram → confirma pro user
+  if(typeof remaining === 'number' && remaining > 0){
+    try{
+      showToast(`🎁 ${remaining} créditos de trial liberados — válidos por 14 dias`, 7000);
+    }catch(_){}
+    return;
+  }
+  // Caso 2: quota retornou 0 ou null → tenta fallback
+  console.warn('[trial] Saldo pós-signup inesperado:', remaining,
+               '— tentando fallback via add_credits RPC');
+  const ok = await tryFallbackTrialBonus();
+  if(ok){
+    await fetchQuota();
+    try{
+      showToast(`🎁 ${QUOTA.remaining||TRIAL_AMOUNT} créditos de trial liberados`, 7000);
+    }catch(_){}
+    render();
+    return;
+  }
+  // Caso 3: fallback falhou → avisa user (sem alarmar) e loga pro admin
+  console.error('[trial] Fallback falhou. Verifique no Supabase: trigger handle_new_user, RPC add_credits, RLS de user_credits.');
+  try{
+    showToast('⚠ Não conseguimos liberar seus créditos automaticamente. Use o "Fale conosco" em Conta se isso persistir.', 9000);
+  }catch(_){}
+}
+
+// Fallback: tenta creditar trial via RPC. Várias assinaturas são tentadas
+// porque diferentes versões do schema usam nomes ligeiramente diferentes
+// (handoff lista add_credits(p_kind, p_amount), mas pode haver variações).
+// Retorna true se alguma chamada teve sucesso.
+async function tryFallbackTrialBonus(){
+  if(!supa) return false;
+  // Assinatura mais provável conforme handoff
+  const attempts = [
+    {fn: 'add_credits',          params: {p_kind: 'trial_bonus', p_amount: TRIAL_AMOUNT}},
+    {fn: 'add_credits',          params: {p_kind: 'trial',       p_amount: TRIAL_AMOUNT}},
+    {fn: 'grant_trial_bonus',    params: {}},
+    {fn: 'grant_welcome_bonus',  params: {}}
+  ];
+  for(const attempt of attempts){
+    try{
+      const {error} = await supa.rpc(attempt.fn, attempt.params);
+      if(!error){
+        console.info('[trial] Fallback bem-sucedido via', attempt.fn);
+        return true;
+      }
+      // RPC existe mas retornou erro (RLS, validação, etc) — passa pra próxima
+      // Se o erro for "function does not exist", é tentar a próxima
+      const msg = (error.message||'').toLowerCase();
+      if(!msg.includes('does not exist') && !msg.includes('not found')){
+        console.warn('[trial] add_credits('+attempt.fn+') retornou:', error.message);
+      }
+    }catch(e){
+      console.warn('[trial] Exception em', attempt.fn, ':', e.message);
+    }
+  }
+  return false;
+}
+
 // Central helper for /api/generate calls.
 // Adds Bearer token from current Supabase session, handles quota errors.
 // ============================================================================
@@ -23137,6 +23234,13 @@ function getBankFilters(stateKey){
   if(ST[stateKey].practiced===undefined)ST[stateKey].practiced='all';
   // V15.12.38: novo campo favorite
   if(ST[stateKey].favorite===undefined)ST[stateKey].favorite='all';
+  // V15.12.53: filtros faltantes do handoff (P1)
+  // - hasExplanation: questão tem campo explanation não-vazio
+  // - hasFlashcard: questão tem flashcard derivado (via erro com hasCard=true)
+  // - inNotebooks: 'all' | 'none' | '1' | '2plus' — em quantos cadernos a questão está
+  if(ST[stateKey].hasExplanation===undefined)ST[stateKey].hasExplanation='all';
+  if(ST[stateKey].hasFlashcard===undefined)ST[stateKey].hasFlashcard='all';
+  if(ST[stateKey].inNotebooks===undefined)ST[stateKey].inNotebooks='all';
   return ST[stateKey];
 }
 function applyBankFilters(bank,f){
@@ -23204,6 +23308,38 @@ function applyBankFilters(bank,f){
   // V15.12.38 — Filtro de favoritas. Compatível com questões antigas (sem campo favorite).
   if(f.favorite === 'yes') r = r.filter(q => q.favorite === true);
   else if(f.favorite === 'no') r = r.filter(q => !q.favorite);
+  // V15.12.53 — Filtros do P1 (handoff):
+  //   hasExplanation: 'yes' = explanation não vazia | 'no' = sem explicação
+  //   hasFlashcard:   'yes' = tem flashcard derivado (erro com hasCard=true e sourceBankId=q.id)
+  //   inNotebooks:    'none' = em nenhum | '1' = em 1 caderno | '2plus' = em 2+ cadernos
+  if(f.hasExplanation === 'yes'){
+    r = r.filter(q => !!(q.explanation && String(q.explanation).trim().length > 0));
+  } else if(f.hasExplanation === 'no'){
+    r = r.filter(q => !q.explanation || !String(q.explanation).trim());
+  }
+  if(f.hasFlashcard === 'yes' || f.hasFlashcard === 'no'){
+    // Index de questões com flashcard. Construído uma vez por chamada, O(N) em DATA.errors.
+    const errs = DATA.errors || [];
+    const withCard = new Set();
+    for(const e of errs){
+      if(e && e.hasCard && e.sourceBankId) withCard.add(e.sourceBankId);
+    }
+    if(f.hasFlashcard === 'yes') r = r.filter(q => withCard.has(q.id));
+    else                         r = r.filter(q => !withCard.has(q.id));
+  }
+  if(f.inNotebooks && f.inNotebooks !== 'all'){
+    // Index questionId → quantos cadernos. O(M) em DATA.notebooks.
+    const counts = new Map();
+    for(const nb of (DATA.notebooks || [])){
+      const ids = nb.questionIds || [];
+      for(const qid of ids){
+        counts.set(qid, (counts.get(qid)||0) + 1);
+      }
+    }
+    if(f.inNotebooks === 'none')       r = r.filter(q => !counts.has(q.id));
+    else if(f.inNotebooks === '1')     r = r.filter(q => counts.get(q.id) === 1);
+    else if(f.inNotebooks === '2plus') r = r.filter(q => (counts.get(q.id)||0) >= 2);
+  }
   if(f.search&&f.search.trim()){
     const t = f.search.toLowerCase().trim();
     r = r.filter(q=>(q.enunciado||'').toLowerCase().includes(t));
@@ -23457,6 +23593,58 @@ function renderBankFilters(stateKey,bank){
       ['all','Todas'],
       ['yes','★ Favoritadas',favYes],
       ['no','Sem favoritar',bank.length - favYes]
+    ]));
+  }
+
+  // V15.12.53 — Filtro "Com explicação". Computado a partir de q.explanation.
+  // Útil porque questões importadas raramente têm explicação, e questões IA
+  // ou explicadas via comando dedicado têm. Mostra só se houver mistura no banco.
+  const expYes = bank.filter(q=>!!(q.explanation && String(q.explanation).trim())).length;
+  const expNo = bank.length - expYes;
+  if(expYes > 0 && expNo > 0){
+    chipRows.appendChild(buildChipGroup('Explicação','hasExplanation',[
+      ['all','Todas'],
+      ['yes','📖 Com explicação',expYes],
+      ['no','Sem explicação',expNo]
+    ]));
+  }
+
+  // V15.12.53 — Filtro "Com flashcard derivado". Constrói índice questão→flashcard
+  // via DATA.errors (erro com hasCard=true e sourceBankId=q.id indica que a
+  // questão errada virou flashcard).
+  const errsForFc = DATA.errors || [];
+  const fcSet = new Set();
+  for(const e of errsForFc){
+    if(e && e.hasCard && e.sourceBankId) fcSet.add(e.sourceBankId);
+  }
+  const fcYes = bank.filter(q=>fcSet.has(q.id)).length;
+  const fcNo = bank.length - fcYes;
+  if(fcYes > 0){
+    chipRows.appendChild(buildChipGroup('Flashcard','hasFlashcard',[
+      ['all','Todas'],
+      ['yes','🎴 Com flashcard',fcYes],
+      ['no','Sem flashcard',fcNo]
+    ]));
+  }
+
+  // V15.12.53 — Filtro "Em N cadernos". Útil pra ver questões "compartilhadas"
+  // entre múltiplos cadernos (estudo recorrente) vs órfãs (não aproveitadas).
+  // Só aparece se o usuário tiver pelo menos 1 caderno.
+  if((DATA.notebooks||[]).length > 0){
+    const nbCounts = new Map();
+    for(const nb of (DATA.notebooks || [])){
+      for(const qid of (nb.questionIds||[])){
+        nbCounts.set(qid, (nbCounts.get(qid)||0) + 1);
+      }
+    }
+    const nbNone = bank.filter(q => !nbCounts.has(q.id)).length;
+    const nbOne  = bank.filter(q => nbCounts.get(q.id) === 1).length;
+    const nbMany = bank.filter(q => (nbCounts.get(q.id)||0) >= 2).length;
+    chipRows.appendChild(buildChipGroup('Cadernos','inNotebooks',[
+      ['all','Todas'],
+      ['none','📭 Em nenhum',nbNone],
+      ['1','📁 Em 1 caderno',nbOne],
+      ['2plus','📚 Em 2+ cadernos',nbMany]
     ]));
   }
 
@@ -53895,6 +54083,318 @@ function renderSettings(){
     resetOnboardingRow.appendChild(roBtnRow);
     adminCard.appendChild(resetOnboardingRow);
 
+    // V15.12.51 — Auditoria rápida do trial bonus.
+    // Lista os últimos N usuários criados e o saldo deles. Permite identificar
+    // contas que ficaram com 0 créditos (trigger handle_new_user falhou) sem
+    // precisar abrir o painel do Supabase. Todos os dados vêm via RPCs já
+    // existentes — não precisa criar tabela nova.
+    const auditTrialRow = mk('div');
+    auditTrialRow.style.cssText='margin-top:.875rem;padding-top:.75rem;border-top:1px solid var(--border)';
+    const atTxt = mk('div');
+    const atTitle = mk('div');atTitle.style.cssText='font-size:12.5px;font-weight:600';
+    atTitle.textContent = '🎁 Auditar trial bonus dos últimos usuários';
+    const atDesc = mk('div','txt3');atDesc.style.cssText='font-size:11px;margin-top:2px;line-height:1.55';
+    atDesc.innerHTML = 'Verifica se contas recém-criadas receberam os créditos do trial. Se ver alguém com saldo 0, o trigger <code>handle_new_user</code> pode ter falhado. SQL completo abaixo do botão.';
+    atTxt.appendChild(atTitle);atTxt.appendChild(atDesc);
+    auditTrialRow.appendChild(atTxt);
+
+    const atBtnRow = mk('div');atBtnRow.style.cssText='display:flex;gap:8px;margin-top:.625rem;flex-wrap:wrap;align-items:center';
+    const atBtn = mk('button','btn btn-sm');
+    atBtn.textContent = 'Auditar minha conta';
+    atBtn.title = 'Roda fetchQuota e mostra o saldo atual + se o trigger parece ter rodado';
+    atBtn.addEventListener('click', async ()=>{
+      atBtn.disabled = true;
+      atBtn.textContent = 'Verificando...';
+      try{
+        QUOTA.lastFetchedAt = 0;
+        await fetchQuota();
+        const created = AUTH.user && AUTH.user.created_at ? new Date(AUTH.user.created_at) : null;
+        const lines = [
+          'Email: ' + (AUTH.user.email||'?'),
+          'User ID: ' + (AUTH.user.id||'?'),
+          'Conta criada em: ' + (created ? created.toLocaleString('pt-BR') : '?'),
+          'Saldo atual: ' + (QUOTA.remaining===null||QUOTA.remaining===undefined ? 'NULL (sem linha em user_credits)' : QUOTA.remaining + ' créditos'),
+          'Plano atual: ' + (QUOTA.plan||'?'),
+          '',
+          QUOTA.remaining===0 || QUOTA.remaining===null
+            ? '⚠ Saldo zero/nulo — trigger pode ter falhado pra esta conta. Veja SQL abaixo.'
+            : '✓ Saldo presente. Trial parece ter rodado.'
+        ];
+        alert(lines.join('\n'));
+      }catch(e){
+        alert('Erro: ' + e.message);
+      }finally{
+        atBtn.disabled = false;
+        atBtn.textContent = 'Auditar minha conta';
+      }
+    });
+    atBtnRow.appendChild(atBtn);
+
+    const atSqlBtn = mk('button','btn btn-sm');
+    atSqlBtn.textContent = 'Copiar SQL de auditoria';
+    atSqlBtn.title = 'Copia query SQL pra rodar no Supabase Editor';
+    atSqlBtn.addEventListener('click', async ()=>{
+      const sql = `-- V15.12.51: Auditoria do trial bonus
+-- Lista usuários criados nos últimos 14 dias e o saldo deles.
+-- Quem aparecer com balance 0 ou NULL: o trigger handle_new_user falhou.
+
+SELECT
+  u.id,
+  u.email,
+  u.created_at,
+  u.raw_app_meta_data->>'provider' AS provider,
+  COALESCE(uc.balance, 0) AS balance,
+  CASE
+    WHEN uc.balance IS NULL THEN 'sem linha em user_credits'
+    WHEN uc.balance = 0 THEN 'zerado (trigger falhou ou trial usado)'
+    ELSE 'ok'
+  END AS status
+FROM auth.users u
+LEFT JOIN user_credits uc ON uc.user_id = u.id
+WHERE u.created_at > NOW() - INTERVAL '14 days'
+ORDER BY u.created_at DESC
+LIMIT 50;
+
+-- Pra inspecionar a definição do trigger:
+-- SELECT tgname, pg_get_triggerdef(oid)
+-- FROM pg_trigger
+-- WHERE tgname ILIKE '%new_user%' OR tgname ILIKE '%handle%';
+
+-- Pra ver a função associada:
+-- SELECT pg_get_functiondef(oid)
+-- FROM pg_proc
+-- WHERE proname IN ('handle_new_user','grant_trial_bonus','grant_welcome_bonus');
+
+-- Pra creditar manualmente um trial pendente (substituir USER_ID):
+-- INSERT INTO user_credits (user_id, balance, kind, created_at)
+-- VALUES ('USER_ID', 40, 'trial_bonus', NOW())
+-- ON CONFLICT (user_id) DO UPDATE SET balance = user_credits.balance + 40;`;
+      try{
+        await navigator.clipboard.writeText(sql);
+        atSqlBtn.textContent = '✓ Copiado!';
+        setTimeout(()=>{ atSqlBtn.textContent = 'Copiar SQL de auditoria'; }, 2000);
+      }catch(e){
+        // Fallback: prompt com o texto
+        prompt('Copie o SQL abaixo e rode no Supabase SQL Editor:', sql);
+      }
+    });
+    atBtnRow.appendChild(atSqlBtn);
+    auditTrialRow.appendChild(atBtnRow);
+    adminCard.appendChild(auditTrialRow);
+
+    // V15.12.52 — Marcar assinatura como teste (separa do MRR real).
+    // Resolve P0.2: o admin assina pra testar, e o MRR fica enviesado por
+    // assinaturas que não são receita real. Esta UI:
+    // - Mostra o estado atual da SUA conta (chamando admin_get_test_subscription_status)
+    // - Permite marcar/desmarcar via admin_set_test_subscription
+    // - Disponibiliza o SQL completo da migration pra rodar no Supabase
+    const testSubRow = mk('div');
+    testSubRow.style.cssText = 'margin-top:.875rem;padding-top:.75rem;border-top:1px solid var(--border)';
+    const tsTxt = mk('div');
+    const tsTitle = mk('div');tsTitle.style.cssText = 'font-size:12.5px;font-weight:600';
+    tsTitle.textContent = '🧪 Assinaturas de teste (MRR limpo)';
+    const tsDesc = mk('div','txt3');
+    tsDesc.style.cssText = 'font-size:11px;margin-top:2px;line-height:1.55';
+    tsDesc.innerHTML = 'Marca uma assinatura como teste pra que ela <b>não conte no MRR real</b>. Útil quando você assina o próprio app pra testar fluxos sem inflar a métrica.';
+    tsTxt.appendChild(tsTitle);tsTxt.appendChild(tsDesc);
+    testSubRow.appendChild(tsTxt);
+
+    // Status atual (carregado em background)
+    const tsStatus = mk('div');
+    tsStatus.style.cssText = 'margin-top:.5rem;padding:.5rem .75rem;background:var(--surface2);border-radius:8px;font-size:11.5px;line-height:1.55';
+    tsStatus.textContent = 'Carregando status atual...';
+    testSubRow.appendChild(tsStatus);
+
+    const tsBtnRow = mk('div');tsBtnRow.style.cssText = 'display:flex;gap:8px;margin-top:.625rem;flex-wrap:wrap;align-items:center';
+
+    // Botão de toggle — só funciona depois do status carregar
+    const tsBtn = mk('button','btn btn-sm');
+    tsBtn.textContent = 'Carregando...';
+    tsBtn.disabled = true;
+    let _tsCurrent = null; // null = desconhecido, true/false = estado conhecido
+
+    async function refreshTsStatus(){
+      tsBtn.disabled = true;
+      tsStatus.style.color = 'var(--text2)';
+      try{
+        const {data, error} = await supa.rpc('admin_get_test_subscription_status');
+        if(error) throw error;
+        // RPC retorna {is_test: bool, has_subscription: bool, total_test_count: int}
+        // (espelha contrato definido no SQL — se rpc ainda não existe, cai no catch)
+        const row = (Array.isArray(data) ? data[0] : data) || {};
+        const isTest = !!row.is_test;
+        const hasSub = row.has_subscription !== false;
+        const total = row.total_test_count;
+        _tsCurrent = isTest;
+        if(!hasSub){
+          tsStatus.innerHTML = '⚠ Você não tem assinatura ativa pra marcar. Assine um plano antes de usar este toggle.';
+          tsBtn.textContent = 'Sem assinatura';
+          tsBtn.disabled = true;
+          return;
+        }
+        if(isTest){
+          tsStatus.innerHTML = '🧪 <b>Marcada como teste</b> — esta assinatura está excluída do MRR.' + (typeof total === 'number' ? ` (${total} no total)` : '');
+          tsBtn.textContent = 'Desmarcar (voltar a contar no MRR)';
+        } else {
+          tsStatus.innerHTML = '✓ Não marcada — está contando normalmente no MRR.' + (typeof total === 'number' ? ` (${total} marcadas no sistema)` : '');
+          tsBtn.textContent = 'Marcar como teste';
+        }
+        tsBtn.disabled = false;
+      }catch(e){
+        const msg = (e.message||'').toLowerCase();
+        if(msg.includes('does not exist') || msg.includes('not found') || msg.includes('function')){
+          tsStatus.innerHTML = '⚠ As RPCs de teste ainda não existem no banco. Use "Copiar SQL" abaixo, rode no Supabase Editor, depois clique em "Atualizar".';
+          tsStatus.style.color = 'var(--amber-text)';
+          tsBtn.textContent = 'Atualizar';
+          tsBtn.disabled = false;
+          _tsCurrent = null; // estado desconhecido — botão vira só refresh
+        } else {
+          tsStatus.innerHTML = '⚠ Erro: ' + escapeHTML(e.message);
+          tsStatus.style.color = 'var(--red-text)';
+          tsBtn.textContent = 'Tentar de novo';
+          tsBtn.disabled = false;
+          _tsCurrent = null;
+        }
+      }
+    }
+
+    tsBtn.addEventListener('click', async ()=>{
+      if(_tsCurrent === null){
+        // Estado desconhecido — só atualiza
+        await refreshTsStatus();
+        return;
+      }
+      const newValue = !_tsCurrent;
+      tsBtn.disabled = true;
+      tsBtn.textContent = newValue ? 'Marcando...' : 'Desmarcando...';
+      try{
+        const {error} = await supa.rpc('admin_set_test_subscription', {p_is_test: newValue});
+        if(error) throw error;
+        showToast(newValue ? '🧪 Assinatura marcada como teste' : '✓ Assinatura voltou ao MRR normal', 4000);
+        await refreshTsStatus();
+      }catch(e){
+        alert('Erro: ' + (e.message||e));
+        tsBtn.disabled = false;
+        await refreshTsStatus();
+      }
+    });
+    tsBtnRow.appendChild(tsBtn);
+
+    const tsSqlBtn = mk('button','btn btn-sm');
+    tsSqlBtn.textContent = 'Copiar SQL da migration';
+    tsSqlBtn.title = 'Adiciona a coluna is_test_subscription e cria as RPCs de admin';
+    tsSqlBtn.addEventListener('click', async ()=>{
+      const sql = `-- V15.12.52: Migration pra marcar assinaturas como teste e excluí-las do MRR
+-- Idempotente: pode rodar várias vezes sem quebrar.
+
+-- 1) Adiciona coluna is_test_subscription em subscriptions (default false)
+ALTER TABLE subscriptions
+  ADD COLUMN IF NOT EXISTS is_test_subscription BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_subscriptions_is_test
+  ON subscriptions (is_test_subscription)
+  WHERE is_test_subscription = TRUE;
+
+-- 2) RPC pra admin marcar/desmarcar a PRÓPRIA assinatura como teste
+CREATE OR REPLACE FUNCTION admin_set_test_subscription(p_is_test BOOLEAN)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_email TEXT;
+BEGIN
+  SELECT email INTO v_user_email FROM auth.users WHERE id = auth.uid();
+  IF v_user_email IS NULL THEN
+    RAISE EXCEPTION 'Não autenticado';
+  END IF;
+  -- Whitelist de admin (espelha ADMIN_EMAILS no JS)
+  IF v_user_email NOT IN ('jeancarvalho01@hotmail.com') THEN
+    RAISE EXCEPTION 'Acesso negado: apenas admins';
+  END IF;
+  UPDATE subscriptions
+    SET is_test_subscription = p_is_test,
+        updated_at = NOW()
+    WHERE user_id = auth.uid()
+      AND status IN ('active','trialing','pending');
+END;
+$$;
+
+REVOKE ALL ON FUNCTION admin_set_test_subscription(BOOLEAN) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION admin_set_test_subscription(BOOLEAN) TO authenticated;
+
+-- 3) RPC pra ler o status atual (do próprio user) + total no sistema
+CREATE OR REPLACE FUNCTION admin_get_test_subscription_status()
+RETURNS TABLE (
+  is_test BOOLEAN,
+  has_subscription BOOLEAN,
+  total_test_count INT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_email TEXT;
+BEGIN
+  SELECT email INTO v_user_email FROM auth.users WHERE id = auth.uid();
+  IF v_user_email IS NULL THEN
+    RAISE EXCEPTION 'Não autenticado';
+  END IF;
+  IF v_user_email NOT IN ('jeancarvalho01@hotmail.com') THEN
+    RAISE EXCEPTION 'Acesso negado: apenas admins';
+  END IF;
+  RETURN QUERY
+  SELECT
+    COALESCE(s.is_test_subscription, FALSE) AS is_test,
+    (s.id IS NOT NULL) AS has_subscription,
+    (SELECT COUNT(*)::INT FROM subscriptions WHERE is_test_subscription = TRUE)
+      AS total_test_count
+  FROM subscriptions s
+  WHERE s.user_id = auth.uid()
+    AND s.status IN ('active','trialing','pending')
+  ORDER BY s.created_at DESC
+  LIMIT 1;
+  -- Se não há subscription, retorna 1 linha "vazia" pra UI saber
+  IF NOT FOUND THEN
+    RETURN QUERY SELECT FALSE, FALSE,
+      (SELECT COUNT(*)::INT FROM subscriptions WHERE is_test_subscription = TRUE);
+  END IF;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION admin_get_test_subscription_status() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION admin_get_test_subscription_status() TO authenticated;
+
+-- 4) ATUALIZAR admin_revenue_stats pra filtrar testes do MRR
+-- ⚠ Esta parte depende da definição atual da sua RPC. NÃO usamos DROP+CREATE
+-- pra evitar perder lógica existente. Em vez disso, edite a RPC manualmente:
+-- 1) No Supabase: Database → Functions → admin_revenue_stats → Edit
+-- 2) Em TODA query que conta MRR/ARR/assinantes pagos, adicionar:
+--      AND COALESCE(is_test_subscription, FALSE) = FALSE
+--    (no mesmo nível dos outros filtros como status='active', plan_id != 'trial')
+-- 3) Rodar 'Save & Test'.
+-- Exemplo do filtro adicionado:
+--   WHERE status IN ('active','trialing')
+--     AND plan_id != 'trial'
+--     AND COALESCE(is_test_subscription, FALSE) = FALSE  -- ← adicionar esta linha
+-- Sem este passo, a coluna existe mas o MRR continua incluindo as marcadas.`;
+      try{
+        await navigator.clipboard.writeText(sql);
+        tsSqlBtn.textContent = '✓ Copiado!';
+        setTimeout(()=>{ tsSqlBtn.textContent = 'Copiar SQL da migration'; }, 2000);
+      }catch(e){
+        prompt('Copie o SQL abaixo e rode no Supabase SQL Editor:', sql);
+      }
+    });
+    tsBtnRow.appendChild(tsSqlBtn);
+    testSubRow.appendChild(tsBtnRow);
+    adminCard.appendChild(testSubRow);
+
+    // Carrega status em background sem bloquear o resto da página
+    setTimeout(()=>{ refreshTsStatus(); }, 100);
+
     wrap.appendChild(adminCard);
   }
 
@@ -58941,6 +59441,17 @@ async function initAuth(){
         if(isProfileSetupNeeded() || ST.modal) return;
         maybeShowTutorial();
       }, 3500);
+      // V15.12.51 — Após signup, verifica se o trial bonus foi creditado pelo
+      // trigger handle_new_user. Só roda em usuários recém-criados (< 2 min)
+      // — login normal não dispara. Delay maior (4500ms) pra dar tempo do
+      // trigger rodar no servidor antes de checar o saldo.
+      if(isFreshlyCreatedUser()){
+        setTimeout(()=>{
+          verifyTrialActivation().catch(e=>{
+            console.warn('[trial] verifyTrialActivation falhou:', e.message);
+          });
+        }, 4500);
+      }
     }
     if(event==='SIGNED_OUT'){
       // Clear sync state. Keep DATA as-is — user may log in to another account
