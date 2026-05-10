@@ -14692,18 +14692,17 @@ function handleApiError(err, ctx){
     }
     if(err.status === 429){
       // V15.12.65 — Diferencia rate limit upstream (Anthropic) vs backend (Gralia).
-      // O backend deve marcar code/error pra distinguir. Sem evidência clara,
-      // mensagem genérica.
+      // V15.12.66 — Busca também em body.error (texto real do Anthropic),
+      // não só em code. Mensagem real fala "input tokens per minute".
       const body = err.body || {};
       const code = body.code || '';
       const errMsg = (body.error || '').toLowerCase();
       console.error('[api-error] 429 received', {code, errMsg, body});
-      if(code === 'ANTHROPIC_RATE_LIMIT' || /anthropic|upstream|tokens.*per.*minute/i.test(errMsg)){
-        showToast('⏳ A IA da Anthropic atingiu o limite de tokens por minuto. Aguarde 1-2 minutos e tente novamente.', 6000);
+      if(code === 'ANTHROPIC_RATE_LIMIT' || /anthropic|upstream|tokens.*per.*minute|input tokens|claude.*com/i.test(errMsg)){
+        showToast('⏳ Limite da Anthropic (50k tokens/min da org) atingido. Aguarde 1-2 min. Esse limite é compartilhado entre todos os usuários.', 7000);
       } else if(code === 'GRALIA_RATE_LIMIT' || /too many requests|rate limit/i.test(errMsg)){
         showToast('⏳ Você fez muitas requisições muito rápido. Aguarde alguns segundos.', 5000);
       } else {
-        // Mensagem cauta — não afirma que é Anthropic se não temos certeza
         showToast('⏳ Requisição limitada (429). Aguarde alguns segundos e tente novamente.', 5000);
       }
       return;
@@ -15298,8 +15297,8 @@ function buildFocusPicker(){
     clearBtn.textContent = '✕ Limpar foco';
     clearBtn.addEventListener('click', () => {
       ST.activeFocus = null;
-      if(DATA.preloadedQuestions) DATA.preloadedQuestions = {};
-      save();
+      // V15.12.66 — Invalida tudo, não só preloadedQuestions
+      invalidateGenerationContext('focus-clear');
       render();
     });
     btnRow.appendChild(clearBtn);
@@ -15393,8 +15392,8 @@ function showFocusPickerModal(allSources){
     } else {
       ST.activeFocus = {selections};
     }
-    if(DATA.preloadedQuestions) DATA.preloadedQuestions = {};
-    save();
+    // V15.12.66 — Invalida tudo, não só preloadedQuestions
+    invalidateGenerationContext('focus-change');
     closeModal();
     render();
   });
@@ -20666,14 +20665,22 @@ function buildTodayCard(dueSrs, errorsNoCard, overconf, sess){
         ctaRow.appendChild(planBtn);
         aiSec.appendChild(ctaRow);
       } else {
-        const genBtn = mkBtn('🎯 Gerar análise do mentor ' + aiCostBadgeHTML('insight'),'btn btn-p btn-sm');
+        // V15.12.66 — Antes mkBtn() concatenava string com HTML do badge,
+        // mas mkBtn usa textContent → o <span> aparecia como texto literal.
+        // Agora cria botão vazio e seta innerHTML depois.
+        const genBtn = mkBtn('','btn btn-p btn-sm');
+        genBtn.innerHTML = '🎯 Gerar análise do mentor ' + aiCostBadgeHTML('insight');
         const help = mk('p');
         help.style.cssText = 'margin:6px 0 0;font-size:11px;color:var(--text3)';
         help.textContent = 'Usa IA pra analisar seus erros do dia e sugerir ajustes. 1 vez por dia (cacheado).';
         genBtn.addEventListener('click', async ()=>{
           genBtn.disabled = true; genBtn.innerHTML = 'Analisando...';
           try{ await generateDailyInsight(); render(); }
-          catch(e){ alert('Erro: '+(e.message||e)); genBtn.disabled = false; genBtn.innerHTML = '🎯 Gerar análise do mentor'; }
+          catch(e){
+            alert('Erro: '+(e.message||e));
+            genBtn.disabled = false;
+            genBtn.innerHTML = '🎯 Gerar análise do mentor ' + aiCostBadgeHTML('insight');
+          }
         });
         aiSec.appendChild(genBtn);
         aiSec.appendChild(help);
@@ -25140,6 +25147,33 @@ function simpleHash(str){
 // pra reduzir aglomeração da MESMA letra (ex: 3 B's seguidos).
 //
 // Retorna {alternatives: {A:'...',B:'...',...}, answer: 'X'}
+// V15.12.66 — Helper que retorna sempre um array de {letter, text} a partir
+// de q.alternatives, independente do formato salvo. Resolve crashes onde
+// q.alternatives era usada como array (forEach/map/length) mas chegava como
+// objeto {A,B,...} (formato P1.2) em vez de array (formato legado).
+//
+// Uso:
+//   const alts = normalizeAlternatives(q);
+//   alts.forEach(alt => { /* alt.letter, alt.text */ });
+//
+// Retorna [] se q.alternatives ausente, null, ou tipo inesperado.
+function normalizeAlternatives(q){
+  if(!q || !q.alternatives) return [];
+  const a = q.alternatives;
+  if(Array.isArray(a)){
+    // Formato legado: array de {letter, text}. Garante shape mínimo.
+    return a.filter(x => x && (x.letter || x.l) && (x.text != null || x.t != null))
+            .map(x => ({letter: x.letter || x.l, text: x.text != null ? x.text : x.t}));
+  }
+  if(typeof a === 'object'){
+    // Formato P1.2+: objeto {A:'...',B:'...',...}
+    return ['A','B','C','D','E']
+      .filter(L => a[L] != null && String(a[L]).trim() !== '')
+      .map(L => ({letter: L, text: String(a[L])}));
+  }
+  return [];
+}
+
 function shuffleAlternatives(alts, originalAnswer){
   if(!alts || typeof alts !== 'object') throw new Error('alternatives inválidas');
   if(!/^[A-E]$/.test(originalAnswer)) throw new Error('answer fora do range A-E');
@@ -25152,26 +25186,24 @@ function shuffleAlternatives(alts, originalAnswer){
   // Texto de cada alternativa, na ordem original
   const items = present.map(l => ({letter: l, text: alts[l], isCorrect: l === originalAnswer}));
 
-  // Fisher-Yates
+  // V15.12.66 — Fisher-Yates puro, sem anti-aglomeração.
+  // Anti-aglomeração da V15.12.65 introduzia previsibilidade quando o usuário
+  // entendia o algoritmo: "se acabei de errar 2 B's, próxima NÃO é B".
+  // Solução melhor: aleatório de verdade. A distribuição uniforme natural já
+  // evita aglomerações estatisticamente — só não evita coincidências curtas,
+  // que são esperadas em sequências aleatórias.
   for(let i = items.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    [items[i], items[j]] = [items[j], items[i]];
-  }
-
-  // V15.12.65 — Anti-aglomeração: se últimos 2 gabaritos foram a mesma letra
-  // X, e o nosso novo gabarito também é X, troca com outro slot pra reduzir.
-  // Tracking em ST.recentMcAnswers (volátil, sem persistência).
-  if(!ST.recentMcAnswers) ST.recentMcAnswers = [];
-  const lastTwo = ST.recentMcAnswers.slice(-2);
-  const newAnswerLetter = letters[items.findIndex(it => it.isCorrect)];
-  if(lastTwo.length === 2 && lastTwo[0] === newAnswerLetter && lastTwo[1] === newAnswerLetter){
-    // Encontra um slot diferente e troca
-    const correctIdx = items.findIndex(it => it.isCorrect);
-    const otherIndices = items.map((_,idx)=>idx).filter(idx => idx !== correctIdx);
-    if(otherIndices.length > 0){
-      const swapWith = otherIndices[Math.floor(Math.random() * otherIndices.length)];
-      [items[correctIdx], items[swapWith]] = [items[swapWith], items[correctIdx]];
+    // crypto.getRandomValues é mais imprevisível que Math.random pra essa
+    // aplicação. Fallback pra Math.random se não disponível.
+    let j;
+    if(typeof crypto !== 'undefined' && crypto.getRandomValues){
+      const buf = new Uint32Array(1);
+      crypto.getRandomValues(buf);
+      j = buf[0] % (i + 1);
+    } else {
+      j = Math.floor(Math.random() * (i + 1));
     }
+    [items[i], items[j]] = [items[j], items[i]];
   }
 
   // Reconstrói no novo mapeamento A-E
@@ -25183,7 +25215,8 @@ function shuffleAlternatives(alts, originalAnswer){
     if(it.isCorrect) newAnswer = newLetter;
   });
 
-  // Atualiza histórico (limita a 10)
+  // Tracking volátil só pra debug/diagnóstico (não influencia decisões)
+  if(!ST.recentMcAnswers) ST.recentMcAnswers = [];
   ST.recentMcAnswers.push(newAnswer);
   if(ST.recentMcAnswers.length > 10) ST.recentMcAnswers = ST.recentMcAnswers.slice(-10);
 
@@ -27321,12 +27354,13 @@ function assessQuestionQuality(q){
   }
 
   // MC sem alternativas suficientes
+  // V15.12.66 — Compat objeto/array via normalizeAlternatives
   if(q.kind === 'MC'){
-    if(!q.alternatives || q.alternatives.length < 2){
+    const alts = normalizeAlternatives(q);
+    if(alts.length < 2){
       issues.push('mc-sem-alternativas');
     } else {
-      // Verifica se alternativas ficaram com texto vazio/curto
-      const badAlts = q.alternatives.filter(a => !a.text || a.text.length < 2);
+      const badAlts = alts.filter(a => !a.text || String(a.text).length < 2);
       if(badAlts.length > 0) issues.push('alternativas-incompletas');
     }
   }
@@ -30780,9 +30814,20 @@ function renderImportedList(wrap){
       // Modo expandido: render rico completo
       enunWrap.appendChild(renderQuestionBlocks(q, {showHeader: false}));
       // Alternativas se MC
+      // V15.12.66 — Antes esperava array de {letter, text}. P1.2 passou a salvar
+      // como objeto {A:'...', B:'...', ...}. Aceita ambos pra não quebrar com
+      // questões antigas (array) nem com novas (objeto).
       if(q.kind==='MC' && q.alternatives){
         const altWrap = mk('div');altWrap.style.cssText='margin-top:.5rem;padding-left:4px;display:flex;flex-direction:column;gap:3px';
-        q.alternatives.forEach(alt=>{
+        let altList = [];
+        if(Array.isArray(q.alternatives)){
+          altList = q.alternatives;
+        } else if(typeof q.alternatives === 'object'){
+          altList = ['A','B','C','D','E']
+            .filter(L => q.alternatives[L] != null && String(q.alternatives[L]).trim() !== '')
+            .map(L => ({letter: L, text: String(q.alternatives[L])}));
+        }
+        altList.forEach(alt=>{
           const line = mk('p','txt2');line.style.cssText='margin:0;font-size:12.5px;line-height:1.5';
           const isCorrect = q.answer===alt.letter;
           line.innerHTML=`<b${isCorrect?' style="color:var(--accent-text)"':''}>${alt.letter})</b> ${escapeHTML(alt.text)}`;
@@ -31551,7 +31596,7 @@ function renderImportedImport(wrap){
       // Show alternatives for MC
       if(q.kind==='MC'&&q.alternatives){
         const altWrap = mk('div');altWrap.style.cssText='margin:.6rem 0 .25rem;padding-left:4px;display:flex;flex-direction:column;gap:.25rem';
-        q.alternatives.forEach(alt=>{
+        normalizeAlternatives(q).forEach(alt=>{
           const line = mk('p','txt2');line.style.cssText='margin:0;line-height:1.5';
           const isCorrect = q.answer===alt.letter;
           line.innerHTML=`<b${isCorrect?' style="color:var(--accent-text)"':''}>${alt.letter})</b> ${alt.text}`;
@@ -31906,7 +31951,7 @@ function renderImportedPractice(wrap){
   // Render alternatives inside the card if MC
   if(q.kind==='MC'&&q.alternatives){
     const altWrap = mk('div');altWrap.style.cssText='margin-top:.875rem;display:flex;flex-direction:column;gap:6px';
-    q.alternatives.forEach(alt=>{
+    normalizeAlternatives(q).forEach(alt=>{
       const line = mk('p','txt');line.style.cssText='margin:0;padding:6px 8px;border-radius:var(--rs)';
       if(ST.importedAnswered){
         if(alt.letter===q.answer){line.style.background='var(--accent-light)';line.style.color='var(--accent-text)';}
@@ -31923,7 +31968,7 @@ function renderImportedPractice(wrap){
     if(q.kind==='MC'&&q.alternatives){
       // Letter buttons
       const br = mk('div','grid');br.style.cssText='grid-template-columns:repeat(5,1fr);gap:6px;margin-top:.875rem';
-      q.alternatives.forEach(alt=>{
+      normalizeAlternatives(q).forEach(alt=>{
         const b = mkBtn(alt.letter,'btn btn-ans');
         b.style.cssText='padding:10px 4px;font-size:14px;font-weight:700';
         b.addEventListener('click',()=>{
@@ -34254,7 +34299,7 @@ function renderNotebookPractice(wrap){
   qc.appendChild(renderQuestionBlocks(q, {showHeader: true}));
   if(q.kind==='MC'&&q.alternatives){
     const altWrap = mk('div');altWrap.style.cssText='margin-top:.875rem;display:flex;flex-direction:column;gap:6px';
-    q.alternatives.forEach(alt=>{
+    normalizeAlternatives(q).forEach(alt=>{
       const line = mk('p','txt');line.style.cssText='margin:0;padding:6px 8px;border-radius:var(--rs)';
       if(ST.notebookPracticeAnswered){
         if(alt.letter===q.answer){line.style.background='var(--accent-light)';line.style.color='var(--accent-text)';}
@@ -34270,7 +34315,7 @@ function renderNotebookPractice(wrap){
   if(!ST.notebookPracticeAnswered){
     if(q.kind==='MC'&&q.alternatives){
       const br = mk('div','grid');br.style.cssText='grid-template-columns:repeat(5,1fr);gap:6px;margin-top:.875rem';
-      q.alternatives.forEach(alt=>{
+      normalizeAlternatives(q).forEach(alt=>{
         const b = mkBtn(alt.letter,'btn btn-ans');
         b.style.cssText='padding:10px 4px;font-size:14px;font-weight:700';
         b.addEventListener('click',()=>notebookSubmitAnswer(alt.letter));
@@ -35613,16 +35658,20 @@ async function practSubmit(answer){
     // outros erros.
     ST.practAnswered=false;
     const errMsg = String(e.message||e);
-    const lower = errMsg.toLowerCase();
+    // V15.12.66 — Inclui body.error na busca de palavras-chave. ApiError tem
+    // message='api-429' (curto) e body.error com a mensagem real do Anthropic.
+    const errBody = (e && e.body && e.body.error) ? String(e.body.error) : '';
+    const fullText = (errMsg + ' ' + errBody).toLowerCase();
+    const lower = fullText;
     // V15.12.65 — Diferencia rate limit upstream vs interno; não afirma "Anthropic"
     // sem evidência. Adiciona log estruturado pra diagnóstico.
-    console.error('[api-error] pratica handleErr:', {errMsg, errName: e?.name, errStatus: e?.status, errCode: e?.code});
+    console.error('[api-error] pratica handleErr:', {errMsg, errBody, errName: e?.name, errStatus: e?.status, errCode: e?.code});
     if(e && e.name === 'CreditsError'){
       ST.practError = '💳 Sem créditos suficientes pra processar. Recarregue ou aguarde reset do plano.';
-    } else if(lower.includes('429') || lower.includes('rate limit')){
-      const isAnthropic = /anthropic|tokens.*per.*minute|upstream/i.test(errMsg);
+    } else if(lower.includes('429') || lower.includes('rate limit') || (e && e.status === 429)){
+      const isAnthropic = /anthropic|tokens.*per.*minute|input tokens|claude.*com/i.test(fullText);
       ST.practError = isAnthropic
-        ? '⏳ A IA da Anthropic atingiu o limite de tokens/minuto. Aguarde 1-2 minutos e responda novamente.'
+        ? '⏳ Limite da Anthropic (50k tokens/min da org) atingido. Aguarde 1-2 minutos e responda novamente. Esse limite é compartilhado entre todos os usuários.'
         : '⏳ Requisição limitada — aguarde alguns segundos e responda novamente.';
     } else if(lower.includes('timeout') || lower.includes('aborted')){
       ST.practError = '⌛ A IA demorou demais pra responder. Pode ser instabilidade de rede — tente responder de novo.';
@@ -58705,7 +58754,7 @@ function renderSimuladoRunning(){
   const altsContainer = mk('div','sim-q-alts');
   const currentAnswer = sim.answers[idx].userAnswer;
   if(q.kind === 'MC' && q.alternatives){
-    q.alternatives.forEach(alt=>{
+    normalizeAlternatives(q).forEach(alt=>{
       const opt = mk('button','sim-alt-btn');opt.type='button';
       if(currentAnswer === alt.letter) opt.classList.add('selected');
       opt.innerHTML = `<span class="sa-letter">${alt.letter}</span><span class="sa-text">${escapeHTML(alt.text||'')}</span>`;
@@ -58979,7 +59028,7 @@ function renderSimuladoResult(){
       // Alternativas (se MC) ou C/E
       if(q.kind === 'MC' && q.alternatives){
         const altsList = mk('div','srrb-alts');
-        q.alternatives.forEach(alt=>{
+        normalizeAlternatives(q).forEach(alt=>{
           const isAnswer = alt.letter === q.answer;
           const isUserAns = alt.letter === a.userAnswer;
           const altDiv = mk('div','srrb-alt'+(isAnswer?' is-answer':'')+(isUserAns&&!isAnswer?' is-user-wrong':''));
