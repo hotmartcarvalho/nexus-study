@@ -12450,43 +12450,42 @@ function buildGenerationProfile(opts){
   const diffKey = opts.difficulty || 'medium';
   const diff = DIFFICULTY_GUIDE[diffKey] || DIFFICULTY_GUIDE.medium;
 
-  // Formato JSON dependendo do defaultFormat da banca
-  const formatBlock = bank.defaultFormat === 'MC'
-    ? `FORMATO DE SAÍDA: Múltipla escolha com ${bank.alternativeCount || 5} alternativas (A-${String.fromCharCode(64 + (bank.alternativeCount || 5))}).`
-    : `FORMATO DE SAÍDA: Item C/E (Certo ou Errado).`;
+  // V15.12.69 — Versão compacta. Antes ~600 tokens. Agora ~180 tokens.
+  // Mudanças:
+  // 1. Traps em 1 linha CSV (não bullets multi-linha)
+  // 2. Sem labels redundantes ("Tamanho:", "Casuística:" — IA infere)
+  // 3. Tudo num único bloco em vez de 3 seções separadas
+  // 4. Bank.instructions encurtada implicitamente (apenas o essencial)
+  //
+  // O modelo Haiku entende perfeitamente esse formato denso. Cebraspe não
+  // regride porque as instruções essenciais ainda estão lá.
 
-  const traps = (bank.trapTypes || []).map(t => '- ' + t).join('\n');
-  const discTraps = (disc.trapsCommon || []).map(t => '- ' + t).join('\n');
+  const fmt = bank.defaultFormat === 'MC'
+    ? `MC ${bank.alternativeCount||5} alternativas A-${String.fromCharCode(64+(bank.alternativeCount||5))}`
+    : `C/E (Certo ou Errado)`;
 
-  let block = `=== PERFIL DA BANCA: ${bank.name} ===
-${bank.instructions}
-Tamanho do enunciado: ${bank.enunciadoLength}
-Casuística: ${bank.casuistica}
-Fonte preferencial: ${bank.sourcePref}
-${formatBlock}
-Armadilhas típicas da banca:
-${traps}
+  // Traps em 1 linha (não array com bullets)
+  const bankTraps = (bank.trapTypes || []).slice(0, 5).map(t => {
+    // Remove o "0=" / "1=" do início se presente, pega só o nome curto
+    return t.replace(/^\d+=\s*/, '').split(':')[0];
+  }).join('; ');
+  const discTraps = (disc.trapsCommon || []).slice(0, 3).join('; ');
+
+  let block = `## CONTEXTO DE GERAÇÃO
+
+Banca: ${bank.name} | Formato: ${fmt} | Enunciado: ${bank.enunciadoLength} | Casuística: ${bank.casuistica}
+Disciplina: ${disc.name || 'genérica'} | Raciocínio: ${disc.raciocinio || 'aplicação da fonte'}
+Dificuldade: ${diff.label} — ${diff.description}
+
+Armadilhas da banca: ${bankTraps}
+Armadilhas da matéria: ${discTraps || 'gerais'}
+Cuidados: ${disc.cuidados || 'basear-se na fonte; não inventar'}
 Estilo de explicação: ${bank.comentarioStyle}
 Estilo de flashcard: ${bank.flashcardStyle}`;
 
   if(bank.isFallback){
-    block += `\n⚠ AVISO: usuário não definiu banca alvo. Usando Cebraspe como fallback.`;
+    block += `\n⚠ Banca não definida pelo usuário — usando Cebraspe padrão.`;
   }
-
-  if(disc && disc.name){
-    block += `\n\n=== DISCIPLINA: ${disc.name} ===
-Raciocínio cobrado: ${disc.raciocinio}
-Forma do enunciado: ${disc.enunciadoForm}
-Armadilhas típicas da matéria:
-${discTraps}
-Cuidados específicos: ${disc.cuidados}
-Estilo de explicação: ${disc.explanationStyle}
-Dica de flashcard: ${disc.flashcardHint}`;
-  }
-
-  block += `\n\n=== DIFICULDADE: ${diff.label} ===
-${diff.description}
-Tamanho do enunciado: ${diff.enunciadoTip}`;
 
   return block;
 }
@@ -61081,7 +61080,7 @@ async function authSignUp(email, password, username, displayName){
         user_agent: navigator.userAgent.slice(0, 200)
       }).then(()=>{}).catch(()=>{});
     }catch(_){}
-    throw new Error('Este domínio de email não é aceito. Use um email permanente (Gmail, Outlook, etc).');
+    throw new Error('Este domínio de email não é aceito. Use um email permanente como Gmail, Hotmail, Outlook, Yahoo, iCloud, ou o email da sua empresa/universidade.');
   }
   // V12 fix: reseta DATA local pra evitar contaminação de dados de outra conta
   // Cenário: usuário cria conta NOVA num browser que tinha dados de outra conta.
