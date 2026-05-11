@@ -9544,7 +9544,7 @@ function _DEPRECATED_startPrefetchExplanation(q, model){
 
   const userAnswered = ST.importedAnswer;
   const qText = q.kind==='MC'
-    ? `${q.enunciado}\n\nAlternativas:\n${(q.alternatives||[]).map(a=>`${a.letter}) ${a.text}`).join('\n')}`
+    ? `${q.enunciado}\n\nAlternativas:\n${normalizeAlternatives(q).map(a=>`${a.letter}) ${a.text}`).join('\n')}`
     : q.enunciado;
   const sys = model === 'sonnet'
     ? 'Você é professor especialista em concursos públicos brasileiros. Sua resposta deve ter clareza, profundidade e identificar armadilhas com precisão. Responda SEMPRE em JSON puro, sem markdown.'
@@ -9637,7 +9637,7 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn, opts)
     // Se não tinha prefetch ou falhou, gera agora
     if(!payload){
       const qText = q.kind==='MC'
-        ? `${q.enunciado}\n\nAlternativas:\n${(q.alternatives||[]).map(a=>`${a.letter}) ${a.text}`).join('\n')}`
+        ? `${q.enunciado}\n\nAlternativas:\n${normalizeAlternatives(q).map(a=>`${a.letter}) ${a.text}`).join('\n')}`
         : q.enunciado;
       const sys = model === 'sonnet'
         ? 'Você é professor especialista em concursos públicos brasileiros. Sua resposta deve ter clareza, profundidade e identificar armadilhas com precisão. Responda SEMPRE em JSON puro, sem markdown.'
@@ -9753,7 +9753,7 @@ async function generateAndSaveFlashcard(q, model, container, triggerBtn, opts){
 
   try{
     const qText = q.kind==='MC'
-      ? `${q.enunciado}\n\nAlternativas:\n${(q.alternatives||[]).map(a=>`${a.letter}) ${a.text}`).join('\n')}`
+      ? `${q.enunciado}\n\nAlternativas:\n${normalizeAlternatives(q).map(a=>`${a.letter}) ${a.text}`).join('\n')}`
       : q.enunciado;
     const sys = model === 'sonnet'
       ? 'Você é especialista em criar flashcards eficazes para concursos brasileiros. Use repetição espaçada (SRS). FRENTE: pergunta ou conceito-gatilho concreto. VERSO: resposta direta com no máximo 2 frases. Foque no que diferencia esse conceito de outros parecidos. Responda em JSON puro.'
@@ -10208,7 +10208,7 @@ function showHelpDoubtModal(q, currentExplanation){
 
     try{
       const qText = q.kind==='MC'
-        ? `${q.enunciado}\n\nAlternativas:\n${(q.alternatives||[]).map(a=>`${a.letter}) ${a.text}`).join('\n')}`
+        ? `${q.enunciado}\n\nAlternativas:\n${normalizeAlternatives(q).map(a=>`${a.letter}) ${a.text}`).join('\n')}`
         : q.enunciado;
       const sys = `Você é um professor especialista em concursos brasileiros, com paciência infinita e talento pra explicar conceitos difíceis de forma simples. O estudante já viu uma explicação mas não entendeu — sua missão é destravar a confusão DELE especificamente, sem repetir o que ele já leu.
 
@@ -13767,7 +13767,97 @@ function makeCallKey(body){
   return body.model + '::' + c.length + '::' + head + '::' + tail;
 }
 
+// V15.12.67 — Throttling client-side pra reduzir rajadas. O 429 da Anthropic
+// é da org inteira (50k tokens/min compartilhados). Sem throttle, dois cliques
+// rápidos do mesmo user já podem disparar. Estratégia:
+//   - Mínimo 800ms entre chamadas consecutivas (suficiente pra usuário humano
+//     normal não notar; quem clica em <800ms está spammando)
+//   - Top-up de delay se já houve 3+ chamadas nos últimos 30s
+//   - Não aplica a `series_batch` (já tem delay interno entre cadernos)
+//
+// IMPORTANTE: throttle não conta créditos — é só timing. Quem tem créditos
+// pode fazer todas as questões, só com cadência humana.
+const _apiCallTimestamps = []; // rolling window
+const APITHROTTLE_MIN_GAP_MS = 800;
+const APITHROTTLE_WINDOW_MS = 30000;
+const APITHROTTLE_BURST_LIMIT = 3; // 3 chamadas em 30s = OK; 4ª espera mais
+
+async function throttleApiCall(actionId){
+  // series_batch tem seu próprio delay entre cadernos; não throttle aqui
+  if(actionId === 'series_batch') return;
+  const now = Date.now();
+  // Limpa timestamps fora da janela
+  while(_apiCallTimestamps.length && now - _apiCallTimestamps[0] > APITHROTTLE_WINDOW_MS){
+    _apiCallTimestamps.shift();
+  }
+  const last = _apiCallTimestamps[_apiCallTimestamps.length - 1] || 0;
+  const sinceLast = now - last;
+  let waitMs = 0;
+  if(sinceLast < APITHROTTLE_MIN_GAP_MS){
+    waitMs = APITHROTTLE_MIN_GAP_MS - sinceLast;
+  }
+  // Se já houve muitas no burst, adiciona delay extra (escalonado)
+  if(_apiCallTimestamps.length >= APITHROTTLE_BURST_LIMIT){
+    const burstExtra = (_apiCallTimestamps.length - APITHROTTLE_BURST_LIMIT + 1) * 400;
+    waitMs = Math.max(waitMs, burstExtra);
+  }
+  if(waitMs > 0){
+    console.info('[throttle] aguardando', waitMs, 'ms (burst:', _apiCallTimestamps.length, ')');
+    await new Promise(r => setTimeout(r, waitMs));
+  }
+  _apiCallTimestamps.push(Date.now());
+}
+
 async function apiGenerate(body){
+  // V15.12.67 — Throttle antes de qualquer coisa
+  if(body && body.action_id){
+    await throttleApiCall(body.action_id);
+  }
+  // V15.12.68 — Rate limit estratificado por plano (anti-abuso).
+  // Chama RPC check_user_rate_limit ANTES de qualquer chamada paga à IA.
+  // RPC retorna allowed=false se user ultrapassou limite por hora do plano.
+  // series_batch e ações free passam (RPC respeita esses casos).
+  if(body && body.action_id && body.action_id !== 'series_batch' && !body._silentOn402 && supa && AUTH && AUTH.user){
+    const cost_meta = (window.AI_COSTS||{})[body.action_id];
+    let isPaid = false;
+    if(cost_meta !== undefined && cost_meta !== null){
+      if(typeof cost_meta === 'number') isPaid = cost_meta > 0;
+      else if(typeof cost_meta === 'object') isPaid = !cost_meta.is_free && (cost_meta.base_credits || 0) > 0;
+    }
+    if(isPaid){
+      try{
+        const {data: rateData, error: rateErr} = await supa.rpc('check_user_rate_limit', {
+          p_user_id: AUTH.user.id
+        });
+        if(!rateErr && Array.isArray(rateData) && rateData.length > 0){
+          const r = rateData[0];
+          if(r.allowed === false){
+            console.warn('[rate-limit] bloqueado:', r);
+            // Retorna 429 sintético, mesma forma como o backend retornaria
+            const retry = Math.max(1, r.retry_after_seconds || 60);
+            const minutes = Math.ceil(retry / 60);
+            return new Response(JSON.stringify({
+              error: `Rate limit do plano atingido: ${r.current_count}/${r.hour_limit} questões na última hora. Aguarde ${minutes} ${minutes===1?'minuto':'minutos'} antes da próxima.`,
+              code: 'GRALIA_RATE_LIMIT',
+              plan: r.plan_id,
+              current_count: r.current_count,
+              hour_limit: r.hour_limit,
+              retry_after_seconds: retry
+            }), {
+              status: 429,
+              headers: {'Content-Type':'application/json', 'Retry-After': String(retry)}
+            });
+          }
+        }
+        // Se erro na RPC: deixa passar (defense-in-depth no backend deve segurar).
+        if(rateErr){
+          console.warn('[rate-limit] RPC falhou, deixando passar:', rateErr.message);
+        }
+      }catch(e){
+        console.warn('[rate-limit] exception, deixando passar:', e.message);
+      }
+    }
+  }
   // V15.12.16 — GATE FINAL: bloqueia ações pagas SEM saldo.
   // Defesa em profundidade: mesmo se algum caller esquecer de chamar
   // assertCanAffordFresh, este gate impede a chamada chegar no backend.
@@ -14701,7 +14791,17 @@ function handleApiError(err, ctx){
       if(code === 'ANTHROPIC_RATE_LIMIT' || /anthropic|upstream|tokens.*per.*minute|input tokens|claude.*com/i.test(errMsg)){
         showToast('⏳ Limite da Anthropic (50k tokens/min da org) atingido. Aguarde 1-2 min. Esse limite é compartilhado entre todos os usuários.', 7000);
       } else if(code === 'GRALIA_RATE_LIMIT' || /too many requests|rate limit/i.test(errMsg)){
-        showToast('⏳ Você fez muitas requisições muito rápido. Aguarde alguns segundos.', 5000);
+        // V15.12.68 — Mensagem específica do rate limit interno (proteção anti-abuso)
+        const plan = body.plan || 'seu plano';
+        const current = body.current_count;
+        const limit = body.hour_limit;
+        const retry = body.retry_after_seconds || 60;
+        const minutes = Math.ceil(retry / 60);
+        if(current && limit){
+          showToast(`⏳ Limite por hora atingido (${current}/${limit} questões). Aguarde ${minutes} ${minutes===1?'minuto':'minutos'}. Esse limite protege contra uso excessivo.`, 8000);
+        } else {
+          showToast('⏳ Você fez muitas requisições muito rápido. Aguarde alguns segundos.', 5000);
+        }
       } else {
         showToast('⏳ Requisição limitada (429). Aguarde alguns segundos e tente novamente.', 5000);
       }
@@ -27155,11 +27255,22 @@ function normalizeQuestionText(q, opts){
   q.blocks = blocks;
 
   // V15.12.34 — também limpa alternativas de MC
-  if(q.kind === 'MC' && Array.isArray(q.alternatives)){
-    q.alternatives = q.alternatives.map(a => ({
-      letter: a.letter,
-      text: _finalEnunciadoCleanup(a.text || '')
-    }));
+  // V15.12.67 — Cobre objeto {A,B,C,...} (P1.2+) além de array legado
+  if(q.kind === 'MC' && q.alternatives){
+    if(Array.isArray(q.alternatives)){
+      q.alternatives = q.alternatives.map(a => ({
+        letter: a.letter,
+        text: _finalEnunciadoCleanup(a.text || '')
+      }));
+    } else if(typeof q.alternatives === 'object'){
+      const cleaned = {};
+      ['A','B','C','D','E'].forEach(L => {
+        if(q.alternatives[L] != null){
+          cleaned[L] = _finalEnunciadoCleanup(String(q.alternatives[L]));
+        }
+      });
+      q.alternatives = cleaned;
+    }
   }
 
   return q;
@@ -31980,7 +32091,7 @@ function renderImportedPractice(wrap){
           updateByDisc(q.disciplineId,ok);
           recordQuestionForGoal(q.disciplineId, ok);
           if(!ok){
-            const errRec = logError({question:q.enunciado+'\n\nAlternativas:\n'+q.alternatives.map(a=>`${a.letter}) ${a.text}`).join('\n'),correct_answer:q.answer,explanation:'(questão importada — múltipla escolha)',trap:'',keyword:'',trap_type:0,topic:q.topic||'',method:'imported',sourceBankId:q.id});
+            const errRec = logError({question:q.enunciado+'\n\nAlternativas:\n'+normalizeAlternatives(q).map(a=>`${a.letter}) ${a.text}`).join('\n'),correct_answer:q.answer,explanation:'(questão importada — múltipla escolha)',trap:'',keyword:'',trap_type:0,topic:q.topic||'',method:'imported',sourceBankId:q.id});
             ST.importedLastErrId = errRec.id;
           } else {
             ST.importedLastErrId = null;
@@ -34420,7 +34531,7 @@ function notebookSubmitAnswer(answer){
   ST.notebookLastErrId = null;
   if(!ok){
     const errRec = logError({
-      question:q.kind==='MC'?(q.enunciado+'\n\nAlternativas:\n'+(q.alternatives||[]).map(a=>`${a.letter}) ${a.text}`).join('\n')):q.enunciado,
+      question:q.kind==='MC'?(q.enunciado+'\n\nAlternativas:\n'+normalizeAlternatives(q).map(a=>`${a.letter}) ${a.text}`).join('\n')):q.enunciado,
       correct_answer:q.answer,
       explanation:'(questão de caderno)',
       trap:'',keyword:'',trap_type:0,
@@ -35670,9 +35781,24 @@ async function practSubmit(answer){
       ST.practError = '💳 Sem créditos suficientes pra processar. Recarregue ou aguarde reset do plano.';
     } else if(lower.includes('429') || lower.includes('rate limit') || (e && e.status === 429)){
       const isAnthropic = /anthropic|tokens.*per.*minute|input tokens|claude.*com/i.test(fullText);
-      ST.practError = isAnthropic
-        ? '⏳ Limite da Anthropic (50k tokens/min da org) atingido. Aguarde 1-2 minutos e responda novamente. Esse limite é compartilhado entre todos os usuários.'
-        : '⏳ Requisição limitada — aguarde alguns segundos e responda novamente.';
+      // V15.12.68 — Detecta GRALIA_RATE_LIMIT (rate limit interno por plano)
+      const isGraliaLimit = /gralia_rate_limit|limite por hora|seu plano|limite do plano/i.test(fullText);
+      const bodyForLimit = (e && e.body) || {};
+      if(isGraliaLimit || bodyForLimit.code === 'GRALIA_RATE_LIMIT'){
+        const current = bodyForLimit.current_count;
+        const limit = bodyForLimit.hour_limit;
+        const retry = bodyForLimit.retry_after_seconds || 60;
+        const minutes = Math.ceil(retry / 60);
+        if(current && limit){
+          ST.practError = `⏳ Limite do plano atingido (${current}/${limit} questões em 1h). Aguarde ${minutes} ${minutes===1?'minuto':'minutos'}. Esse limite protege o serviço contra uso excessivo.`;
+        } else {
+          ST.practError = '⏳ Limite por hora do plano atingido — aguarde alguns minutos.';
+        }
+      } else if(isAnthropic){
+        ST.practError = '⏳ Limite da Anthropic (50k tokens/min da org) atingido. Aguarde 1-2 minutos e responda novamente. Esse limite é compartilhado entre todos os usuários.';
+      } else {
+        ST.practError = '⏳ Requisição limitada — aguarde alguns segundos e responda novamente.';
+      }
     } else if(lower.includes('timeout') || lower.includes('aborted')){
       ST.practError = '⌛ A IA demorou demais pra responder. Pode ser instabilidade de rede — tente responder de novo.';
     } else if(lower.includes('failed to fetch') || lower.includes('network')){
@@ -48384,12 +48510,84 @@ function renderAdminDashboard(){
 
   loadAdminAIReports(reportsBody);
 
+  // === V15.12.68 — Card: Users rate-limited (anti-abuso) ===
+  const rlCard = mk('section','admin-card');
+  rlCard.appendChild(adminSectionLabel('🛡️ Anti-abuso — Rate limit'));
+  const rlHead = mk('h2','admin-section-title');
+  rlHead.textContent = 'Usuários que excederam limite por hora (últimas 24h)';
+  rlCard.appendChild(rlHead);
+  const rlHelp = mk('p');
+  rlHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem';
+  rlHelp.textContent = 'Trial: 25/h · Estudante: 200/h · Concurseiro: 400/h · Pro: 800/h. Cadernos em série não contam.';
+  rlCard.appendChild(rlHelp);
+  const rlBody = mk('div','admin-rate-limited-body');
+  rlBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando...</div>';
+  rlCard.appendChild(rlBody);
+  wrap.appendChild(rlCard);
+  loadAdminRateLimitedUsers(rlBody);
+
   // === Footer
   const footer = mk('div','admin-footer');
   footer.innerHTML = `<small>Logado como <b>${escapeHTML(AUTH.user.email)}</b> (admin) · Painel atualizado em ${new Date().toLocaleString('pt-BR')}</small>`;
   wrap.appendChild(footer);
 
   return wrap;
+}
+
+// V15.12.68 — Lista users que bateram rate limit em alguma hora das últimas 24h
+async function loadAdminRateLimitedUsers(container){
+  if(!supa){
+    container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>';
+    return;
+  }
+  try{
+    const {data, error} = await supa.rpc('admin_list_rate_limited_users', {p_hours: 24});
+    if(error) throw error;
+    if(!data || data.length === 0){
+      container.innerHTML = '<div class="txt3" style="padding:.75rem 0;text-align:center;font-size:13px">✓ Nenhum usuário bateu rate limit nas últimas 24h.</div>';
+      return;
+    }
+    container.innerHTML = '';
+    const table = mk('div');
+    table.style.cssText = 'display:flex;flex-direction:column;gap:.5rem';
+    data.forEach(u => {
+      const row = mk('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:.625rem .875rem;background:var(--surface2);border-radius:8px;font-size:12.5px';
+      const planLimits = {trial:25, estudante:200, concurseiro:400, pro:800};
+      // V15.12.68 HOTFIX — Após ambiguidade de coluna, RPC renomeou todas
+      // as colunas de saída pra out_*. Aceita ambos os nomes pra compat
+      // (caso esquema antigo continue rodando em alguma instância).
+      const plan = u.out_plan_id || u.plan_id;
+      const totalCalls = u.out_total_calls != null ? u.out_total_calls : u.total_calls;
+      const email = u.out_email || u.email;
+      const totalCredits = u.out_total_credits != null ? u.out_total_credits : u.total_credits;
+      const firstCall = u.out_first_call || u.first_call;
+      const lastCall = u.out_last_call || u.last_call;
+      const limit = planLimits[plan] || 25;
+      const exceeded = totalCalls - limit;
+      row.innerHTML = `
+        <div style="flex:1">
+          <div style="font-weight:600">${escapeHTML(email||'?')}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">
+            Plano <b>${escapeHTML(plan||'?')}</b> · ${totalCalls} chamadas em 24h (limite/h: ${limit})
+            ${totalCredits ? ` · ${totalCredits} créditos gastos` : ''}
+          </div>
+          <div style="font-size:10.5px;color:var(--text3);margin-top:2px">
+            Primeira: ${firstCall ? new Date(firstCall).toLocaleString('pt-BR') : '?'} ·
+            Última: ${lastCall ? new Date(lastCall).toLocaleString('pt-BR') : '?'}
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="background:var(--red-light);color:var(--red-text);padding:3px 9px;border-radius:14px;font-size:11px;font-weight:700;display:inline-block">+${exceeded}</div>
+        </div>
+      `;
+      table.appendChild(row);
+    });
+    container.appendChild(table);
+  }catch(e){
+    console.error('[admin-rate-limit]', e);
+    container.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro: ${escapeHTML(e.message||String(e))}<br><br>Possíveis causas:<br>• Migration 8 não rodou (RPC não existe)<br>• Você não é admin no contexto SQL</div>`;
+  }
 }
 
 // V15.12.61 — Carrega e renderiza reports de questões IA no painel admin.
@@ -60834,9 +61032,57 @@ async function handleFirstLoginMerge(){
    AUTH UI — signup, login, logout, profile
    ============================================================ */
 
+// V15.12.68 — Lista de domínios de email temporário/descartável.
+// Bloqueia criação de conta nesses domínios pra prevenir abuso (criar várias
+// contas pra torrar trial bonus). Lista cobre os mais usados em 2024-2026 no
+// Brasil e mundo. Pode ser expandida; idealmente seria server-side mas como
+// estamos em client-only signup, a checagem aqui já bloqueia 90% dos abusadores
+// casuais. Abusador técnico pode contornar editando JS, mas vai esbarrar no
+// rate limit do RPC.
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+  '10minutemail.com','10minutemail.net','mailinator.com','tempmail.com','tempmail.org',
+  'temp-mail.org','temp-mail.io','tempmail.io','guerrillamail.com','guerrillamail.org',
+  'guerrillamail.net','guerrillamail.biz','sharklasers.com','grr.la','spam4.me',
+  'yopmail.com','yopmail.fr','yopmail.net','yopmail.org','throwawaymail.com',
+  'maildrop.cc','getnada.com','nada.email','mohmal.com','tempemail.net',
+  'tempemail.com','disposablemail.com','emailondeck.com','fakeinbox.com','trashmail.com',
+  'trashmail.net','trashmail.de','trashmail.io','spambox.us','spambog.com',
+  'mytemp.email','tempinbox.com','tempinbox.co.uk','dispostable.com','tempr.email',
+  'mailcatch.com','mintemail.com','mailnesia.com','spambog.de','tmail.io',
+  'tmpmail.org','tmpmail.net','tmpeml.com','dropmail.me','mailtemp.info',
+  'inboxalias.com','inboxbear.com','minuteinbox.com','tempmailo.com','emailnator.com',
+  'tempmailaddress.com','luxusmail.org','linshiyou.com','altmails.com','spamgourmet.com',
+  // Versões 2024-2025 mais recentes
+  'incognitomail.org','mailpoof.com','mail-temp.com','tempmail.dev','generator.email',
+  'tempmail.altmails.com','emaildrop.io','byom.de','mvrht.com','my10minutemail.com'
+]);
+
+function isDisposableEmail(email){
+  if(!email || typeof email !== 'string') return false;
+  const lower = email.toLowerCase().trim();
+  const at = lower.lastIndexOf('@');
+  if(at < 0) return false;
+  const domain = lower.substring(at + 1);
+  return DISPOSABLE_EMAIL_DOMAINS.has(domain);
+}
+
 // Signup with email + password (com username escolhido no momento)
 async function authSignUp(email, password, username, displayName){
   if(!supa)throw new Error('Supabase não configurado');
+  // V15.12.68 — Bloqueia emails descartáveis (anti-abuso de trial bonus).
+  // Mensagem clara, sem ser hostil: alguns users podem ter caído em dúvida real.
+  if(isDisposableEmail(email)){
+    // Log opcional pra admin investigar (best-effort, não bloqueia o erro)
+    try{
+      supa.from('auth_signup_attempts').insert({
+        email_norm: email.toLowerCase().trim(),
+        outcome: 'rejected_disposable',
+        reason: 'domain in DISPOSABLE_EMAIL_DOMAINS',
+        user_agent: navigator.userAgent.slice(0, 200)
+      }).then(()=>{}).catch(()=>{});
+    }catch(_){}
+    throw new Error('Este domínio de email não é aceito. Use um email permanente (Gmail, Outlook, etc).');
+  }
   // V12 fix: reseta DATA local pra evitar contaminação de dados de outra conta
   // Cenário: usuário cria conta NOVA num browser que tinha dados de outra conta.
   // Antes: DATA herdava errors/cards/sources/sessões da conta anterior.
