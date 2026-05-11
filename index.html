@@ -12601,7 +12601,11 @@ function buildContent(){
         // o limite de tokens. O modal mostra warning, mas se o usuário ignorar e
         // mandar 100k tokens, evita estourar o rate limit. Pega o início + fim
         // de cada bloco proporcionalmente.
-        const FOCUS_MAX_CHARS = 120000;
+        // V15.12.70 — Reduzido de 120k pra 60k chars (~15k tokens). Mesma
+        // razão do MAX_CONTENT_CHARS: evitar saturar Anthropic 50k tokens/min
+        // em 2 chamadas. No modo foco, isso significa que seleções muito grandes
+        // são truncadas (proporcionalmente entre blocos selecionados).
+        const FOCUS_MAX_CHARS = 60000;
         const joined = blocks.join('\n\n---\n\n');
         let body;
         if(joined.length <= FOCUS_MAX_CHARS){
@@ -12653,7 +12657,14 @@ function buildContent(){
   // o minuto inteiro em UMA chamada, bloqueando próximas. Agora: 120k chars (~30k
   // tokens), permitindo múltiplas chamadas/min e mantendo conteúdo útil pra IA.
   // Janela rotativa cobre todo o material ao longo do tempo.
-  const MAX_CONTENT_CHARS = 120000;
+  // V15.12.70 — Reduzido de 120k pra 60k chars (~15k tokens). Antes saturava
+  // Anthropic Tier 1 (50k tokens/min) em 2 questões. Agora cabem 3-4 chamadas
+  // por minuto antes de bater rate limit.
+  // Trade-off: cada chamada tem menos conteúdo de fonte → IA pode ter menos
+  // contexto pra gerar variedade. Mitigação: janela rotativa cobre toda a
+  // fonte ao longo do tempo (não sempre o mesmo pedaço). Cache de prompt da
+  // Anthropic (90% off em reads) ajuda quando user fica numa fonte só.
+  const MAX_CONTENT_CHARS = 60000;
   const MIN_PER_SOURCE = 4000;
 
   const fullContent = srcs.map(s=>{
@@ -13808,6 +13819,30 @@ async function throttleApiCall(actionId){
 }
 
 async function apiGenerate(body){
+  // V15.12.70 — DIAGNÓSTICO: loga tamanho exato de cada chamada antes de enviar.
+  // Útil pra entender por que rate limit Anthropic dispara cedo.
+  // Estimativa de tokens: 1 token ≈ 4 chars em pt-BR. Conservador.
+  try{
+    const systemChars = (body.system || '').length;
+    const messagesChars = JSON.stringify(body.messages || []).length;
+    const totalChars = systemChars + messagesChars;
+    const estTokens = Math.round(totalChars / 4);
+    const maxTokens = body.max_tokens || 0;
+    const actionId = body.action_id || '?';
+    console.info(
+      '[api-size]',
+      actionId,
+      '— system:', systemChars, 'chars',
+      '| messages:', messagesChars, 'chars',
+      '| TOTAL INPUT:', totalChars, 'chars (~' + estTokens + ' tokens)',
+      '| max_output:', maxTokens,
+      '| modelo:', body.model || '?'
+    );
+    // Soma sessão (pra entender por que satura)
+    window._sessionTokensSent = (window._sessionTokensSent || 0) + estTokens;
+    console.info('[api-size] tokens acumulados na sessão:', window._sessionTokensSent);
+  }catch(_){}
+
   // V15.12.67 — Throttle antes de qualquer coisa
   if(body && body.action_id){
     await throttleApiCall(body.action_id);
