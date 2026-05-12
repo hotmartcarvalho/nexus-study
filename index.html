@@ -24866,6 +24866,33 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
     }
     card.appendChild(ctaRow);
   }
+  // V15.12.75.4 — P1.3.1: Mostra explicações e flashcards compartilhados
+  // por outros usuários (shared_explanations). Especialmente útil pra:
+  //  - Cache hit: questão já vista por outros, traz conteúdo coletivo
+  //  - Fresh gen: outros users podem ter explicações alternativas (Sonnet,
+  //    manuais, etc) que enriquecem a aprendizagem
+  // sourceQuestion vem com q.enunciado/question; precisa ao menos disso.
+  if(sourceQuestion && typeof renderSharedExplanationsUI === 'function'){
+    const enun = sourceQuestion.question || sourceQuestion.enunciado || '';
+    if(enun && enun.length >= 20){
+      const sharedWrap = mk('div');
+      sharedWrap.style.cssText = 'margin-top:.875rem';
+      card.appendChild(sharedWrap);
+      // Passa formato esperado pelo render: {enunciado, alternatives, answer, kind}
+      const qForShared = {
+        enunciado: enun,
+        alternatives: sourceQuestion.alternatives || null,
+        answer: sourceQuestion.correct_answer || sourceQuestion.answer || '',
+        kind: sourceQuestion.kind || (sourceQuestion.alternatives ? 'MC' : 'CE')
+      };
+      // Render assíncrono: se cache hit (sem suggested próprio) e não há
+      // explicação já no card, mostra direto (expandido); caso contrário
+      // colapsado pra não duplicar UI.
+      const showExpanded = fb._fromCache || !fb.suggestedFlashcard;
+      renderSharedExplanationsUI(sharedWrap, qForShared, ok && !showExpanded);
+    }
+  }
+
   const next = mkBtn(nextLabel,'btn btn-p');
   // If fb has preloaded next question, indicate instant loading
   if(fb&&fb.next){
@@ -36391,9 +36418,16 @@ async function practSubmit(answer){
       let nextCached = null;
       try{ nextCached = await tryFetchFromPool({method: 'practice'}); }catch(_){}
 
+      // V15.12.75.3 — Se a questão do pool não tem explicação (legado pré-eval),
+      // mostra mensagem útil com chamada pra ação (gerar com IA paga 1 crédito).
+      const hasExplanation = q.explanation && q.explanation.trim().length > 10;
+      const fallbackMsg = hasExplanation
+        ? q.explanation
+        : 'Esta questão do banco ainda não tem explicação salva (foi gerada antes do sistema de enriquecimento). Clique em "Gerar outro flashcard com IA" pra entender melhor.';
+
       ST.practFb = {
         ok,
-        explanation: q.explanation || 'Sem explicação disponível.',
+        explanation: fallbackMsg,
         trap: q.trap || '',
         keyword: q.keyword || '',
         next: nextCached, // se null, "Próxima questão" vai chamar startPractice de novo
@@ -36403,7 +36437,8 @@ async function practSubmit(answer){
         // Cache hit não inclui suggested_flashcard nesta primeira versão.
         // Pra ter, IA teria que gerar quando salvou no pool — fica pra V15.12.76.
         suggestedFlashcard: null,
-        _fromCache: true
+        _fromCache: true,
+        _explanationMissing: !hasExplanation
       };
       ST.practLoading = false;
       render();
@@ -36449,6 +36484,64 @@ async function practSubmit(answer){
     updateByDisc(_practDisc,ok);
     recordQuestionForGoal(_practDisc, ok);
     save();
+    // V15.12.75.3 — Enriquece a questão no pool com explanation/trap/keyword
+    // que foram gerados pelo eval. Política do RPC: só atualiza se campos
+    // ainda estão vazios. Garante que próximos cache hits dessa questão
+    // já vêm com explicação completa.
+    try{
+      const enrichBank = inferBankIdForPool();
+      const enrichDisc = disciplineSlug(inferDiscipline(ST.practQ.topic || ''));
+      const enrichHash = canonicalQuestionHash(
+        ST.practQ.question || '',
+        ST.practQ.correct_answer || '',
+        enrichBank,
+        enrichDisc
+      );
+      if(enrichHash && supa && (res.explanation || res.trap || res.keyword)){
+        supa.rpc('ai_pool_enrich', {
+          p_content_hash: enrichHash,
+          p_explanation: res.explanation || null,
+          p_trap: res.trap || null,
+          p_keyword: res.keyword || null,
+          p_suggested_flashcard: res.suggested_flashcard || null
+        }).then(r => {
+          if(r && r.data === true){
+            console.info('[pool-enrich] questão enriquecida no pool');
+          }
+        }).catch(e => console.warn('[pool-enrich] falhou:', e.message));
+      }
+
+      // V15.12.75.4 — P1.3.1: Salva também na biblioteca shared_explanations.
+      // Diferença do ai_pool_enrich:
+      //  - ai_pool_enrich: enriquece a questão no pool (1 explanation principal)
+      //  - shared_explanations: várias explicações compartilhadas por questão,
+      //    com votos/reports. Permite múltiplas versões (Haiku, Sonnet, manual).
+      // Próximo user que pegar essa questão via cache hit vai ver essa explicação
+      // na seção "Comunidade" do feedbackCard.
+      const enunciadoForShared = ST.practQ.question || ST.practQ.enunciado || '';
+      if(enunciadoForShared && supa && res.explanation && typeof saveSharedExplanation === 'function'){
+        const modelTag = getMethodModel('practice').includes('sonnet') ? 'sonnet' : 'haiku';
+        saveSharedExplanation(enunciadoForShared, 'explicacao', modelTag, {
+          explanation: res.explanation,
+          trap: res.trap || '',
+          keyword: res.keyword || ''
+        }).then(saved => {
+          if(saved) console.info('[shared-expl] explicação salva como compartilhada');
+        }).catch(e => console.warn('[shared-expl] save falhou:', e.message));
+      }
+      // Flashcard sugerido vira também shared se o user errou (só erros geram sf)
+      if(enunciadoForShared && supa && !ok && res.suggested_flashcard
+         && res.suggested_flashcard.front && res.suggested_flashcard.back
+         && typeof saveSharedExplanation === 'function'){
+        const modelTag = getMethodModel('practice').includes('sonnet') ? 'sonnet' : 'haiku';
+        saveSharedExplanation(enunciadoForShared, 'flashcard', modelTag, {
+          front: res.suggested_flashcard.front,
+          back: res.suggested_flashcard.back
+        }).then(saved => {
+          if(saved) console.info('[shared-expl] flashcard salvo como compartilhado');
+        }).catch(e => console.warn('[shared-expl] flashcard save falhou:', e.message));
+      }
+    }catch(_){}
     let errCtx=null;
     if(!ok){
       errCtx=logError({question:ST.practQ.question,correct_answer:ST.practQ.correct_answer,explanation:res.explanation,trap:res.trap,keyword:res.keyword,trap_type:res.trap_type,topic:ST.practQ.topic,method:'practice'});
