@@ -2563,13 +2563,15 @@ h3{font-size:15px;font-weight:600}
 .btn-danger:hover:not(:disabled){background:var(--red-light)}
 .btn-sm{padding:6px 12px;font-size:12px}
 .btn-ans{flex:1;padding:13px;font-size:15px;font-weight:500;border-radius:var(--r);position:relative}
-.btn-kbd-hint{position:absolute;top:6px;right:8px;font-size:9.5px;font-weight:700;letter-spacing:.4px;background:rgba(0,0,0,.08);color:rgba(0,0,0,.55);padding:1px 6px;border-radius:4px;border:1px solid rgba(0,0,0,.08);font-family:ui-monospace,monospace;line-height:1.4;pointer-events:none;opacity:.7;transition:opacity .15s}
-.btn-c .btn-kbd-hint{background:rgba(73,197,137,.18);color:rgba(0,80,40,.7);border-color:rgba(73,197,137,.3)}
-.btn-e .btn-kbd-hint{background:rgba(232,76,76,.18);color:rgba(120,20,20,.7);border-color:rgba(232,76,76,.3)}
-html.dark .btn-kbd-hint{background:rgba(255,255,255,.10);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.12)}
+.btn-kbd-hint{position:absolute;top:6px;right:8px;font-size:10px;font-weight:700;letter-spacing:.4px;background:rgba(0,0,0,.13);color:rgba(0,0,0,.78);padding:2px 7px;border-radius:5px;border:1px solid rgba(0,0,0,.14);font-family:ui-monospace,monospace;line-height:1.4;pointer-events:none;opacity:.95;transition:opacity .15s}
+.btn-c .btn-kbd-hint{background:rgba(73,197,137,.26);color:#0a5d35;border-color:rgba(73,197,137,.42)}
+.btn-e .btn-kbd-hint{background:rgba(232,76,76,.26);color:#911818;border-color:rgba(232,76,76,.42)}
+/* V15.12.74.1 — Cobrir ambos os seletores de dark theme (html.dark e :root[data-theme="dark"]).
+   Contraste reforçado: era 60% transparência, agora 90%. */
+html.dark .btn-kbd-hint,:root[data-theme="dark"] .btn-kbd-hint{background:rgba(255,255,255,.18);color:rgba(255,255,255,.92);border-color:rgba(255,255,255,.22)}
 /* V14: Dark theme — hints C/E precisam de cor clara pra contraste */
-:root[data-theme="dark"] .btn-c .btn-kbd-hint{background:rgba(73,197,137,.22);color:#7dd3a8 !important;border-color:rgba(73,197,137,.45)}
-:root[data-theme="dark"] .btn-e .btn-kbd-hint{background:rgba(232,76,76,.22);color:#ff8a8a !important;border-color:rgba(232,76,76,.45)}
+html.dark .btn-c .btn-kbd-hint,:root[data-theme="dark"] .btn-c .btn-kbd-hint{background:rgba(73,197,137,.30);color:#a3f0c9 !important;border-color:rgba(73,197,137,.55)}
+html.dark .btn-e .btn-kbd-hint,:root[data-theme="dark"] .btn-e .btn-kbd-hint{background:rgba(232,76,76,.30);color:#ffb3b3 !important;border-color:rgba(232,76,76,.55)}
 /* V14: Botões C/E também ganham fundo mais visível em dark */
 :root[data-theme="dark"] .btn-c:not(:disabled){background:rgba(73,197,137,.08);border-color:rgba(73,197,137,.30);color:#7dd3a8}
 :root[data-theme="dark"] .btn-e:not(:disabled){background:rgba(232,76,76,.08);border-color:rgba(232,76,76,.30);color:#ff8a8a}
@@ -24404,14 +24406,22 @@ function renderStructuredExplanation(rawText, opts){
   // Ordem visual: gabarito → por_que_correta → por_que_errada → pegadinha → regra
 
   // 1. Gabarito (card destaque)
+  // V15.12.74.1 — Valor proporcional ao label (era 18px contra 10.5px = visualmente "solto").
+  // Letra MC fica grande (mais legível, é letra única); palavra C/E menor.
   if(parsed.gabarito){
     const gab = mk('div');
-    gab.style.cssText = 'display:flex;align-items:center;gap:10px;padding:.625rem .875rem;background:var(--accent-light);border-left:3px solid var(--accent);border-radius:0 8px 8px 0';
+    gab.style.cssText = 'display:flex;align-items:center;gap:10px;padding:.625rem .875rem;background:rgba(124,92,255,.10);border:1px solid rgba(124,92,255,.22);border-left:3px solid var(--accent);border-radius:0 8px 8px 0';
     const gabLbl = mk('span');
     gabLbl.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--accent-text);text-transform:uppercase;letter-spacing:.5px';
     gabLbl.textContent = 'Gabarito';
     const gabVal = mk('span');
-    gabVal.style.cssText = 'font-size:18px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace';
+    // Letra única (A-E): destaque maior. Palavras (Certo/Errado): proporcional ao label.
+    const isSingleLetter = /^[A-E]$/.test(parsed.gabarito);
+    if(isSingleLetter){
+      gabVal.style.cssText = 'font-size:15px;font-weight:800;color:var(--accent-text);font-family:ui-monospace,monospace;line-height:1';
+    } else {
+      gabVal.style.cssText = 'font-size:13px;font-weight:700;color:var(--accent-text);line-height:1';
+    }
     gabVal.textContent = parsed.gabarito;
     gab.appendChild(gabLbl);
     gab.appendChild(gabVal);
@@ -24482,15 +24492,18 @@ function renderStructuredExplanation(rawText, opts){
 
 // Helper interno do renderStructuredExplanation: monta seção
 function buildExpSection(opts){
+  // V15.12.74.1 — Backgrounds intensificados de ~7% pra ~12% pra ficar
+  // visível no tema claro sem ficar pesado no escuro. Borda fina ao redor
+  // dá definição extra.
   const colorMap = {
-    green:  {bg: 'rgba(34,197,94,.07)',  border: 'var(--green)',  label: 'var(--green-text,#15803d)'},
-    red:    {bg: 'rgba(232,76,76,.06)',  border: 'var(--red)',    label: 'var(--red-text)'},
-    amber:  {bg: 'rgba(245,158,11,.07)', border: 'var(--amber)',  label: 'var(--amber-text)'},
-    purple: {bg: 'rgba(124,92,255,.06)', border: 'var(--accent)', label: 'var(--accent-text)'}
+    green:  {bg: 'rgba(34,197,94,.11)',  border: 'var(--green)',  label: 'var(--green-text,#15803d)',  edge: 'rgba(34,197,94,.20)'},
+    red:    {bg: 'rgba(232,76,76,.10)',  border: 'var(--red)',    label: 'var(--red-text)',            edge: 'rgba(232,76,76,.22)'},
+    amber:  {bg: 'rgba(245,158,11,.11)', border: 'var(--amber)',  label: 'var(--amber-text)',          edge: 'rgba(245,158,11,.22)'},
+    purple: {bg: 'rgba(124,92,255,.10)', border: 'var(--accent)', label: 'var(--accent-text)',         edge: 'rgba(124,92,255,.22)'}
   };
   const c = colorMap[opts.color] || colorMap.purple;
   const sec = mk('div');
-  sec.style.cssText = `padding:.625rem .875rem;background:${c.bg};border-left:3px solid ${c.border};border-radius:0 8px 8px 0`;
+  sec.style.cssText = `padding:.625rem .875rem;background:${c.bg};border:1px solid ${c.edge};border-left:3px solid ${c.border};border-radius:0 8px 8px 0`;
   const head = mk('div');
   head.style.cssText = `font-size:10.5px;font-weight:700;color:${c.label};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;display:flex;align-items:center;gap:6px`;
   head.innerHTML = `<span style="font-size:13px">${opts.icon || ''}</span><span>${escapeHTML(opts.label)}</span>`;
@@ -24579,16 +24592,20 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
     card.appendChild(sep);
 
     const sugCard = mk('div');
-    sugCard.style.cssText='margin-bottom:.875rem;padding:.875rem 1rem;background:linear-gradient(135deg,rgba(124,92,255,.07) 0%,rgba(124,92,255,.03) 100%);border:1px solid rgba(124,92,255,.25);border-radius:10px';
+    // V15.12.74.1 — Gradient intensificado pra ficar visível no tema claro
+    // sem ficar pesado no escuro.
+    sugCard.style.cssText='margin-bottom:.875rem;padding:.875rem 1rem;background:linear-gradient(135deg,rgba(124,92,255,.12) 0%,rgba(124,92,255,.06) 100%);border:1px solid rgba(124,92,255,.30);border-radius:10px';
 
     const sugHead = mk('div');
     sugHead.style.cssText='font-size:11px;font-weight:700;color:var(--accent-text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px;justify-content:space-between';
-    sugHead.innerHTML = '<span style="display:flex;align-items:center;gap:6px"><span style="font-size:14px">✨</span><span>Flashcard sugerido</span></span><span style="font-size:9.5px;font-weight:700;background:rgba(34,197,94,.15);color:var(--green-text,#15803d);padding:2px 7px;border-radius:10px;letter-spacing:0;text-transform:none">grátis</span>';
+    // V15.12.74.1 — Badge "grátis" com cores adaptativas (uso de var em vez de
+    // rgba fixo). Funciona em tema claro e escuro.
+    sugHead.innerHTML = '<span style="display:flex;align-items:center;gap:6px"><span style="font-size:14px">✨</span><span>Flashcard sugerido</span></span><span style="font-size:10px;font-weight:700;background:rgba(34,197,94,.22);color:var(--green-text,#15803d);padding:3px 9px;border-radius:10px;letter-spacing:.3px;text-transform:uppercase;border:1px solid rgba(34,197,94,.35)">grátis</span>';
     sugCard.appendChild(sugHead);
 
     // Frente
     const sugFrontWrap = mk('div');
-    sugFrontWrap.style.cssText='margin-bottom:8px;padding:.5rem .75rem;background:var(--surface);border-radius:6px;border-left:2px solid var(--accent)';
+    sugFrontWrap.style.cssText='margin-bottom:8px;padding:.5rem .75rem;background:var(--surface);border:1px solid var(--border);border-left:2px solid var(--accent);border-radius:6px';
     const sugFrontLbl = mk('div');
     sugFrontLbl.style.cssText='font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px';
     sugFrontLbl.textContent = 'Frente';
@@ -24601,7 +24618,7 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
 
     // Verso
     const sugBackWrap = mk('div');
-    sugBackWrap.style.cssText='margin-bottom:10px;padding:.5rem .75rem;background:var(--surface);border-radius:6px;border-left:2px solid var(--accent)';
+    sugBackWrap.style.cssText='margin-bottom:10px;padding:.5rem .75rem;background:var(--surface);border:1px solid var(--border);border-left:2px solid var(--accent);border-radius:6px';
     const sugBackLbl = mk('div');
     sugBackLbl.style.cssText='font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px';
     sugBackLbl.textContent = 'Verso';
