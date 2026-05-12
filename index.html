@@ -4930,6 +4930,9 @@ button .ai-cost-badge{margin-left:6px;background:rgba(255,255,255,.18);color:inh
    que ficava puxado/baixo contraste no tema escuro. */
 .ai-cost-badge.free{background:rgba(34,197,94,.16);color:#15803d;border-color:rgba(34,197,94,.32);text-transform:uppercase;letter-spacing:.3px}
 html.dark .ai-cost-badge.free,:root[data-theme="dark"] .ai-cost-badge.free{background:rgba(34,197,94,.20);color:#86efac;border-color:rgba(34,197,94,.45)}
+/* V15.12.75 — Chip "Banco Gralia" no card da questão (cache hit) */
+.pool-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;background:rgba(34,197,94,.16);color:#15803d;border:1px solid rgba(34,197,94,.32);border-radius:10px;font-size:11px;font-weight:700;letter-spacing:.3px;text-transform:uppercase}
+html.dark .pool-chip,:root[data-theme="dark"] .pool-chip{background:rgba(34,197,94,.20);color:#86efac;border-color:rgba(34,197,94,.45)}
 
 /* Timeline modal de paginação */
 .timeline-modal-list{display:flex;flex-direction:column;gap:0;max-height:55vh;overflow-y:auto;padding:0 4px;margin-bottom:1rem;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
@@ -7932,6 +7935,128 @@ function invalidateGenerationContext(reason){
 // USO:
 //   const compactedHist = buildCompactHistory(ST.practHist);
 //   const messages = [...compactedHist, novaMensagem];
+// ============================================================================
+// V15.12.75 — P1.3: Cache Lookup do ai_question_pool
+// ============================================================================
+// Estratégia conservadora: antes de chamar Anthropic pra gerar nova questão,
+// olha no pool por questão boa do mesmo contexto (banca/disc/diff/kind) que
+// o user ainda não viu. Se achar, entrega do banco — sem custo Anthropic,
+// sem crédito cobrado, sem chegar em /api/generate.
+//
+// Feature flag: DATA.config.cacheEnabled (default true). Admin pode togglar.
+// Admin pode também forçar geração fresca via DATA.config.cacheForceFresh.
+
+// Helper: retorna se cache está habilitado
+function isPoolCacheEnabled(){
+  if(!DATA.config) return true;
+  if(DATA.config.cacheForceFresh === true) return false;
+  // Default true — só desliga se explicitamente false
+  return DATA.config.cacheEnabled !== false;
+}
+
+// Tenta buscar questão pronta no pool. Retorna question object compatível
+// com o que apiGenerate retornaria, ou null se cache miss.
+//
+// Compatibilidade: o objeto retornado mimetiza o que SYS_PRACT/SYS_QUICK_CE
+// retornariam pra primeira questão (campos: enunciado, answer, kind,
+// alternatives, explanation? trap? keyword? topic, difficulty).
+//
+// IMPORTANTE: cache hit não retorna campos `is_correct`, `next`, etc — esses
+// só fazem sentido em respostas de eval (não de geração inicial).
+async function tryFetchFromPool(opts){
+  opts = opts || {};
+  if(!isPoolCacheEnabled()) return null;
+  if(!supa || !AUTH || !AUTH.user) return null;
+  try{
+    const bank = opts.bank || getActiveBankProfile();
+    const discId = opts.disciplineId || inferActiveDisciplineId();
+    const disc = getActiveDisciplineProfile(discId);
+    const difficulty = opts.difficulty || inferActiveDifficulty();
+    // Determina kind baseado no formato da banca (consistente com geração)
+    const kind = opts.kind || (bank.defaultFormat === 'MC' ? 'MC' : 'CE');
+
+    if(bank.isFallback) return null; // sem banca definida = não cacheia
+    if(!discId) return null;
+
+    const {data, error} = await supa.rpc('ai_pool_lookup', {
+      p_bank_id: bank.id,
+      p_discipline_id: discId,
+      p_difficulty: difficulty || 'medium',
+      p_kind: kind,
+      p_topic_hint: opts.topicHint || null
+    });
+
+    if(error){
+      console.warn('[pool-cache] lookup error:', error.message);
+      return null;
+    }
+    if(!Array.isArray(data) || data.length === 0){
+      console.info('[pool-cache] miss — sem candidatos no pool');
+      return null;
+    }
+
+    // Escolhe 1 aleatória entre as candidatas (RPC retorna até 5)
+    const picked = data[Math.floor(Math.random() * data.length)];
+
+    // Marca como vista (não bloqueia retorno)
+    supa.rpc('ai_pool_mark_seen', {
+      p_question_id: picked.out_id,
+      p_method: opts.method || 'practice',
+      p_via: 'cache_hit'
+    }).then(()=>{}).catch(e => console.warn('[pool-cache] mark_seen falhou:', e.message));
+
+    console.info('[pool-cache] HIT', {
+      id: picked.out_id,
+      bank: picked.out_bank_id,
+      disc: picked.out_discipline_id,
+      diff: picked.out_difficulty,
+      kind: picked.out_kind,
+      score: picked.out_ai_score,
+      timesServed: picked.out_times_served
+    });
+
+    // Monta objeto compatível com o retorno da IA
+    // V15.12.75 — Importante: render usa q.question/q.correct_answer (formato IA),
+    // mas pool salva como enunciado/answer. Mapeamos ambos pra max compat.
+    return {
+      _fromCache: true,
+      _poolId: picked.out_id,
+      type: 'question',
+      kind: picked.out_kind,
+      // Formato do render (q.question, q.correct_answer)
+      question: picked.out_enunciado,
+      correct_answer: picked.out_answer,
+      // Formato do pool (enunciado, answer) — manter os dois pra compat
+      enunciado: picked.out_enunciado,
+      answer: picked.out_answer,
+      alternatives: picked.out_alternatives,
+      explanation: picked.out_explanation || '',
+      trap: picked.out_trap || '',
+      keyword: picked.out_keyword || '',
+      trap_type: 0,
+      topic: picked.out_topic || '',
+      difficulty: picked.out_difficulty || difficulty
+    };
+  }catch(e){
+    console.warn('[pool-cache] exception:', e.message);
+    return null;
+  }
+}
+
+// Marca questão como vista (chamado em fresh_gen depois de salvar no pool)
+async function markPoolQuestionSeen(questionId, method, via){
+  if(!supa || !AUTH || !AUTH.user || !questionId) return;
+  try{
+    await supa.rpc('ai_pool_mark_seen', {
+      p_question_id: questionId,
+      p_method: method || 'practice',
+      p_via: via || 'fresh_gen'
+    });
+  }catch(e){
+    console.warn('[pool-cache] mark_seen exception:', e.message);
+  }
+}
+
 function buildCompactHistory(history, opts){
   if(!Array.isArray(history) || history.length === 0) return [];
   opts = opts || {};
@@ -36032,8 +36157,17 @@ function renderPractice(){
 
   // Small bar: current model + reset button + last-gen
   const topBar = mk('div','flex');topBar.style.cssText='gap:8px;margin-bottom:.75rem;flex-wrap:wrap;align-items:center';
-  const mChip = mk('span','badge b-info');mChip.textContent='🤖 '+shortModelName(getMethodModel('practice'));
-  topBar.appendChild(mChip);
+  // V15.12.75 — Badge "Banco Gralia" quando a questão veio do pool (cache hit).
+  // Substitui o badge do modelo da IA porque não houve chamada de IA.
+  if(ST.practQ && ST.practQ._fromCache){
+    const cacheChip = mk('span','pool-chip');
+    cacheChip.innerHTML = '<span>📚</span><span>Banco Gralia</span>';
+    cacheChip.title = 'Questão do banco — sem custo de IA';
+    topBar.appendChild(cacheChip);
+  } else {
+    const mChip = mk('span','badge b-info');mChip.textContent='🤖 '+shortModelName(getMethodModel('practice'));
+    topBar.appendChild(mChip);
+  }
   const lastBadge2 = buildLastGenBadge('practice','question');
   if(lastBadge2){lastBadge2.style.marginTop='0';topBar.appendChild(lastBadge2);}
   const resetBtn = mkBtn('↺ Trocar modo/modelo','btn btn-sm');
@@ -36095,20 +36229,44 @@ async function practStart(container){
     render();
     return;
   }
-  // V15.12.16: pré-flight com refetch fresco ANTES do loading
+  // V15.12.75 — P1.3 Cache Lookup: tenta pool antes de cobrar crédito.
+  // Se acha questão boa no banco, entrega sem chamar Anthropic, sem cobrar.
+  // Cache hit não exige saldo de créditos.
+  ST.practLoading=true;ST.practHist=[];render();
+  let cachedQ = null;
+  try{
+    cachedQ = await tryFetchFromPool({method: 'practice'});
+  }catch(_){ cachedQ = null; }
+
+  if(cachedQ){
+    // CACHE HIT — entrega do banco, sem chamar Anthropic, sem cobrar
+    ST.practQ = cachedQ;
+    // Histórico vazio inicial (igual a fresh gen, mas sem assistant ainda)
+    const seed = avoidRepeatPrompt('practice');
+    ST.practHist = [{role:'user', content:'Primeira questão.'+seed}];
+    ST.practLoading = false;
+    render();
+    return;
+  }
+
+  // CACHE MISS — fluxo normal: checa saldo + chama IA
   try { await assertCanAffordFresh('practice_question'); }
   catch(creditsErr){
     _logCredit('PRACT_START_BLOCKED', {reason: creditsErr.message});
+    ST.practLoading = false;
+    render();
     handleApiError(creditsErr, {context:'pratica'});
     return;
   }
   _logCredit('PRACT_START_PASSED', {QUOTA_remaining: QUOTA.remaining});
-  ST.practLoading=true;ST.practHist=[];render();
   try{
     const seed = avoidRepeatPrompt('practice');
     const res = await timedCallAPI('practice','question',SYS_PRACT,[{role:'user',content:'Primeira questão.'+seed}],{model:getMethodModel('practice'), action:'practice_question'});
     ST.practHist=[{role:'user',content:'Primeira questão.'+seed},{role:'assistant',content:JSON.stringify(res)}];
-    ST.practQ=res;saveAIQuestion('practice',res,getMethodModel('practice'));
+    ST.practQ=res;
+    // V15.12.75 — Salva no pool. fresh_gen não marca como vista (mark_seen
+    // só roda em cache hit; pra fresh, a unicidade vem do canonical_hash).
+    saveAIQuestion('practice',res,getMethodModel('practice'));
   }catch(e){handleApiError(e, {context:'pratica'});}
   ST.practLoading=false;render();
 }
@@ -36170,7 +36328,74 @@ function navigateToPreviousQuestion(){
 
 async function practSubmit(answer){
   if(ST.practAnswered||ST.practLoading)return;
-  // V15.12.13 (Fase B+ critical fix): pré-flight ANTES de chamar IA.
+
+  // V15.12.75 — P1.3: Se a questão atual veio do cache (ST.practQ._fromCache),
+  // a resposta correta e a explicação já estão prontas. Não precisamos chamar
+  // a IA pra avaliar — fazemos local. Economia: 1 chamada Anthropic + 1 crédito.
+  // Próxima questão: tentamos cache de novo.
+  if(ST.practQ && ST.practQ._fromCache){
+    ST.practAnswered = true;
+    ST.practLoading = true;
+    render();
+    try{
+      const q = ST.practQ;
+      const correctAnswer = String(q.answer || '').trim().toUpperCase();
+      const userAnswer = String(answer || '').trim().toUpperCase();
+      const ok = correctAnswer === userAnswer;
+
+      // Atualiza session stats igual ao fluxo normal
+      DATA.session.total += 1;
+      if(ok) DATA.session.correct += 1;
+      const _practDisc = inferDiscipline(q.topic || '');
+      updateByDisc(_practDisc, ok);
+      recordQuestionForGoal(_practDisc, ok);
+
+      let errCtx = null;
+      if(!ok){
+        errCtx = logError({
+          question: q.enunciado,
+          correct_answer: q.answer,
+          explanation: q.explanation || '',
+          trap: q.trap || '',
+          keyword: q.keyword || '',
+          trap_type: 0,
+          topic: q.topic || '',
+          method: 'practice'
+        });
+      }
+      save();
+
+      // Tenta cachear PRÓXIMA questão também (lookup novo)
+      let nextCached = null;
+      try{ nextCached = await tryFetchFromPool({method: 'practice'}); }catch(_){}
+
+      ST.practFb = {
+        ok,
+        explanation: q.explanation || 'Sem explicação disponível.',
+        trap: q.trap || '',
+        keyword: q.keyword || '',
+        next: nextCached, // se null, "Próxima questão" vai chamar startPractice de novo
+        errCtx,
+        userChose: answer,
+        q,
+        // Cache hit não inclui suggested_flashcard nesta primeira versão.
+        // Pra ter, IA teria que gerar quando salvou no pool — fica pra V15.12.76.
+        suggestedFlashcard: null,
+        _fromCache: true
+      };
+      ST.practLoading = false;
+      render();
+    }catch(e){
+      console.error('[cache-eval] erro processamento local:', e);
+      ST.practAnswered = false;
+      ST.practLoading = false;
+      ST.practError = '⚠️ Não consegui processar a resposta. Tente de novo.';
+      render();
+    }
+    return;
+  }
+
+  // Fluxo normal (cache miss) — V15.12.13 (Fase B+ critical fix): pré-flight ANTES de chamar IA.
   // practice_question_eval AGORA custa 1 crédito (faz nova chamada à IA).
   try { assertCanAfford('practice_question_eval'); }
   catch(creditsErr){ handleApiError(creditsErr, {context:'pratica-eval'}); return; }
@@ -36307,9 +36532,14 @@ async function practSubmit(answer){
 function practNext(){
   if(ST.practFb?.next){
     ST.practQ=ST.practFb.next;
-    saveAIQuestion('practice',ST.practQ,getMethodModel('practice'));
+    // V15.12.75 — Se next veio do cache, não republicar (já está no pool).
+    // O flag _fromCache é preservado pra UI mostrar badge "Banco Gralia" e
+    // pra practSubmit processar eval local em vez de chamar IA.
+    if(!ST.practQ._fromCache){
+      saveAIQuestion('practice',ST.practQ,getMethodModel('practice'));
+    }
     ST.practFb=null;ST.practAnswered=false;
-    ST.practError=null; // V15.12.5: limpa eventual aviso de erro anterior
+    ST.practError=null;
     // V12: limpa o preload (já consumimos)
     if(DATA.preloadedQuestions?.practice){
       delete DATA.preloadedQuestions.practice;
@@ -49049,12 +49279,199 @@ function renderAdminDashboard(){
   wrap.appendChild(costCard);
   loadAdminCostStats(costBody, parseInt(ST._adminCostDays||'7'));
 
+  // === V15.12.75 — Card: Banco IA (P1.3 cache + moderação) ===
+  const poolCard = mk('section','admin-card');
+  poolCard.appendChild(adminSectionLabel('📚 Banco IA — Cache & Moderação'));
+  const poolHead = mk('h2','admin-section-title');
+  poolHead.textContent = 'Pool de questões geradas';
+  poolCard.appendChild(poolHead);
+  const poolHelp = mk('p');
+  poolHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem';
+  poolHelp.textContent = 'Métricas do cache lookup + ações de moderação. Cache hits são questões servidas sem custo Anthropic.';
+  poolCard.appendChild(poolHelp);
+  // Toggle feature flag
+  const flagRow = mk('div');
+  flagRow.style.cssText = 'display:flex;align-items:center;gap:10px;padding:.625rem .875rem;background:var(--surface2);border-radius:8px;margin-bottom:.75rem;font-size:12.5px';
+  const flagLbl = mk('label');
+  flagLbl.style.cssText = 'display:flex;align-items:center;gap:8px;cursor:pointer;flex:1';
+  const flagChk = mk('input');
+  flagChk.type = 'checkbox';
+  flagChk.checked = isPoolCacheEnabled();
+  flagChk.style.cssText = 'width:auto;cursor:pointer';
+  flagChk.addEventListener('change', e=>{
+    DATA.config = DATA.config || {};
+    DATA.config.cacheEnabled = e.target.checked;
+    save();
+    showToast(e.target.checked ? '✓ Cache habilitado' : '⚠ Cache desabilitado — todas as questões serão geradas pela IA', 4000);
+  });
+  flagLbl.appendChild(flagChk);
+  const flagTxt = mk('span');
+  flagTxt.innerHTML = '<b>Cache habilitado</b> — entrega questões do banco antes de chamar IA';
+  flagLbl.appendChild(flagTxt);
+  flagRow.appendChild(flagLbl);
+  poolCard.appendChild(flagRow);
+  const poolStatsBody = mk('div','admin-pool-stats-body');
+  poolStatsBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando...</div>';
+  poolCard.appendChild(poolStatsBody);
+  // Ações em lote
+  const poolActions = mk('div');
+  poolActions.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--border)';
+  const actionsLbl = mk('div');
+  actionsLbl.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px';
+  actionsLbl.textContent = 'Ações em lote';
+  poolActions.appendChild(actionsLbl);
+  const btnGrid = mk('div');
+  btnGrid.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
+
+  // Deletar drafts
+  const delDraftsBtn = mkBtn('Excluir drafts', 'btn btn-sm');
+  delDraftsBtn.addEventListener('click', ()=>handleAdminPoolBulkDelete('draft', delDraftsBtn));
+  btnGrid.appendChild(delDraftsBtn);
+
+  // Deletar flagged
+  const delFlaggedBtn = mkBtn('Excluir flagged', 'btn btn-sm');
+  delFlaggedBtn.addEventListener('click', ()=>handleAdminPoolBulkDelete('flagged', delFlaggedBtn));
+  btnGrid.appendChild(delFlaggedBtn);
+
+  // Deletar disabled
+  const delDisabledBtn = mkBtn('Excluir disabled', 'btn btn-sm');
+  delDisabledBtn.addEventListener('click', ()=>handleAdminPoolBulkDelete('disabled', delDisabledBtn));
+  btnGrid.appendChild(delDisabledBtn);
+
+  // Deletar órfãs (sem metadados)
+  const delOrphansBtn = mkBtn('Excluir órfãs (sem metadados)', 'btn btn-sm');
+  delOrphansBtn.addEventListener('click', ()=>handleAdminPoolDeleteOrphans(delOrphansBtn));
+  btnGrid.appendChild(delOrphansBtn);
+  poolActions.appendChild(btnGrid);
+
+  // Ações destrutivas
+  const dangerLbl = mk('div');
+  dangerLbl.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--red-text);text-transform:uppercase;letter-spacing:.4px;margin-top:12px;margin-bottom:4px';
+  dangerLbl.textContent = '⚠ Zona perigosa';
+  poolActions.appendChild(dangerLbl);
+  const dangerGrid = mk('div');
+  dangerGrid.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
+
+  const disableAllBtn = mkBtn('Desativar TODAS', 'btn btn-sm');
+  disableAllBtn.style.cssText = 'border-color:var(--amber);color:var(--amber-text)';
+  disableAllBtn.addEventListener('click', ()=>handleAdminPoolDisableAll(disableAllBtn));
+  dangerGrid.appendChild(disableAllBtn);
+
+  const nukeBtn = mkBtn('🗑 LIMPAR BANCO COMPLETAMENTE', 'btn btn-sm');
+  nukeBtn.style.cssText = 'border-color:var(--red);color:var(--red-text);font-weight:700';
+  nukeBtn.addEventListener('click', ()=>handleAdminPoolNuke(nukeBtn));
+  dangerGrid.appendChild(nukeBtn);
+
+  poolActions.appendChild(dangerGrid);
+  poolCard.appendChild(poolActions);
+  wrap.appendChild(poolCard);
+  loadAdminPoolStats(poolStatsBody);
+
   // === Footer
   const footer = mk('div','admin-footer');
   footer.innerHTML = `<small>Logado como <b>${escapeHTML(AUTH.user.email)}</b> (admin) · Painel atualizado em ${new Date().toLocaleString('pt-BR')}</small>`;
   wrap.appendChild(footer);
 
   return wrap;
+}
+
+// V15.12.75 — Carrega métricas do pool/cache via RPC
+async function loadAdminPoolStats(container){
+  if(!supa){ container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>'; return; }
+  try{
+    const {data, error} = await supa.rpc('admin_pool_stats', {p_days: 7});
+    if(error) throw error;
+    if(!data || data.length === 0){
+      container.innerHTML = '<div class="txt3">Sem dados.</div>';
+      return;
+    }
+    const map = {};
+    data.forEach(r => map[r.out_metric] = r.out_value);
+    container.innerHTML = '';
+    const grid = mk('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:.5rem';
+    const cells = [
+      {label: 'Cache hits (7d)', value: map.cache_hits || '0', sub: 'Sem custo IA'},
+      {label: 'Cache misses (7d)', value: map.cache_misses || '0', sub: 'Geradas pela IA'},
+      {label: 'Hit rate (7d)', value: map.hit_rate_pct || '—', sub: 'Reaproveitamento'},
+      {label: 'Pool total', value: map.pool_total || '0', sub: `${map.pool_active||0} active · ${map.pool_draft||0} draft · ${map.pool_flagged||0} flagged · ${map.pool_disabled||0} disabled`}
+    ];
+    cells.forEach(c => {
+      const cell = mk('div');
+      cell.style.cssText = 'background:var(--surface2);padding:.625rem .875rem;border-radius:8px';
+      cell.innerHTML = `
+        <div style="font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">${c.label}</div>
+        <div style="font-size:18px;font-weight:700;color:var(--text);margin-top:2px">${c.value}</div>
+        <div style="font-size:10.5px;color:var(--text3);margin-top:2px">${c.sub}</div>
+      `;
+      grid.appendChild(cell);
+    });
+    container.appendChild(grid);
+  }catch(e){
+    console.error('[admin-pool]', e);
+    container.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro: ${escapeHTML(e.message||String(e))}<br><br>Migration 10 (10-migration-cache-lookup.sql) precisa rodar antes.</div>`;
+  }
+}
+
+async function handleAdminPoolBulkDelete(status, btn){
+  if(!confirm(`Excluir TODAS as questões com status="${status}"? Não pode ser desfeito.`)) return;
+  btn.disabled = true; btn.textContent = 'Excluindo...';
+  try{
+    const {data, error} = await supa.rpc('admin_pool_bulk_delete_by_status', {p_status: status});
+    if(error) throw error;
+    showToast(`✓ ${data} questões excluídas (${status})`, 4000);
+    render();
+  }catch(e){
+    showToast('Erro: ' + (e.message||e), 5000);
+    btn.disabled = false; btn.textContent = `Excluir ${status}`;
+  }
+}
+
+async function handleAdminPoolDeleteOrphans(btn){
+  if(!confirm('Excluir questões sem metadados (bank_id/discipline_id/difficulty/kind null)? Estas são legado pré-P1.2.')) return;
+  btn.disabled = true; btn.textContent = 'Excluindo...';
+  try{
+    const {data, error} = await supa.rpc('admin_pool_delete_orphans');
+    if(error) throw error;
+    showToast(`✓ ${data} questões órfãs excluídas`, 4000);
+    render();
+  }catch(e){
+    showToast('Erro: ' + (e.message||e), 5000);
+    btn.disabled = false; btn.textContent = 'Excluir órfãs (sem metadados)';
+  }
+}
+
+async function handleAdminPoolDisableAll(btn){
+  if(!confirm('Desativar TODAS as questões do pool (status → disabled)? Cache lookup vai parar de funcionar até reativar.')) return;
+  btn.disabled = true; btn.textContent = 'Desativando...';
+  try{
+    const {data, error} = await supa.rpc('admin_pool_disable_all');
+    if(error) throw error;
+    showToast(`✓ ${data} questões desativadas`, 5000);
+    render();
+  }catch(e){
+    showToast('Erro: ' + (e.message||e), 5000);
+    btn.disabled = false; btn.textContent = 'Desativar TODAS';
+  }
+}
+
+async function handleAdminPoolNuke(btn){
+  const confirmation = prompt('⚠ AÇÃO IRREVERSÍVEL!\n\nIsso vai APAGAR PERMANENTEMENTE:\n- Todas as questões do pool\n- Todas as marcações de "visto"\n- Todos os votos\n- Todos os reports\n\nPra confirmar, digite EXATAMENTE:\nLIMPAR BANCO COMPLETAMENTE');
+  if(confirmation !== 'LIMPAR BANCO COMPLETAMENTE'){
+    showToast('Confirmação não corresponde — operação cancelada.', 4000);
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Limpando...';
+  try{
+    const {data, error} = await supa.rpc('admin_pool_nuke_all', {p_confirmation: 'LIMPAR BANCO COMPLETAMENTE'});
+    if(error) throw error;
+    const r = (data || [])[0] || {};
+    showToast(`✓ Banco limpo: ${r.out_questions_deleted||0} questões, ${r.out_seen_deleted||0} seen, ${r.out_votes_deleted||0} votos, ${r.out_reports_deleted||0} reports`, 8000);
+    render();
+  }catch(e){
+    showToast('Erro: ' + (e.message||e), 5000);
+    btn.disabled = false; btn.textContent = '🗑 LIMPAR BANCO COMPLETAMENTE';
+  }
 }
 
 // V15.12.72 — Carrega 3 métricas de custo IA via RPCs
