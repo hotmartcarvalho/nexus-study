@@ -7904,6 +7904,86 @@ function invalidateGenerationContext(reason){
   return cleared;
 }
 
+// V15.12.73 — Compactação de histórico pra reduzir input tokens em chamadas
+// que crescem com a sessão (principalmente practice_question_eval).
+//
+// PROBLEMA RESOLVIDO:
+// Antes: ST.practHist crescia a cada questão respondida. Em 10 questões, a
+// array tinha ~21 entries (1 init + 10×2). Cada entry tem 500-1000 tokens.
+// A 10ª chamada eval enviava ~12k tokens só de histórico, repetindo questões
+// antigas que a IA não precisa.
+//
+// ESTRATÉGIA:
+// 1. Manter SEMPRE a entry inicial ("Primeira questão") pra preservar o seed
+// 2. Manter os últimos 2 turns completos (a IA usa pra coerência da próxima questão)
+// 3. Substituir tudo no meio por um único resumo compacto: "Já respondidas N
+//    questões anteriormente (X corretas, Y erradas em tópicos: a, b, c)".
+//
+// CRITÉRIO de aplicação: só compacta se histórico tem 5+ entries. Em sessões
+// curtas (1-2 questões) deixa passar inteiro porque o ganho é mínimo.
+//
+// USO:
+//   const compactedHist = buildCompactHistory(ST.practHist);
+//   const messages = [...compactedHist, novaMensagem];
+function buildCompactHistory(history, opts){
+  if(!Array.isArray(history) || history.length === 0) return [];
+  opts = opts || {};
+  const keepRecent = opts.keepRecent || 2;  // últimos N turns (user+assistant)
+  const recentEntries = keepRecent * 2;     // pares (user, assistant)
+  // Limiar pra ativar compactação: 5+ entries (= 2+ turns completos)
+  if(history.length <= recentEntries + 1) return history.slice();
+
+  // Sempre preserva a 1ª entry (seed inicial do user)
+  const initial = history[0];
+  // Últimos N turns (pares)
+  const recent = history.slice(-recentEntries);
+  // Meio = o que foi removido
+  const middle = history.slice(1, -recentEntries);
+  if(middle.length === 0) return history.slice();
+
+  // Conta acertos/erros e coleta tópicos do meio
+  let correct = 0, wrong = 0, total = 0;
+  const topics = new Set();
+  const traps = new Set();
+  for(let i = 0; i < middle.length; i++){
+    const entry = middle[i];
+    if(entry.role !== 'assistant') continue;
+    total++;
+    try{
+      const parsed = JSON.parse(entry.content);
+      if(parsed.is_correct === true) correct++;
+      else if(parsed.is_correct === false) wrong++;
+      if(parsed.topic && topics.size < 8) topics.add(String(parsed.topic).slice(0, 40));
+      if(parsed.next && parsed.next.topic && topics.size < 8) topics.add(String(parsed.next.topic).slice(0, 40));
+      if(parsed.trap_type !== undefined && parsed.trap_type !== null) traps.add(String(parsed.trap_type));
+    }catch(_){
+      // Se não é JSON parseável, pula
+    }
+  }
+
+  if(total === 0) return history.slice();
+
+  const summaryParts = [`Já passamos por ${total} questões nesta sessão (${correct} corretas, ${wrong} erradas)`];
+  if(topics.size > 0){
+    summaryParts.push(`Tópicos vistos: ${Array.from(topics).slice(0, 6).join(', ')}`);
+  }
+  if(traps.size > 0){
+    summaryParts.push(`Armadilhas usadas: tipos ${Array.from(traps).join(', ')}`);
+  }
+  summaryParts.push('Evite repetir esses tópicos exatos; varie nas próximas.');
+  const summary = summaryParts.join('. ') + '.';
+
+  // Monta nova história: [initial, summaryUser, summaryAssistant, ...recent]
+  // summaryUser/summaryAssistant fingem ser um turn pro modelo entender o resumo
+  return [
+    initial,
+    {role: 'user', content: '[Resumo de turnos anteriores]'},
+    {role: 'assistant', content: summary},
+    ...recent
+  ];
+}
+
+
 // Pré-flight pra prefetches: combina visibility + suspensão + saldo + lock.
 // IMPORTANTE: prefetch NUNCA mostra modal — falha silenciosa.
 function canStartPrefetch(action_id, lockKey, batch_size){
@@ -12892,15 +12972,37 @@ Questão nova (formato MC):
 Feedback+próxima:
 {"type":"feedback","is_correct":true,"trap_type":"...","explanation":"explicação seguindo o estilo do PERFIL DA BANCA injetado","trap":"qual armadilha foi usada (se errada)","keyword":"palavra-gatilho que denuncia","next":{...mesmo formato da questão nova...},"suggested_flashcard":{"front":"pergunta curta sobre o conceito","back":"resposta concisa, 1-2 frases"}}
 
-REGRA explanation (CRÍTICO pra MC):
-- Em CE: 2-3 frases objetivas seguindo o estilo da banca.
-- Em MC: estruture em até 4 partes curtas, separadas por quebra de linha (\\n):
-  • "Gabarito: <letra>" — linha curta
+REGRA explanation (estrutura visual premium):
+A explicação será parseada e renderizada como cards visuais separados pela UI.
+Use SEMPRE rótulos no formato "Rótulo: texto", separados por quebra de linha (\\n).
+
+PARA C/E (Cebraspe e similares):
+  • "Gabarito: Certo" ou "Gabarito: Errado" (use as palavras certo/errado, não letra)
+  • "Por que está certa:" OU "Por que está errada:" — 1-2 frases sobre o motivo
+  • "Pegadinha:" — 1 linha sobre a armadilha usada (se houver)
+  • "Regra pra lembrar:" — 1 linha sobre o conceito-chave pra fixar (opcional)
+
+PARA MC (FCC, FGV, Vunesp e similares):
+  • "Gabarito: <letra>" — apenas a letra (A, B, C, D ou E)
   • "Por que está certa:" — 1-2 frases sobre por que a alternativa correta é correta
-  • Se errou: "Por que sua escolha errou:" — 1-2 frases sobre o erro específico (use o campo extra "user_choice_explanation" se quiser, mas pode estar dentro de explanation)
-  • "Pegadinha:" OU "Regra pra fixar:" — 1 linha sobre a armadilha ou regra
-- NUNCA explique todas as alternativas, só a correta e a do usuário (se errou).
-- Mantenha sempre curta — máximo 5 linhas no total.
+  • Se o usuário errou: "Por que sua escolha errou:" — 1-2 frases sobre o erro específico DA alternativa que ele escolheu (não as outras)
+  • "Pegadinha:" — 1 linha sobre a armadilha (se houver)
+  • "Regra pra lembrar:" — 1 linha (opcional)
+  • NUNCA explique todas as alternativas, só a correta + a que o usuário marcou (se errou)
+
+REGRAS UNIVERSAIS:
+- Mantenha CADA seção curta (1-2 frases, máximo 30 palavras).
+- Texto total deve ficar entre 5-10 linhas — nada de paredão.
+- Sem emojis no texto.
+- Use os rótulos EXATAMENTE como acima (case-sensitive importa pra UI).
+- Quando o user acertar, omita "Por que sua escolha errou".
+
+REGRA VARIAÇÃO DE NOMES E CENÁRIOS (casos concretos):
+- Não use sempre os mesmos nomes (João, Maria, Pedro, Tício, Caio).
+- Varie: use nomes diversos brasileiros (Ana, Beatriz, Rafael, Luana, Marcos, Camila, Felipe, Larissa, Bruno, Letícia, Diego, Patrícia, Gustavo, Renata).
+- Varie também os contextos: servidor público, particular, autoridade, investigado, vítima, testemunha, empresa, autarquia, órgão público.
+- Quando a questão NÃO precisar de nome (regra abstrata, conceito puro), evite usar nome.
+- Não use nomes em excesso quando uma única referência basta.
 
 REGRA suggested_flashcard:
 - Inclua o campo "suggested_flashcard" APENAS quando is_correct=false (usuário errou).
@@ -13787,6 +13889,26 @@ const APITHROTTLE_MIN_GAP_MS = 800;
 const APITHROTTLE_WINDOW_MS = 30000;
 const APITHROTTLE_BURST_LIMIT = 3; // 3 chamadas em 30s = OK; 4ª espera mais
 
+// V15.12.73 — Cooldown local pós-429. Quando Anthropic retorna 429, anota
+// timestamp. Chamadas seguintes dentro de 60s são bloqueadas no client com
+// mensagem clara — não chega no backend, não desperdiça tokens, e dá tempo
+// pra janela rotativa da Anthropic abrir. Não afeta series_batch (que tem
+// delay próprio entre cadernos).
+let _anthropicCooldownUntil = 0;
+
+function isInAnthropicCooldown(){
+  return Date.now() < _anthropicCooldownUntil;
+}
+function getCooldownRemainingMs(){
+  return Math.max(0, _anthropicCooldownUntil - Date.now());
+}
+function markAnthropicRateLimit(seconds){
+  // Recebe segundos do header Retry-After (se houver) ou usa 60s default
+  const cooldownMs = (Number(seconds) || 60) * 1000;
+  _anthropicCooldownUntil = Math.max(_anthropicCooldownUntil, Date.now() + cooldownMs);
+  console.warn('[anthropic-cooldown] ativado por', Math.round(cooldownMs/1000), 's');
+}
+
 async function throttleApiCall(actionId){
   // series_batch tem seu próprio delay entre cadernos; não throttle aqui
   if(actionId === 'series_batch') return;
@@ -13858,6 +13980,20 @@ async function apiGenerate(body){
   // V15.12.67 — Throttle antes de qualquer coisa
   if(body && body.action_id){
     await throttleApiCall(body.action_id);
+  }
+  // V15.12.73 — Cooldown local após 429 Anthropic. Bloqueia chamadas
+  // novas localmente em vez de bater de novo no backend e queimar mais tokens.
+  if(isInAnthropicCooldown() && body && body.action_id && body.action_id !== 'series_batch'){
+    const remainingSec = Math.ceil(getCooldownRemainingMs() / 1000);
+    console.warn('[anthropic-cooldown] bloqueando chamada local —', remainingSec, 's restantes');
+    return new Response(JSON.stringify({
+      error: `A IA atingiu o limite temporário de uso. Aguarde ${remainingSec}s antes da próxima chamada.`,
+      code: 'ANTHROPIC_COOLDOWN_LOCAL',
+      retry_after_seconds: remainingSec
+    }), {
+      status: 429,
+      headers: {'Content-Type':'application/json', 'Retry-After': String(remainingSec)}
+    });
   }
   // V15.12.68 — Rate limit estratificado por plano (anti-abuso).
   // Chama RPC check_user_rate_limit ANTES de qualquer chamada paga à IA.
@@ -14830,12 +14966,23 @@ function handleApiError(err, ctx){
       // V15.12.65 — Diferencia rate limit upstream (Anthropic) vs backend (Gralia).
       // V15.12.66 — Busca também em body.error (texto real do Anthropic),
       // não só em code. Mensagem real fala "input tokens per minute".
+      // V15.12.73 — Em Anthropic real, marca cooldown local pra impedir mais
+      // chamadas no minuto seguinte. Em Gralia rate limit ou cooldown local,
+      // não remarca (evita duplo lock).
       const body = err.body || {};
       const code = body.code || '';
       const errMsg = (body.error || '').toLowerCase();
       console.error('[api-error] 429 received', {code, errMsg, body});
-      if(code === 'ANTHROPIC_RATE_LIMIT' || /anthropic|upstream|tokens.*per.*minute|input tokens|claude.*com/i.test(errMsg)){
+      const isAnthropicReal = code === 'ANTHROPIC_RATE_LIMIT' || /anthropic|upstream|tokens.*per.*minute|input tokens|claude.*com/i.test(errMsg);
+      const isLocalCooldown = code === 'ANTHROPIC_COOLDOWN_LOCAL';
+      if(isAnthropicReal && !isLocalCooldown){
+        // Marca cooldown local (60s padrão; usa Retry-After se backend mandar)
+        const retryAfter = body.retry_after_seconds || 60;
+        markAnthropicRateLimit(retryAfter);
         showToast('⏳ A IA atingiu o limite temporário de uso. Aguarde 1-2 minutos e tente de novo.', 7000);
+      } else if(isLocalCooldown){
+        const sec = body.retry_after_seconds || 30;
+        showToast(`⏳ Aguarde mais ${sec}s — IA em descanso por excesso de uso recente.`, 5000);
       } else if(code === 'GRALIA_RATE_LIMIT' || /too many requests|rate limit/i.test(errMsg)){
         // V15.12.68 — Mensagem específica do rate limit interno (proteção anti-abuso)
         const plan = body.plan || 'seu plano';
@@ -24138,6 +24285,223 @@ function buildAiFeedbackRow(question){
   return row;
 }
 
+// V15.12.74 — Parser de explicação estruturada.
+// A IA retorna explanation como texto livre, mas a P1.2 ensina ela a usar
+// formato com rótulos tipo "Gabarito: X\nPor que está certa: ...\nPegadinha: ...".
+// Esta função extrai esses blocos pra que a UI renderize cada seção como
+// card visual separado em vez de bloco de texto contínuo.
+//
+// Resiliente: aceita variações de capitalização, com ou sem dois-pontos,
+// com ou sem negrito markdown. Se nada bate, retorna objeto vazio + texto
+// original em `_raw` pra fallback.
+//
+// Retorno:
+// {
+//   gabarito: 'A' | null,
+//   resultado: 'Você acertou' | 'Você errou' | null,
+//   por_que_correta: 'texto...' | null,
+//   por_que_errada: 'texto...' | null,        // só se MC e errou
+//   pegadinha: 'texto...' | null,
+//   regra: 'texto...' | null,
+//   _raw: 'texto original',
+//   _hasStructure: boolean                     // true se achou ao menos 1 seção
+// }
+function parseExplanationStructured(rawText){
+  const result = {
+    gabarito: null,
+    resultado: null,
+    por_que_correta: null,
+    por_que_errada: null,
+    pegadinha: null,
+    regra: null,
+    _raw: rawText || '',
+    _hasStructure: false
+  };
+  if(!rawText || typeof rawText !== 'string') return result;
+  const text = rawText.replace(/\*\*/g, '').trim(); // remove negrito markdown
+
+  // Patterns por seção. Cada um aceita variações comuns.
+  const patterns = [
+    {key: 'gabarito',         re: /(?:gabarito|resposta correta|alternativa correta)\s*[:\-—]\s*([^\n]+)/i, postprocess: s => {
+      // Preserva palavras completas (Certo/Errado) ou letra única (A-E)
+      const t = s.trim();
+      const ce = t.match(/^(certo|errado)\b/i);
+      if(ce) return ce[1].charAt(0).toUpperCase() + ce[1].slice(1).toLowerCase();
+      const letter = t.match(/^([A-E])\b/);
+      if(letter) return letter[1].toUpperCase();
+      return t.slice(0, 40); // trunca texto longo só por segurança
+    }},
+    {key: 'resultado',        re: /(?:resultado|^)\s*(você (?:acertou|errou)|acertou|errou)[\.!]?(?:\n|$)/im},
+    {key: 'por_que_correta',  re: /(?:por que (?:está|esta) (?:certa|correta)|por que a (?:alternativa )?(?:correta|certa) (?:está|esta) correta|por que (?:está|esta) certo|por que a correta)\s*[:\-—]\s*([\s\S]+?)(?=\n(?:[A-ZÁ-Ú][^:\n]{2,40}:\s)|$)/i},
+    {key: 'por_que_errada',   re: /(?:por que (?:sua )?(?:escolha|alternativa|opção|resposta) (?:errou|está errada|esta errada|está incorreta)|por que você errou|por que (?:está|esta) errado)\s*[:\-—]\s*([\s\S]+?)(?=\n(?:[A-ZÁ-Ú][^:\n]{2,40}:\s)|$)/i},
+    {key: 'pegadinha',        re: /(?:pegadinha|armadilha)(?: da banca)?\s*[:\-—]\s*([\s\S]+?)(?=\n(?:[A-ZÁ-Ú][^:\n]{2,40}:\s)|$)/i},
+    {key: 'regra',            re: /(?:regra (?:para|pra) (?:lembrar|memorizar|fixar)|memorize|para lembrar|dica)\s*[:\-—]\s*([\s\S]+?)(?=\n(?:[A-ZÁ-Ú][^:\n]{2,40}:\s)|$)/i}
+  ];
+
+  for(const p of patterns){
+    const m = text.match(p.re);
+    if(m){
+      let val = (m[1] || '').trim();
+      if(p.postprocess) val = p.postprocess(val);
+      // Remove pontuação final se for muito curta
+      if(val && val.length > 0){
+        result[p.key] = val;
+        result._hasStructure = true;
+      }
+    }
+  }
+
+  // Se nada bateu, tenta detectar "Você acertou/errou" no início mesmo sem rótulo
+  if(!result.resultado){
+    const intro = text.match(/^(você acertou|você errou|acertou|errou)/i);
+    if(intro) result.resultado = intro[1];
+  }
+
+  return result;
+}
+
+// V15.12.74 — Renderiza explicação estruturada como blocos visuais.
+// Retorna um <div> populado. Container pai define margens/espaçamento.
+// Estratégia: se parseExplanationStructured achou estrutura, renderiza
+// cada seção como card pequeno com label colorido. Senão, fallback pro
+// formato linha-por-linha da V15.12.65.
+function renderStructuredExplanation(rawText, opts){
+  opts = opts || {};
+  const isMC = !!opts.isMC;
+  const userChose = opts.userChose; // letra escolhida pelo user (A-E), se MC
+  const correctAnswer = opts.correctAnswer; // letra correta (A-E ou C/E)
+  const wrap = mk('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;gap:.625rem;margin-top:.75rem;margin-bottom:.875rem';
+
+  const parsed = parseExplanationStructured(rawText);
+
+  // Se NÃO tem estrutura detectada: cai no renderizador antigo (linha-por-linha)
+  if(!parsed._hasStructure){
+    // Mantém compat com formato V15.12.65 (Rótulo: texto separados por \n)
+    const lines = String(rawText || '').split(/\n+/).map(l => l.trim()).filter(Boolean);
+    if(lines.length > 1){
+      lines.forEach(line => {
+        const lineEl = mk('p','txt');
+        lineEl.style.cssText = 'margin:0 0 4px;line-height:1.55';
+        const labelMatch = line.match(/^([^:]{2,30}):\s*(.+)$/);
+        if(labelMatch){
+          lineEl.innerHTML = `<b style="color:var(--text);font-weight:700">${escapeHTML(labelMatch[1])}:</b> ${escapeHTML(labelMatch[2])}`;
+        } else {
+          lineEl.textContent = line;
+        }
+        wrap.appendChild(lineEl);
+      });
+    } else {
+      const expEl = mk('p','txt');
+      expEl.style.cssText = 'margin:0;line-height:1.6';
+      expEl.textContent = rawText || '';
+      wrap.appendChild(expEl);
+    }
+    return wrap;
+  }
+
+  // Renderizador estruturado: cada seção vira card pequeno
+  // Ordem visual: gabarito → por_que_correta → por_que_errada → pegadinha → regra
+
+  // 1. Gabarito (card destaque)
+  if(parsed.gabarito){
+    const gab = mk('div');
+    gab.style.cssText = 'display:flex;align-items:center;gap:10px;padding:.625rem .875rem;background:var(--accent-light);border-left:3px solid var(--accent);border-radius:0 8px 8px 0';
+    const gabLbl = mk('span');
+    gabLbl.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--accent-text);text-transform:uppercase;letter-spacing:.5px';
+    gabLbl.textContent = 'Gabarito';
+    const gabVal = mk('span');
+    gabVal.style.cssText = 'font-size:18px;font-weight:800;color:var(--text);font-family:ui-monospace,monospace';
+    gabVal.textContent = parsed.gabarito;
+    gab.appendChild(gabLbl);
+    gab.appendChild(gabVal);
+    wrap.appendChild(gab);
+  }
+
+  // 2. Por que está certa
+  if(parsed.por_que_correta){
+    wrap.appendChild(buildExpSection({
+      label: isMC ? 'Por que a alternativa correta está certa' : 'Por que está certa',
+      text: parsed.por_que_correta,
+      color: 'green',
+      icon: '✓'
+    }));
+  }
+
+  // 3. Por que sua escolha errou (só se MC e errou)
+  if(parsed.por_que_errada){
+    wrap.appendChild(buildExpSection({
+      label: isMC && userChose
+        ? `Por que a alternativa ${userChose} está errada`
+        : 'Por que sua resposta errou',
+      text: parsed.por_que_errada,
+      color: 'red',
+      icon: '✗'
+    }));
+  }
+
+  // 4. Pegadinha/Armadilha
+  if(parsed.pegadinha){
+    wrap.appendChild(buildExpSection({
+      label: 'Pegadinha da banca',
+      text: parsed.pegadinha,
+      color: 'amber',
+      icon: '⚠'
+    }));
+  }
+
+  // 5. Regra pra lembrar
+  if(parsed.regra){
+    wrap.appendChild(buildExpSection({
+      label: 'Regra pra lembrar',
+      text: parsed.regra,
+      color: 'purple',
+      icon: '★'
+    }));
+  }
+
+  // Caso a IA tenha enviado texto extra fora dos rótulos parseados,
+  // mostra como bloco final (pra não perder informação)
+  if(parsed._hasStructure && rawText){
+    const knownLength = (parsed.gabarito || '').length
+      + (parsed.por_que_correta || '').length
+      + (parsed.por_que_errada || '').length
+      + (parsed.pegadinha || '').length
+      + (parsed.regra || '').length;
+    // Se o original tem muito mais texto que o que parseamos, provavelmente
+    // tem conteúdo solto. Mas só renderiza se for > 60 chars de sobra
+    // pra evitar mostrar lixo curto.
+    if(rawText.length > knownLength + 100){
+      // Por enquanto deixamos isso fora; UX prefere blocos limpos.
+      // Se necessário, no futuro adicionar "ver explicação completa" expandível
+    }
+  }
+
+  return wrap;
+}
+
+// Helper interno do renderStructuredExplanation: monta seção
+function buildExpSection(opts){
+  const colorMap = {
+    green:  {bg: 'rgba(34,197,94,.07)',  border: 'var(--green)',  label: 'var(--green-text,#15803d)'},
+    red:    {bg: 'rgba(232,76,76,.06)',  border: 'var(--red)',    label: 'var(--red-text)'},
+    amber:  {bg: 'rgba(245,158,11,.07)', border: 'var(--amber)',  label: 'var(--amber-text)'},
+    purple: {bg: 'rgba(124,92,255,.06)', border: 'var(--accent)', label: 'var(--accent-text)'}
+  };
+  const c = colorMap[opts.color] || colorMap.purple;
+  const sec = mk('div');
+  sec.style.cssText = `padding:.625rem .875rem;background:${c.bg};border-left:3px solid ${c.border};border-radius:0 8px 8px 0`;
+  const head = mk('div');
+  head.style.cssText = `font-size:10.5px;font-weight:700;color:${c.label};text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;display:flex;align-items:center;gap:6px`;
+  head.innerHTML = `<span style="font-size:13px">${opts.icon || ''}</span><span>${escapeHTML(opts.label)}</span>`;
+  sec.appendChild(head);
+  const body = mk('div');
+  body.style.cssText = 'font-size:13px;line-height:1.6;color:var(--text)';
+  body.textContent = opts.text;
+  sec.appendChild(body);
+  return sec;
+}
+
 function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion){
   const {ok,explanation,trap,keyword,errCtx,q,question} = fb;
   const card = mk('div','fb-card fade '+(ok?'ok':'err'));
@@ -24163,37 +24527,26 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
   }
   topRow.appendChild(seal);
   card.appendChild(topRow);
-  // V15.12.65 — Se a explanation tem quebras (\n) é porque a IA seguiu o
-  // formato MC estruturado (Gabarito / Por que correta / Por que errada /
-  // Pegadinha). Renderiza linha por linha pra melhor leitura.
-  const expBox = mk('div');
-  expBox.style.cssText = 'margin-top:.75rem;margin-bottom:.875rem';
-  const expLines = String(explanation || '').split(/\n+/).map(l => l.trim()).filter(Boolean);
-  if(expLines.length > 1){
-    expLines.forEach(line => {
-      const lineEl = mk('p','txt');
-      lineEl.style.cssText = 'margin:0 0 4px;line-height:1.55';
-      // Detecta padrão "Rótulo: texto" — destaca o rótulo
-      const labelMatch = line.match(/^([^:]{2,30}):\s*(.+)$/);
-      if(labelMatch){
-        lineEl.innerHTML = `<b style="color:var(--text);font-weight:700">${escapeHTML(labelMatch[1])}:</b> ${escapeHTML(labelMatch[2])}`;
-      } else {
-        lineEl.textContent = line;
-      }
-      expBox.appendChild(lineEl);
-    });
-  } else {
-    const expEl = mk('p','txt');
-    expEl.style.cssText = 'margin:0;line-height:1.6';
-    expEl.textContent = explanation;
-    expBox.appendChild(expEl);
-  }
-  card.appendChild(expBox);
-  if(trap||keyword){
-    // V14: Layout mais visual — armadilha em destaque vermelho/amber, gatilho em ciano
+  // V15.12.74 — Explicação estruturada com cards visuais.
+  // parseExplanationStructured detecta seções (Gabarito, Por que correta, Por
+  // que errada, Pegadinha, Regra) e renderiza cada uma como bloco separado.
+  // Fallback: se não tem estrutura, cai no renderer linha-por-linha da V15.12.65.
+  const isMC = q && q.kind === 'MC';
+  const userChose = fb.userChose || fb.user_answer || null;
+  const correctAnswer = q ? q.correct_answer : null;
+  const expWrap = renderStructuredExplanation(explanation, {
+    isMC: isMC,
+    userChose: userChose,
+    correctAnswer: correctAnswer
+  });
+  card.appendChild(expWrap);
+  // V15.12.74 — Se a explanation já tem pegadinha parseada como bloco, não
+  // duplica com o campo `trap` separado. `keyword` segue mostrando (info extra).
+  const expParsedHasPegadinha = !!(parseExplanationStructured(explanation).pegadinha);
+  if((trap && !expParsedHasPegadinha) || keyword){
     const meta = mk('div');
     meta.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-bottom:.875rem';
-    if(trap){
+    if(trap && !expParsedHasPegadinha){
       const t = mk('div');
       t.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:.625rem .875rem;background:rgba(232,76,76,.06);border-left:3px solid var(--red);border-radius:0 8px 8px 0;font-size:13px;line-height:1.55';
       t.innerHTML = `<span style="font-size:16px;flex-shrink:0;line-height:1.4">⚠️</span><span style="color:var(--text)"><b style="color:var(--red-text)">Armadilha:</b> ${escapeHTML(trap)}</span>`;
@@ -24216,30 +24569,56 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
   // ainda não entender, aí sim pede ajuda específica via "Não entendi".
 
   // V15.12.20 — Flashcard sugerido pela IA (vem embutido no eval, sem custo extra).
-  // Aparece APENAS quando o usuário errou e a IA retornou suggested_flashcard.
+  // V15.12.74 — Layout mais premium: separador visual antes, mostra "frente"
+  // e "verso" como faces de cartão, botão maior. Aparece APENAS quando errou.
   if(!ok && fb.suggestedFlashcard && !fb._suggestedAdded){
     const sf = fb.suggestedFlashcard;
+    // Separador discreto antes pra marcar "fim da explicação, início do bônus"
+    const sep = mk('div');
+    sep.style.cssText = 'height:1px;background:var(--border);margin:.875rem 0;opacity:.5';
+    card.appendChild(sep);
+
     const sugCard = mk('div');
-    sugCard.style.cssText='margin-bottom:.875rem;padding:.875rem 1rem;background:rgba(128,66,250,.06);border-left:3px solid var(--accent);border-radius:0 8px 8px 0';
+    sugCard.style.cssText='margin-bottom:.875rem;padding:.875rem 1rem;background:linear-gradient(135deg,rgba(124,92,255,.07) 0%,rgba(124,92,255,.03) 100%);border:1px solid rgba(124,92,255,.25);border-radius:10px';
+
     const sugHead = mk('div');
-    sugHead.style.cssText='font-size:11.5px;font-weight:700;color:var(--accent-text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px';
-    sugHead.innerHTML = '✨ <span>Flashcard sugerido</span> <span style="font-size:10px;font-weight:600;background:rgba(34,197,94,.15);color:var(--green-text,#15803d);padding:2px 6px;border-radius:4px;letter-spacing:0;text-transform:none">grátis</span>';
+    sugHead.style.cssText='font-size:11px;font-weight:700;color:var(--accent-text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px;justify-content:space-between';
+    sugHead.innerHTML = '<span style="display:flex;align-items:center;gap:6px"><span style="font-size:14px">✨</span><span>Flashcard sugerido</span></span><span style="font-size:9.5px;font-weight:700;background:rgba(34,197,94,.15);color:var(--green-text,#15803d);padding:2px 7px;border-radius:10px;letter-spacing:0;text-transform:none">grátis</span>';
     sugCard.appendChild(sugHead);
+
+    // Frente
+    const sugFrontWrap = mk('div');
+    sugFrontWrap.style.cssText='margin-bottom:8px;padding:.5rem .75rem;background:var(--surface);border-radius:6px;border-left:2px solid var(--accent)';
+    const sugFrontLbl = mk('div');
+    sugFrontLbl.style.cssText='font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px';
+    sugFrontLbl.textContent = 'Frente';
+    sugFrontWrap.appendChild(sugFrontLbl);
     const sugFront = mk('div');
-    sugFront.style.cssText='font-size:13.5px;font-weight:600;color:var(--text);margin-bottom:6px;line-height:1.5';
+    sugFront.style.cssText='font-size:13.5px;font-weight:600;color:var(--text);line-height:1.5';
     sugFront.textContent = sf.front;
-    sugCard.appendChild(sugFront);
+    sugFrontWrap.appendChild(sugFront);
+    sugCard.appendChild(sugFrontWrap);
+
+    // Verso
+    const sugBackWrap = mk('div');
+    sugBackWrap.style.cssText='margin-bottom:10px;padding:.5rem .75rem;background:var(--surface);border-radius:6px;border-left:2px solid var(--accent)';
+    const sugBackLbl = mk('div');
+    sugBackLbl.style.cssText='font-size:9.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px';
+    sugBackLbl.textContent = 'Verso';
+    sugBackWrap.appendChild(sugBackLbl);
     const sugBack = mk('div');
-    sugBack.style.cssText='font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:10px';
+    sugBack.style.cssText='font-size:13px;color:var(--text2);line-height:1.55';
     sugBack.textContent = sf.back;
-    sugCard.appendChild(sugBack);
+    sugBackWrap.appendChild(sugBack);
+    sugCard.appendChild(sugBackWrap);
+
+    // Ações
     const sugActions = mk('div');
-    sugActions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
-    const addBtn = mkBtn('+ Adicionar ao deck','btn btn-sm');
-    addBtn.style.cssText='border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
+    sugActions.style.cssText='display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end';
+    const addBtn = mkBtn('+ Adicionar ao deck','btn btn-p btn-sm');
+    addBtn.style.cssText='font-weight:600;padding:6px 14px';
     addBtn.addEventListener('click',()=>{
       try {
-        // Adiciona ao deck SRS sem nova chamada de IA
         const newCard = {
           id: 'card-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),
           front: sf.front,
@@ -24248,7 +24627,6 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
           topic: errCtx ? errCtx.topic : (ST.practQ?.topic || ''),
           createdAt: Date.now(),
           source: 'suggested',
-          // SRS state (igual ao default de novos cards)
           interval: 1,
           repetitions: 0,
           easeFactor: 2.5,
@@ -24256,14 +24634,13 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
         };
         DATA.cards = DATA.cards || [];
         DATA.cards.push(newCard);
-        // Marca o errCtx como tendo card (pra esconder o botão "Criar flashcard")
         if(errCtx){
           errCtx.hasCard = true;
           errCtx.cardId = newCard.id;
         }
         fb._suggestedAdded = true;
         save();
-        addBtn.textContent = '✓ Adicionado';
+        addBtn.textContent = '✓ Adicionado ao deck';
         addBtn.disabled = true;
         addBtn.style.opacity = '.7';
         addBtn.style.cursor = 'default';
@@ -34896,10 +35273,13 @@ async function calibSubmit(answer){
   catch(creditsErr){ handleApiError(creditsErr, {context:'calibracao-eval'}); return; }
   ST.calibAnswered=true;ST.calibLoading=true;render();
   const um = {role:'user',content:'Resposta: '+answer};
-  const nh = [...ST.calibHist,um];
+  // V15.12.73 — Compactação de histórico só na ida pra Anthropic;
+  // histórico cheio segue em ST.calibHist pra continuidade.
+  const fullHist = [...ST.calibHist, um];
+  const nh = [...buildCompactHistory(ST.calibHist, {keepRecent: 2}), um];
   try{
     const res = await timedCallAPI('calibration','question',SYS_CALIB,nh,{model:getMethodModel('calibration'), action:'practice_question_eval'});
-    ST.calibHist=[...nh,{role:'assistant',content:JSON.stringify(res)}];
+    ST.calibHist=[...fullHist,{role:'assistant',content:JSON.stringify(res)}];
     const ok = res.is_correct, ck = ST.calibConf;
     DATA.session.total+=1;if(ok)DATA.session.correct+=1;
     DATA.session.calibration[ck].t+=1;if(ok)DATA.session.calibration[ck].c+=1;
@@ -35067,10 +35447,13 @@ async function examSubmit(container){
   catch(creditsErr){ handleApiError(creditsErr, {context:'examinador-eval'}); return; }
   ST.examLoading=true;render();
   const um = {role:'user',content:'Minha assertiva errada: '+ST.examTrap};
-  const nh = [...ST.examHist,um];
+  // V15.12.73 — Compactação de histórico só na ida pra Anthropic;
+  // histórico cheio segue em ST.examHist pra continuidade.
+  const fullHist = [...ST.examHist, um];
+  const nh = [...buildCompactHistory(ST.examHist, {keepRecent: 2}), um];
   try{
     const res = await timedCallAPI('examiner','question',SYS_EXAM,nh,{model:getMethodModel('examiner'), action:'practice_question_eval'});
-    ST.examHist=[...nh,{role:'assistant',content:JSON.stringify(res)}];
+    ST.examHist=[...fullHist,{role:'assistant',content:JSON.stringify(res)}];
     ST.examEval=res;
     DATA.session.examTotal+=1;if(res.stars>=2)DATA.session.examScore+=1;
     // Examinador conta como questão pra meta (estrelas >= 2 = "ok")
@@ -35225,10 +35608,13 @@ async function drillSubmit(answer){
   catch(creditsErr){ handleApiError(creditsErr, {context:'drill-eval'}); return; }
   ST.drillAnswered=true;ST.drillLoading=true;render();
   const um = {role:'user',content:'Resposta: '+answer};
-  const nh = [...ST.drillHist,um];
+  // V15.12.73 — Compactação de histórico só na ida pra Anthropic;
+  // histórico cheio segue em ST.drillHist pra continuidade.
+  const fullHist = [...ST.drillHist, um];
+  const nh = [...buildCompactHistory(ST.drillHist, {keepRecent: 2}), um];
   try{
     const res = await timedCallAPI('drill','question',SYS_DRILL,nh,{model:getMethodModel('drill'), action:'practice_question_eval'});
-    ST.drillHist=[...nh,{role:'assistant',content:JSON.stringify(res)}];
+    ST.drillHist=[...fullHist,{role:'assistant',content:JSON.stringify(res)}];
     const ok = res.is_correct;
     DATA.session.total+=1;if(ok)DATA.session.correct+=1;
     if(!ok){const tt=res.trap_type??ST.drillTarget;DATA.session.dna[tt]=(DATA.session.dna[tt]||0)+1;}
@@ -35395,7 +35781,10 @@ async function elabSubmit(container){
   catch(creditsErr){ handleApiError(creditsErr, {context:'elaborativa-eval'}); return; }
   ST.elabLoading=true;render();
   const um = {role:'user',content:'Minha explicação: '+ST.elabExplain};
-  const nh = [...ST.elabHist,um];
+  // V15.12.73 — Compactação de histórico só na ida pra Anthropic;
+  // histórico cheio segue em ST.elabHist pra continuidade.
+  const fullHist = [...ST.elabHist, um];
+  const nh = [...buildCompactHistory(ST.elabHist, {keepRecent: 2}), um];
   try{
     const res = await timedCallAPI('elaborative','question',SYS_ELAB,nh,{model:getMethodModel('elaborative'), action:'practice_question_eval'});
     ST.elabEval=res;
@@ -35748,9 +36137,12 @@ async function practSubmit(answer){
   catch(creditsErr){ handleApiError(creditsErr, {context:'pratica-eval'}); return; }
   ST.practAnswered=true;ST.practLoading=true;render();
   const um = {role:'user',content:'Resposta: '+answer};
-  const nh = [...ST.practHist,um];
+  // V15.12.73 — Mantém histórico cheio em memória (pra futuras compactações
+  // terem material), mas envia versão compactada na chamada.
+  const fullHist = [...ST.practHist, um];
+  const messagesToSend = [...buildCompactHistory(ST.practHist, {keepRecent: 2}), um];
   try{
-    const res = await timedCallAPI('practice','question',SYS_PRACT,nh,{model:getMethodModel('practice'), action:'practice_question_eval'});
+    const res = await timedCallAPI('practice','question',SYS_PRACT,messagesToSend,{model:getMethodModel('practice'), action:'practice_question_eval'});
     // V15.12.19: valida que a IA retornou conteúdo útil. Se vier vazio
     // (campos faltando ou só whitespace), não trava UI — mostra erro claro
     // e permite responder de novo.
@@ -35761,7 +36153,9 @@ async function practSubmit(answer){
     if(!hasMinimalContent){
       throw new Error('IA retornou resposta vazia ou sem campos esperados');
     }
-    ST.practHist=[...nh,{role:'assistant',content:JSON.stringify(res)}];
+    // V15.12.73 — Salva histórico CHEIO (não compactado) pra ter material
+    // pra compactar nas próximas chamadas. Compactação só na ida pra Anthropic.
+    ST.practHist=[...fullHist,{role:'assistant',content:JSON.stringify(res)}];
     const ok = res.is_correct;
     DATA.session.total+=1;if(ok)DATA.session.correct+=1;
     if(!ok){const tt=res.trap_type??0;DATA.session.dna[tt]=(DATA.session.dna[tt]||0)+1;}
@@ -35783,6 +36177,10 @@ async function practSubmit(answer){
       keyword:res.keyword,
       next:res.next,
       errCtx,
+      // V15.12.74 — Passa resposta do user pro renderer mostrar
+      // "Por que a alternativa X está errada" nas MC.
+      userChose: answer,
+      q: ST.practQ,
       suggestedFlashcard: (!ok && res.suggested_flashcard && res.suggested_flashcard.front && res.suggested_flashcard.back)
         ? res.suggested_flashcard
         : null
@@ -35830,7 +36228,12 @@ async function practSubmit(answer){
       // V15.12.68 — Detecta GRALIA_RATE_LIMIT (rate limit interno por plano)
       const isGraliaLimit = /gralia_rate_limit|limite por hora|seu plano|limite do plano/i.test(fullText);
       const bodyForLimit = (e && e.body) || {};
-      if(isGraliaLimit || bodyForLimit.code === 'GRALIA_RATE_LIMIT'){
+      // V15.12.73 — Cooldown local (chamada bloqueada pelo client, não atingiu Anthropic)
+      const isLocalCooldown = bodyForLimit.code === 'ANTHROPIC_COOLDOWN_LOCAL';
+      if(isLocalCooldown){
+        const sec = bodyForLimit.retry_after_seconds || 30;
+        ST.practError = `⏳ Aguarde mais ${sec}s — IA em descanso por excesso de uso recente.`;
+      } else if(isGraliaLimit || bodyForLimit.code === 'GRALIA_RATE_LIMIT'){
         const current = bodyForLimit.current_count;
         const limit = bodyForLimit.hour_limit;
         const retry = bodyForLimit.retry_after_seconds || 60;
@@ -35841,6 +36244,8 @@ async function practSubmit(answer){
           ST.practError = '⏳ Limite por hora do plano atingido — aguarde alguns minutos.';
         }
       } else if(isAnthropic){
+        // V15.12.73 — Marca cooldown local pra próximas chamadas pararem por 60s
+        markAnthropicRateLimit(60);
         ST.practError = '⏳ A IA atingiu o limite temporário de uso. Aguarde 1-2 minutos e responda novamente.';
       } else {
         ST.practError = '⏳ Requisição limitada — aguarde alguns segundos e responda novamente.';
@@ -36218,10 +36623,13 @@ async function interSubmit(answer){
   catch(creditsErr){ handleApiError(creditsErr, {context:'intercalacao-eval'}); return; }
   ST.interAnswered=true;ST.interLoading=true;render();
   const um = {role:'user',content:'Resposta: '+answer+'. IMPORTANTE: próxima questão DEVE ser de tópico diferente.'};
-  const nh = [...ST.interHist,um];
+  // V15.12.73 — Compactação de histórico só na ida pra Anthropic;
+  // histórico cheio segue em ST.interHist pra continuidade.
+  const fullHist = [...ST.interHist, um];
+  const nh = [...buildCompactHistory(ST.interHist, {keepRecent: 2}), um];
   try{
     const res = await timedCallAPI('interleaving','question',SYS_INTER,nh,{model:getMethodModel('interleaving'), action:'practice_question_eval'});
-    ST.interHist=[...nh,{role:'assistant',content:JSON.stringify(res)}];
+    ST.interHist=[...fullHist,{role:'assistant',content:JSON.stringify(res)}];
     const ok = res.is_correct;
     DATA.session.total+=1;if(ok)DATA.session.correct+=1;
     if(!ok){const tt=res.trap_type??0;DATA.session.dna[tt]=(DATA.session.dna[tt]||0)+1;}
