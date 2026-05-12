@@ -24892,29 +24892,41 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
     }
     card.appendChild(ctaRow);
   }
-  // V15.12.75.5 — P1.3.1 (fix): Mostra explicações/flashcards compartilhados
-  // APENAS em cache hit. Em fresh gen, a questão acabou de nascer e ainda
-  // não tem "comunidade" — o conteúdo é o próprio que veio do eval. Mostrar
-  // "Explicações da comunidade" pra questão recém-criada confunde o user.
-  //
-  // Bug resolvido: antes a chamada listExplanationsForQuestion rodava em fresh
-  // gen também e terminava tarde (depois do render principal). Causava o
-  // flashcard "só aparecer ao mudar de aba" — era hot-render após network.
-  if(sourceQuestion && fb._fromCache && typeof renderSharedExplanationsUI === 'function'){
+  // V15.12.75.6 — P1.3.1 (refactor): Comunidade só aparece quando há shared
+  // explanations de OUTROS users (não só do próprio user atual). Isso resolve:
+  //  - Questão recém-criada (só tem o próprio user) → não duplica
+  //  - Questão antiga com shared de outros → mostra
+  //  - Independe se é cache hit ou fresh gen
+  // Pré-check assíncrono que renderiza só se vale a pena.
+  if(sourceQuestion && typeof listExplanationsForQuestion === 'function'
+     && typeof renderSharedExplanationsUI === 'function' && AUTH && AUTH.user){
     const enun = sourceQuestion.question || sourceQuestion.enunciado || '';
     if(enun && enun.length >= 20){
+      // Container reservado, vazio. Só popula se passar no filtro.
       const sharedWrap = mk('div');
       sharedWrap.style.cssText = 'margin-top:.875rem';
+      sharedWrap.style.display = 'none'; // hidden até confirmar que vale
       card.appendChild(sharedWrap);
+      const myId = AUTH.user.id;
       const qForShared = {
         enunciado: enun,
         alternatives: sourceQuestion.alternatives || null,
         answer: sourceQuestion.correct_answer || sourceQuestion.answer || '',
         kind: sourceQuestion.kind || (sourceQuestion.alternatives ? 'MC' : 'CE')
       };
-      // Cache hit: pode mostrar expandido se user errou (ele precisa ajuda)
-      // ou colapsado se acertou (não atrapalha).
-      renderSharedExplanationsUI(sharedWrap, qForShared, ok);
+      // Pré-check: existe pelo menos 1 explicação OU flashcard de outro user?
+      Promise.all([
+        listExplanationsForQuestion(enun, 'explicacao'),
+        listExplanationsForQuestion(enun, 'flashcard')
+      ]).then(([expls, flashes]) => {
+        const hasOthersExpl = (expls || []).some(it => it.author_id && it.author_id !== myId);
+        const hasOthersFlash = (flashes || []).some(it => it.author_id && it.author_id !== myId);
+        if(hasOthersExpl || hasOthersFlash){
+          sharedWrap.style.display = '';
+          renderSharedExplanationsUI(sharedWrap, qForShared, ok);
+        }
+        // Se só tem do próprio user, não mostra nada. Reduz ruído visual.
+      }).catch(()=>{/* falha silenciosa */});
     }
   }
 
@@ -36670,8 +36682,10 @@ async function practSubmit(answer){
   ST.practLoading=false;render();
 }
 function practNext(){
+  console.info('[practNext] chamado. fb.next existe?', !!ST.practFb?.next, 'fb.next:', ST.practFb?.next);
   if(ST.practFb?.next){
     ST.practQ=ST.practFb.next;
+    console.info('[practNext] nova questão setada:', ST.practQ?.question?.slice(0, 60));
     // V15.12.75 — Se next veio do cache, não republicar (já está no pool).
     // O flag _fromCache é preservado pra UI mostrar badge "Banco Gralia" e
     // pra practSubmit processar eval local em vez de chamar IA.
@@ -36686,6 +36700,14 @@ function practNext(){
       save();
     }
     render();
+  } else {
+    console.warn('[practNext] sem next — clicando "Próxima" sem questão pré-carregada. Iniciando nova prática.');
+    // Fallback: se por algum motivo fb.next sumiu, dispara nova rodada
+    ST.practQ = null;
+    ST.practFb = null;
+    ST.practAnswered = false;
+    ST.practError = null;
+    startPractice();
   }
 }
 
