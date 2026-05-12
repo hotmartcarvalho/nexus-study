@@ -7971,20 +7971,33 @@ async function tryFetchFromPool(opts){
     const bank = opts.bank || getActiveBankProfile();
     const discId = opts.disciplineId || inferActiveDisciplineId();
     const disc = getActiveDisciplineProfile(discId);
-    const difficulty = opts.difficulty || inferActiveDifficulty();
     // Determina kind baseado no formato da banca (consistente com geração)
     const kind = opts.kind || (bank.defaultFormat === 'MC' ? 'MC' : 'CE');
 
-    if(bank.isFallback) return null; // sem banca definida = não cacheia
     if(!discId) return null;
 
-    const {data, error} = await supa.rpc('ai_pool_lookup', {
+    // V15.12.75.2 — FIX CRÍTICO: pool salva discipline_id como slug normalizado
+    // (via disciplineSlug em saveAIQuestion), não o uuid local. Tem que aplicar
+    // o mesmo slug aqui pra bater.
+    const discSlug = (typeof disciplineSlug === 'function') ? disciplineSlug(discId) : discId;
+    if(!discSlug || discSlug === 'unknown') return null;
+
+    // V15.12.75.2 — Bank fallback é OK pra cache lookup (admin testa com
+    // cebraspe_default que é fallback explícito). Só pula se id ausente.
+    if(!bank.id) return null;
+
+    // V15.12.75.2 — Passa difficulty como null pra aceitar qualquer dificuldade.
+    // O RPC trata null como "qualquer". Mais permissivo = mais hits.
+    const rpcParams = {
       p_bank_id: bank.id,
-      p_discipline_id: discId,
-      p_difficulty: difficulty || 'medium',
+      p_discipline_id: discSlug,
+      p_difficulty: null,
       p_kind: kind,
       p_topic_hint: opts.topicHint || null
-    });
+    };
+    console.info('[pool-cache] lookup params:', rpcParams);
+
+    const {data, error} = await supa.rpc('ai_pool_lookup', rpcParams);
 
     if(error){
       console.warn('[pool-cache] lookup error:', error.message);
