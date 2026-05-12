@@ -12722,11 +12722,20 @@ Estilo de flashcard: ${bank.flashcardStyle}`;
 function inferActiveDisciplineId(){
   // Prioriza foco ativo
   if(ST.activeFocus && ST.activeFocus.disciplineId) return ST.activeFocus.disciplineId;
-  // Fonte única ativa
-  const srcs = (typeof activeSources === 'function') ? activeSources() : [];
-  if(srcs.length === 1) return srcs[0].disciplineId;
-  // Disciplina ativa no banco
+  // Disciplina ativa no banco (filtro explícito do user)
   if(ST.bankDisciplineFilter && ST.bankDisciplineFilter !== 'all') return ST.bankDisciplineFilter;
+  // Fontes ativas: se todas são da mesma disciplina, usa essa
+  const srcs = (typeof activeSources === 'function') ? activeSources() : [];
+  if(srcs.length === 0) return null;
+  if(srcs.length === 1) return srcs[0].disciplineId;
+  // V15.12.75.3 — Múltiplas fontes: se TODAS são da mesma disciplina, retorna ela.
+  // Cache lookup precisa disso pra funcionar quando user importa N fontes da mesma matéria.
+  const discIds = srcs.map(s => s.disciplineId).filter(Boolean);
+  if(discIds.length > 0){
+    const first = discIds[0];
+    const allSame = discIds.every(d => d === first);
+    if(allSame) return first;
+  }
   return null;
 }
 
