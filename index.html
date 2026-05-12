@@ -4925,6 +4925,11 @@ button .ai-cost-badge.premium{background:rgba(255,210,100,.22);color:#7a4d10;bor
 .btn-p .ai-cost-badge.premium{background:rgba(255,220,140,.30);color:#fff;border-color:rgba(255,220,140,.50)}
 button .ai-cost-badge{margin-left:6px;background:rgba(255,255,255,.18);color:inherit;border-color:rgba(255,255,255,.30)}
 .btn-p .ai-cost-badge{background:rgba(255,255,255,.22);color:#fff;border-color:rgba(255,255,255,.35)}
+/* V15.12.74.2 — Variant .free pra badges "grátis" em ações sem custo.
+   Cor verde adaptada por tema pra contraste correto. Antes usava #15803d
+   que ficava puxado/baixo contraste no tema escuro. */
+.ai-cost-badge.free{background:rgba(34,197,94,.16);color:#15803d;border-color:rgba(34,197,94,.32);text-transform:uppercase;letter-spacing:.3px}
+html.dark .ai-cost-badge.free,:root[data-theme="dark"] .ai-cost-badge.free{background:rgba(34,197,94,.20);color:#86efac;border-color:rgba(34,197,94,.45)}
 
 /* Timeline modal de paginação */
 .timeline-modal-list{display:flex;flex-direction:column;gap:0;max-height:55vh;overflow-y:auto;padding:0 4px;margin-bottom:1rem;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
@@ -7930,9 +7935,12 @@ function invalidateGenerationContext(reason){
 function buildCompactHistory(history, opts){
   if(!Array.isArray(history) || history.length === 0) return [];
   opts = opts || {};
-  const keepRecent = opts.keepRecent || 2;  // últimos N turns (user+assistant)
+  const keepRecent = opts.keepRecent || 1;  // V15.12.74.3 — Era 2, agora 1. Mantém só ÚLTIMO turn (user+assistant) intacto, o resto vira resumo. 1 turn é suficiente pra coerência da próxima questão.
   const recentEntries = keepRecent * 2;     // pares (user, assistant)
-  // Limiar pra ativar compactação: 5+ entries (= 2+ turns completos)
+  // V15.12.74.3 — Limiar agressivo: compacta a partir de 4 entries (= 1 turno
+  // inicial + 1 turn = 3 entries... limiar 4 significa "tem mais do que cabe
+  // em initial+1turn = 3, então compacta"). Em prática: compacta a partir da
+  // 2ª chamada eval. Antes era a partir da 3ª. Ganho maior em sessões médias.
   if(history.length <= recentEntries + 1) return history.slice();
 
   // Sempre preserva a 1ª entry (seed inicial do user)
@@ -20717,7 +20725,8 @@ function aiCostBadgeHTML(costKey, options){
   const prefix = opts.prefix === false ? '' : '';
   const label = opts.label || (cost === 1 ? 'crédito' : 'créditos');
   if(cost === 0){
-    return `<span class="${cls}" title="Esta ação não consome créditos"><span class="acb-icon">✓</span><span class="acb-text">grátis</span></span>`;
+    // V15.12.74.2 — variante .free com cor adaptada a tema escuro
+    return `<span class="${cls} free" title="Esta ação não consome créditos"><span class="acb-icon">✓</span><span class="acb-text">grátis</span></span>`;
   }
   const title = `Esta ação consome ${cost} ${label} de IA`;
   return `<span class="${cls}" title="${title}"><span class="acb-icon">⚡</span><span class="acb-text">${prefix}${cost} ${label}</span></span>`;
@@ -24600,7 +24609,7 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
     sugHead.style.cssText='font-size:11px;font-weight:700;color:var(--accent-text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px;justify-content:space-between';
     // V15.12.74.1 — Badge "grátis" com cores adaptativas (uso de var em vez de
     // rgba fixo). Funciona em tema claro e escuro.
-    sugHead.innerHTML = '<span style="display:flex;align-items:center;gap:6px"><span style="font-size:14px">✨</span><span>Flashcard sugerido</span></span><span style="font-size:10px;font-weight:700;background:rgba(34,197,94,.22);color:var(--green-text,#15803d);padding:3px 9px;border-radius:10px;letter-spacing:.3px;text-transform:uppercase;border:1px solid rgba(34,197,94,.35)">grátis</span>';
+    sugHead.innerHTML = '<span style="display:flex;align-items:center;gap:6px"><span style="font-size:14px">✨</span><span>Flashcard sugerido</span></span><span class="ai-cost-badge free"><span class="acb-text">grátis</span></span>';
     sugCard.appendChild(sugHead);
 
     // Frente
@@ -35293,7 +35302,7 @@ async function calibSubmit(answer){
   // V15.12.73 — Compactação de histórico só na ida pra Anthropic;
   // histórico cheio segue em ST.calibHist pra continuidade.
   const fullHist = [...ST.calibHist, um];
-  const nh = [...buildCompactHistory(ST.calibHist, {keepRecent: 2}), um];
+  const nh = [...buildCompactHistory(ST.calibHist, {keepRecent: 1}), um];
   try{
     const res = await timedCallAPI('calibration','question',SYS_CALIB,nh,{model:getMethodModel('calibration'), action:'practice_question_eval'});
     ST.calibHist=[...fullHist,{role:'assistant',content:JSON.stringify(res)}];
@@ -35467,7 +35476,7 @@ async function examSubmit(container){
   // V15.12.73 — Compactação de histórico só na ida pra Anthropic;
   // histórico cheio segue em ST.examHist pra continuidade.
   const fullHist = [...ST.examHist, um];
-  const nh = [...buildCompactHistory(ST.examHist, {keepRecent: 2}), um];
+  const nh = [...buildCompactHistory(ST.examHist, {keepRecent: 1}), um];
   try{
     const res = await timedCallAPI('examiner','question',SYS_EXAM,nh,{model:getMethodModel('examiner'), action:'practice_question_eval'});
     ST.examHist=[...fullHist,{role:'assistant',content:JSON.stringify(res)}];
@@ -35628,7 +35637,7 @@ async function drillSubmit(answer){
   // V15.12.73 — Compactação de histórico só na ida pra Anthropic;
   // histórico cheio segue em ST.drillHist pra continuidade.
   const fullHist = [...ST.drillHist, um];
-  const nh = [...buildCompactHistory(ST.drillHist, {keepRecent: 2}), um];
+  const nh = [...buildCompactHistory(ST.drillHist, {keepRecent: 1}), um];
   try{
     const res = await timedCallAPI('drill','question',SYS_DRILL,nh,{model:getMethodModel('drill'), action:'practice_question_eval'});
     ST.drillHist=[...fullHist,{role:'assistant',content:JSON.stringify(res)}];
@@ -35801,7 +35810,7 @@ async function elabSubmit(container){
   // V15.12.73 — Compactação de histórico só na ida pra Anthropic;
   // histórico cheio segue em ST.elabHist pra continuidade.
   const fullHist = [...ST.elabHist, um];
-  const nh = [...buildCompactHistory(ST.elabHist, {keepRecent: 2}), um];
+  const nh = [...buildCompactHistory(ST.elabHist, {keepRecent: 1}), um];
   try{
     const res = await timedCallAPI('elaborative','question',SYS_ELAB,nh,{model:getMethodModel('elaborative'), action:'practice_question_eval'});
     ST.elabEval=res;
@@ -36157,7 +36166,7 @@ async function practSubmit(answer){
   // V15.12.73 — Mantém histórico cheio em memória (pra futuras compactações
   // terem material), mas envia versão compactada na chamada.
   const fullHist = [...ST.practHist, um];
-  const messagesToSend = [...buildCompactHistory(ST.practHist, {keepRecent: 2}), um];
+  const messagesToSend = [...buildCompactHistory(ST.practHist, {keepRecent: 1}), um];
   try{
     const res = await timedCallAPI('practice','question',SYS_PRACT,messagesToSend,{model:getMethodModel('practice'), action:'practice_question_eval'});
     // V15.12.19: valida que a IA retornou conteúdo útil. Se vier vazio
@@ -36643,7 +36652,7 @@ async function interSubmit(answer){
   // V15.12.73 — Compactação de histórico só na ida pra Anthropic;
   // histórico cheio segue em ST.interHist pra continuidade.
   const fullHist = [...ST.interHist, um];
-  const nh = [...buildCompactHistory(ST.interHist, {keepRecent: 2}), um];
+  const nh = [...buildCompactHistory(ST.interHist, {keepRecent: 1}), um];
   try{
     const res = await timedCallAPI('interleaving','question',SYS_INTER,nh,{model:getMethodModel('interleaving'), action:'practice_question_eval'});
     ST.interHist=[...fullHist,{role:'assistant',content:JSON.stringify(res)}];
