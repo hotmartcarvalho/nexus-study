@@ -48572,12 +48572,164 @@ function renderAdminDashboard(){
   wrap.appendChild(rlCard);
   loadAdminRateLimitedUsers(rlBody);
 
+  // === V15.12.72 — Card: Custo IA (auditoria de gastos Anthropic) ===
+  const costCard = mk('section','admin-card');
+  costCard.appendChild(adminSectionLabel('💰 Custo IA — Anthropic'));
+  const costHead = mk('h2','admin-section-title');
+  costHead.textContent = 'Auditoria de consumo da API';
+  costCard.appendChild(costHead);
+  const costHelp = mk('p');
+  costHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem';
+  costHelp.textContent = 'Preços Haiku 4.5: input $1/M · output $5/M · cache read $0.10/M · cache write $1.25/M. Valores são estimativa baseada em tokens reais retornados pela API.';
+  costCard.appendChild(costHelp);
+  // Tabs de período
+  const costTabs = mk('div');
+  costTabs.style.cssText = 'display:flex;gap:6px;margin-bottom:.875rem';
+  ['1','7','30'].forEach(days => {
+    const b = mkBtn(days + (days==='1'?' dia':' dias'), 'btn btn-sm');
+    if(!ST._adminCostDays) ST._adminCostDays = '7';
+    if(ST._adminCostDays === days) b.classList.add('btn-p');
+    b.addEventListener('click', ()=>{
+      ST._adminCostDays = days;
+      render();
+    });
+    costTabs.appendChild(b);
+  });
+  costCard.appendChild(costTabs);
+  const costBody = mk('div','admin-cost-body');
+  costBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando custos...</div>';
+  costCard.appendChild(costBody);
+  wrap.appendChild(costCard);
+  loadAdminCostStats(costBody, parseInt(ST._adminCostDays||'7'));
+
   // === Footer
   const footer = mk('div','admin-footer');
   footer.innerHTML = `<small>Logado como <b>${escapeHTML(AUTH.user.email)}</b> (admin) · Painel atualizado em ${new Date().toLocaleString('pt-BR')}</small>`;
   wrap.appendChild(footer);
 
   return wrap;
+}
+
+// V15.12.72 — Carrega 3 métricas de custo IA via RPCs
+async function loadAdminCostStats(container, days){
+  days = days || 7;
+  if(!supa){
+    container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>';
+    return;
+  }
+  try{
+    const [statsR, byActionR, byUserR] = await Promise.all([
+      supa.rpc('admin_ai_cost_stats', {p_days: days}),
+      supa.rpc('admin_ai_cost_by_action', {p_days: days}),
+      supa.rpc('admin_ai_cost_by_user', {p_days: days, p_limit: 10})
+    ]);
+    if(statsR.error || byActionR.error || byUserR.error){
+      throw statsR.error || byActionR.error || byUserR.error;
+    }
+    const stats = (statsR.data || [])[0];
+    const byAction = byActionR.data || [];
+    const byUser = byUserR.data || [];
+
+    container.innerHTML = '';
+
+    if(!stats || stats.out_total_calls === 0){
+      container.innerHTML = `<div class="txt3" style="padding:.75rem 0;text-align:center;font-size:13px">Sem chamadas registradas nos últimos ${days} dia${days===1?'':'s'}.</div>`;
+      return;
+    }
+
+    // Card de números principais (4 cells)
+    const head = mk('div');
+    head.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1rem';
+    const cells = [
+      {label: 'Total gasto', value: '$' + Number(stats.out_estimated_cost_usd).toFixed(2), sub: `${stats.out_total_calls} chamadas`},
+      {label: 'Usuários únicos', value: stats.out_unique_users, sub: `~$${(stats.out_estimated_cost_usd / Math.max(1,stats.out_unique_users)).toFixed(2)} por user`},
+      {label: 'Tokens input', value: formatTokens(stats.out_total_input), sub: 'cache read: ' + formatTokens(stats.out_cache_read)},
+      {label: 'Tokens output', value: formatTokens(stats.out_total_output), sub: `${stats.out_failed_calls} falhas (${Math.round((stats.out_failed_calls/Math.max(1,stats.out_total_calls))*100)}%)`}
+    ];
+    cells.forEach(c => {
+      const cell = mk('div');
+      cell.style.cssText = 'background:var(--surface2);padding:.625rem .875rem;border-radius:8px';
+      cell.innerHTML = `
+        <div style="font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">${c.label}</div>
+        <div style="font-size:18px;font-weight:700;color:var(--text);margin-top:2px">${c.value}</div>
+        <div style="font-size:10.5px;color:var(--text3);margin-top:2px">${c.sub}</div>
+      `;
+      head.appendChild(cell);
+    });
+    container.appendChild(head);
+
+    // Tabela: gasto por ação
+    if(byAction.length > 0){
+      const t1 = mk('details');
+      t1.open = true;
+      t1.style.cssText = 'margin-bottom:.875rem';
+      const summary1 = mk('summary');
+      summary1.style.cssText = 'cursor:pointer;font-weight:600;font-size:13px;padding:.375rem 0';
+      summary1.textContent = `Por ação (${byAction.length} ações distintas)`;
+      t1.appendChild(summary1);
+      const tbl1 = mk('div');
+      tbl1.style.cssText = 'display:flex;flex-direction:column;gap:4px;margin-top:.5rem';
+      byAction.slice(0, 15).forEach(a => {
+        const row = mk('div');
+        row.style.cssText = 'display:grid;grid-template-columns:1.4fr .8fr .8fr .8fr .8fr 1fr;gap:8px;padding:.4rem .625rem;background:var(--surface2);border-radius:6px;font-size:11.5px;align-items:center';
+        const errorBadge = a.out_error_rate_pct > 5
+          ? `<span style="color:var(--red-text);font-weight:600">⚠ ${a.out_error_rate_pct}% erro</span>`
+          : (a.out_error_rate_pct > 0 ? `<span style="color:var(--text3)">${a.out_error_rate_pct}%</span>` : '');
+        row.innerHTML = `
+          <div style="font-family:ui-monospace,monospace;font-size:11px;font-weight:600">${escapeHTML(a.out_action_id||'?')}</div>
+          <div style="color:var(--text2);text-align:right">${a.out_call_count}×</div>
+          <div style="color:var(--text2);text-align:right">${Math.round(a.out_avg_input)}/${Math.round(a.out_avg_output)} tok</div>
+          <div style="color:var(--text2);text-align:right">$${Number(a.out_avg_cost_usd).toFixed(4)}/un</div>
+          <div style="font-weight:700;text-align:right">$${Number(a.out_total_cost_usd).toFixed(3)}</div>
+          <div style="text-align:right;color:var(--text3)">${a.out_credits_charged}cr ${errorBadge}</div>
+        `;
+        tbl1.appendChild(row);
+      });
+      const hdr1 = mk('div');
+      hdr1.style.cssText = 'display:grid;grid-template-columns:1.4fr .8fr .8fr .8fr .8fr 1fr;gap:8px;padding:.25rem .625rem;font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px';
+      hdr1.innerHTML = `<div>Ação</div><div style="text-align:right">N</div><div style="text-align:right">In/Out</div><div style="text-align:right">$/un</div><div style="text-align:right">Total</div><div style="text-align:right">Cr · Err</div>`;
+      tbl1.insertBefore(hdr1, tbl1.firstChild);
+      t1.appendChild(tbl1);
+      container.appendChild(t1);
+    }
+
+    // Tabela: top usuários
+    if(byUser.length > 0){
+      const t2 = mk('details');
+      t2.open = false;
+      t2.style.cssText = 'margin-bottom:.5rem';
+      const summary2 = mk('summary');
+      summary2.style.cssText = 'cursor:pointer;font-weight:600;font-size:13px;padding:.375rem 0';
+      summary2.textContent = `Top usuários por custo (${byUser.length})`;
+      t2.appendChild(summary2);
+      const tbl2 = mk('div');
+      tbl2.style.cssText = 'display:flex;flex-direction:column;gap:4px;margin-top:.5rem';
+      byUser.forEach(u => {
+        const row = mk('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:.4rem .625rem;background:var(--surface2);border-radius:6px;font-size:11.5px';
+        row.innerHTML = `
+          <div style="flex:1;font-weight:600">${escapeHTML(u.out_email||'?')}</div>
+          <div style="color:var(--text3);font-size:10.5px">${u.out_plan_id||'?'} · ${u.out_call_count} ch · ${formatTokens(u.out_total_input + u.out_total_output)} tok</div>
+          <div style="font-weight:700;color:var(--text);min-width:60px;text-align:right">$${Number(u.out_estimated_cost_usd).toFixed(3)}</div>
+        `;
+        tbl2.appendChild(row);
+      });
+      t2.appendChild(tbl2);
+      container.appendChild(t2);
+    }
+
+  }catch(e){
+    console.error('[admin-cost]', e);
+    container.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro: ${escapeHTML(e.message||String(e))}<br><br>Migration 9 (09-migration-cost-audit.sql) precisa rodar antes.</div>`;
+  }
+}
+
+// Helper formato compacto de tokens (1234567 → "1.2M", 12345 → "12k")
+function formatTokens(n){
+  n = Number(n) || 0;
+  if(n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if(n >= 1e3) return (n/1e3).toFixed(1) + 'k';
+  return String(n);
 }
 
 // V15.12.68 — Lista users que bateram rate limit em alguma hora das últimas 24h
