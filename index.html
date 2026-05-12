@@ -12773,9 +12773,15 @@ function buildContent(){
     const budgetForContents = MAX_CONTENT_CHARS - totalHeaderOverhead;
     const sumChars = srcs.reduce((acc, s) => acc + (s.content||'').length, 0);
 
-    // Avança o offset rotativo (persistente entre chamadas) pra cada fonte cobrir
-    // pedaços diferentes em chamadas sucessivas
+    // V15.12.74.4 — Rotação de conteúdo: antes rodava offset a CADA chamada,
+    // o que invalidava o cache da Anthropic (5min TTL) e fazia cada chamada
+    // pagar cache_write em vez de cache_read (10× mais caro + conta 100% no
+    // rate limit). Solução: roda offset só a cada N=5 chamadas. Entre rotações,
+    // mesmo conteúdo → cache hit garantido. Trade-off: cobertura da fonte
+    // ainda acontece mas em ciclos mais longos (cada 5 questões, novo trecho).
     if(!DATA._contentRotationOffset) DATA._contentRotationOffset = {};
+    if(!DATA._contentRotationCounter) DATA._contentRotationCounter = {};
+    const ROTATE_EVERY_N = 5;
 
     const parts = srcs.map(s=>{
       const disc = getDiscipline(s.disciplineId);
@@ -12786,16 +12792,14 @@ function buildContent(){
       const header = `[${srcLabel}${dLbl}${tLbl}: ${s.name}]\n`;
       const content = s.content || '';
 
-      // Calcula o budget desta fonte proporcional ao tamanho dela
       const srcBudget = Math.max(MIN_PER_SOURCE, Math.floor(budgetForContents * (content.length / sumChars)));
 
       if(content.length <= srcBudget){
         return header + content;
       }
 
-      // Janela rotativa
+      // Janela rotativa COM CACHE: só avança offset a cada N chamadas
       const offset = (DATA._contentRotationOffset[s.id] || 0) % content.length;
-      // Tenta começar num quebra de parágrafo próxima do offset pra não cortar palavra
       let realOffset = offset;
       const nlNear = content.indexOf('\n\n', offset);
       if(nlNear !== -1 && nlNear - offset < 500){
@@ -12806,16 +12810,25 @@ function buildContent(){
       if(realOffset + srcBudget <= content.length){
         slice = content.slice(realOffset, realOffset + srcBudget);
       } else {
-        // Wrap: pega o final + começo
         const tailLen = content.length - realOffset;
         const headLen = srcBudget - tailLen;
         slice = content.slice(realOffset) + '\n\n[…continuação do início da fonte…]\n\n' + content.slice(0, headLen);
       }
 
-      // Avança offset pra próxima chamada (50% da janela = sobreposição)
-      DATA._contentRotationOffset[s.id] = (realOffset + Math.floor(srcBudget * 0.5)) % content.length;
+      // V15.12.74.4 — Counter por fonte. Só avança offset quando counter ≥ N.
+      const counter = (DATA._contentRotationCounter[s.id] || 0) + 1;
+      if(counter >= ROTATE_EVERY_N){
+        DATA._contentRotationOffset[s.id] = (realOffset + Math.floor(srcBudget * 0.5)) % content.length;
+        DATA._contentRotationCounter[s.id] = 0;
+      } else {
+        DATA._contentRotationCounter[s.id] = counter;
+      }
 
-      return header + `[Trecho da fonte — chars ${realOffset}-${realOffset + slice.length} de ${content.length}]\n` + slice;
+      // V15.12.74.4 — IMPORTANTE: o trecho enviado NÃO inclui o offset numérico
+      // no header. Antes incluía "[Trecho da fonte — chars 1234-5678 de 12345]"
+      // que muda a cada chamada (mesmo com mesma slice) → quebra cache.
+      // Agora header é genérico, só o slice cacheia.
+      return header + slice;
     });
     trimmedContent = parts.join('\n\n---\n\n');
     // Salva o offset atualizado em background (não bloqueia)
