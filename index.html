@@ -36682,32 +36682,35 @@ async function practSubmit(answer){
   ST.practLoading=false;render();
 }
 function practNext(){
-  console.info('[practNext] chamado. fb.next existe?', !!ST.practFb?.next, 'fb.next:', ST.practFb?.next);
-  if(ST.practFb?.next){
+  if(ST.practFb?.next && ST.practFb.next.question){
     ST.practQ=ST.practFb.next;
-    console.info('[practNext] nova questão setada:', ST.practQ?.question?.slice(0, 60));
     // V15.12.75 — Se next veio do cache, não republicar (já está no pool).
-    // O flag _fromCache é preservado pra UI mostrar badge "Banco Gralia" e
-    // pra practSubmit processar eval local em vez de chamar IA.
     if(!ST.practQ._fromCache){
       saveAIQuestion('practice',ST.practQ,getMethodModel('practice'));
     }
     ST.practFb=null;ST.practAnswered=false;
     ST.practError=null;
-    // V12: limpa o preload (já consumimos)
     if(DATA.preloadedQuestions?.practice){
       delete DATA.preloadedQuestions.practice;
       save();
     }
     render();
   } else {
-    console.warn('[practNext] sem next — clicando "Próxima" sem questão pré-carregada. Iniciando nova prática.');
-    // Fallback: se por algum motivo fb.next sumiu, dispara nova rodada
+    // V15.12.75.7 — Fallback: a IA não retornou `next` (truncamento por output
+    // size, parse falhou, etc) ou next veio sem question. Em vez de travar,
+    // reseta o estado e re-renderiza a tela. O render mostra o botão "Iniciar"
+    // de novo, que dispara practStart no clique. Usuário não fica preso.
+    console.warn('[practNext] next ausente ou inválido. Resetando para tela inicial de prática.');
     ST.practQ = null;
     ST.practFb = null;
     ST.practAnswered = false;
     ST.practError = null;
-    startPractice();
+    if(DATA.preloadedQuestions?.practice){
+      delete DATA.preloadedQuestions.practice;
+      save();
+    }
+    showToast('Pronto pra próxima — clique em "Iniciar prática"', 4000);
+    render();
   }
 }
 
