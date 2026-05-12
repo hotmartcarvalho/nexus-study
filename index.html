@@ -9363,18 +9363,44 @@ function renderSharedExplanationCard(item, q){
   card.appendChild(cHead);
 
   // Body: explicação + armadilha + gatilho
+  // V15.12.75.5 — Aplica parser estruturado (mesmo da V15.12.74 no card principal).
+  // Se o payload.explanation tem formato "Gabarito: ...\nPor que está certa: ..." 
+  // (estrutura premium), vira cards visuais coloridos. Caso contrário, fallback
+  // mostra como prosa simples sem misturar trap/keyword no meio.
   const body = mk('div','shexpl-body');
   const p = item.payload || {};
+
   if(p.explanation){
-    const e = mk('p');e.style.margin='0 0 .5rem';e.innerHTML = `<b>Explicação:</b> ${escapeHTML(p.explanation)}`;
-    body.appendChild(e);
+    // Parser tenta extrair seções. Se nada bate, _hasStructure=false e
+    // o renderer cai no fallback simples.
+    if(typeof renderStructuredExplanation === 'function'){
+      const expWrap = renderStructuredExplanation(p.explanation, {
+        isMC: (q && q.kind === 'MC'),
+        correctAnswer: q ? q.answer : null
+      });
+      expWrap.style.marginTop = '0';
+      expWrap.style.marginBottom = '8px';
+      body.appendChild(expWrap);
+    } else {
+      const e = mk('p');e.style.margin='0 0 .5rem';e.innerHTML = `<b>Explicação:</b> ${escapeHTML(p.explanation)}`;
+      body.appendChild(e);
+    }
   }
-  if(p.trap){
-    const t = mk('p');t.style.margin='0 0 .5rem';t.innerHTML = `<b>Armadilha:</b> ${escapeHTML(p.trap)}`;
+  // V15.12.75.5 — Trap/keyword só se parser não pegou (evita duplicar com Pegadinha
+  // que já viria do parser). Mostra como cards menores no estilo do feedback principal.
+  const parsedShared = typeof parseExplanationStructured === 'function'
+    ? parseExplanationStructured(p.explanation || '')
+    : {pegadinha: null};
+  if(p.trap && !parsedShared.pegadinha){
+    const t = mk('div');
+    t.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:.5rem .75rem;background:rgba(232,76,76,.10);border:1px solid rgba(232,76,76,.22);border-left:3px solid var(--red);border-radius:0 6px 6px 0;font-size:12.5px;line-height:1.5;margin-top:6px';
+    t.innerHTML = `<span style="font-size:14px;flex-shrink:0">⚠️</span><span style="color:var(--text)"><b style="color:var(--red-text)">Armadilha:</b> ${escapeHTML(p.trap)}</span>`;
     body.appendChild(t);
   }
   if(p.keyword){
-    const k = mk('p');k.style.margin='0';k.innerHTML = `<b>Gatilho:</b> ${escapeHTML(p.keyword)}`;
+    const k = mk('div');
+    k.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:.5rem .75rem;background:rgba(245,158,11,.11);border:1px solid rgba(245,158,11,.22);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;font-size:12.5px;line-height:1.5;margin-top:6px';
+    k.innerHTML = `<span style="font-size:14px;flex-shrink:0">🎯</span><span style="color:var(--text)"><b style="color:var(--amber-text)">Palavra-gatilho:</b> ${escapeHTML(p.keyword)}</span>`;
     body.appendChild(k);
   }
   card.appendChild(body);
@@ -24866,30 +24892,29 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
     }
     card.appendChild(ctaRow);
   }
-  // V15.12.75.4 — P1.3.1: Mostra explicações e flashcards compartilhados
-  // por outros usuários (shared_explanations). Especialmente útil pra:
-  //  - Cache hit: questão já vista por outros, traz conteúdo coletivo
-  //  - Fresh gen: outros users podem ter explicações alternativas (Sonnet,
-  //    manuais, etc) que enriquecem a aprendizagem
-  // sourceQuestion vem com q.enunciado/question; precisa ao menos disso.
-  if(sourceQuestion && typeof renderSharedExplanationsUI === 'function'){
+  // V15.12.75.5 — P1.3.1 (fix): Mostra explicações/flashcards compartilhados
+  // APENAS em cache hit. Em fresh gen, a questão acabou de nascer e ainda
+  // não tem "comunidade" — o conteúdo é o próprio que veio do eval. Mostrar
+  // "Explicações da comunidade" pra questão recém-criada confunde o user.
+  //
+  // Bug resolvido: antes a chamada listExplanationsForQuestion rodava em fresh
+  // gen também e terminava tarde (depois do render principal). Causava o
+  // flashcard "só aparecer ao mudar de aba" — era hot-render após network.
+  if(sourceQuestion && fb._fromCache && typeof renderSharedExplanationsUI === 'function'){
     const enun = sourceQuestion.question || sourceQuestion.enunciado || '';
     if(enun && enun.length >= 20){
       const sharedWrap = mk('div');
       sharedWrap.style.cssText = 'margin-top:.875rem';
       card.appendChild(sharedWrap);
-      // Passa formato esperado pelo render: {enunciado, alternatives, answer, kind}
       const qForShared = {
         enunciado: enun,
         alternatives: sourceQuestion.alternatives || null,
         answer: sourceQuestion.correct_answer || sourceQuestion.answer || '',
         kind: sourceQuestion.kind || (sourceQuestion.alternatives ? 'MC' : 'CE')
       };
-      // Render assíncrono: se cache hit (sem suggested próprio) e não há
-      // explicação já no card, mostra direto (expandido); caso contrário
-      // colapsado pra não duplicar UI.
-      const showExpanded = fb._fromCache || !fb.suggestedFlashcard;
-      renderSharedExplanationsUI(sharedWrap, qForShared, ok && !showExpanded);
+      // Cache hit: pode mostrar expandido se user errou (ele precisa ajuda)
+      // ou colapsado se acertou (não atrapalha).
+      renderSharedExplanationsUI(sharedWrap, qForShared, ok);
     }
   }
 
