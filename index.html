@@ -8008,10 +8008,27 @@ async function tryFetchFromPool(opts){
       return null;
     }
 
-    // Escolhe 1 aleatória entre as candidatas (RPC retorna até 5)
-    const picked = data[Math.floor(Math.random() * data.length)];
+    // V15.12.75.10 — Set local de "vistas nesta sessão" evita race condition.
+    // O mark_seen no banco é async (fire-and-forget) e pode demorar 500ms+.
+    // Se o cliente pedir cache de novo nesse intervalo, RPC ainda retorna a
+    // mesma questão (não sabe que já foi marcada). Set local serve de buffer
+    // imediato pra filtrar candidatos.
+    if(!window._poolSeenThisSession){ window._poolSeenThisSession = new Set(); }
+    const sessionSeen = window._poolSeenThisSession;
+    // Filtra candidatas que ainda não foram pegas nesta sessão
+    const fresh = data.filter(d => !sessionSeen.has(d.out_id));
+    if(fresh.length === 0){
+      // Todas as candidatas do RPC já foram vistas nesta sessão — pool esgotado
+      console.info('[pool-cache] miss — todas as candidatas já vistas nesta sessão');
+      return null;
+    }
+    // Escolhe 1 aleatória entre as candidatas frescas
+    const picked = fresh[Math.floor(Math.random() * fresh.length)];
+    // Marca SINCRONAMENTE no set local (antes mesmo do retorno)
+    sessionSeen.add(picked.out_id);
 
-    // Marca como vista (não bloqueia retorno)
+    // Marca como vista no banco (não bloqueia retorno — fire and forget,
+    // mas o set local já garante anti-repetição imediata)
     supa.rpc('ai_pool_mark_seen', {
       p_question_id: picked.out_id,
       p_method: opts.method || 'practice',
@@ -8025,7 +8042,8 @@ async function tryFetchFromPool(opts){
       diff: picked.out_difficulty,
       kind: picked.out_kind,
       score: picked.out_ai_score,
-      timesServed: picked.out_times_served
+      timesServed: picked.out_times_served,
+      sessionSeenCount: sessionSeen.size
     });
 
     // Monta objeto compatível com o retorno da IA
