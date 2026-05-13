@@ -8903,39 +8903,68 @@ function showReportExplanationModal(item, q, kind){
   cancel.addEventListener('click',closeModal);
   actions.appendChild(cancel);
   const send = mkBtn(existing ? 'Atualizar motivo' : 'Enviar report','btn btn-p');
-  send.addEventListener('click',()=>{
+  send.addEventListener('click', async ()=>{
     if(!selected){ alert('Selecione um motivo.'); return; }
+    send.disabled = true;
+    const origText = send.textContent;
+    send.textContent = existing ? 'Atualizando...' : 'Enviando...';
+
+    const itemIdNum = (typeof item.id === 'number') ? item.id : (item.id ? parseInt(item.id, 10) : null);
+
+    // V15.12.75.29 — Tenta Supabase primeiro (RPC report_shared_explanation).
+    // Se falhar (RPC inexistente, item.id não numérico, sem auth), cai pro
+    // armazenamento local antigo pra não quebrar o fluxo do user.
+    let savedToSupa = false;
+    if(supa && AUTH.user && itemIdNum && !isNaN(itemIdNum)){
+      try{
+        const {error} = await supa.rpc('report_shared_explanation', {
+          p_explanation_id: itemIdNum,
+          p_reason: selected,
+          p_note: note.value.trim() || null
+        });
+        if(!error){
+          savedToSupa = true;
+        } else {
+          console.warn('[report] RPC erro, usando fallback local:', error.message);
+        }
+      }catch(err){
+        console.warn('[report] exception, usando fallback local:', err.message);
+      }
+    }
+
+    // Fallback local — também mantém pra usar offline / pra items sem id numérico
     if(!DATA._reportedExplanations) DATA._reportedExplanations = [];
     const myId = (AUTH.user && AUTH.user.id) || 'local';
 
     if(existing){
-      // V15.12.40 — Atualiza in-place (sem criar duplicata)
       existing.reason = selected;
       existing.note = note.value.trim();
       existing.updatedAt = Date.now();
-      // Garante que reporterId está setado em registros antigos (migration on-the-fly)
       if(!existing.reporterId) existing.reporterId = myId;
+      existing.syncedToSupabase = savedToSupa;
       save();
-      closeModal();
-      showToast('✓ Report atualizado', 3000);
     } else {
-      // Novo report
       DATA._reportedExplanations.push({
         id: 'rpt_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
         itemId: item.id || null,
         itemKind: kind,
         itemModel: item.model || null,
         authorId: item.author_id || null,
-        reporterId: myId,           // V15.12.40 — quem reportou (pra anti-duplicidade)
+        reporterId: myId,
         questionHash: (typeof questionHash === 'function' ? questionHash(q.enunciado) : null),
         reason: selected,
         note: note.value.trim(),
-        reportedAt: Date.now()
+        reportedAt: Date.now(),
+        syncedToSupabase: savedToSupa
       });
       save();
-      closeModal();
-      showToast('✓ Report registrado. Obrigado pela ajuda!', 3000);
     }
+
+    closeModal();
+    const msg = existing
+      ? (savedToSupa ? '✓ Report atualizado' : '✓ Report atualizado (offline — sincronizará quando conectar)')
+      : (savedToSupa ? '✓ Report registrado. Obrigado pela ajuda!' : '✓ Report registrado offline. Sincronizará quando conectar.');
+    showToast(msg, 3500);
   });
   actions.appendChild(send);
   m.appendChild(actions);
@@ -19511,8 +19540,14 @@ function renderTopbar(){
   }
 
   const colCenter = mk('div','topbar-col-center');
-  colCenter.appendChild(hamb);
-  colCenter.appendChild(tabs);
+  // V15.12.75.29 — Esconde tabs de navegação E hambúrguer mobile em qualquer
+  // modo de foco. No foco, o user está concentrado em uma atividade — tirar
+  // navegação evita distração e cliques acidentais.
+  const inAnyFocus = isFocusMode() || ST.srsFocusActive || ST.methodFocusActive || ST.importedFocusActive;
+  if(!inAnyFocus){
+    colCenter.appendChild(hamb);
+    colCenter.appendChild(tabs);
+  }
 
   // V15.10: Container dos links institucionais — visível tanto em desktop
   // (com sidebar) quanto em mobile (sem sidebar).
@@ -50352,18 +50387,21 @@ function renderAdminDashboard(){
   const dangerGrid = mk('div');
   dangerGrid.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
 
-  // V15.12.75.22 — Botão dinâmico: "Desativar todas" OU "Reativar todas".
-  // Detecta automaticamente se há questões ativas. Se sim, mostra "Desativar"
-  // pra mover ativas → desativadas. Se a maioria está desativada,
-  // mostra "Reativar todas" pra voltar pra ativas.
-  // O texto e título descrevem CLARAMENTE o que faz, sem jargão.
+  // V15.12.75.28 — DOIS botões separados (antes era 1 que alternava texto).
+  // Vantagem: se houver simultaneamente questões ativas E desativadas
+  // (ex: 5 active + 10 disabled), AMBOS aparecem — admin pode escolher.
+  // Cada botão se esconde quando não há nada pra fazer.
   const disableAllBtn = mkBtn('Carregando...', 'btn btn-sm');
-  disableAllBtn.style.cssText = 'border-color:var(--amber);color:var(--amber-text)';
+  disableAllBtn.style.cssText = 'border-color:var(--amber);color:var(--amber-text);display:none';
   disableAllBtn.disabled = true;
-  // Atualiza estado do botão baseado em quantas questões ativas existem
+  const reactivateAllBtn = mkBtn('Carregando...', 'btn btn-sm');
+  reactivateAllBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);display:none';
+  reactivateAllBtn.disabled = true;
+
   async function refreshDisableButton(){
     if(!supa){
-      disableAllBtn.textContent = 'Desativar todas as questões';
+      disableAllBtn.textContent = 'Desativar todas as ativas';
+      disableAllBtn.style.display = 'inline-flex';
       disableAllBtn.disabled = false;
       return;
     }
@@ -50376,34 +50414,48 @@ function renderAdminDashboard(){
         .from('ai_question_pool')
         .select('content_hash', {count:'exact', head:true})
         .eq('status', 'disabled');
-      const hasActive = (activeCount || 0) > 0;
-      const hasDisabled = (disabledCount || 0) > 0;
-      if(hasActive){
-        disableAllBtn.textContent = `Desativar todas as ${activeCount} ativas`;
-        disableAllBtn.title = 'Move TODAS as questões ativas pra status "Desativada". Elas param de aparecer no reaproveitamento, mas NÃO são excluídas — você pode reativar depois.';
+      const nActive = activeCount || 0;
+      const nDisabled = disabledCount || 0;
+
+      // Botão DESATIVAR — só aparece se há ativas
+      if(nActive > 0){
+        disableAllBtn.textContent = `🚫 Desativar as ${nActive} ativas`;
+        disableAllBtn.title = 'Move TODAS as questões ativas pra "Desativada". NÃO afeta rascunhos/sinalizadas/já desativadas. Pode reverter clicando em "Reativar".';
         disableAllBtn.onclick = ()=>handleAdminPoolDisableAll(disableAllBtn, 'disable', refreshDisableButton);
-        disableAllBtn.style.cssText = 'border-color:var(--amber);color:var(--amber-text)';
-      } else if(hasDisabled){
-        disableAllBtn.textContent = `Reativar todas as ${disabledCount} desativadas`;
-        disableAllBtn.title = 'Move todas as questões desativadas DE VOLTA pra "Ativa". Voltam a aparecer no reaproveitamento.';
-        disableAllBtn.onclick = ()=>handleAdminPoolDisableAll(disableAllBtn, 'reactivate', refreshDisableButton);
-        disableAllBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text)';
+        disableAllBtn.style.display = 'inline-flex';
+        disableAllBtn.disabled = false;
       } else {
-        disableAllBtn.textContent = 'Desativar todas (banco vazio)';
-        disableAllBtn.disabled = true;
-        disableAllBtn.title = 'Banco está vazio — nada pra desativar.';
-        disableAllBtn.style.opacity = '.6';
-        return;
+        disableAllBtn.style.display = 'none';
       }
-      disableAllBtn.disabled = false;
+
+      // Botão REATIVAR — só aparece se há desativadas
+      if(nDisabled > 0){
+        reactivateAllBtn.textContent = `↻ Reativar as ${nDisabled} desativadas`;
+        reactivateAllBtn.title = 'Move TODAS as desativadas DE VOLTA pra "Ativa". Voltam ao reaproveitamento.';
+        reactivateAllBtn.onclick = ()=>handleAdminPoolDisableAll(reactivateAllBtn, 'reactivate', refreshDisableButton);
+        reactivateAllBtn.style.display = 'inline-flex';
+        reactivateAllBtn.disabled = false;
+      } else {
+        reactivateAllBtn.style.display = 'none';
+      }
+
+      // Mensagem se ambos estão vazios
+      if(nActive === 0 && nDisabled === 0){
+        disableAllBtn.textContent = '⚠ Banco vazio — nada a desativar';
+        disableAllBtn.style.display = 'inline-flex';
+        disableAllBtn.disabled = true;
+        disableAllBtn.style.opacity = '.6';
+      }
     }catch(e){
-      disableAllBtn.textContent = 'Desativar todas';
-      disableAllBtn.disabled = false;
       console.warn('[admin] refreshDisableButton:', e.message);
+      disableAllBtn.textContent = '🚫 Desativar todas as ativas';
+      disableAllBtn.style.display = 'inline-flex';
+      disableAllBtn.disabled = false;
     }
   }
   refreshDisableButton();
   dangerGrid.appendChild(disableAllBtn);
+  dangerGrid.appendChild(reactivateAllBtn);
 
   const nukeBtn = mkBtn('🗑 LIMPAR BANCO COMPLETAMENTE', 'btn btn-sm');
   nukeBtn.style.cssText = 'border-color:var(--red);color:var(--red-text);font-weight:700';
@@ -50440,10 +50492,14 @@ async function loadAdminPoolStats(container){
     const grid = mk('div');
     grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:.5rem';
     const cells = [
-      {label: 'Cache hits (7d)', value: map.cache_hits || '0', sub: 'Sem custo IA'},
-      {label: 'Cache misses (7d)', value: map.cache_misses || '0', sub: 'Geradas pela IA'},
-      {label: 'Hit rate (7d)', value: map.hit_rate_pct || '—', sub: 'Reaproveitamento'},
-      {label: 'Pool total', value: map.pool_total || '0', sub: `${map.pool_active||0} active · ${map.pool_draft||0} draft · ${map.pool_flagged||0} flagged · ${map.pool_disabled||0} disabled`}
+      {label: 'Reaproveitadas (7d)', value: map.cache_hits || '0', sub: 'Sem custo de IA'},
+      {label: 'Geradas pela IA (7d)', value: map.cache_misses || '0', sub: 'Com custo Anthropic'},
+      {label: 'Taxa de reaproveitamento (7d)', value: map.hit_rate_pct || '—', sub: 'Quanto maior, melhor'},
+      {
+        label: 'Total no banco',
+        value: map.pool_total || '0',
+        sub: `<span style="color:var(--accent-text)">${map.pool_active||0} ativas</span> · ${map.pool_draft||0} rascunhos · ${map.pool_flagged||0} sinalizadas · ${map.pool_disabled||0} desativadas`
+      }
     ];
     cells.forEach(c => {
       const cell = mk('div');
@@ -50873,7 +50929,7 @@ async function loadAdminSharedExplanationModeration(container){
     const [sharedRes, questionsRes] = await Promise.all([
       supa
         .from('shared_explanations')
-        .select('id, question_hash, kind, model, payload, author_id, author_username, upvotes, downvotes, created_at, admin_reviewed_at')
+        .select('id, question_hash, kind, model, payload, author_id, author_username, upvotes, downvotes, created_at, admin_reviewed_at, reports_count, auto_flagged_at')
         .order('downvotes', {ascending: false})
         .limit(100),
       supa
@@ -50891,11 +50947,17 @@ async function loadAdminSharedExplanationModeration(container){
       console.warn('[admin-mod] erro questões:', questionsRes.error.message);
     }
 
-    // Aplica filtro
+    // V15.12.75.29 — Aplica filtro. Pendentes agora inclui:
+    //   • Shared com downvote OU reports OU auto-flagged
+    //   • Questões com downvote OU reports
     let problematicShared, problematicQuestions;
     if(filter === 'pending'){
       problematicShared = (sharedRes.data || []).filter(it =>
-        (it.downvotes || 0) >= 1 && !it.admin_reviewed_at
+        !it.admin_reviewed_at && (
+          (it.downvotes || 0) >= 1 ||
+          (it.reports_count || 0) >= 1 ||
+          !!it.auto_flagged_at
+        )
       );
       problematicQuestions = ((questionsRes.data) || []).filter(q =>
         q.status === 'active' &&
@@ -50910,7 +50972,7 @@ async function loadAdminSharedExplanationModeration(container){
         q.status === 'active' && !!q.admin_reviewed_at
       );
     } else if(filter === 'disabled'){
-      problematicShared = []; // shared não tem status — apenas questões
+      problematicShared = [];
       problematicQuestions = ((questionsRes.data) || []).filter(q =>
         q.status === 'disabled'
       );
@@ -51044,11 +51106,21 @@ async function loadAdminSharedExplanationModeration(container){
       author.textContent = '@' + (item.author_username || 'desconhecido');
       headerLeft.appendChild(author);
 
+      // V15.12.75.29 — Chip "Auto-flagged" pra itens com 3+ reports
+      if(item.auto_flagged_at){
+        const flagChip = mk('span');
+        flagChip.style.cssText = 'padding:2px 8px;background:rgba(232,76,76,.15);color:var(--red-text);border-radius:10px;font-size:10.5px;font-weight:700';
+        flagChip.title = `Sinalizada automaticamente em ${new Date(item.auto_flagged_at).toLocaleDateString('pt-BR')} por excesso de reports`;
+        flagChip.textContent = '🚩 AUTO-FLAG';
+        headerLeft.appendChild(flagChip);
+      }
+
       header.appendChild(headerLeft);
 
       const scoreChip = mk('span');
       scoreChip.style.cssText = 'padding:3px 10px;background:rgba(232,76,76,.10);color:var(--red-text);border:1px solid rgba(232,76,76,.30);border-radius:10px;font-size:11.5px;font-weight:700';
-      scoreChip.innerHTML = `${score} <span style="font-weight:500;opacity:.8">(${item.upvotes||0}👍 / ${item.downvotes||0}👎)</span>`;
+      const reportsPart = (item.reports_count > 0) ? ` <span style="font-weight:500;opacity:.8">· 🚩 ${item.reports_count}</span>` : '';
+      scoreChip.innerHTML = `${score} <span style="font-weight:500;opacity:.8">(${item.upvotes||0}👍 / ${item.downvotes||0}👎)</span>${reportsPart}`;
       header.appendChild(scoreChip);
       card.appendChild(header);
 
@@ -51220,14 +51292,25 @@ async function loadAdminAIReports(container){
       });
       item.appendChild(reasonsBox);
 
-      // Ações
-      const actions = mk('div');
-      actions.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
+      // V15.12.75.28 — Padroniza com helper unificado (4 ações).
+      // Mantém ação "Resolver reports" específica deste card (marca resolved_at).
+      const refreshReports = ()=>loadAdminAIReports(container);
+      const actions = buildAdminModerationActions(
+        'question',
+        hash,
+        q ? q.status : 'active',
+        q ? !!q.admin_reviewed_at : false,
+        refreshReports
+      );
 
-      const resolveBtn = mkBtn('✓ Marcar resolvido','btn btn-sm');
-      resolveBtn.title = 'Mantém a questão ativa, apenas marca os reports como resolvidos';
+      // Ação extra: "Resolver reports" — marca todos os reports desta questão
+      // como resolvidos sem mexer no status da questão. Útil pra reports
+      // que admin avaliou e considerou improcedentes.
+      const resolveBtn = mkBtn('📋 Marcar reports resolvidos', 'btn btn-sm');
+      resolveBtn.title = `Marca os ${reportsForQ.length} report(s) desta questão como resolvidos. Não afeta o status da questão.`;
+      resolveBtn.style.cssText = 'color:var(--text2);border-color:var(--border);background:transparent;font-size:11.5px';
       resolveBtn.addEventListener('click', async ()=>{
-        if(!confirm(`Marcar ${reportsForQ.length} report(s) desta questão como resolvido(s)? A questão continuará ativa.`)) return;
+        if(!confirm(`Marcar ${reportsForQ.length} report(s) desta questão como resolvido(s)?`)) return;
         resolveBtn.disabled = true;
         resolveBtn.textContent = 'Aplicando...';
         try{
@@ -51237,48 +51320,16 @@ async function loadAdminAIReports(container){
             .update({resolved_at: new Date().toISOString(), resolved_by: AUTH.user.id})
             .in('id', ids);
           if(error) throw error;
-          showToast('✓ Reports marcados como resolvidos.', 4000);
-          loadAdminAIReports(container);
+          showToast('✓ Reports marcados como resolvidos', 3000);
+          refreshReports();
         }catch(e){
-          alert('Erro: ' + (e.message||e));
+          showToast('Erro: ' + (e.message||e), 4000);
           resolveBtn.disabled = false;
-          resolveBtn.textContent = '✓ Marcar resolvido';
+          resolveBtn.textContent = '📋 Marcar reports resolvidos';
         }
       });
-      actions.appendChild(resolveBtn);
-
-      if(q && q.status !== 'disabled'){
-        const disableBtn = mkBtn('🚫 Desabilitar questão','btn btn-sm');
-        disableBtn.style.cssText = 'color:var(--red-text);border-color:var(--red)';
-        disableBtn.title = 'Marca status=disabled no pool. Sai de circulação no cache futuro.';
-        disableBtn.addEventListener('click', async ()=>{
-          if(!confirm(`Desabilitar esta questão no pool?\n\nEla:\n• Não vai mais aparecer no cache compartilhado\n• Continuará nos bancos individuais dos usuários que já a tinham\n• Reports serão marcados como resolvidos\n\nAção pode ser revertida editando direto no Supabase Dashboard.`)) return;
-          disableBtn.disabled = true;
-          disableBtn.textContent = 'Aplicando...';
-          try{
-            // Atualiza pool
-            const {error: e1} = await supa
-              .from('ai_question_pool')
-              .update({status: 'disabled'})
-              .or(`content_hash.eq.${hash},content_hash_canonical.eq.${hash}`);
-            if(e1) throw e1;
-            // Marca reports como resolvidos
-            const ids = reportsForQ.map(r => r.id);
-            const {error: e2} = await supa
-              .from('ai_question_reports')
-              .update({resolved_at: new Date().toISOString(), resolved_by: AUTH.user.id})
-              .in('id', ids);
-            if(e2) throw e2;
-            showToast('🚫 Questão desabilitada.', 4000);
-            loadAdminAIReports(container);
-          }catch(e){
-            alert('Erro: ' + (e.message||e));
-            disableBtn.disabled = false;
-            disableBtn.textContent = '🚫 Desabilitar questão';
-          }
-        });
-        actions.appendChild(disableBtn);
-      }
+      // Insere "Resolver reports" como primeiro botão (antes do Dispensar)
+      actions.insertBefore(resolveBtn, actions.firstChild);
 
       item.appendChild(actions);
       container.appendChild(item);
