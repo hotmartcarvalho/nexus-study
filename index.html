@@ -8965,6 +8965,11 @@ async function renderSharedExplanationsBody(container, q, opts){
         return itText && itText !== excludeNorm;
       })
     : itemsRaw;
+  // V15.12.75.13 — Detecta se o filtro zerou tudo (significa: existem explicações
+  // shared mas são idênticas à do card principal). Nesse caso, NÃO mostra "Seja
+  // o primeiro" porque seria mentira — só vamos esconder a seção de explicações
+  // (flashcards podem continuar aparecendo abaixo).
+  const filtroZerouExplicacoes = (itemsRaw.length > 0 && items.length === 0);
 
   // V15.12.37 — Header adaptativo + mensagem proeminente
   if(items.length > 0){
@@ -8975,7 +8980,7 @@ async function renderSharedExplanationsBody(container, q, opts){
     if(onlyMine){
       head.innerHTML = `<span class="she-icon" style="color:var(--gralia-purple)">👤</span><b style="color:var(--gralia-purple)">Você já tem explicação${items.length>1?'s':''} pra esta questão</b>`;
     } else {
-      head.innerHTML = `<span class="she-icon" style="color:var(--accent-text)">✨</span><b style="color:var(--accent-text)">Explicação encontrada na comunidade</b><span class="she-sub" style="color:var(--accent-text);font-weight:600">— sem gastar créditos</span>`;
+      head.innerHTML = `<span class="she-icon" style="color:var(--accent-text)">✨</span><b style="color:var(--accent-text)">Outras explicações da comunidade</b><span class="she-sub" style="color:var(--accent-text);font-weight:600">— diferentes da exibida acima</span>`;
     }
     // Banner de destaque (texto adapta à autoria)
     const badgeFree = mk('div');
@@ -9032,6 +9037,11 @@ async function renderSharedExplanationsBody(container, q, opts){
       det.appendChild(otherList);
       list.appendChild(det);
     }
+  } else if(filtroZerouExplicacoes){
+    // V15.12.75.13 — Tinha explicação mas era idêntica à de cima. Não mostra
+    // este bloco — esconde o head inteiro pra não dizer "Seja o primeiro a
+    // gerar" quando na verdade já existe (só está duplicada acima).
+    head.style.display = 'none';
   } else {
     head.innerHTML = `<span class="she-icon">🤖</span><b>Explicações</b><span class="she-sub">Ainda não temos explicação para esta questão</span>`;
     const empty = mk('div','shexpl-empty');
@@ -9040,6 +9050,13 @@ async function renderSharedExplanationsBody(container, q, opts){
     empty.innerHTML = `<div style="font-size:12.5px;color:var(--text2);line-height:1.5">Seja o primeiro a gerar uma explicação. Ela ficará salva pra você revisar e poderá ajudar outros estudantes.</div>`;
     list.appendChild(empty);
   }
+
+  // V15.12.75.13 — Se o filtro zerou tudo (única shared = idêntica ao card
+  // principal), pula este bloco inteiro de gerar. Já tem a explicação em
+  // cima — não vamos induzir o user a gerar "outra" pelo mesmo modelo.
+  if(filtroZerouExplicacoes){
+    // Pula direto pra flashcards (final da função)
+  } else {
 
   // Botões de gerar nova — ação SECUNDÁRIA com custo claro
   const genWrap = mk('div');
@@ -9152,6 +9169,8 @@ async function renderSharedExplanationsBody(container, q, opts){
   }
   genWrap.appendChild(genRow);
   wrap.appendChild(genWrap);
+
+  } // V15.12.75.13 — fecha else (filtroZerouExplicacoes pula este bloco)
 
   // Seção de flashcards compartilhados
   const flashHead = mk('div','shexpl-head');flashHead.style.marginTop='1rem';
