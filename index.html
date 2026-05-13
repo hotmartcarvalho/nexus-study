@@ -4284,7 +4284,7 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 .modal-bg.locked .modal{box-shadow:0 12px 40px rgba(0,0,0,.22),0 4px 12px rgba(0,0,0,.14)}
 
 /* V12: Sticky header em modais grandes do footer (FAQ + Legal) — botão X visível em mobile */
-.footer-modal-head{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:.625rem;margin:-.5rem -.5rem .875rem;padding-left:.5rem;padding-right:.5rem;padding-top:.5rem;background:var(--surface);border-bottom:1px solid var(--border)}
+.footer-modal-head{position:sticky;top:-1.25rem;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:.625rem;margin:-1.25rem -1.25rem .875rem;padding-left:1.25rem;padding-right:1.25rem;padding-top:1.25rem;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 1px 0 var(--border)}
 .footer-modal-head h2{margin:0;font-size:18px;font-weight:700;flex:1}
 .fmh-close{background:transparent;border:none;font-size:30px;line-height:1;color:var(--text2);cursor:pointer;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:inherit;padding:0}
 .fmh-close:hover{background:var(--surface2);color:var(--text)}
@@ -64906,14 +64906,20 @@ function renderAuthScreen(){
     const termsCb = mk('input');
     termsCb.type = 'checkbox';
     termsCb.id = 'auth-terms-accept';
-    termsCb.style.cssText = 'margin-top:3px;flex-shrink:0;cursor:pointer';
+    // V15.12.75.44 — Sobrescreve .auth-form input{width:100%} que estava
+    // expandindo o checkbox pra largura cheia (virava um retângulo gigante).
+    // Também força width/height fixos pra ficar coerente entre browsers.
+    termsCb.style.cssText = 'width:16px !important;height:16px;margin-top:2px;flex-shrink:0;cursor:pointer;padding:0;border-radius:3px;accent-color:var(--gralia-purple)';
     termsCb.checked = !!ST.authTermsAccepted;
     termsCb.addEventListener('change', () => {
       ST.authTermsAccepted = termsCb.checked;
     });
     const termsLbl = mk('label');
     termsLbl.setAttribute('for', 'auth-terms-accept');
-    termsLbl.style.cssText = 'cursor:pointer;flex:1';
+    // V15.12.75.44 — Sobrescreve .auth-form label{display:block;font-size:12px}
+    // que estava forçando estilo de label de input. Pra esse contexto,
+    // precisa ser inline-block flexível com font normal e cor padrão.
+    termsLbl.style.cssText = 'cursor:pointer;flex:1;display:block;font-size:12.5px;color:var(--text2);font-weight:400;margin:0;line-height:1.5';
     termsLbl.innerHTML = 'Li e aceito os <a href="#" id="auth-link-terms" style="color:var(--gralia-purple);text-decoration:none;font-weight:600">Termos de Uso</a> e a <a href="#" id="auth-link-privacy" style="color:var(--gralia-purple);text-decoration:none;font-weight:600">Política de Privacidade</a>.';
     termsRow.appendChild(termsCb);
     termsRow.appendChild(termsLbl);
