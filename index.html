@@ -24380,6 +24380,64 @@ function toggleAIQuestionFavorite(q){
   }
   return true;
 }
+// V15.12.75.35 — Checa se conta atual está suspensa por anti-abuso.
+// Se sim, mostra modal locked impedindo qualquer ação além de "Sair".
+// Conta normal não tem suspended_at — retorna rápido sem efeito.
+async function checkUserSuspension(){
+  if(!supa || !AUTH.user) return;
+  try{
+    const {data, error} = await supa.rpc('am_i_suspended');
+    if(error){
+      console.warn('[suspension] check falhou:', error.message);
+      return;
+    }
+    if(!data || !data.suspended) return;
+
+    const reason = data.reason || 'Conta suspensa pelo administrador.';
+    const since = data.since ? new Date(data.since).toLocaleString('pt-BR') : null;
+
+    const m = mk('div');
+    m.style.maxWidth = '480px';
+    const head = mk('div','modal-head');
+    const h = mk('h3');
+    h.style.color = 'var(--red-text)';
+    h.textContent = '🚫 Conta suspensa';
+    head.appendChild(h);
+    m.appendChild(head);
+
+    const body = mk('div');
+    body.style.cssText = 'padding:.5rem 0';
+    body.innerHTML = `
+      <p style="margin:0 0 .75rem;font-size:13.5px;line-height:1.55;color:var(--text)">
+        Sua conta foi suspensa e não pode ser usada no momento.
+      </p>
+      <div style="background:rgba(232,76,76,.08);border:1px solid rgba(232,76,76,.22);border-left:3px solid var(--red);border-radius:8px;padding:.625rem .875rem;margin-bottom:.75rem;font-size:13px;line-height:1.55;color:var(--text)">
+        <b>Motivo:</b> ${escapeHTML(reason)}
+        ${since ? `<div style="font-size:11.5px;color:var(--text3);margin-top:4px">Suspensa em ${escapeHTML(since)}</div>` : ''}
+      </div>
+      <p style="margin:0 0 .75rem;font-size:12.5px;line-height:1.55;color:var(--text2)">
+        Se você acredita que isso é um engano, entre em contato pelo
+        <b>"Fale conosco"</b> através do nosso site ou email de suporte.
+      </p>
+    `;
+    m.appendChild(body);
+
+    const actions = mk('div','flex');
+    actions.style.cssText = 'justify-content:flex-end;gap:8px;margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem';
+    const signOutBtn = mkBtn('Sair da conta','btn btn-p');
+    signOutBtn.addEventListener('click', async ()=>{
+      try{ await supa.auth.signOut(); }catch(_){}
+      closeModal();
+      try{ window.location.reload(); }catch(_){}
+    });
+    actions.appendChild(signOutBtn);
+    m.appendChild(actions);
+
+    showModal(m, {locked: true});
+  }catch(e){
+    console.warn('[suspension] exception:', e.message);
+  }
+}
 
 // V15.12.75.31 — Hidrata DATA.aiFavoriteQuestions com dados do Supabase
 // no boot. Faz MERGE (união pela key) — não sobrescreve local. Útil quando
@@ -50450,6 +50508,39 @@ function renderAdminDashboard(){
   wrap.appendChild(rlCard);
   loadAdminRateLimitedUsers(rlBody);
 
+  // V15.12.75.34 — Card: IPs suspeitos (Camada 2 do anti-abuso).
+  // Lista IPs com 3+ signups em 24h — possível tentativa de farmar trial bonus.
+  const ipCard = mk('section','admin-card');
+  ipCard.appendChild(adminSectionLabel('🛡️ Anti-abuso — Signups por IP'));
+  const ipHead = mk('h2','admin-section-title');
+  ipHead.textContent = 'IPs com múltiplos signups (últimas 24h)';
+  ipCard.appendChild(ipHead);
+  const ipHelp = mk('p');
+  ipHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem;line-height:1.5';
+  ipHelp.innerHTML = '<b>Política:</b> ≤2 signups/24h → trial completo (50). 3-5 → trial reduzido (25). 6+ → bonus negado. IP é obtido via header <code>x-forwarded-for</code>. VPN/proxy pode escapar.';
+  ipCard.appendChild(ipHelp);
+  const ipBody = mk('div','admin-suspicious-ips-body');
+  ipBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando...</div>';
+  ipCard.appendChild(ipBody);
+  wrap.appendChild(ipCard);
+  loadAdminSuspiciousIPs(ipBody);
+
+  // V15.12.75.35 — Card: Contas suspensas (anti-abuso Camada 2 estendida)
+  const susCard = mk('section','admin-card');
+  susCard.appendChild(adminSectionLabel('🚫 Anti-abuso — Contas suspensas'));
+  const susHead = mk('h2','admin-section-title');
+  susHead.textContent = 'Usuários atualmente suspensos';
+  susCard.appendChild(susHead);
+  const susHelp = mk('p');
+  susHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem;line-height:1.5';
+  susHelp.innerHTML = 'Contas com <code>suspended_at</code> preenchido. Suspensão automática ocorre quando 10+ signups vêm do mesmo IP em 24h. Use o botão pra desbloquear se for falso positivo.';
+  susCard.appendChild(susHelp);
+  const susBody = mk('div','admin-suspended-users-body');
+  susBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando...</div>';
+  susCard.appendChild(susBody);
+  wrap.appendChild(susCard);
+  loadAdminSuspendedUsers(susBody);
+
   // === V15.12.72 — Card: Custo IA (auditoria de gastos Anthropic) ===
   const costCard = mk('section','admin-card');
   costCard.appendChild(adminSectionLabel('💰 Custo IA — Anthropic'));
@@ -51044,6 +51135,117 @@ function formatTokens(n){
 }
 
 // V15.12.68 — Lista users que bateram rate limit em alguma hora das últimas 24h
+// V15.12.75.35 — Carrega lista de contas suspensas pra admin gerenciar.
+async function loadAdminSuspendedUsers(container){
+  if(!supa){
+    container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>';
+    return;
+  }
+  try{
+    const {data, error} = await supa.rpc('admin_list_suspended_users');
+    if(error) throw error;
+    if(!data || data.length === 0){
+      container.innerHTML = '<div class="txt3" style="padding:.75rem 0;text-align:center;font-size:13px">✓ Nenhuma conta suspensa atualmente.</div>';
+      return;
+    }
+    container.innerHTML = '';
+    const list = mk('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:.5rem';
+    data.forEach(row => {
+      const card = mk('div');
+      card.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px;padding:.625rem .875rem';
+      const since = row.out_suspended_at ? new Date(row.out_suspended_at).toLocaleString('pt-BR') : '?';
+      card.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+          <span style="font-weight:600;font-size:13px">${escapeHTML(row.out_email || '?')}</span>
+          ${row.out_username ? `<span style="font-size:11.5px;color:var(--text3)">@${escapeHTML(row.out_username)}</span>` : ''}
+        </div>
+        <div style="font-size:11.5px;color:var(--text3);margin-bottom:4px">
+          ID: <code style="font-family:ui-monospace,monospace">${escapeHTML((row.out_user_id||'').slice(0,8))}</code> · Suspensa em ${escapeHTML(since)}
+        </div>
+        <div style="font-size:12px;color:var(--text2);padding:.375rem .5rem;background:var(--surface);border-radius:6px;margin-bottom:.5rem;line-height:1.45">
+          <b>Motivo:</b> ${escapeHTML(row.out_suspended_reason || '?')}
+        </div>
+      `;
+      const unblockBtn = mkBtn('↻ Desbloquear conta', 'btn btn-sm');
+      unblockBtn.style.cssText = 'color:var(--accent-text);border-color:var(--accent);background:transparent;font-size:11.5px';
+      unblockBtn.addEventListener('click', async ()=>{
+        if(!confirm('Desbloquear esta conta? Usuário poderá voltar a usar normalmente.')) return;
+        unblockBtn.disabled = true;
+        unblockBtn.textContent = 'Desbloqueando...';
+        try{
+          const {error: rpcErr} = await supa.rpc('admin_set_user_suspension', {
+            p_user_id: row.out_user_id,
+            p_suspended: false,
+            p_reason: null
+          });
+          if(rpcErr) throw rpcErr;
+          showToast('✓ Conta desbloqueada', 3000);
+          loadAdminSuspendedUsers(container);
+        }catch(e){
+          unblockBtn.disabled = false;
+          unblockBtn.textContent = '↻ Desbloquear conta';
+          showToast('Erro: ' + (e.message||String(e)), 4000);
+        }
+      });
+      card.appendChild(unblockBtn);
+      list.appendChild(card);
+    });
+    container.appendChild(list);
+  }catch(e){
+    container.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro: ${escapeHTML(e.message||String(e))}</div>`;
+  }
+}
+
+// V15.12.75.34 — Carrega IPs suspeitos (3+ signups em 24h).
+// Mostra emails dos signups + se trial foi bloqueado.
+async function loadAdminSuspiciousIPs(container){
+  if(!supa){
+    container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>';
+    return;
+  }
+  try{
+    const {data, error} = await supa.rpc('admin_list_suspicious_ips', {p_hours: 24});
+    if(error) throw error;
+    if(!data || data.length === 0){
+      container.innerHTML = '<div class="txt3" style="padding:.75rem 0;text-align:center;font-size:13px">✓ Nenhum IP suspeito nas últimas 24h.</div>';
+      return;
+    }
+    container.innerHTML = '';
+    const table = mk('div');
+    table.style.cssText = 'display:flex;flex-direction:column;gap:.5rem';
+    data.forEach(row => {
+      const ip = row.out_ip || '?';
+      const count = row.out_signup_count || 0;
+      const blocked = row.out_blocked_count || 0;
+      const first = row.out_first_signup ? new Date(row.out_first_signup).toLocaleString('pt-BR') : '?';
+      const last = row.out_last_signup ? new Date(row.out_last_signup).toLocaleString('pt-BR') : '?';
+      const emails = row.out_user_emails || '';
+      const isUrgent = count >= 6;
+      const isWarn = count >= 3;
+      const item = mk('div');
+      item.style.cssText = `display:flex;flex-direction:column;gap:6px;padding:.625rem .875rem;background:var(--surface2);border-radius:8px;border-left:3px solid ${isUrgent ? 'var(--red)' : isWarn ? 'var(--amber)' : 'var(--border)'}`;
+      item.innerHTML = `
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-family:ui-monospace,monospace;font-size:13px;font-weight:700;color:var(--text)">${escapeHTML(ip)}</span>
+          <span style="padding:2px 8px;background:${isUrgent ? 'rgba(232,76,76,.10)' : 'rgba(245,158,11,.10)'};color:${isUrgent ? 'var(--red-text)' : 'var(--amber-text)'};border-radius:10px;font-size:11px;font-weight:700">${count} signups</span>
+          ${blocked > 0 ? `<span style="padding:2px 8px;background:rgba(232,76,76,.10);color:var(--red-text);border-radius:10px;font-size:11px;font-weight:700">${blocked} bloqueado${blocked>1?'s':''}</span>` : ''}
+        </div>
+        <div style="font-size:11.5px;color:var(--text3)">
+          De ${escapeHTML(first)} até ${escapeHTML(last)}
+        </div>
+        <div style="font-size:11.5px;color:var(--text2);word-break:break-all">
+          <b>Emails:</b> ${escapeHTML(emails) || '<i>indisponível</i>'}
+        </div>
+      `;
+      table.appendChild(item);
+    });
+    container.appendChild(table);
+  }catch(e){
+    container.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro: ${escapeHTML(e.message||String(e))}</div>`;
+  }
+}
+
 async function loadAdminRateLimitedUsers(container){
   if(!supa){
     container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>';
@@ -51111,6 +51313,198 @@ async function loadAdminRateLimitedUsers(container){
 //   currentStatus: 'active' | 'disabled' (só pra questão)
 //   isReviewed: boolean — se já foi dispensado pelo admin
 //   onChange: callback chamado após ação bem-sucedida (re-render)
+// V15.12.75.35 — Modal de detalhe pra item moderado.
+// Mostra histórico completo: quem votou negativo, quem reportou (com motivo),
+// timeline de moderação. Útil pra admin antes de decidir excluir/dispensar.
+// itemType: 'question' (ai_question_pool) | 'shared' (shared_explanations)
+async function showAdminItemDetailModal(itemType, itemId, itemData){
+  const m = mk('div'); m.style.maxWidth='720px';
+  const head = mk('div','modal-head');
+  const h = mk('h3');
+  h.textContent = itemType === 'question'
+    ? '🔍 Detalhes da questão'
+    : '🔍 Detalhes do conteúdo compartilhado';
+  const cl = mkBtn('×','modal-close'); cl.addEventListener('click',closeModal);
+  head.appendChild(h); head.appendChild(cl);
+  m.appendChild(head);
+
+  // Conteúdo principal (enunciado completo)
+  const content = mk('div');
+  content.style.cssText = 'padding:.75rem .875rem;background:var(--surface2);border-radius:8px;margin-bottom:.875rem;font-size:13px;line-height:1.55;white-space:pre-wrap;max-height:200px;overflow-y:auto';
+
+  if(itemType === 'question'){
+    content.textContent = itemData.enunciado || '?';
+  } else {
+    const p = itemData.payload || {};
+    if(itemData.kind === 'flashcard'){
+      content.innerHTML = `<b>Frente:</b> ${escapeHTML(p.front||'')}<br><br><b>Verso:</b> ${escapeHTML(p.back||'')}`;
+    } else {
+      content.textContent = p.explanation || '?';
+    }
+  }
+  m.appendChild(content);
+
+  // Metadados
+  const metaBox = mk('div');
+  metaBox.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:.875rem;font-size:12px';
+  if(itemType === 'question'){
+    const score = (itemData.human_upvotes||0) - (itemData.human_downvotes||0);
+    metaBox.innerHTML = `
+      <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Banca</div><div style="font-weight:600">${escapeHTML(itemData.bank_id||'?')}</div></div>
+      <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Disciplina</div><div style="font-weight:600">${escapeHTML(itemData.discipline_id||'?')}</div></div>
+      <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Dificuldade</div><div style="font-weight:600">${escapeHTML(itemData.difficulty||'?')}</div></div>
+      <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Status</div><div style="font-weight:600">${escapeHTML(itemData.status||'?')}</div></div>
+      <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Score</div><div style="font-weight:700;color:${score < 0 ? 'var(--red-text)' : 'var(--accent-text)'}">${score} (${itemData.human_upvotes||0}👍 / ${itemData.human_downvotes||0}👎)</div></div>
+      <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Reports</div><div style="font-weight:600">${itemData.reports_count || 0}</div></div>
+    `;
+  } else {
+    const score = (itemData.upvotes||0) - (itemData.downvotes||0);
+    metaBox.innerHTML = `
+      <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Tipo</div><div style="font-weight:600">${itemData.kind === 'flashcard' ? 'Flashcard' : 'Explicação'}</div></div>
+      <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Modelo</div><div style="font-weight:600">${(itemData.model||'').toUpperCase()}</div></div>
+      <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Autor</div><div style="font-weight:600">@${escapeHTML(itemData.author_username||'?')}</div></div>
+      <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Score</div><div style="font-weight:700;color:${score < 0 ? 'var(--red-text)' : 'var(--accent-text)'}">${score} (${itemData.upvotes||0}👍 / ${itemData.downvotes||0}👎)</div></div>
+      <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Reports</div><div style="font-weight:600">${itemData.reports_count || 0}</div></div>
+      <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Auto-flag</div><div style="font-weight:600;color:${itemData.auto_flagged_at ? 'var(--red-text)' : 'var(--text3)'}">${itemData.auto_flagged_at ? 'Sim' : 'Não'}</div></div>
+    `;
+  }
+  m.appendChild(metaBox);
+
+  // Histórico — carrega via Supabase
+  const histLbl = mk('div');
+  histLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:.75rem 0 .375rem';
+  histLbl.textContent = '📋 Histórico de moderação';
+  m.appendChild(histLbl);
+
+  const histBody = mk('div');
+  histBody.style.cssText = 'background:var(--surface2);border-radius:8px;padding:.5rem .75rem;font-size:12px;max-height:280px;overflow-y:auto;margin-bottom:.875rem';
+  histBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando histórico...</div>';
+  m.appendChild(histBody);
+
+  // Carrega votos + reports do item
+  (async ()=>{
+    try{
+      const events = [];
+
+      if(itemType === 'question'){
+        // Votos da questão
+        const {data: votes} = await supa
+          .from('ai_question_votes')
+          .select('user_id, vote, created_at')
+          .eq('content_hash', itemId)
+          .order('created_at', {ascending: false})
+          .limit(50);
+        if(votes){
+          votes.forEach(v => events.push({
+            kind: v.vote === 1 ? '👍 voto positivo' : '👎 voto negativo',
+            user: v.user_id ? v.user_id.slice(0,8) : '?',
+            when: v.created_at,
+            color: v.vote === 1 ? 'var(--accent-text)' : 'var(--red-text)'
+          }));
+        }
+        // Reports
+        const {data: reports} = await supa
+          .from('ai_question_reports')
+          .select('user_id, reason, resolved_at, created_at')
+          .eq('content_hash', itemId)
+          .order('created_at', {ascending: false});
+        if(reports){
+          reports.forEach(r => events.push({
+            kind: '🚩 report — ' + (r.reason || '?') + (r.resolved_at ? ' (resolvido)' : ''),
+            user: r.user_id ? r.user_id.slice(0,8) : '?',
+            when: r.created_at,
+            color: r.resolved_at ? 'var(--text3)' : 'var(--red-text)'
+          }));
+        }
+      } else {
+        // Votos em shared
+        const {data: votes} = await supa
+          .from('shared_explanation_votes')
+          .select('user_id, vote, created_at')
+          .eq('explanation_id', itemId)
+          .order('created_at', {ascending: false})
+          .limit(50);
+        if(votes){
+          votes.forEach(v => events.push({
+            kind: v.vote === 1 ? '👍 voto positivo' : '👎 voto negativo',
+            user: v.user_id ? v.user_id.slice(0,8) : '?',
+            when: v.created_at,
+            color: v.vote === 1 ? 'var(--accent-text)' : 'var(--red-text)'
+          }));
+        }
+        // Reports shared
+        const {data: reports} = await supa
+          .from('shared_explanation_reports')
+          .select('user_id, reason, note, resolved_at, created_at')
+          .eq('explanation_id', itemId)
+          .order('created_at', {ascending: false});
+        if(reports){
+          reports.forEach(r => events.push({
+            kind: '🚩 report — ' + (r.reason || '?') + (r.resolved_at ? ' (resolvido)' : ''),
+            user: r.user_id ? r.user_id.slice(0,8) : '?',
+            when: r.created_at,
+            color: r.resolved_at ? 'var(--text3)' : 'var(--red-text)',
+            note: r.note
+          }));
+        }
+      }
+
+      // Ordena por data desc
+      events.sort((a,b) => new Date(b.when) - new Date(a.when));
+
+      histBody.innerHTML = '';
+      if(events.length === 0){
+        histBody.innerHTML = '<div class="txt3" style="text-align:center;padding:.5rem">Sem histórico registrado.</div>';
+        return;
+      }
+      events.forEach(ev => {
+        const row = mk('div');
+        row.style.cssText = 'display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.4';
+        const when = ev.when ? new Date(ev.when).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'}) : '?';
+        let html = `<span style="color:${ev.color};font-weight:600;flex:1">${escapeHTML(ev.kind)}</span><span style="color:var(--text3);font-family:ui-monospace,monospace;font-size:10.5px">${escapeHTML(ev.user)}</span><span style="color:var(--text3);font-size:10.5px">${escapeHTML(when)}</span>`;
+        row.innerHTML = html;
+        histBody.appendChild(row);
+        if(ev.note){
+          const noteRow = mk('div');
+          noteRow.style.cssText = 'padding:4px 8px 8px;color:var(--text2);font-size:11.5px;font-style:italic';
+          noteRow.textContent = '↳ ' + ev.note;
+          histBody.appendChild(noteRow);
+        }
+      });
+    }catch(e){
+      histBody.innerHTML = `<div class="txt3" style="color:var(--red-text);padding:.5rem">Erro: ${escapeHTML(e.message||String(e))}</div>`;
+    }
+  })();
+
+  // Ações inline (mesmas do helper buildAdminModerationActions)
+  const actionsWrap = mk('div');
+  actionsWrap.style.cssText = 'border-top:1px solid var(--border);padding-top:.75rem';
+  const actionsLbl = mk('div');
+  actionsLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.375rem';
+  actionsLbl.textContent = '⚡ Ações';
+  actionsWrap.appendChild(actionsLbl);
+
+  const onDone = ()=>{
+    closeModal();
+    // Re-renderiza o painel admin pra refletir mudança
+    const body = document.querySelector('.admin-shared-mod-body');
+    if(body) loadAdminSharedExplanationModeration(body);
+    const repBody = document.querySelector('.admin-reports-body');
+    if(repBody) loadAdminAIReports(repBody);
+  };
+  const actions = buildAdminModerationActions(
+    itemType,
+    itemId,
+    itemType === 'question' ? itemData.status : null,
+    !!itemData.admin_reviewed_at,
+    onDone
+  );
+  actionsWrap.appendChild(actions);
+  m.appendChild(actionsWrap);
+
+  showModal(m);
+}
+
 function buildAdminModerationActions(itemType, itemId, currentStatus, isReviewed, onChange){
   const actions = mk('div');
   actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center;margin-top:.5rem';
@@ -51371,8 +51765,12 @@ async function loadAdminSharedExplanationModeration(container){
         card.appendChild(ids);
 
         const preview = mk('div');
-        preview.style.cssText = 'font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:.5rem;padding:.5rem .625rem;background:var(--surface);border-radius:6px';
+        preview.style.cssText = 'font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:.5rem;padding:.5rem .625rem;background:var(--surface);border-radius:6px;cursor:pointer;transition:background .12s';
         preview.textContent = String(q.enunciado||'').slice(0, 280);
+        preview.title = 'Clique pra ver detalhes completos (histórico de votos/reports)';
+        preview.onmouseenter = ()=>{ preview.style.background = 'var(--surface2)'; };
+        preview.onmouseleave = ()=>{ preview.style.background = 'var(--surface)'; };
+        preview.addEventListener('click', ()=>showAdminItemDetailModal('question', q.content_hash, q));
         card.appendChild(preview);
 
         // V15.12.75.27 — 4 ações padrão via helper
@@ -51456,7 +51854,7 @@ async function loadAdminSharedExplanationModeration(container){
 
       // Preview do conteúdo
       const preview = mk('div');
-      preview.style.cssText = 'font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:.5rem;padding:.5rem .625rem;background:var(--surface);border-radius:6px';
+      preview.style.cssText = 'font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:.5rem;padding:.5rem .625rem;background:var(--surface);border-radius:6px;cursor:pointer;transition:background .12s';
       const p = item.payload || {};
       let previewText = '';
       if(item.kind === 'flashcard'){
@@ -51465,6 +51863,10 @@ async function loadAdminSharedExplanationModeration(container){
         previewText = String(p.explanation||'').slice(0, 280);
       }
       preview.textContent = previewText;
+      preview.title = 'Clique pra ver detalhes completos (histórico de votos/reports)';
+      preview.onmouseenter = ()=>{ preview.style.background = 'var(--surface2)'; };
+      preview.onmouseleave = ()=>{ preview.style.background = 'var(--surface)'; };
+      preview.addEventListener('click', ()=>showAdminItemDetailModal('shared', item.id, item));
       card.appendChild(preview);
 
       // V15.12.75.27 — 4 ações padrão (shared não tem desativar — só dispensar e excluir)
@@ -65013,6 +65415,8 @@ async function initAuth(){
       fetchNotifications({force: true}).catch(()=>{});
       // V15.12.75.31 — Sincroniza favoritas IA (merge local + remoto)
       hydrateAIFavoritesFromSupabase().catch(()=>{});
+      // V15.12.75.35 — Check se conta está suspensa (anti-abuso)
+      checkUserSuspension().catch(()=>{});
       if(NOTIFS.pollIntervalId) clearInterval(NOTIFS.pollIntervalId);
       NOTIFS.pollIntervalId = setInterval(()=>fetchNotifications().catch(()=>{}), 60000);
       render();
@@ -65055,6 +65459,8 @@ async function initAuth(){
       fetchQuota().then(()=>render()).catch(()=>{});
       // V15.12.75.31 — Sincroniza favoritas IA (merge local + remoto)
       hydrateAIFavoritesFromSupabase().catch(()=>{});
+      // V15.12.75.35 — Check se conta está suspensa (anti-abuso)
+      checkUserSuspension().catch(()=>{});
       fetchUserProfile(true).then(()=>{
         render();
         // V15.12.44 — Após carregar o profile, verifica se precisa completar
@@ -65091,7 +65497,30 @@ async function initAuth(){
       // trigger handle_new_user. Só roda em usuários recém-criados (< 2 min)
       // — login normal não dispara. Delay maior (4500ms) pra dar tempo do
       // trigger rodar no servidor antes de checar o saldo.
+      // V15.12.75.34 — Antes do verify, chama register_signup_ip que decide
+      // o valor do trial bonus baseado em quantos signups vieram do mesmo IP
+      // nas últimas 24h (anti-abuso Camada 2).
       if(isFreshlyCreatedUser()){
+        if(supa){
+          supa.rpc('register_signup_ip').then(({data, error})=>{
+            if(error){
+              console.warn('[anti-abuse] register_signup_ip falhou:', error.message);
+              return;
+            }
+            if(data && data.blocked_reason === 'too_many_signups'){
+              console.warn('[anti-abuse] Signup bloqueado: muitos signups do mesmo IP em 24h. Bonus negado.');
+              setTimeout(()=>{
+                try{
+                  showToast('⚠ Detectamos muitos cadastros recentes da sua rede. Trial bonus desta conta foi limitado por segurança. Entre em contato pelo "Fale conosco" se houver erro.', 12000);
+                }catch(_){}
+              }, 2500);
+            } else if(data && data.trial_granted > 0 && data.trial_granted < 50){
+              console.info('[anti-abuse] Trial reduzido:', data.trial_granted, 'créditos (count_24h:', data.count_24h, ')');
+            } else if(data && data.trial_granted === 50){
+              console.info('[anti-abuse] Trial completo concedido');
+            }
+          }).catch(e => console.warn('[anti-abuse] exception:', e.message));
+        }
         setTimeout(()=>{
           verifyTrialActivation().catch(e=>{
             console.warn('[trial] verifyTrialActivation falhou:', e.message);
