@@ -64523,6 +64523,87 @@ function isDisposableEmail(email){
   return DISPOSABLE_EMAIL_DOMAINS.has(domain);
 }
 
+// V15.12.75.38 — Cloudflare Turnstile (captcha condicional anti-abuso)
+// Site Key é pública por design; Secret Key fica na Vercel (env var).
+const TURNSTILE_SITE_KEY = '0x4AAAAAADOpyh41BkrnnEtk';
+const TURNSTILE_SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+
+// Carrega o script da Cloudflare uma única vez. Idempotente.
+function loadTurnstileScript(){
+  return new Promise((resolve, reject) => {
+    if(window.turnstile){
+      resolve();
+      return;
+    }
+    const existing = document.querySelector('script[src*="turnstile/v0/api.js"]');
+    if(existing){
+      // Já tem script tag, aguarda window.turnstile ficar disponível
+      let tries = 0;
+      const poll = setInterval(()=>{
+        if(window.turnstile){ clearInterval(poll); resolve(); }
+        else if(++tries > 50){ clearInterval(poll); reject(new Error('Turnstile timeout')); }
+      }, 100);
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = TURNSTILE_SCRIPT_URL;
+    s.async = true;
+    s.defer = true;
+    s.onload = ()=>{
+      // Espera window.turnstile ficar disponível
+      let tries = 0;
+      const poll = setInterval(()=>{
+        if(window.turnstile){ clearInterval(poll); resolve(); }
+        else if(++tries > 50){ clearInterval(poll); reject(new Error('Turnstile timeout')); }
+      }, 100);
+    };
+    s.onerror = ()=>reject(new Error('Falha ao carregar Turnstile'));
+    document.head.appendChild(s);
+  });
+}
+
+// Renderiza o widget Turnstile em um container e resolve a Promise com o token
+// quando o usuário completa o challenge. Rejeita se falhar/expirar.
+function renderTurnstileWidget(container){
+  return new Promise(async (resolve, reject) => {
+    try{
+      await loadTurnstileScript();
+    }catch(err){
+      reject(err);
+      return;
+    }
+    // Limpa container
+    container.innerHTML = '';
+    try{
+      window.turnstile.render(container, {
+        sitekey: TURNSTILE_SITE_KEY,
+        theme: 'auto',
+        callback: (token) => resolve(token),
+        'error-callback': () => reject(new Error('Verificação falhou. Tente novamente.')),
+        'expired-callback': () => reject(new Error('Verificação expirou. Tente novamente.')),
+      });
+    }catch(err){
+      reject(err);
+    }
+  });
+}
+
+// Valida token Turnstile via serverless function
+async function verifyTurnstileToken(token){
+  try{
+    const res = await fetch('/api/turnstile-verify', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({token})
+    });
+    const data = await res.json();
+    return !!(data && data.success);
+  }catch(err){
+    console.warn('[turnstile] verify falhou:', err.message);
+    return false;
+  }
+}
+
 // Signup with email + password (com username escolhido no momento)
 async function authSignUp(email, password, username, displayName){
   if(!supa)throw new Error('Supabase não configurado');
@@ -64711,6 +64792,51 @@ function renderAuthScreen(){
     ST.authError=null;
     try{
       if(mode==='signup'){
+        // V15.12.75.38 — Pré-check de captcha condicional.
+        // Se IP já tem 3+ signups em 24h, exige resolver Turnstile antes.
+        // Caso contrário, segue direto (UX limpa pra usuários normais).
+        let turnstileToken = null;
+        try{
+          const {data: precheck} = await supa.rpc('should_show_captcha_for_signup');
+          if(precheck && precheck.require_captcha){
+            // Renderiza widget num container temporário acima do botão
+            let widgetBox = document.getElementById('turnstile-widget-box');
+            if(!widgetBox){
+              widgetBox = mk('div');
+              widgetBox.id = 'turnstile-widget-box';
+              widgetBox.style.cssText = 'margin:.75rem 0;display:flex;flex-direction:column;align-items:center;gap:6px';
+              const lbl = mk('div');
+              lbl.style.cssText = 'font-size:11.5px;color:var(--text2);text-align:center';
+              lbl.textContent = '🛡️ Confirmação de segurança';
+              widgetBox.appendChild(lbl);
+              const turnstileMount = mk('div');
+              turnstileMount.id = 'turnstile-mount';
+              widgetBox.appendChild(turnstileMount);
+              submitBtn.parentNode.insertBefore(widgetBox, submitBtn);
+            }
+            submitBtn.textContent = 'Aguardando verificação...';
+            try{
+              turnstileToken = await renderTurnstileWidget(document.getElementById('turnstile-mount'));
+            }catch(turnErr){
+              throw new Error('Verificação de segurança falhou. Recarregue a página e tente novamente.');
+            }
+            // Valida token no servidor antes de prosseguir
+            submitBtn.textContent = 'Verificando...';
+            const isValid = await verifyTurnstileToken(turnstileToken);
+            if(!isValid){
+              throw new Error('Token de verificação inválido. Recarregue a página e tente novamente.');
+            }
+            // Token válido — armazena pra register_signup_ip usar depois
+            ST._turnstileVerified = true;
+          }
+        }catch(preErr){
+          // Se erro foi do throw acima, propaga. Senão (RPC falhou), segue sem captcha.
+          if(preErr.message && preErr.message.includes('Verificação')){
+            throw preErr;
+          }
+          console.warn('[captcha] pré-check falhou, prosseguindo sem captcha:', preErr.message);
+        }
+
         // V15.12.48 — Não passa mais username/displayName pro signUp.
         // O profile vai ser criado pelo trigger sem username, e o modal
         // showCompleteProfileModal abre logo após detectar que falta.
@@ -65675,7 +65801,12 @@ async function initAuth(){
       // nas últimas 24h (anti-abuso Camada 2).
       if(isFreshlyCreatedUser()){
         if(supa){
-          supa.rpc('register_signup_ip').then(({data, error})=>{
+          // V15.12.75.38 — Passa flag de verificação Turnstile (setado no submit
+          // do signup quando captcha foi exigido e validado). Default null
+          // significa "captcha não foi exigido" (signup limpo, IP novo).
+          const tsVerified = ST._turnstileVerified === true ? true : null;
+          ST._turnstileVerified = false; // limpa flag
+          supa.rpc('register_signup_ip', {p_turnstile_verified: tsVerified}).then(({data, error})=>{
             if(error){
               console.warn('[anti-abuse] register_signup_ip falhou:', error.message);
               return;
