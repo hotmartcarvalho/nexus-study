@@ -8781,8 +8781,16 @@ async function voteSharedExplanation(explanationId, vote){
       p_explanation_id: explanationId,
       p_vote: vote
     });
-    return !error;
-  }catch(err){ return false; }
+    if(error){
+      console.warn('[vote-expl] RPC erro:', error.message, '— id:', explanationId, 'vote:', vote);
+      return false;
+    }
+    console.info('[vote-expl] sucesso — id:', explanationId, 'vote:', vote);
+    return true;
+  }catch(err){
+    console.warn('[vote-expl] exception:', err.message);
+    return false;
+  }
 }
 
 
@@ -9545,6 +9553,7 @@ function renderSharedExplanationCard(item, q){
   dnBtn.innerHTML = `👎 <span class="vote-count">${item.downvotes||0}</span>`;
   dnBtn.title = 'Não útil';
   upBtn.addEventListener('click',async()=>{
+    console.info('[vote-click] 👍 clicado — id:', item.id, 'myVote atual:', myVote);
     const newVote = myVote === 1 ? 0 : 1;
     upBtn.disabled = true;dnBtn.disabled = true;
     const ok = await voteSharedExplanation(item.id, newVote);
@@ -9561,6 +9570,7 @@ function renderSharedExplanationCard(item, q){
     }
   });
   dnBtn.addEventListener('click',async()=>{
+    console.info('[vote-click] 👎 clicado — id:', item.id, 'myVote atual:', myVote);
     const newVote = myVote === -1 ? 0 : -1;
     upBtn.disabled = true;dnBtn.disabled = true;
     const ok = await voteSharedExplanation(item.id, newVote);
@@ -9658,6 +9668,7 @@ function renderSharedFlashcardCard(item, q){
   if(isOptimistic) dnBtn.disabled = true;
   if(!isOptimistic){
     upBtn.addEventListener('click',async()=>{
+      console.info('[vote-click-flash] 👍 clicado — id:', item.id, 'myVote:', myVote);
       const newVote = myVote === 1 ? 0 : 1;
       upBtn.disabled = true;dnBtn.disabled = true;
       const okv = await voteSharedExplanation(item.id, newVote);
@@ -9673,6 +9684,7 @@ function renderSharedFlashcardCard(item, q){
       }
     });
     dnBtn.addEventListener('click',async()=>{
+      console.info('[vote-click-flash] 👎 clicado — id:', item.id, 'myVote:', myVote);
       const newVote = myVote === -1 ? 0 : -1;
       upBtn.disabled = true;dnBtn.disabled = true;
       const okv = await voteSharedExplanation(item.id, newVote);
