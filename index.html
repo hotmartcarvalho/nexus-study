@@ -24571,6 +24571,46 @@ function buildAiFeedbackRow(question){
 //   _raw: 'texto original',
 //   _hasStructure: boolean                     // true se achou ao menos 1 seção
 // }
+// V15.12.75.14 — Seleciona a "melhor" explicação entre várias do mesmo pool
+// (shared_explanations). Critérios em ordem de prioridade:
+//   1. Score humano (upvotes - downvotes) — quanto mais votada, melhor
+//   2. Modelo: Sonnet > Haiku (em empate de score)
+//   3. Data: mais recente em empate
+//   4. Autoria: do próprio user em empate final (familiaridade)
+//
+// Recebe: array de items do listExplanationsForQuestion(enunciado, 'explicacao')
+//         currentUserId (string) — id do user atual
+// Retorna: o item escolhido, ou null se array vazio.
+function pickBestExplanation(items, currentUserId){
+  if(!Array.isArray(items) || items.length === 0) return null;
+  if(items.length === 1) return items[0];
+
+  const modelRank = m => {
+    if(m === 'sonnet') return 2;
+    if(m === 'haiku') return 1;
+    return 0;
+  };
+
+  const sorted = items.slice().sort((a, b) => {
+    // 1. Score desc
+    const scoreA = (a.upvotes || 0) - (a.downvotes || 0);
+    const scoreB = (b.upvotes || 0) - (b.downvotes || 0);
+    if(scoreA !== scoreB) return scoreB - scoreA;
+    // 2. Modelo: Sonnet > Haiku
+    const mr = modelRank(b.model) - modelRank(a.model);
+    if(mr !== 0) return mr;
+    // 3. Mais recente
+    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    if(dateA !== dateB) return dateB - dateA;
+    // 4. Autoria própria desempata
+    const meA = (a.author_id === currentUserId) ? 1 : 0;
+    const meB = (b.author_id === currentUserId) ? 1 : 0;
+    return meB - meA;
+  });
+  return sorted[0];
+}
+
 function parseExplanationStructured(rawText){
   const result = {
     gabarito: null,
@@ -25009,6 +25049,29 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
         }
         // Se nada útil, fica invisível
       }).catch(()=>{/* falha silenciosa */});
+    }
+  }
+
+  // V15.12.75.14 — Selo de autoria da explicação principal (posição C: discreto,
+  // antes do botão "Próxima"). Texto C: combinado "📚 Banco · por @user".
+  // Aparece apenas quando há _authorMeta (cache hit com explicação resolvida).
+  if(fb && fb._authorMeta){
+    const meta = fb._authorMeta;
+    let seloHtml = null;
+    if(meta.isMine){
+      seloHtml = `👤 Sua explicação`;
+    } else if(meta.username){
+      // Explicação de outro user — texto C combinado
+      seloHtml = `📚 Banco · por @${escapeHTML(meta.username)}`;
+    } else if(meta.source === 'pool'){
+      // Pool sem autoria identificada (fallback)
+      seloHtml = `📚 Banco Gralia`;
+    }
+    if(seloHtml){
+      const selo = mk('div');
+      selo.style.cssText = 'font-size:10.5px;color:var(--text3);text-align:right;margin:8px 0 6px;line-height:1.4';
+      selo.innerHTML = seloHtml;
+      card.appendChild(selo);
     }
   }
 
@@ -36565,11 +36628,49 @@ async function practSubmit(answer){
         fallbackMsg = 'Você acertou! Esta questão ainda não tem explicação registrada no banco. Pode seguir pra próxima ou veja se há explicações da comunidade no final.';
       }
 
+      // V15.12.75.14 — Busca melhor explicação shared se houver. Em cache hit,
+      // a explicação do pool é "do banco" (geralmente do user que gerou a
+      // questão primeiro). Se há shared mais bem votadas, substituímos a de
+      // cima por elas. Trap/keyword também vêm do payload selecionado pra
+      // manter coerência.
+      let finalExplanation = fallbackMsg;
+      let finalTrap = q.trap || '';
+      let finalKeyword = q.keyword || '';
+      let selectedAuthorMeta = null; // {userId, username, model, source}
+      if(hasExplanation && typeof listExplanationsForQuestion === 'function'
+         && typeof pickBestExplanation === 'function' && supa && AUTH.user){
+        try{
+          const shared = await listExplanationsForQuestion(q.enunciado || q.question || '', 'explicacao');
+          const best = pickBestExplanation(shared, AUTH.user.id);
+          if(best && best.payload && best.payload.explanation){
+            // Usa a melhor shared. Se a do pool é IGUAL à shared do mesmo
+            // autor (caso comum em cache hit), preserva trap/keyword do pool
+            // (são os mesmos). Caso contrário, atualiza tudo.
+            finalExplanation = best.payload.explanation;
+            if(best.payload.trap) finalTrap = best.payload.trap;
+            if(best.payload.keyword) finalKeyword = best.payload.keyword;
+            selectedAuthorMeta = {
+              userId: best.author_id,
+              username: best.author_username || null,
+              model: best.model || 'haiku',
+              isMine: (best.author_id === AUTH.user.id)
+            };
+            console.info('[cache-eval] melhor explicação:', selectedAuthorMeta);
+          } else {
+            // Sem shared. Usa a do pool (fallbackMsg).
+            // Metadata "do banco" sem autor específico.
+            selectedAuthorMeta = {userId: null, username: null, model: 'haiku', isMine: false, source: 'pool'};
+          }
+        }catch(e){
+          console.warn('[cache-eval] erro buscando shared:', e.message);
+        }
+      }
+
       ST.practFb = {
         ok,
-        explanation: fallbackMsg,
-        trap: q.trap || '',
-        keyword: q.keyword || '',
+        explanation: finalExplanation,
+        trap: finalTrap,
+        keyword: finalKeyword,
         next: nextCached, // se null, "Próxima questão" vai chamar startPractice de novo
         errCtx,
         userChose: answer,
@@ -36578,7 +36679,9 @@ async function practSubmit(answer){
         // Pra ter, IA teria que gerar quando salvou no pool — fica pra V15.12.76.
         suggestedFlashcard: null,
         _fromCache: true,
-        _explanationMissing: !hasExplanation
+        _explanationMissing: !hasExplanation,
+        // V15.12.75.14 — Metadata de autoria pra UI mostrar selo "Banco · por @X"
+        _authorMeta: selectedAuthorMeta
       };
       ST.practLoading = false;
       render();
