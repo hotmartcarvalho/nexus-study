@@ -24423,7 +24423,28 @@ async function checkUserSuspension(){
     m.appendChild(body);
 
     const actions = mk('div','flex');
-    actions.style.cssText = 'justify-content:flex-end;gap:8px;margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem';
+    actions.style.cssText = 'justify-content:flex-end;gap:8px;margin-top:.75rem;border-top:1px solid var(--border);padding-top:.75rem;flex-wrap:wrap';
+
+    // V15.12.75.36 — Botão Fale conosco (mesmo com app bloqueado)
+    const contactBtn = mkBtn('💬 Fale conosco','btn');
+    contactBtn.title = 'Envie uma mensagem ao suporte explicando a situação';
+    contactBtn.addEventListener('click',()=>{
+      // Fecha o modal locked temporariamente pra mostrar o feedback modal
+      // (o feedback ao ser fechado vai reabrir o de suspensão? Não — user
+      // precisa decidir sair ou ficar contestando. Solução: feedback modal
+      // empilha sobre o de suspensão usando MODAL_STACK que showModal já trata.)
+      try{
+        if(typeof showFeedbackModal === 'function'){
+          showFeedbackModal();
+        } else {
+          alert('Não foi possível abrir o Fale conosco. Recarregue a página e tente de novo.');
+        }
+      }catch(err){
+        alert('Erro ao abrir Fale conosco: ' + (err.message||err));
+      }
+    });
+    actions.appendChild(contactBtn);
+
     const signOutBtn = mkBtn('Sair da conta','btn btn-p');
     signOutBtn.addEventListener('click', async ()=>{
       try{ await supa.auth.signOut(); }catch(_){}
@@ -50541,6 +50562,22 @@ function renderAdminDashboard(){
   wrap.appendChild(susCard);
   loadAdminSuspendedUsers(susBody);
 
+  // V15.12.75.36 — Card: Emails protegidos do anti-abuso
+  const protCard = mk('section','admin-card');
+  protCard.appendChild(adminSectionLabel('🛡️ Anti-abuso — Emails protegidos'));
+  const protHead = mk('h2','admin-section-title');
+  protHead.textContent = 'Whitelist de emails (nunca são suspensos)';
+  protCard.appendChild(protHead);
+  const protHelp = mk('p');
+  protHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem;line-height:1.5';
+  protHelp.innerHTML = 'Emails listados aqui NUNCA são suspensos automaticamente pelo anti-abuso, mesmo que múltiplos signups venham do mesmo IP. Use pra proteger contas admin, de teste e similares.';
+  protCard.appendChild(protHelp);
+  const protBody = mk('div','admin-protected-emails-body');
+  protBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando...</div>';
+  protCard.appendChild(protBody);
+  wrap.appendChild(protCard);
+  loadAdminProtectedEmails(protBody);
+
   // === V15.12.72 — Card: Custo IA (auditoria de gastos Anthropic) ===
   const costCard = mk('section','admin-card');
   costCard.appendChild(adminSectionLabel('💰 Custo IA — Anthropic'));
@@ -51135,6 +51172,142 @@ function formatTokens(n){
 }
 
 // V15.12.68 — Lista users que bateram rate limit em alguma hora das últimas 24h
+// V15.12.75.36 — Lista emails protegidos da suspensão automática.
+// Admin pode adicionar (formulário inline) ou remover via lixeira.
+async function loadAdminProtectedEmails(container){
+  if(!supa){
+    container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>';
+    return;
+  }
+  try{
+    const {data, error} = await supa
+      .from('protected_emails')
+      .select('email, reason, created_at')
+      .order('created_at', {ascending: true});
+    if(error) throw error;
+
+    container.innerHTML = '';
+
+    // Formulário pra adicionar novo
+    const form = mk('div');
+    form.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem;align-items:flex-end;padding:.5rem .625rem;background:var(--surface2);border-radius:8px';
+    const inputGroup = mk('div');
+    inputGroup.style.cssText = 'flex:1;min-width:200px;display:flex;flex-direction:column;gap:4px';
+    const emailLbl = mk('label');
+    emailLbl.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px';
+    emailLbl.textContent = 'Email';
+    inputGroup.appendChild(emailLbl);
+    const emailIn = mk('input');
+    emailIn.type = 'email';
+    emailIn.placeholder = 'exemplo@email.com';
+    emailIn.style.cssText = 'padding:6px 10px;font-size:12.5px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit';
+    inputGroup.appendChild(emailIn);
+    form.appendChild(inputGroup);
+
+    const reasonGroup = mk('div');
+    reasonGroup.style.cssText = 'flex:1;min-width:160px;display:flex;flex-direction:column;gap:4px';
+    const reasonLbl = mk('label');
+    reasonLbl.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px';
+    reasonLbl.textContent = 'Motivo (opcional)';
+    reasonGroup.appendChild(reasonLbl);
+    const reasonIn = mk('input');
+    reasonIn.type = 'text';
+    reasonIn.placeholder = 'Conta de teste, parceiro, etc';
+    reasonIn.style.cssText = 'padding:6px 10px;font-size:12.5px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit';
+    reasonGroup.appendChild(reasonIn);
+    form.appendChild(reasonGroup);
+
+    const addBtn = mkBtn('+ Adicionar', 'btn btn-sm btn-p');
+    addBtn.style.cssText = 'font-size:12px;padding:6px 14px';
+    addBtn.addEventListener('click', async ()=>{
+      const email = (emailIn.value || '').trim().toLowerCase();
+      const reason = (reasonIn.value || '').trim() || null;
+      if(!email || !email.includes('@')){
+        showToast('Email inválido', 3000);
+        return;
+      }
+      addBtn.disabled = true;
+      addBtn.textContent = 'Adicionando...';
+      try{
+        const {error: insErr} = await supa
+          .from('protected_emails')
+          .insert({email, reason});
+        if(insErr) throw insErr;
+        showToast('✓ Email adicionado à whitelist', 3000);
+        loadAdminProtectedEmails(container);
+      }catch(e){
+        addBtn.disabled = false;
+        addBtn.textContent = '+ Adicionar';
+        showToast('Erro: ' + (e.message||String(e)), 4000);
+      }
+    });
+    form.appendChild(addBtn);
+    container.appendChild(form);
+
+    if(!data || data.length === 0){
+      const empty = mk('div');
+      empty.style.cssText = 'padding:1rem;text-align:center;color:var(--text3);font-size:12.5px';
+      empty.textContent = 'Nenhum email protegido (banco vazio).';
+      container.appendChild(empty);
+      return;
+    }
+
+    const list = mk('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:.375rem';
+    data.forEach(row => {
+      const item = mk('div');
+      item.style.cssText = 'display:flex;align-items:center;gap:10px;padding:.5rem .75rem;background:var(--surface2);border-radius:8px;font-size:12.5px';
+      const info = mk('div');
+      info.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:2px';
+      info.innerHTML = `
+        <div style="font-weight:600;color:var(--text)">${escapeHTML(row.email)}</div>
+        ${row.reason ? `<div style="font-size:11px;color:var(--text3)">${escapeHTML(row.reason)}</div>` : ''}
+      `;
+      item.appendChild(info);
+
+      const delBtn = mkBtn('🗑', 'btn btn-sm');
+      delBtn.title = 'Remover da whitelist';
+      delBtn.style.cssText = 'color:var(--red-text);border-color:var(--border);background:transparent;font-size:13px;padding:4px 10px';
+      let confirming = false;
+      delBtn.addEventListener('click', async ()=>{
+        if(!confirming){
+          confirming = true;
+          delBtn.textContent = 'Confirmar?';
+          delBtn.style.background = 'rgba(232,76,76,.10)';
+          setTimeout(()=>{
+            if(confirming){
+              confirming = false;
+              delBtn.textContent = '🗑';
+              delBtn.style.background = 'transparent';
+            }
+          }, 3500);
+          return;
+        }
+        try{
+          delBtn.disabled = true;
+          const {error: delErr} = await supa
+            .from('protected_emails')
+            .delete()
+            .eq('email', row.email);
+          if(delErr) throw delErr;
+          showToast('Removido da whitelist', 3000);
+          loadAdminProtectedEmails(container);
+        }catch(e){
+          delBtn.disabled = false;
+          delBtn.textContent = '🗑';
+          delBtn.style.background = 'transparent';
+          showToast('Erro: ' + (e.message||String(e)), 4000);
+        }
+      });
+      item.appendChild(delBtn);
+      list.appendChild(item);
+    });
+    container.appendChild(list);
+  }catch(e){
+    container.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro: ${escapeHTML(e.message||String(e))}</div>`;
+  }
+}
+
 // V15.12.75.35 — Carrega lista de contas suspensas pra admin gerenciar.
 async function loadAdminSuspendedUsers(container){
   if(!supa){
@@ -65507,7 +65680,17 @@ async function initAuth(){
               console.warn('[anti-abuse] register_signup_ip falhou:', error.message);
               return;
             }
-            if(data && data.blocked_reason === 'too_many_signups'){
+            // V15.12.75.36 — Reconhece estados protegidos (whitelist ou pagante).
+            // Nesses casos, NÃO mostra toast de bloqueio nem alerta o user —
+            // o log no servidor é só pra admin auditar.
+            if(data && (data.protected || data.paid_subscriber)){
+              if(data.protected){
+                console.info('[anti-abuse] Email protegido — suspensão pulada');
+              }
+              if(data.paid_subscriber){
+                console.info('[anti-abuse] Assinante pagante — suspensão pulada');
+              }
+            } else if(data && data.blocked_reason === 'too_many_signups'){
               console.warn('[anti-abuse] Signup bloqueado: muitos signups do mesmo IP em 24h. Bonus negado.');
               setTimeout(()=>{
                 try{
