@@ -8764,6 +8764,8 @@ async function renderSharedExplanationsUI(container, q, wasCorrect, opts){
   // (vinda do ai_question_pool em cache hit, ou do eval em fresh gen). Se uma
   // shared_explanation tem texto idêntico/muito similar, será filtrada pra
   // evitar duplicação visual.
+  // V15.12.75.15 — opts.excludeFlashId: ID do flashcard já mostrado em cima
+  // como "Flashcard do banco". Será filtrado da lista da comunidade.
 
   // Em acertos, encapsula em <details> colapsado por padrão pra não ser intrusivo
   if(wasCorrect){
@@ -8950,11 +8952,18 @@ async function renderSharedExplanationsBody(container, q, opts){
   list.appendChild(loading);
 
   // Busca explicações + flashcards EM PARALELO pra reduzir tempo total
-  const [itemsRaw, flashItems] = await Promise.all([
+  const [itemsRaw, flashItemsRaw] = await Promise.all([
     listExplanationsForQuestion(q.enunciado, 'explicacao'),
     listExplanationsForQuestion(q.enunciado, 'flashcard')
   ]);
   list.innerHTML = '';
+
+  // V15.12.75.15 — Filtra flashcard já mostrado em cima como "Flashcard do
+  // banco" pra não duplicar na seção da comunidade.
+  const excludeFlashId = opts.excludeFlashId || null;
+  const flashItems = excludeFlashId
+    ? flashItemsRaw.filter(f => f.id !== excludeFlashId)
+    : flashItemsRaw;
 
   // V15.12.75.8 — Filtra explicações que são iguais à mostrada no card principal.
   // Compara primeiros 200 chars normalizados. Se for igual, descarta — evita
@@ -24582,6 +24591,17 @@ function buildAiFeedbackRow(question){
 //         currentUserId (string) — id do user atual
 // Retorna: o item escolhido, ou null se array vazio.
 function pickBestExplanation(items, currentUserId){
+  return pickBestShared(items, currentUserId);
+}
+
+// V15.12.75.15 — Mesma lógica de ranking aplicada a flashcards.
+// Centralizada em pickBestShared pra evitar duplicação de código.
+function pickBestFlashcard(items, currentUserId){
+  return pickBestShared(items, currentUserId);
+}
+
+// Implementação compartilhada do ranking. Usada por explicações e flashcards.
+function pickBestShared(items, currentUserId){
   if(!Array.isArray(items) || items.length === 0) return null;
   if(items.length === 1) return items[0];
 
@@ -24887,7 +24907,12 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
   // V15.12.20 — Flashcard sugerido pela IA (vem embutido no eval, sem custo extra).
   // V15.12.74 — Layout mais premium: separador visual antes, mostra "frente"
   // e "verso" como faces de cartão, botão maior. Aparece APENAS quando errou.
-  if(!ok && fb.suggestedFlashcard && !fb._suggestedAdded){
+  // V15.12.75.15 — Agora também aparece em ACERTOS se vier do banco shared
+  // (cache hit com bestFlash). Isso traz o flashcard pra fora da seção
+  // "Comunidade" colapsada, ganhando destaque visual igual à explicação.
+  const showSuggested = fb.suggestedFlashcard && !fb._suggestedAdded
+                        && (!ok || fb._flashAuthorMeta);
+  if(showSuggested){
     const sf = fb.suggestedFlashcard;
     // Separador discreto antes pra marcar "fim da explicação, início do bônus"
     const sep = mk('div');
@@ -24903,7 +24928,11 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
     sugHead.style.cssText='font-size:11px;font-weight:700;color:var(--accent-text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px;justify-content:space-between';
     // V15.12.74.1 — Badge "grátis" com cores adaptativas (uso de var em vez de
     // rgba fixo). Funciona em tema claro e escuro.
-    sugHead.innerHTML = '<span style="display:flex;align-items:center;gap:6px"><span style="font-size:14px">✨</span><span>Flashcard sugerido</span></span><span class="ai-cost-badge free"><span class="acb-text">grátis</span></span>';
+    // V15.12.75.15 — Título adaptativo: "Flashcard sugerido" pro fluxo normal
+    // (gerado agora pelo eval), "Flashcard do banco" pra cache hit shared.
+    const isFromBank = !!fb._flashAuthorMeta;
+    const flashTitle = isFromBank ? 'Flashcard do banco' : 'Flashcard sugerido';
+    sugHead.innerHTML = `<span style="display:flex;align-items:center;gap:6px"><span style="font-size:14px">✨</span><span>${flashTitle}</span></span><span class="ai-cost-badge free"><span class="acb-text">grátis</span></span>`;
     sugCard.appendChild(sugHead);
 
     // Frente
@@ -24939,12 +24968,18 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
     addBtn.style.cssText='font-weight:600;padding:6px 14px';
     addBtn.addEventListener('click',()=>{
       try {
+        // V15.12.75.15 — Em acerto (cache hit) errCtx é null. Pega disciplina/topic
+        // da própria questão atual pra que o flashcard fique organizado mesmo
+        // quando o user acertou.
+        const cardTopic = errCtx ? errCtx.topic : (ST.practQ?.topic || sourceQuestion?.topic || '');
+        const cardDiscId = errCtx ? errCtx.disciplineId :
+          (typeof inferDiscipline === 'function' ? inferDiscipline(cardTopic) : null);
         const newCard = {
           id: 'card-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),
           front: sf.front,
           back: sf.back,
-          disciplineId: errCtx ? errCtx.disciplineId : null,
-          topic: errCtx ? errCtx.topic : (ST.practQ?.topic || ''),
+          disciplineId: cardDiscId,
+          topic: cardTopic,
           createdAt: Date.now(),
           source: 'suggested',
           interval: 1,
@@ -24972,6 +25007,25 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
     });
     sugActions.appendChild(addBtn);
     sugCard.appendChild(sugActions);
+
+    // V15.12.75.15 — Selo de autoria do flashcard (mesma posição/estilo
+    // do selo da explicação: discreto, alinhado à direita).
+    if(fb._flashAuthorMeta){
+      const fmeta = fb._flashAuthorMeta;
+      let flashSeloHtml = null;
+      if(fmeta.isMine){
+        flashSeloHtml = '👤 Seu flashcard';
+      } else if(fmeta.username){
+        flashSeloHtml = `📚 Banco · por @${escapeHTML(fmeta.username)}`;
+      }
+      if(flashSeloHtml){
+        const flashSelo = mk('div');
+        flashSelo.style.cssText = 'font-size:10.5px;color:var(--text3);text-align:right;margin-top:8px;line-height:1.4';
+        flashSelo.innerHTML = flashSeloHtml;
+        sugCard.appendChild(flashSelo);
+      }
+    }
+
     card.appendChild(sugCard);
   }
 
@@ -25040,12 +25094,20 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
           const itNorm = normalizeShortText((it.payload || {}).explanation || '');
           return itNorm && itNorm !== excludeNorm;
         });
-        // Flashcards úteis: de outro user (não compara texto, são diferentes em natureza)
-        const usefulFlashes = (flashes || []).filter(it => it.author_id !== myId);
+        // Flashcards úteis: de outro user E NÃO é o já mostrado em cima
+        const flashExcludeId = fb._flashExcludeId || null;
+        const usefulFlashes = (flashes || []).filter(it =>
+          it.author_id !== myId && it.id !== flashExcludeId
+        );
         if(usefulExpls.length > 0 || usefulFlashes.length > 0){
           sharedWrap.style.display = '';
           // Passa excludeText pro render também filtrar internamente
-          renderSharedExplanationsUI(sharedWrap, qForShared, ok, {excludeText: explToExclude});
+          // V15.12.75.15 — Também passa excludeFlashId pra não duplicar
+          // o flashcard já mostrado em cima como "Flashcard do banco".
+          renderSharedExplanationsUI(sharedWrap, qForShared, ok, {
+            excludeText: explToExclude,
+            excludeFlashId: fb._flashExcludeId || null
+          });
         }
         // Se nada útil, fica invisível
       }).catch(()=>{/* falha silenciosa */});
@@ -36637,10 +36699,20 @@ async function practSubmit(answer){
       let finalTrap = q.trap || '';
       let finalKeyword = q.keyword || '';
       let selectedAuthorMeta = null; // {userId, username, model, source}
+      // V15.12.75.15 — Também busca melhor flashcard shared pra mostrar como
+      // suggestedFlashcard (mesmo destaque do fluxo fresh gen). Antes ficava
+      // escondido dentro da seção "Comunidade" colapsada.
+      let bestSharedFlash = null;
+      let bestSharedFlashMeta = null;
+      let bestSharedFlashId = null; // pra filtrar duplicata na comunidade
       if(hasExplanation && typeof listExplanationsForQuestion === 'function'
          && typeof pickBestExplanation === 'function' && supa && AUTH.user){
         try{
-          const shared = await listExplanationsForQuestion(q.enunciado || q.question || '', 'explicacao');
+          // Busca explicações + flashcards EM PARALELO
+          const [shared, sharedFlashes] = await Promise.all([
+            listExplanationsForQuestion(q.enunciado || q.question || '', 'explicacao'),
+            listExplanationsForQuestion(q.enunciado || q.question || '', 'flashcard')
+          ]);
           const best = pickBestExplanation(shared, AUTH.user.id);
           if(best && best.payload && best.payload.explanation){
             // Usa a melhor shared. Se a do pool é IGUAL à shared do mesmo
@@ -36661,6 +36733,23 @@ async function practSubmit(answer){
             // Metadata "do banco" sem autor específico.
             selectedAuthorMeta = {userId: null, username: null, model: 'haiku', isMine: false, source: 'pool'};
           }
+          // V15.12.75.15 — Melhor flashcard com mesmo ranking. Mostra no card
+          // principal (não escondido na comunidade).
+          const bestFlash = pickBestFlashcard(sharedFlashes, AUTH.user.id);
+          if(bestFlash && bestFlash.payload && bestFlash.payload.front && bestFlash.payload.back){
+            bestSharedFlash = {
+              front: bestFlash.payload.front,
+              back: bestFlash.payload.back
+            };
+            bestSharedFlashMeta = {
+              userId: bestFlash.author_id,
+              username: bestFlash.author_username || null,
+              model: bestFlash.model || 'haiku',
+              isMine: (bestFlash.author_id === AUTH.user.id)
+            };
+            bestSharedFlashId = bestFlash.id;
+            console.info('[cache-eval] melhor flashcard:', bestSharedFlashMeta);
+          }
         }catch(e){
           console.warn('[cache-eval] erro buscando shared:', e.message);
         }
@@ -36675,13 +36764,17 @@ async function practSubmit(answer){
         errCtx,
         userChose: answer,
         q,
-        // Cache hit não inclui suggested_flashcard nesta primeira versão.
-        // Pra ter, IA teria que gerar quando salvou no pool — fica pra V15.12.76.
-        suggestedFlashcard: null,
+        // V15.12.75.15 — suggestedFlashcard agora pode vir do melhor flashcard
+        // shared (ranking idêntico ao da explicação). Se não há, fica null.
+        suggestedFlashcard: bestSharedFlash,
         _fromCache: true,
         _explanationMissing: !hasExplanation,
         // V15.12.75.14 — Metadata de autoria pra UI mostrar selo "Banco · por @X"
-        _authorMeta: selectedAuthorMeta
+        _authorMeta: selectedAuthorMeta,
+        // V15.12.75.15 — Metadata de autoria do flashcard pra UI mostrar selo
+        _flashAuthorMeta: bestSharedFlashMeta,
+        // ID do flashcard mostrado pra filtrar da comunidade (evitar duplicata)
+        _flashExcludeId: bestSharedFlashId
       };
       ST.practLoading = false;
       render();
