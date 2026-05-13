@@ -25645,8 +25645,47 @@ function applyBankFilters(bank,f){
     else if(f.practiced === 'wrong') r = r.filter(q => q.attempts > 0 && (q.correctCount||0) < q.attempts);
   }
   // V15.12.38 — Filtro de favoritas. Compatível com questões antigas (sem campo favorite).
-  if(f.favorite === 'yes') r = r.filter(q => q.favorite === true);
-  else if(f.favorite === 'no') r = r.filter(q => !q.favorite);
+  // V15.12.75.22 — Inclui também questões IA favoritadas (DATA.aiFavoriteQuestions),
+  // que estão fora do bank importado. Converte pra formato compatível antes
+  // de mesclar. Pra que o filtro "Favoritadas" mostre TUDO favoritado.
+  if(f.favorite === 'yes'){
+    r = r.filter(q => q.favorite === true);
+    // Mescla IA favoritadas (estrutura própria) no formato bank
+    const aiFavs = (DATA.aiFavoriteQuestions || []).map(fav => ({
+      // Mapeia campos do fav pro formato bank
+      id: 'ai-fav-' + (fav.key || Math.random().toString(36).slice(2)),
+      question: fav.question,
+      correct_answer: fav.answer,
+      alternatives: fav.alternatives || null,
+      kind: fav.kind || 'CE',
+      topic: fav.topic || '',
+      difficulty: fav.difficulty || 'medium',
+      explanation: fav.explanation || '',
+      trap: fav.trap || '',
+      keyword: fav.keyword || '',
+      favorite: true,
+      favoriteAt: fav.favoritedAt,
+      source: 'ai',
+      // Sem disciplineId/banca/cargo → vai cair em "sem disciplina" se filtrar
+      disciplineId: null,
+      attempts: 0,
+      correctCount: 0,
+      _aiFavorite: true // marca pra UI/handlers reconhecerem
+    }));
+    // Aplica filtros restantes em ambos (disciplina, kind, banca, etc).
+    // Em vez de duplicar lógica, aplica recursivamente nas IA favs SEM o filtro
+    // de favorite (já filtrou) e mescla.
+    // Solução simples: só re-aplica os filtros COMPATÍVEIS (kind, disc).
+    let aiFiltered = aiFavs;
+    if(f.disc !== 'all') aiFiltered = aiFiltered.filter(q => q.disciplineId === f.disc);
+    if(f.kind !== 'all') aiFiltered = aiFiltered.filter(q => (q.kind||'CE') === f.kind);
+    if(f.source && f.source !== 'all' && f.source !== 'ai'){
+      aiFiltered = []; // se filtra "Importadas", IA não entra
+    }
+    r = r.concat(aiFiltered);
+  } else if(f.favorite === 'no'){
+    r = r.filter(q => !q.favorite);
+  }
   // V15.12.53 → V15.12.59 — Filtros do P1 (handoff):
   //   hasExplanation: 'yes' = q.explanation OR existe error vinculado com explanation
   //   hasFlashcard:   'yes' = existe error vinculado com hasCard=true
@@ -25965,7 +26004,8 @@ function renderBankFilters(stateKey,bank){
   ]));
 
   // V15.12.38 — Filtro de favoritas
-  const favYes = bank.filter(q=>q.favorite===true).length;
+  // V15.12.75.22 — Conta também IA favoritadas (estão em DATA.aiFavoriteQuestions)
+  const favYes = bank.filter(q=>q.favorite===true).length + (DATA.aiFavoriteQuestions || []).length;
   if(favYes > 0 || f.favorite !== 'all'){
     chipRows.appendChild(buildChipGroup('Favoritas','favorite',[
       ['all','Todas'],
@@ -50143,11 +50183,11 @@ function renderAdminDashboard(){
   const sharedModCard = mk('section','admin-card');
   sharedModCard.appendChild(adminSectionLabel('📚 Moderação de conteúdo compartilhado'));
   const sharedModHead = mk('h2','admin-section-title');
-  sharedModHead.textContent = 'Explicações e flashcards com score negativo';
+  sharedModHead.textContent = 'Explicações e flashcards com votos negativos';
   sharedModCard.appendChild(sharedModHead);
   const sharedModHelp = mk('p');
   sharedModHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem';
-  sharedModHelp.textContent = 'Itens com mais downvotes que upvotes (score < 0). Sinal de que a comunidade considera ruim. Revise antes de excluir.';
+  sharedModHelp.textContent = 'Itens com 1 ou mais downvotes da comunidade. Revise o conteúdo antes de excluir — pode ser voto isolado injusto.';
   sharedModCard.appendChild(sharedModHelp);
   const sharedModBody = mk('div','admin-shared-mod-body');
   sharedModBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando...</div>';
@@ -50205,11 +50245,11 @@ function renderAdminDashboard(){
   const poolCard = mk('section','admin-card');
   poolCard.appendChild(adminSectionLabel('📚 Banco IA — Cache & Moderação'));
   const poolHead = mk('h2','admin-section-title');
-  poolHead.textContent = 'Pool de questões geradas';
+  poolHead.textContent = 'Banco de questões geradas pela IA';
   poolCard.appendChild(poolHead);
   const poolHelp = mk('p');
-  poolHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem';
-  poolHelp.textContent = 'Métricas do cache lookup + ações de moderação. Cache hits são questões servidas sem custo Anthropic.';
+  poolHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem;line-height:1.5';
+  poolHelp.innerHTML = 'Quando um usuário gera uma questão com IA, ela fica salva aqui. Próximos usuários da mesma banca/disciplina recebem essa questão <b>sem gastar créditos</b> e sem custo Anthropic — chamamos de "reaproveitamento" (em inglês, <i>cache hit</i>).';
   poolCard.appendChild(poolHelp);
   // Toggle feature flag
   const flagRow = mk('div');
@@ -50224,11 +50264,11 @@ function renderAdminDashboard(){
     DATA.config = DATA.config || {};
     DATA.config.cacheEnabled = e.target.checked;
     save();
-    showToast(e.target.checked ? '✓ Cache habilitado' : '⚠ Cache desabilitado — todas as questões serão geradas pela IA', 4000);
+    showToast(e.target.checked ? '✓ Reaproveitamento ativado' : '⚠ Reaproveitamento desativado — todas as questões serão geradas pela IA (mais caro)', 5000);
   });
   flagLbl.appendChild(flagChk);
   const flagTxt = mk('span');
-  flagTxt.innerHTML = '<b>Cache habilitado</b> — entrega questões do banco antes de chamar IA';
+  flagTxt.innerHTML = '<b>Reaproveitar questões do banco</b> — entrega questão pronta antes de chamar a IA';
   flagLbl.appendChild(flagTxt);
   flagRow.appendChild(flagLbl);
   poolCard.appendChild(flagRow);
@@ -50240,28 +50280,46 @@ function renderAdminDashboard(){
   poolActions.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--border)';
   const actionsLbl = mk('div');
   actionsLbl.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px';
-  actionsLbl.textContent = 'Ações em lote';
+  actionsLbl.textContent = 'Ações de limpeza';
   poolActions.appendChild(actionsLbl);
+
+  // V15.12.75.22 — Legenda dos status pra desambiguar termos em inglês
+  const statusLegend = mk('div');
+  statusLegend.style.cssText = 'font-size:11px;color:var(--text3);background:var(--surface2);border-radius:6px;padding:.5rem .75rem;margin-bottom:8px;line-height:1.6';
+  statusLegend.innerHTML = `
+    <b style="color:var(--text2)">Status das questões no banco:</b><br>
+    <span style="color:var(--text2)">📝 <b>Rascunho</b> (draft):</span> questão criada mas ainda sem explicação completa (esperando alguém responder)<br>
+    <span style="color:var(--text2)">✓ <b>Ativa</b> (active):</span> questão completa e disponível pra reaproveitamento<br>
+    <span style="color:var(--text2)">🚩 <b>Sinalizada</b> (flagged):</span> recebeu reports — excluída automaticamente do reaproveitamento<br>
+    <span style="color:var(--text2)">🚫 <b>Desativada</b> (disabled):</span> admin desativou manualmente — não aparece pra ninguém<br>
+    <span style="color:var(--text2)">⚠ <b>Órfã</b>:</span> questão sem metadados básicos (banca/disciplina/dificuldade ausentes)
+  `;
+  poolActions.appendChild(statusLegend);
+
   const btnGrid = mk('div');
   btnGrid.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
 
-  // Deletar drafts
-  const delDraftsBtn = mkBtn('Excluir drafts', 'btn btn-sm');
+  // Excluir rascunhos (draft)
+  const delDraftsBtn = mkBtn('🗑 Excluir rascunhos', 'btn btn-sm');
+  delDraftsBtn.title = 'Apaga questões em status "Rascunho" (draft) — questões geradas mas sem explicação. Use pra limpar lixo de prefetch antigo.';
   delDraftsBtn.addEventListener('click', ()=>handleAdminPoolBulkDelete('draft', delDraftsBtn));
   btnGrid.appendChild(delDraftsBtn);
 
-  // Deletar flagged
-  const delFlaggedBtn = mkBtn('Excluir flagged', 'btn btn-sm');
+  // Excluir sinalizadas (flagged)
+  const delFlaggedBtn = mkBtn('🗑 Excluir sinalizadas', 'btn btn-sm');
+  delFlaggedBtn.title = 'Apaga questões em status "Sinalizada" (flagged) — receberam reports da comunidade.';
   delFlaggedBtn.addEventListener('click', ()=>handleAdminPoolBulkDelete('flagged', delFlaggedBtn));
   btnGrid.appendChild(delFlaggedBtn);
 
-  // Deletar disabled
-  const delDisabledBtn = mkBtn('Excluir disabled', 'btn btn-sm');
+  // Excluir desativadas (disabled)
+  const delDisabledBtn = mkBtn('🗑 Excluir desativadas', 'btn btn-sm');
+  delDisabledBtn.title = 'Apaga questões em status "Desativada" (disabled) — admin desativou anteriormente.';
   delDisabledBtn.addEventListener('click', ()=>handleAdminPoolBulkDelete('disabled', delDisabledBtn));
   btnGrid.appendChild(delDisabledBtn);
 
-  // Deletar órfãs (sem metadados)
-  const delOrphansBtn = mkBtn('Excluir órfãs (sem metadados)', 'btn btn-sm');
+  // Excluir órfãs (sem metadados)
+  const delOrphansBtn = mkBtn('🗑 Excluir órfãs', 'btn btn-sm');
+  delOrphansBtn.title = 'Apaga questões sem banca/disciplina/dificuldade. São geradas em ambiente sem perfil definido — não aparecem no reaproveitamento mesmo se ativas.';
   delOrphansBtn.addEventListener('click', ()=>handleAdminPoolDeleteOrphans(delOrphansBtn));
   btnGrid.appendChild(delOrphansBtn);
   poolActions.appendChild(btnGrid);
@@ -50271,16 +50329,71 @@ function renderAdminDashboard(){
   dangerLbl.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--red-text);text-transform:uppercase;letter-spacing:.4px;margin-top:12px;margin-bottom:4px';
   dangerLbl.textContent = '⚠ Zona perigosa';
   poolActions.appendChild(dangerLbl);
+
+  const dangerHelp = mk('div');
+  dangerHelp.style.cssText = 'font-size:11px;color:var(--text3);margin-bottom:8px;line-height:1.5';
+  dangerHelp.innerHTML = '<b>Atenção:</b> ações abaixo afetam TODO o banco e impactam todos os usuários. Confirmação dupla obrigatória.';
+  poolActions.appendChild(dangerHelp);
+
   const dangerGrid = mk('div');
   dangerGrid.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
 
-  const disableAllBtn = mkBtn('Desativar TODAS', 'btn btn-sm');
+  // V15.12.75.22 — Botão dinâmico: "Desativar todas" OU "Reativar todas".
+  // Detecta automaticamente se há questões ativas. Se sim, mostra "Desativar"
+  // pra mover ativas → desativadas. Se a maioria está desativada,
+  // mostra "Reativar todas" pra voltar pra ativas.
+  // O texto e título descrevem CLARAMENTE o que faz, sem jargão.
+  const disableAllBtn = mkBtn('Carregando...', 'btn btn-sm');
   disableAllBtn.style.cssText = 'border-color:var(--amber);color:var(--amber-text)';
-  disableAllBtn.addEventListener('click', ()=>handleAdminPoolDisableAll(disableAllBtn));
+  disableAllBtn.disabled = true;
+  // Atualiza estado do botão baseado em quantas questões ativas existem
+  async function refreshDisableButton(){
+    if(!supa){
+      disableAllBtn.textContent = 'Desativar todas as questões';
+      disableAllBtn.disabled = false;
+      return;
+    }
+    try{
+      const {count: activeCount} = await supa
+        .from('ai_question_pool')
+        .select('content_hash', {count:'exact', head:true})
+        .eq('status', 'active');
+      const {count: disabledCount} = await supa
+        .from('ai_question_pool')
+        .select('content_hash', {count:'exact', head:true})
+        .eq('status', 'disabled');
+      const hasActive = (activeCount || 0) > 0;
+      const hasDisabled = (disabledCount || 0) > 0;
+      if(hasActive){
+        disableAllBtn.textContent = `Desativar todas as ${activeCount} ativas`;
+        disableAllBtn.title = 'Move TODAS as questões ativas pra status "Desativada". Elas param de aparecer no reaproveitamento, mas NÃO são excluídas — você pode reativar depois.';
+        disableAllBtn.onclick = ()=>handleAdminPoolDisableAll(disableAllBtn, 'disable', refreshDisableButton);
+        disableAllBtn.style.cssText = 'border-color:var(--amber);color:var(--amber-text)';
+      } else if(hasDisabled){
+        disableAllBtn.textContent = `Reativar todas as ${disabledCount} desativadas`;
+        disableAllBtn.title = 'Move todas as questões desativadas DE VOLTA pra "Ativa". Voltam a aparecer no reaproveitamento.';
+        disableAllBtn.onclick = ()=>handleAdminPoolDisableAll(disableAllBtn, 'reactivate', refreshDisableButton);
+        disableAllBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text)';
+      } else {
+        disableAllBtn.textContent = 'Desativar todas (banco vazio)';
+        disableAllBtn.disabled = true;
+        disableAllBtn.title = 'Banco está vazio — nada pra desativar.';
+        disableAllBtn.style.opacity = '.6';
+        return;
+      }
+      disableAllBtn.disabled = false;
+    }catch(e){
+      disableAllBtn.textContent = 'Desativar todas';
+      disableAllBtn.disabled = false;
+      console.warn('[admin] refreshDisableButton:', e.message);
+    }
+  }
+  refreshDisableButton();
   dangerGrid.appendChild(disableAllBtn);
 
   const nukeBtn = mkBtn('🗑 LIMPAR BANCO COMPLETAMENTE', 'btn btn-sm');
   nukeBtn.style.cssText = 'border-color:var(--red);color:var(--red-text);font-weight:700';
+  nukeBtn.title = 'EXCLUI permanentemente TODAS as questões do banco (qualquer status), votos, reports e marcações de "visto". Não tem como desfazer.';
   nukeBtn.addEventListener('click', ()=>handleAdminPoolNuke(nukeBtn));
   dangerGrid.appendChild(nukeBtn);
 
@@ -50363,17 +50476,35 @@ async function handleAdminPoolDeleteOrphans(btn){
   }
 }
 
-async function handleAdminPoolDisableAll(btn){
-  if(!confirm('Desativar TODAS as questões do pool (status → disabled)? Cache lookup vai parar de funcionar até reativar.')) return;
-  btn.disabled = true; btn.textContent = 'Desativando...';
+async function handleAdminPoolDisableAll(btn, mode, onDone){
+  mode = mode || 'disable';
+  const isDisable = (mode === 'disable');
+  const verb = isDisable ? 'Desativar' : 'Reativar';
+  const verbing = isDisable ? 'Desativando' : 'Reativando';
+  const fromStatus = isDisable ? 'active' : 'disabled';
+  const toStatus = isDisable ? 'disabled' : 'active';
+  const msg = isDisable
+    ? 'Desativar TODAS as questões ativas? Elas param de aparecer no reaproveitamento, mas NÃO são excluídas. Você pode reativar depois.'
+    : 'Reativar TODAS as questões desativadas? Voltam a aparecer no reaproveitamento.';
+  if(!confirm(msg)) return;
+  btn.disabled = true;
+  const origText = btn.textContent;
+  btn.textContent = verbing + '...';
   try{
-    const {data, error} = await supa.rpc('admin_pool_disable_all');
+    // V15.12.75.22 — Não usa o RPC antigo `admin_pool_disable_all` (que sempre
+    // ia pra disabled). Faz UPDATE direto: from → to.
+    const {error, count} = await supa
+      .from('ai_question_pool')
+      .update({status: toStatus}, {count: 'exact'})
+      .eq('status', fromStatus);
     if(error) throw error;
-    showToast(`✓ ${data} questões desativadas`, 5000);
-    render();
+    showToast(`✓ ${count || 0} questões ${isDisable ? 'desativadas' : 'reativadas'}`, 5000);
+    if(typeof onDone === 'function') onDone();
+    else render();
   }catch(e){
     showToast('Erro: ' + (e.message||e), 5000);
-    btn.disabled = false; btn.textContent = 'Desativar TODAS';
+    btn.disabled = false;
+    btn.textContent = origText;
   }
 }
 
@@ -50596,9 +50727,12 @@ async function loadAdminSharedExplanationModeration(container){
       return;
     }
 
-    // Filtra só os com score negativo no cliente
+    // Filtra itens com pelo menos 1 downvote (admin precisa visibilidade
+    // ampla pra moderar). V15.12.75.22 — antes era score < 0 (downvotes
+    // só apareciam se já tinha MAIS downs que ups). Agora mostra todos
+    // com 1+ downvote pra admin avaliar antes do problema piorar.
     const problematic = (items||[]).filter(it =>
-      (it.downvotes || 0) > (it.upvotes || 0)
+      (it.downvotes || 0) >= 1
     );
 
     container.innerHTML = '';
