@@ -9117,99 +9117,117 @@ async function renderSharedExplanationsBody(container, q, opts){
   }
   genWrap.appendChild(genLabel);
   const genRow = mk('div','shexpl-gen-row');
-  genRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
+  genRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center';
   const haveHaiku = items.some(i=>i.model==='haiku' && i.author_id===AUTH.user.id);
   const haveSonnet = items.some(i=>i.model==='sonnet' && i.author_id===AUTH.user.id);
   const haveAnyMine = haveHaiku || haveSonnet;
   const haveOnlyOthers = items.length > 0 && !haveAnyMine;
 
-  // V15.12.42 — REGRA NOVA (item 3 do prompt): NÃO permitir gerar novamente o
-  // mesmo modelo de forma genérica se o user já gerou. Pra modelo já usado, a
-  // ÚNICA porta é "Melhorar com orientação" (modal com campo obrigatório).
-  // Modelo ainda não usado pode ser gerado normalmente. Se a explicação veio só
-  // da comunidade, o copy é "Gerar minha versão" (não "Gerar com IA" genérico).
+  // V15.12.75.20 — Simplificação radical: 1 botão principal + menu "Outras opções".
+  // Antes: 5 estados com 2-3 botões cada (matriz complexa). User ficava perdido.
+  // Agora: ação primária CLARA, variantes acessíveis mas não no caminho principal.
   //
-  // Matriz:
-  //   - Sem nada                → Gerar Haiku + Gerar Sonnet (genéricos)
-  //   - Só de outros (cache)    → Gerar minha versão (Haiku) + Sonnet (idem)
-  //   - User tem Haiku          → Sonnet (se não tem) + 🎯 Melhorar (cobre Haiku)
-  //   - User tem Sonnet         → Haiku (se não tem) + 🎯 Melhorar (cobre Sonnet)
-  //   - User tem ambos          → SÓ 🎯 Melhorar com orientação (modal escolhe modelo)
+  // BOTÃO PRINCIPAL:
+  //   - Sem nada                → "🤖 Gerar com IA" (Haiku, sem orientação) — onboarding rápido
+  //   - Só de outros            → "🤖 Gerar minha versão" (Haiku, sem orientação)
+  //   - Já tem alguma sua       → "🎯 Melhorar com orientação" (modal direcionado)
+  //
+  // OUTRAS OPÇÕES (colapsável "⋯"):
+  //   - Sempre permite Sonnet (com ou sem orientação)
+  //   - Sempre permite Haiku se ainda não usado
+  //   - Modelo já usado: só via "Melhorar com orientação"
 
+  let mainBtn;
   if(items.length === 0){
-    // CASO 1: sem explicações — botões padrão "Gerar"
-    const haikuBtn = mkBtn(`🤖 Gerar com IA · ${haikuCost} créd`,'btn btn-sm');
+    // CASO 1: sem explicações — botão "Gerar com IA" simples (Haiku, sem orientação)
+    mainBtn = mkBtn(`🤖 Gerar com IA · ${haikuCost} créd`,'btn btn-sm');
+    mainBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
     if(insuficienteHaiku){
-      haikuBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${haikuCost} necessários)`;
-      haikuBtn.style.opacity = '0.6';
+      mainBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${haikuCost} necessários)`;
+      mainBtn.style.opacity = '0.6';
     }
-    haikuBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'haiku', container, haikuBtn));
-    genRow.appendChild(haikuBtn);
-
-    const sonnetBtn = mkBtn(`⚡ Gerar premium · ${sonnetCost} créd`,'btn btn-sm');
-    sonnetBtn.style.borderColor = 'var(--gralia-purple)';
-    sonnetBtn.style.color = 'var(--gralia-purple)';
-    if(insuficienteSonnet){
-      sonnetBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${sonnetCost} necessários)`;
-      sonnetBtn.style.opacity = '0.6';
-    }
-    sonnetBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'sonnet', container, sonnetBtn));
-    genRow.appendChild(sonnetBtn);
+    mainBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'haiku', container, mainBtn));
   } else if(haveOnlyOthers){
-    // CASO 2: só explicações da comunidade — user pode gerar a SUA versão (não bloqueia)
-    const haikuBtn = mkBtn(`🤖 Gerar minha versão · ${haikuCost} créd`,'btn btn-sm');
-    haikuBtn.title = 'Gera a sua versão da explicação (Haiku). Útil se as da comunidade não atendem.';
-    haikuBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
+    // CASO 2: só explicações de outros users — "Gerar minha versão"
+    mainBtn = mkBtn(`🤖 Gerar minha versão · ${haikuCost} créd`,'btn btn-sm');
+    mainBtn.title = 'Gera a sua versão da explicação (Haiku). Útil se as da comunidade não atendem.';
+    mainBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
     if(insuficienteHaiku){
-      haikuBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${haikuCost} necessários)`;
-      haikuBtn.style.opacity = '0.6';
+      mainBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${haikuCost} necessários)`;
+      mainBtn.style.opacity = '0.6';
     }
-    haikuBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'haiku', container, haikuBtn));
-    genRow.appendChild(haikuBtn);
-
-    const sonnetBtn = mkBtn(`⚡ Sonnet · ${sonnetCost} créd`,'btn btn-sm');
-    sonnetBtn.style.cssText = 'background:transparent;color:var(--text2);border-color:var(--border);font-size:12px';
-    sonnetBtn.title = 'Gera a sua versão com Sonnet 4.5 — análise mais profunda';
-    if(insuficienteSonnet){
-      sonnetBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${sonnetCost} necessários)`;
-      sonnetBtn.style.opacity = '0.6';
-    }
-    sonnetBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'sonnet', container, sonnetBtn));
-    genRow.appendChild(sonnetBtn);
+    mainBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'haiku', container, mainBtn));
   } else {
-    // CASO 3 (e 4): user já tem ALGUMA explicação dele.
-    // Ação principal: "🎯 Melhorar com orientação" (modal direcionado, escolhe modelo no modal).
-    const improveBtn = mkBtn('🎯 Melhorar com orientação','btn btn-sm');
-    improveBtn.title = 'Diga o que você quer melhorar — IA gera versão direcionada (escolhe modelo no modal)';
-    improveBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600;font-size:12.5px';
-    improveBtn.addEventListener('click', ()=>showImproveExplanationModal(q, container, improveBtn));
-    genRow.appendChild(improveBtn);
-
-    // Modelo AINDA NÃO usado pelo user → pode ser gerado normalmente (sem orientação)
-    if(!haveSonnet){
-      const sonnetBtn = mkBtn(`⚡ Gerar com Sonnet · ${sonnetCost} créd`,'btn btn-sm');
-      sonnetBtn.style.cssText = 'background:transparent;color:var(--gralia-purple);border-color:rgba(124,92,255,.30);font-size:12px';
-      sonnetBtn.title = 'Você ainda não gerou explicação Sonnet pra esta questão';
-      if(insuficienteSonnet){
-        sonnetBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${sonnetCost} necessários)`;
-        sonnetBtn.style.opacity = '0.6';
-      }
-      sonnetBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'sonnet', container, sonnetBtn));
-      genRow.appendChild(sonnetBtn);
-    }
-    if(!haveHaiku){
-      const haikuBtn = mkBtn(`🤖 Gerar com Haiku · ${haikuCost} créd`,'btn btn-sm');
-      haikuBtn.style.cssText = 'background:transparent;color:var(--text2);border-color:var(--border);font-size:12px';
-      haikuBtn.title = 'Você ainda não gerou explicação Haiku pra esta questão';
-      if(insuficienteHaiku){
-        haikuBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${haikuCost} necessários)`;
-        haikuBtn.style.opacity = '0.6';
-      }
-      haikuBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'haiku', container, haikuBtn));
-      genRow.appendChild(haikuBtn);
-    }
+    // CASO 3: user já tem alguma explicação sua → ação principal é "Melhorar"
+    mainBtn = mkBtn('🎯 Melhorar com orientação','btn btn-sm');
+    mainBtn.title = 'Diga o que você quer melhorar — IA gera versão direcionada';
+    mainBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600;font-size:12.5px';
+    mainBtn.addEventListener('click', ()=>showImproveExplanationModal(q, container, mainBtn));
   }
-  genWrap.appendChild(genRow);
+  genRow.appendChild(mainBtn);
+
+  // Menu "⋯ Outras opções" — colapsável. Acessível mas fora do caminho principal.
+  // Constrói as opções secundárias dinamicamente baseado no contexto.
+  const secondaryOptions = [];
+
+  // Sempre permite Sonnet (com orientação se já tem)
+  if(haveSonnet){
+    secondaryOptions.push({
+      label: `🎯 Melhorar Sonnet · ${sonnetCost} créd`,
+      handler: ()=>showImproveExplanationModal(q, container, mainBtn, 'sonnet'),
+      enabled: !insuficienteSonnet,
+      tooltip: insuficienteSonnet ? `Saldo insuficiente (${balance} créd)` : 'Versão Sonnet direcionada com orientação'
+    });
+  } else {
+    secondaryOptions.push({
+      label: `⚡ Gerar com Sonnet · ${sonnetCost} créd`,
+      handler: ()=>generateAndSaveExplanation(q, 'sonnet', container, mainBtn),
+      enabled: !insuficienteSonnet,
+      tooltip: insuficienteSonnet ? `Saldo insuficiente (${balance} créd)` : 'Modelo premium — análise mais profunda'
+    });
+  }
+
+  // Haiku só se ainda não usado e o principal não é Haiku puro
+  if(!haveHaiku && (items.length > 0 && !haveOnlyOthers)){
+    secondaryOptions.push({
+      label: `🤖 Gerar com Haiku · ${haikuCost} créd`,
+      handler: ()=>generateAndSaveExplanation(q, 'haiku', container, mainBtn),
+      enabled: !insuficienteHaiku,
+      tooltip: insuficienteHaiku ? `Saldo insuficiente (${balance} créd)` : 'Versão padrão (Haiku) — você ainda não gerou'
+    });
+  }
+
+  if(secondaryOptions.length > 0){
+    const moreBtn = mkBtn('⋯','btn btn-sm');
+    moreBtn.title = 'Outras opções';
+    moreBtn.style.cssText = 'background:transparent;color:var(--text3);border:1px solid var(--border);min-width:32px;padding:6px 10px;font-weight:700';
+    let menuOpen = false;
+    const menuWrap = mk('div');
+    menuWrap.style.cssText = 'display:none;flex-direction:column;gap:6px;width:100%;margin-top:6px';
+    secondaryOptions.forEach(opt => {
+      const btn = mkBtn(opt.label, 'btn btn-sm');
+      btn.style.cssText = 'background:transparent;color:var(--text2);border-color:var(--border);font-size:12px;justify-content:flex-start;text-align:left';
+      btn.title = opt.tooltip || '';
+      if(!opt.enabled){
+        btn.style.opacity = '0.6';
+        btn.disabled = true;
+      } else {
+        btn.addEventListener('click', opt.handler);
+      }
+      menuWrap.appendChild(btn);
+    });
+    moreBtn.addEventListener('click', ()=>{
+      menuOpen = !menuOpen;
+      menuWrap.style.display = menuOpen ? 'flex' : 'none';
+      moreBtn.textContent = menuOpen ? '⋯ fechar' : '⋯';
+    });
+    genRow.appendChild(moreBtn);
+    genWrap.appendChild(genRow);
+    genWrap.appendChild(menuWrap);
+  } else {
+    genWrap.appendChild(genRow);
+  }
+
   wrap.appendChild(genWrap);
 
   } // V15.12.75.13 — fecha else (filtroZerouExplicacoes pula este bloco)
@@ -13284,8 +13302,12 @@ Use SEMPRE rótulos no formato "Rótulo: texto", separados por quebra de linha (
 
 PARA C/E (Cebraspe e similares):
   • "Gabarito: Certo" ou "Gabarito: Errado" (use as palavras certo/errado, não letra)
-  • "Por que está certa:" OU "Por que está errada:" — 1-2 frases SEMPRE explicando o raciocínio do gabarito. Use "certa" quando o gabarito é Certo, "errada" quando o gabarito é Errado. NÃO depende do que o user marcou — é sempre sobre a assertiva.
-  • "Por que sua resposta errou:" — APENAS quando user errou (is_correct=false). 1-2 frases sobre o engano específico do user. NUNCA omita esta seção se o user errou.
+  • ⚠ REGRA CRÍTICA do label "Por que":
+    - Se Gabarito é Certo → USE "Por que está certa:" (explicando por que a assertiva está certa)
+    - Se Gabarito é Errado → USE "Por que está errada:" (explicando por que a assertiva está errada)
+    - O label é determinado pelo GABARITO da questão, NUNCA pelo que o user marcou
+    - Exemplo: assertiva "Pode condicionar petição ao pagamento de taxa". Gabarito=Errado. Use "Por que está errada: A CF garante petição independente de taxas..." (mesmo se user tiver marcado Errado e acertado)
+  • "Por que sua resposta errou:" — APENAS quando is_correct=false. 1-2 frases sobre o engano do user. NUNCA omita se user errou.
   • "Pegadinha:" — 1 linha sobre a armadilha usada (se houver)
   • "Regra pra lembrar:" — 1 linha sobre o conceito-chave pra fixar (opcional)
 
@@ -24247,9 +24269,86 @@ function questionCard(q){
     });
     qc.appendChild(altsBox);
   }
-  const wrap = mk('div');wrap.appendChild(tag);wrap.appendChild(qc);
+  const wrap = mk('div');
+  // V15.12.75.20 — Topbar com chip de tópico + estrela de favoritar.
+  // Estrela aparece pra TODAS questões IA (fresh ou cache hit). Persiste em
+  // DATA.aiFavoriteQuestions (local). Igual à TEC mas em store separado.
+  const topBar = mk('div');
+  topBar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:.5rem';
+  topBar.appendChild(tag);
+  if(typeof makeAIFavoriteButton === 'function' && q){
+    topBar.appendChild(makeAIFavoriteButton(q));
+  }
+  wrap.appendChild(topBar);
+  wrap.appendChild(qc);
   return wrap;
 }
+
+// V15.12.75.20 — Sistema de favoritos pra questões IA (fresh gen ou cache hit).
+// Persistência: array DATA.aiFavoriteQuestions com cópia leve da questão.
+// Usa hash do enunciado como chave (igual ao shared_explanations).
+// Quando user marca uma questão IA, salva uma cópia local pra revisar depois.
+function aiQuestionFavoriteKey(q){
+  if(!q) return null;
+  const enun = q.question || q.enunciado || '';
+  if(!enun || enun.length < 20) return null;
+  if(typeof questionHash === 'function') return questionHash(enun);
+  return enun.slice(0, 60); // fallback simples
+}
+function isAIQuestionFavorite(q){
+  const key = aiQuestionFavoriteKey(q);
+  if(!key) return false;
+  const list = DATA.aiFavoriteQuestions || [];
+  return list.some(f => f.key === key);
+}
+function toggleAIQuestionFavorite(q){
+  const key = aiQuestionFavoriteKey(q);
+  if(!key) return false;
+  DATA.aiFavoriteQuestions = DATA.aiFavoriteQuestions || [];
+  const idx = DATA.aiFavoriteQuestions.findIndex(f => f.key === key);
+  if(idx >= 0){
+    DATA.aiFavoriteQuestions.splice(idx, 1);
+    save();
+    return false;
+  }
+  // Salva cópia leve da questão
+  DATA.aiFavoriteQuestions.push({
+    key,
+    question: q.question || q.enunciado || '',
+    answer: q.correct_answer || q.answer || '',
+    alternatives: q.alternatives || null,
+    kind: q.kind || 'CE',
+    topic: q.topic || '',
+    difficulty: q.difficulty || 'medium',
+    explanation: q.explanation || '',
+    trap: q.trap || '',
+    keyword: q.keyword || '',
+    favoritedAt: Date.now()
+  });
+  save();
+  return true;
+}
+function makeAIFavoriteButton(q){
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn btn-sm icon-btn';
+  function paint(){
+    const isFav = isAIQuestionFavorite(q);
+    btn.innerHTML = isFav ? '★' : '☆';
+    btn.style.cssText = `font-size:18px;line-height:1;min-width:32px;min-height:32px;padding:4px 10px;display:inline-flex;align-items:center;justify-content:center;color:${isFav?'var(--gralia-purple)':'var(--text3)'};background:${isFav?'rgba(124,92,255,.10)':'transparent'};border-color:${isFav?'rgba(124,92,255,.30)':'var(--border)'}`;
+    btn.title = isFav ? 'Remover dos favoritos (IA)' : 'Favoritar esta questão IA';
+  }
+  paint();
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const newState = toggleAIQuestionFavorite(q);
+    paint();
+    showToast(newState ? 'Questão IA favoritada' : 'Removida dos favoritos', 2200);
+  });
+  return btn;
+}
+
+
 function answerButtons(onClick, disabled, q){
   const r = mk('div','flex answer-btn-row');r.style.marginTop='.875rem';
   // V15.12.64 — Quando MC, mostra A-E. Caso contrário mostra C/E (Cebraspe default).
@@ -24718,6 +24817,32 @@ function parseExplanationStructured(rawText){
   if(!result.resultado){
     const intro = text.match(/^(você acertou|você errou|acertou|errou)/i);
     if(intro) result.resultado = intro[1];
+  }
+
+  // V15.12.75.19 — CORREÇÃO de incoerência label vs gabarito.
+  // Problema: a IA às vezes escreve "Por que está certa" quando o gabarito é
+  // Errado (ou vice-versa). Em cache hit, isso fica MUITO confuso porque
+  // a explicação foi salva no contexto de OUTRO user. Detecta e corrige
+  // movendo o texto pro slot certo.
+  if(result.gabarito){
+    const gabNorm = String(result.gabarito).toLowerCase().trim();
+    const isGabaritoCerto = (gabNorm === 'certo' || gabNorm === 'c');
+    const isGabaritoErrado = (gabNorm === 'errado' || gabNorm === 'e');
+
+    // Caso 1: gabarito é Errado mas tem por_que_correta sem por_que_errada
+    //   → renomeia: o texto está explicando por que a assertiva é errada,
+    //   o label só está trocado.
+    if(isGabaritoErrado && result.por_que_correta && !result.por_que_errada){
+      result.por_que_errada = result.por_que_correta;
+      result.por_que_correta = null;
+    }
+
+    // Caso 2: gabarito é Certo mas tem por_que_errada sem por_que_correta
+    //   → renomeia equivalente.
+    if(isGabaritoCerto && result.por_que_errada && !result.por_que_correta){
+      result.por_que_correta = result.por_que_errada;
+      result.por_que_errada = null;
+    }
   }
 
   return result;
