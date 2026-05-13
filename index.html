@@ -8013,6 +8013,11 @@ async function tryFetchFromPool(opts){
     // Se o cliente pedir cache de novo nesse intervalo, RPC ainda retorna a
     // mesma questão (não sabe que já foi marcada). Set local serve de buffer
     // imediato pra filtrar candidatos.
+    // V15.12.75.18 — Interação com lógica de repetição (cooldown):
+    //   - Mesma sessão: questão errada NÃO volta nesta sessão (set local trava)
+    //   - Sessão nova (page refresh): questão errada VOLTA imediatamente
+    //     (set zera no reload, banco mostra como "errou" e libera)
+    //   - Questão acertada: cooldown de 3 dias no banco, set local irrelevante
     if(!window._poolSeenThisSession){ window._poolSeenThisSession = new Set(); }
     const sessionSeen = window._poolSeenThisSession;
     // Filtra candidatas que ainda não foram pegas nesta sessão
@@ -8139,13 +8144,41 @@ function buildCompactHistory(history, opts){
   summaryParts.push('Evite repetir esses tópicos exatos; varie nas próximas.');
   const summary = summaryParts.join('. ') + '.';
 
-  // Monta nova história: [initial, summaryUser, summaryAssistant, ...recent]
+  // V15.12.75.17 — Comprime também o conteúdo do "recent" (último turn).
+  // Antes preservávamos o assistant inteiro (1500+ chars com explanation,
+  // trap, keyword, suggested_flashcard, next embutidos). Agora extraímos só
+  // metadados essenciais pra IA ter contexto, sem inflar o input. Economia
+  // típica: 4500 → 800 chars em sessão de 5+ questões.
+  const compactRecent = recent.map(entry => {
+    if(entry.role !== 'assistant') return entry;
+    try{
+      const parsed = JSON.parse(entry.content);
+      // Mantém apenas o ESSENCIAL pro contexto da IA na próxima questão:
+      // - is_correct (saber se user acertou pra ajustar dificuldade)
+      // - topic (saber tópico recente pra evitar repetir)
+      // - trap_type (saber armadilhas usadas pra variar)
+      const compactObj = {
+        type: parsed.type || 'feedback',
+        is_correct: parsed.is_correct,
+        topic: parsed.topic ? String(parsed.topic).slice(0, 60) : undefined,
+        trap_type: parsed.trap_type
+      };
+      // Remove undefined pra JSON ficar limpo
+      Object.keys(compactObj).forEach(k => compactObj[k] === undefined && delete compactObj[k]);
+      return {role: 'assistant', content: JSON.stringify(compactObj)};
+    }catch(_){
+      // Se não parse, mantém original (pode ser texto livre)
+      return entry;
+    }
+  });
+
+  // Monta nova história: [initial, summaryUser, summaryAssistant, ...compactRecent]
   // summaryUser/summaryAssistant fingem ser um turn pro modelo entender o resumo
   return [
     initial,
     {role: 'user', content: '[Resumo de turnos anteriores]'},
     {role: 'assistant', content: summary},
-    ...recent
+    ...compactRecent
   ];
 }
 
@@ -13251,14 +13284,15 @@ Use SEMPRE rótulos no formato "Rótulo: texto", separados por quebra de linha (
 
 PARA C/E (Cebraspe e similares):
   • "Gabarito: Certo" ou "Gabarito: Errado" (use as palavras certo/errado, não letra)
-  • "Por que está certa:" OU "Por que está errada:" — 1-2 frases sobre o motivo
+  • "Por que está certa:" OU "Por que está errada:" — 1-2 frases SEMPRE explicando o raciocínio do gabarito. Use "certa" quando o gabarito é Certo, "errada" quando o gabarito é Errado. NÃO depende do que o user marcou — é sempre sobre a assertiva.
+  • "Por que sua resposta errou:" — APENAS quando user errou (is_correct=false). 1-2 frases sobre o engano específico do user. NUNCA omita esta seção se o user errou.
   • "Pegadinha:" — 1 linha sobre a armadilha usada (se houver)
   • "Regra pra lembrar:" — 1 linha sobre o conceito-chave pra fixar (opcional)
 
 PARA MC (FCC, FGV, Vunesp e similares):
   • "Gabarito: <letra>" — apenas a letra (A, B, C, D ou E)
-  • "Por que está certa:" — 1-2 frases sobre por que a alternativa correta é correta
-  • Se o usuário errou: "Por que sua escolha errou:" — 1-2 frases sobre o erro específico DA alternativa que ele escolheu (não as outras)
+  • "Por que está certa:" — 1-2 frases sobre por que a alternativa correta é correta. SEMPRE incluir, independente de o user ter acertado ou errado.
+  • "Por que sua escolha errou:" — APENAS quando user errou. 1-2 frases sobre o erro específico da alternativa que ele escolheu (não as outras).
   • "Pegadinha:" — 1 linha sobre a armadilha (se houver)
   • "Regra pra lembrar:" — 1 linha (opcional)
   • NUNCA explique todas as alternativas, só a correta + a que o usuário marcou (se errou)
@@ -13268,7 +13302,7 @@ REGRAS UNIVERSAIS:
 - Texto total deve ficar entre 5-10 linhas — nada de paredão.
 - Sem emojis no texto.
 - Use os rótulos EXATAMENTE como acima (case-sensitive importa pra UI).
-- Quando o user acertar, omita "Por que sua escolha errou".
+- Ordem das seções: Gabarito → Por que está certa/errada → Por que sua resposta errou (só se errou) → Pegadinha → Regra pra lembrar.
 
 REGRA VARIAÇÃO DE NOMES E CENÁRIOS (casos concretos):
 - Não use sempre os mesmos nomes (João, Maria, Pedro, Tício, Caio).
@@ -24637,6 +24671,7 @@ function parseExplanationStructured(rawText){
     resultado: null,
     por_que_correta: null,
     por_que_errada: null,
+    por_que_voce_errou: null,   // V15.12.75.18 — separa "por que assertiva está errada" (CE) do "por que sua escolha errou" (engano do user)
     pegadinha: null,
     regra: null,
     _raw: rawText || '',
@@ -24658,7 +24693,10 @@ function parseExplanationStructured(rawText){
     }},
     {key: 'resultado',        re: /(?:resultado|^)\s*(você (?:acertou|errou)|acertou|errou)[\.!]?(?:\n|$)/im},
     {key: 'por_que_correta',  re: /(?:por que (?:está|esta) (?:certa|correta)|por que a (?:alternativa )?(?:correta|certa) (?:está|esta) correta|por que (?:está|esta) certo|por que a correta)\s*[:\-—]\s*([\s\S]+?)(?=\n(?:[A-ZÁ-Ú][^:\n]{2,40}:\s)|$)/i},
-    {key: 'por_que_errada',   re: /(?:por que (?:sua )?(?:escolha|alternativa|opção|resposta) (?:errou|está errada|esta errada|está incorreta)|por que você errou|por que (?:está|esta) errado)\s*[:\-—]\s*([\s\S]+?)(?=\n(?:[A-ZÁ-Ú][^:\n]{2,40}:\s)|$)/i},
+    // V15.12.75.18 — "Por que está errada" = sobre a ASSERTIVA (em C/E quando gabarito é Errado)
+    {key: 'por_que_errada',   re: /(?:por que (?:está|esta) (?:errada|incorreta)|por que (?:está|esta) errado|por que a (?:alternativa )?(?:errada|incorreta) (?:está|esta) errada)\s*[:\-—]\s*([\s\S]+?)(?=\n(?:[A-ZÁ-Ú][^:\n]{2,40}:\s)|$)/i},
+    // V15.12.75.18 — "Por que sua resposta/escolha errou" = sobre o ENGANO ESPECÍFICO do user
+    {key: 'por_que_voce_errou', re: /(?:por que (?:sua )?(?:escolha|alternativa|opção|resposta) (?:errou|está errada|esta errada|está incorreta)|por que você errou|por que voce errou)\s*[:\-—]\s*([\s\S]+?)(?=\n(?:[A-ZÁ-Ú][^:\n]{2,40}:\s)|$)/i},
     {key: 'pegadinha',        re: /(?:pegadinha|armadilha)(?: da banca)?\s*[:\-—]\s*([\s\S]+?)(?=\n(?:[A-ZÁ-Ú][^:\n]{2,40}:\s)|$)/i},
     {key: 'regra',            re: /(?:regra (?:para|pra) (?:lembrar|memorizar|fixar)|memorize|para lembrar|dica)\s*[:\-—]\s*([\s\S]+?)(?=\n(?:[A-ZÁ-Ú][^:\n]{2,40}:\s)|$)/i}
   ];
@@ -24761,13 +24799,26 @@ function renderStructuredExplanation(rawText, opts){
     }));
   }
 
-  // 3. Por que sua escolha errou (só se MC e errou)
+  // V15.12.75.18 — 3. Por que a ASSERTIVA está errada (C/E gabarito Errado)
+  // OU: Por que a ALTERNATIVA escolhida pelo user está errada (MC com erro)
+  // Distinguir do "por_que_voce_errou" (engano específico).
   if(parsed.por_que_errada){
     wrap.appendChild(buildExpSection({
       label: isMC && userChose
         ? `Por que a alternativa ${userChose} está errada`
-        : 'Por que sua resposta errou',
+        : 'Por que a assertiva está errada',
       text: parsed.por_que_errada,
+      color: 'red',
+      icon: '✗'
+    }));
+  }
+
+  // V15.12.75.18 — 4. Por que sua resposta errou (engano específico do user).
+  // Aparece independente de C/E ou MC, sempre que user errou.
+  if(parsed.por_que_voce_errou){
+    wrap.appendChild(buildExpSection({
+      label: 'Por que sua resposta errou',
+      text: parsed.por_que_voce_errou,
       color: 'red',
       icon: '✗'
     }));
@@ -25186,15 +25237,25 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
   // V15.12.75.14 — Selo de autoria da explicação principal (posição C: discreto,
   // antes do botão "Próxima"). Texto C: combinado "📚 Banco · por @user".
   // Aparece apenas quando há _authorMeta (cache hit com explicação resolvida).
-  if(fb && fb._authorMeta){
-    const meta = fb._authorMeta;
+  // V15.12.75.17 — Se o autor da explicação for IGUAL ao do flashcard (caso
+  // comum: mesmo user gerou ambos), pula este selo — o do flashcard já carrega
+  // a autoria, evita duplicação visual.
+  const flashMeta = fb && fb._flashAuthorMeta;
+  const explMeta = fb && fb._authorMeta;
+  const showFlashSelo = !!(fb && fb.suggestedFlashcard && flashMeta && (flashMeta.isMine || flashMeta.username));
+  const explAuthorEqualsFlash = !!(
+    showFlashSelo && explMeta && flashMeta &&
+    explMeta.userId === flashMeta.userId &&
+    explMeta.isMine === flashMeta.isMine
+  );
+  if(explMeta && !explAuthorEqualsFlash){
     let seloHtml = null;
-    if(meta.isMine){
+    if(explMeta.isMine){
       seloHtml = `👤 Sua explicação`;
-    } else if(meta.username){
+    } else if(explMeta.username){
       // Explicação de outro user — texto C combinado
-      seloHtml = `📚 Banco · por @${escapeHTML(meta.username)}`;
-    } else if(meta.source === 'pool'){
+      seloHtml = `📚 Banco · por @${escapeHTML(explMeta.username)}`;
+    } else if(explMeta.source === 'pool'){
       // Pool sem autoria identificada (fallback)
       seloHtml = `📚 Banco Gralia`;
     }
@@ -36732,6 +36793,16 @@ async function practSubmit(answer){
       }
       save();
 
+      // V15.12.75.18 — Lógica de repetição: registra se user acertou ou errou
+      // pra que ai_pool_lookup aplique cooldown de 3 dias em acertos e mantenha
+      // erros sempre disponíveis pra revisão. Fire-and-forget.
+      if(q._poolId && supa){
+        supa.rpc('ai_pool_update_seen_result', {
+          p_question_id: q._poolId,
+          p_answered_correctly: ok
+        }).then(()=>{}).catch(e => console.warn('[repetition] mark result falhou:', e.message));
+      }
+
       // Tenta cachear PRÓXIMA questão também (lookup novo)
       let nextCached = null;
       try{ nextCached = await tryFetchFromPool({method: 'practice'}); }catch(_){}
@@ -36914,6 +36985,14 @@ async function practSubmit(answer){
             console.info('[pool-enrich] questão enriquecida no pool');
           }
         }).catch(e => console.warn('[pool-enrich] falhou:', e.message));
+
+        // V15.12.75.18 — Lógica de repetição: também registra resultado da
+        // resposta. Mesmo em fresh gen, a questão acabou de ir pro pool e
+        // deveria ter cooldown se user acertou.
+        supa.rpc('ai_pool_update_seen_result', {
+          p_question_id: enrichHash,
+          p_answered_correctly: ok
+        }).then(()=>{}).catch(e => console.warn('[repetition] mark result fresh falhou:', e.message));
       }
 
       // V15.12.75.4 — P1.3.1: Salva também na biblioteca shared_explanations.
