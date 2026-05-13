@@ -17110,11 +17110,15 @@ function render(){
   // 1. Hierárquico (sempre): Painel / Grupo / Página atual
   // 2. Contextual (se veio de outra página via navStack): "← Voltar para X"
   // Ambos só aparecem se NÃO estamos na dashboard/welcome.
-  if(ST.view && ST.view !== 'dashboard' && typeof renderHierBreadcrumb === 'function'){
+  // V15.12.75.30 — Em modo foco (qualquer variante), também esconde os
+  // breadcrumbs. Coerente com as tabs da topbar — durante o foco, nada de
+  // navegação visível pra evitar distração.
+  const inAnyFocus = isFocusMode() || ST.srsFocusActive || ST.methodFocusActive || ST.importedFocusActive;
+  if(!inAnyFocus && ST.view && ST.view !== 'dashboard' && typeof renderHierBreadcrumb === 'function'){
     const hbc = renderHierBreadcrumb(ST.view);
     if(hbc) pg.appendChild(hbc);
   }
-  if(ST.navStack && ST.navStack.length > 0){
+  if(!inAnyFocus && ST.navStack && ST.navStack.length > 0){
     const bbc = renderBackBreadcrumb();
     if(bbc) pg.appendChild(bbc);
   }
