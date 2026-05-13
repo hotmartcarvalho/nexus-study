@@ -17069,6 +17069,7 @@ function render(){
     pomodoro:renderPomodoro,settings:renderSettings,history:renderHistory,turbo:renderTurbo,eve:renderEve,imported:renderImported,review:renderReview,revgen:renderRevgen,
     calibration:renderCalibration,examiner:renderExaminer,drill:renderDrill,
     elaborative:renderElaborative,practice:renderPractice,simulado:renderSimulado,
+    'ai-favorites':renderAIFavorites,
     interleaving:renderInterleaving,srs:renderSRS,mapa:renderMapa,usage:renderUsage,goals:renderGoals,userProfile:renderUserProfile,discover:renderDiscover,feed:renderFeed,about:renderAbout,simulado:renderSimulado,
     exams:renderExams,examEdit:renderExamEdit,
     editals:renderEditals,editalView:renderEditalView,
@@ -36624,6 +36625,22 @@ function renderPractice(){
     ctaCard.appendChild(startBtn);
     wrap.appendChild(ctaCard);
 
+    // V15.12.75.21 — Acesso às questões IA favoritadas (paridade com TEC).
+    // Link discreto, só aparece se há ao menos 1 favorita.
+    const favList = DATA.aiFavoriteQuestions || [];
+    if(favList.length > 0){
+      const favCard = mk('div');
+      favCard.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap';
+      const favInfo = mk('div');
+      favInfo.style.cssText = 'flex:1;min-width:200px;font-size:13px;line-height:1.4';
+      favInfo.innerHTML = `<span style="font-size:14px;margin-right:4px">⭐</span><b>Suas questões IA favoritas</b> <span style="color:var(--text3);font-size:12px">(${favList.length})</span><div style="color:var(--text3);font-size:11.5px;margin-top:2px">Questões marcadas pra revisitar — sem custo</div>`;
+      favCard.appendChild(favInfo);
+      const favBtn = mkBtn('Abrir →','btn btn-sm');
+      favBtn.addEventListener('click',()=>{ST.view='ai-favorites';render();});
+      favCard.appendChild(favBtn);
+      wrap.appendChild(favCard);
+    }
+
     // V14: "Opções avançadas" com visual melhor (item 48).
     // Antes: tudo amontoado dentro de details. Agora: cada bloco em "card" interno.
     const advWrap = mk('details');
@@ -37284,6 +37301,154 @@ function practNext(){
     showToast('Pronto pra próxima — clique em "Iniciar prática"', 4000);
     render();
   }
+}
+
+// V15.12.75.21 — Tela de favoritas IA.
+// Lista questões IA marcadas como favoritas (DATA.aiFavoriteQuestions).
+// Permite re-praticar (sem cobrar — usa cópia local), remover favorito,
+// e ver a explicação salva no momento da favoritação.
+function renderAIFavorites(){
+  const wrap = mk('div','fade');
+  const backB = mkBtn('← Voltar pra Prática','back-btn');
+  backB.addEventListener('click',()=>{ST.view='practice';render();});
+  wrap.appendChild(backB);
+
+  const h = mk('h2');
+  h.textContent = '⭐ Questões IA favoritas';
+  h.style.margin = '0 0 .5rem';
+  wrap.appendChild(h);
+
+  const sub = mk('p','txt2');
+  sub.style.cssText = 'margin:0 0 1rem;font-size:13px';
+  sub.textContent = 'Questões que você marcou pra revisitar. Sem custo de créditos.';
+  wrap.appendChild(sub);
+
+  const favs = (DATA.aiFavoriteQuestions || []).slice().sort((a,b) => (b.favoritedAt||0) - (a.favoritedAt||0));
+
+  if(favs.length === 0){
+    const empty = mk('div');
+    empty.style.cssText = 'background:var(--surface);border:1px dashed var(--border);border-radius:12px;padding:2rem 1rem;text-align:center';
+    empty.innerHTML = `<div style="font-size:32px;margin-bottom:.5rem">⭐</div>
+      <div style="font-size:14px;color:var(--text);margin-bottom:.25rem;font-weight:600">Nenhuma questão favoritada ainda</div>
+      <div style="font-size:12.5px;color:var(--text3);line-height:1.5">Em qualquer questão IA, clique na estrela ☆ no canto superior pra adicionar aqui.</div>`;
+    wrap.appendChild(empty);
+    return wrap;
+  }
+
+  favs.forEach(fav => {
+    const card = mk('div');
+    card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:1rem;margin-bottom:.75rem';
+
+    // Header: tópico + estrela pra remover + data
+    const header = mk('div');
+    header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:.5rem;flex-wrap:wrap';
+    const topicTag = mk('span','topic-tag');
+    topicTag.textContent = fav.topic || 'Sem tópico';
+    header.appendChild(topicTag);
+
+    const headerRight = mk('div');
+    headerRight.style.cssText = 'display:flex;align-items:center;gap:8px';
+    const dateLbl = mk('span');
+    dateLbl.style.cssText = 'font-size:11px;color:var(--text3)';
+    const days = Math.floor((Date.now() - (fav.favoritedAt||0)) / (1000*60*60*24));
+    dateLbl.textContent = days === 0 ? 'hoje' : days === 1 ? 'ontem' : `há ${days} dias`;
+    headerRight.appendChild(dateLbl);
+
+    const unfavBtn = mk('button','btn btn-sm icon-btn');
+    unfavBtn.type = 'button';
+    unfavBtn.innerHTML = '★';
+    unfavBtn.style.cssText = 'font-size:18px;line-height:1;min-width:32px;min-height:32px;padding:4px 10px;color:var(--gralia-purple);background:rgba(124,92,255,.10);border-color:rgba(124,92,255,.30)';
+    unfavBtn.title = 'Remover dos favoritos';
+    unfavBtn.addEventListener('click',()=>{
+      // Confirmação leve
+      if(!unfavBtn._confirming){
+        unfavBtn._confirming = true;
+        unfavBtn.innerHTML = '🗑';
+        unfavBtn.title = 'Clique de novo pra remover';
+        setTimeout(()=>{
+          if(unfavBtn._confirming){
+            unfavBtn._confirming = false;
+            unfavBtn.innerHTML = '★';
+            unfavBtn.title = 'Remover dos favoritos';
+          }
+        }, 3500);
+        return;
+      }
+      // Remove
+      DATA.aiFavoriteQuestions = (DATA.aiFavoriteQuestions || []).filter(f => f.key !== fav.key);
+      save();
+      showToast('Removida dos favoritos', 2500);
+      render();
+    });
+    headerRight.appendChild(unfavBtn);
+    header.appendChild(headerRight);
+    card.appendChild(header);
+
+    // Enunciado
+    const enun = mk('p','txt');
+    enun.style.cssText = 'margin:0 0 .625rem;line-height:1.55;font-size:14px';
+    enun.textContent = fav.question;
+    card.appendChild(enun);
+
+    // Alternativas (se MC)
+    if(fav.kind === 'MC' && fav.alternatives){
+      const altsBox = mk('div');
+      altsBox.style.cssText = 'margin:.5rem 0;display:flex;flex-direction:column;gap:4px';
+      ['A','B','C','D','E'].forEach(letter => {
+        const text = fav.alternatives[letter];
+        if(!text) return;
+        const altRow = mk('div');
+        const isCorrect = letter === fav.answer;
+        altRow.style.cssText = `display:flex;gap:8px;align-items:flex-start;padding:6px 10px;background:${isCorrect ? 'rgba(16,185,129,.10)' : 'var(--surface2)'};border-radius:6px;font-size:12.5px;line-height:1.45;border:1px solid ${isCorrect ? 'rgba(16,185,129,.30)' : 'transparent'}`;
+        const lbl = mk('span');
+        lbl.style.cssText = `font-weight:700;color:${isCorrect ? 'var(--accent-text)' : 'var(--gralia-purple)'};min-width:16px`;
+        lbl.textContent = letter + ')';
+        const txt = mk('span');
+        txt.style.flex = '1';
+        txt.textContent = text;
+        altRow.appendChild(lbl);
+        altRow.appendChild(txt);
+        altsBox.appendChild(altRow);
+      });
+      card.appendChild(altsBox);
+    } else {
+      // C/E — mostra gabarito como chip
+      const gabChip = mk('div');
+      gabChip.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(16,185,129,.10);border:1px solid rgba(16,185,129,.30);border-radius:6px;font-size:12px;font-weight:600;color:var(--accent-text);margin-bottom:.5rem';
+      gabChip.innerHTML = `<span>Gabarito:</span><span>${fav.answer === 'C' ? 'Certo' : fav.answer === 'E' ? 'Errado' : fav.answer}</span>`;
+      card.appendChild(gabChip);
+    }
+
+    // Explicação (colapsada)
+    if(fav.explanation && fav.explanation.trim().length > 10){
+      const det = mk('details');
+      det.style.cssText = 'margin-top:.5rem;background:var(--surface2);border-radius:8px;padding:0';
+      const sum = mk('summary');
+      sum.style.cssText = 'padding:.5rem .75rem;font-size:12px;color:var(--text2);cursor:pointer;user-select:none;font-weight:600';
+      sum.textContent = '📝 Ver explicação salva';
+      det.appendChild(sum);
+      const expBody = mk('div');
+      expBody.style.cssText = 'padding:.5rem .75rem .75rem;border-top:1px solid var(--border)';
+      if(typeof renderStructuredExplanation === 'function'){
+        const renderedExp = renderStructuredExplanation(fav.explanation, {
+          isMC: fav.kind === 'MC',
+          correctAnswer: fav.answer
+        });
+        expBody.appendChild(renderedExp);
+      } else {
+        const p = mk('p','txt');
+        p.style.cssText = 'margin:0;line-height:1.55;font-size:12.5px;white-space:pre-wrap';
+        p.textContent = fav.explanation;
+        expBody.appendChild(p);
+      }
+      det.appendChild(expBody);
+      card.appendChild(det);
+    }
+
+    wrap.appendChild(card);
+  });
+
+  return wrap;
 }
 
 /* SIMULADO */
@@ -49970,6 +50135,26 @@ function renderAdminDashboard(){
 
   loadAdminAIReports(reportsBody);
 
+  // V15.12.75.21 — Card: shared_explanations problemáticas
+  // Lista explicações/flashcards compartilhados com mais downvotes que upvotes
+  // (score negativo) — sinal de que a comunidade considera ruim. Admin pode
+  // revisar e excluir manualmente. NÃO automatiza (auto-flag depende de
+  // reports persistidos, ainda local — backlog).
+  const sharedModCard = mk('section','admin-card');
+  sharedModCard.appendChild(adminSectionLabel('📚 Moderação de conteúdo compartilhado'));
+  const sharedModHead = mk('h2','admin-section-title');
+  sharedModHead.textContent = 'Explicações e flashcards com score negativo';
+  sharedModCard.appendChild(sharedModHead);
+  const sharedModHelp = mk('p');
+  sharedModHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem';
+  sharedModHelp.textContent = 'Itens com mais downvotes que upvotes (score < 0). Sinal de que a comunidade considera ruim. Revise antes de excluir.';
+  sharedModCard.appendChild(sharedModHelp);
+  const sharedModBody = mk('div','admin-shared-mod-body');
+  sharedModBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando...</div>';
+  sharedModCard.appendChild(sharedModBody);
+  wrap.appendChild(sharedModCard);
+  loadAdminSharedExplanationModeration(sharedModBody);
+
   // === V15.12.68 — Card: Users rate-limited (anti-abuso) ===
   const rlCard = mk('section','admin-card');
   rlCard.appendChild(adminSectionLabel('🛡️ Anti-abuso — Rate limit'));
@@ -50386,6 +50571,148 @@ async function loadAdminRateLimitedUsers(container){
   }catch(e){
     console.error('[admin-rate-limit]', e);
     container.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro: ${escapeHTML(e.message||String(e))}<br><br>Possíveis causas:<br>• Migration 8 não rodou (RPC não existe)<br>• Você não é admin no contexto SQL</div>`;
+  }
+}
+
+// V15.12.75.21 — Carrega e renderiza shared_explanations problemáticas pro
+// admin moderar. Lista itens com score negativo (downvotes > upvotes) — sinal
+// de que a comunidade considera ruim. Admin pode excluir manualmente.
+async function loadAdminSharedExplanationModeration(container){
+  if(!supa){
+    container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>';
+    return;
+  }
+  try{
+    // Busca itens com score negativo. Sem RPC dedicado — query direta
+    // (admin já tem permissão de read em shared_explanations).
+    const {data: items, error} = await supa
+      .from('shared_explanations')
+      .select('id, question_hash, kind, model, payload, author_id, author_username, upvotes, downvotes, created_at')
+      .order('downvotes', {ascending: false})
+      .limit(50);
+
+    if(error){
+      container.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro ao carregar: ${escapeHTML(error.message||String(error))}</div>`;
+      return;
+    }
+
+    // Filtra só os com score negativo no cliente
+    const problematic = (items||[]).filter(it =>
+      (it.downvotes || 0) > (it.upvotes || 0)
+    );
+
+    container.innerHTML = '';
+
+    if(problematic.length === 0){
+      const ok = mk('div');
+      ok.style.cssText = 'padding:1rem;color:var(--accent-text);font-size:13px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.22);border-radius:8px';
+      ok.innerHTML = '✓ <b>Nenhum conteúdo problemático.</b> Toda a biblioteca compartilhada tem score positivo ou neutro.';
+      container.appendChild(ok);
+      return;
+    }
+
+    const meta = mk('p');
+    meta.style.cssText = 'font-size:12px;color:var(--text3);margin:0 0 .75rem';
+    meta.innerHTML = `<b>${problematic.length}</b> item${problematic.length>1?'ns':''} com score negativo.`;
+    container.appendChild(meta);
+
+    problematic.forEach(item => {
+      const card = mk('div');
+      card.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px;padding:.75rem 1rem;margin-bottom:.5rem';
+
+      const score = (item.upvotes||0) - (item.downvotes||0);
+      const header = mk('div');
+      header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:.375rem;flex-wrap:wrap';
+
+      const headerLeft = mk('div');
+      headerLeft.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+      const kindChip = mk('span');
+      kindChip.style.cssText = `padding:2px 8px;background:${item.kind==='flashcard'?'rgba(124,92,255,.10)':'rgba(16,185,129,.10)'};color:${item.kind==='flashcard'?'var(--gralia-purple)':'var(--accent-text)'};border-radius:10px;font-size:10.5px;font-weight:600;text-transform:uppercase`;
+      kindChip.textContent = item.kind === 'flashcard' ? 'Flashcard' : 'Explicação';
+      headerLeft.appendChild(kindChip);
+
+      const modelChip = mk('span');
+      modelChip.style.cssText = 'padding:2px 8px;background:var(--surface);color:var(--text3);border-radius:10px;font-size:10.5px;font-weight:600';
+      modelChip.textContent = (item.model||'').toUpperCase();
+      headerLeft.appendChild(modelChip);
+
+      const author = mk('span');
+      author.style.cssText = 'font-size:11.5px;color:var(--text3)';
+      author.textContent = '@' + (item.author_username || 'desconhecido');
+      headerLeft.appendChild(author);
+
+      header.appendChild(headerLeft);
+
+      const scoreChip = mk('span');
+      scoreChip.style.cssText = 'padding:3px 10px;background:rgba(232,76,76,.10);color:var(--red-text);border:1px solid rgba(232,76,76,.30);border-radius:10px;font-size:11.5px;font-weight:700';
+      scoreChip.innerHTML = `${score} <span style="font-weight:500;opacity:.8">(${item.upvotes||0}👍 / ${item.downvotes||0}👎)</span>`;
+      header.appendChild(scoreChip);
+      card.appendChild(header);
+
+      // Hash + ID — útil pro admin localizar a questão original
+      const ids = mk('div');
+      ids.style.cssText = 'font-size:10.5px;color:var(--text3);margin-bottom:.5rem;font-family:ui-monospace,monospace';
+      ids.textContent = `ID #${item.id} · hash ${(item.question_hash||'').slice(0,16)}`;
+      card.appendChild(ids);
+
+      // Preview do conteúdo
+      const preview = mk('div');
+      preview.style.cssText = 'font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:.5rem;padding:.5rem .625rem;background:var(--surface);border-radius:6px';
+      const p = item.payload || {};
+      let previewText = '';
+      if(item.kind === 'flashcard'){
+        previewText = `Frente: ${String(p.front||'').slice(0,120)}\nVerso: ${String(p.back||'').slice(0,200)}`;
+      } else {
+        previewText = String(p.explanation||'').slice(0, 280);
+      }
+      preview.textContent = previewText;
+      card.appendChild(preview);
+
+      // Ações
+      const actions = mk('div');
+      actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end';
+
+      const delBtn = mkBtn('🗑 Excluir','btn btn-sm');
+      delBtn.style.cssText = 'color:var(--red-text);border-color:var(--red);background:transparent;font-size:11.5px';
+      let confirming = false;
+      delBtn.addEventListener('click', async ()=>{
+        if(!confirming){
+          confirming = true;
+          delBtn.textContent = 'Clique de novo pra confirmar exclusão';
+          delBtn.style.background = 'rgba(232,76,76,.10)';
+          setTimeout(()=>{
+            if(confirming){
+              confirming = false;
+              delBtn.textContent = '🗑 Excluir';
+              delBtn.style.background = 'transparent';
+            }
+          }, 4000);
+          return;
+        }
+        try{
+          delBtn.disabled = true;
+          delBtn.textContent = 'Excluindo...';
+          const {error: delErr} = await supa
+            .from('shared_explanations')
+            .delete()
+            .eq('id', item.id);
+          if(delErr) throw delErr;
+          showToast('Conteúdo excluído', 3000);
+          card.style.display = 'none';
+        }catch(e){
+          delBtn.disabled = false;
+          delBtn.textContent = '🗑 Excluir';
+          delBtn.style.background = 'transparent';
+          showToast('Erro ao excluir: ' + (e.message||String(e)), 4000);
+        }
+      });
+      actions.appendChild(delBtn);
+
+      card.appendChild(actions);
+      container.appendChild(card);
+    });
+  }catch(e){
+    container.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro: ${escapeHTML(e.message||String(e))}</div>`;
   }
 }
 
