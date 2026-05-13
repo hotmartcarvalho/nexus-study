@@ -24928,11 +24928,9 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
     sugHead.style.cssText='font-size:11px;font-weight:700;color:var(--accent-text);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;display:flex;align-items:center;gap:6px;justify-content:space-between';
     // V15.12.74.1 — Badge "grátis" com cores adaptativas (uso de var em vez de
     // rgba fixo). Funciona em tema claro e escuro.
-    // V15.12.75.15 — Título adaptativo: "Flashcard sugerido" pro fluxo normal
-    // (gerado agora pelo eval), "Flashcard do banco" pra cache hit shared.
-    const isFromBank = !!fb._flashAuthorMeta;
-    const flashTitle = isFromBank ? 'Flashcard do banco' : 'Flashcard sugerido';
-    sugHead.innerHTML = `<span style="display:flex;align-items:center;gap:6px"><span style="font-size:14px">✨</span><span>${flashTitle}</span></span><span class="ai-cost-badge free"><span class="acb-text">grátis</span></span>`;
+    // V15.12.75.16 — Título único pra evitar duplicar autoria. A origem
+    // (Banco · por @user) fica APENAS no selo discreto no rodapé do card.
+    sugHead.innerHTML = `<span style="display:flex;align-items:center;gap:6px"><span style="font-size:14px">✨</span><span>Flashcard</span></span><span class="ai-cost-badge free"><span class="acb-text">grátis</span></span>`;
     sugCard.appendChild(sugHead);
 
     // Frente
@@ -24962,50 +24960,121 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
     sugCard.appendChild(sugBackWrap);
 
     // Ações
+    // V15.12.75.16 — Detecta se o flashcard JÁ está no deck do user.
+    // Compara front+back normalizado pra pegar duplicatas (mesmo conteúdo,
+    // diferente id). Se já está, mostra "✓ Adicionado" + botão de lixeira
+    // pra remover. Se não está, botão "+ Adicionar ao deck" normal.
+    function normalizeFlashText(s){
+      return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    }
+    const sfFrontNorm = normalizeFlashText(sf.front);
+    const sfBackNorm = normalizeFlashText(sf.back);
+    function findExistingCardInDeck(){
+      const cards = DATA.cards || [];
+      return cards.find(c =>
+        normalizeFlashText(c.front) === sfFrontNorm &&
+        normalizeFlashText(c.back) === sfBackNorm
+      );
+    }
+
     const sugActions = mk('div');
-    sugActions.style.cssText='display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end';
-    const addBtn = mkBtn('+ Adicionar ao deck','btn btn-p btn-sm');
-    addBtn.style.cssText='font-weight:600;padding:6px 14px';
-    addBtn.addEventListener('click',()=>{
-      try {
-        // V15.12.75.15 — Em acerto (cache hit) errCtx é null. Pega disciplina/topic
-        // da própria questão atual pra que o flashcard fique organizado mesmo
-        // quando o user acertou.
-        const cardTopic = errCtx ? errCtx.topic : (ST.practQ?.topic || sourceQuestion?.topic || '');
-        const cardDiscId = errCtx ? errCtx.disciplineId :
-          (typeof inferDiscipline === 'function' ? inferDiscipline(cardTopic) : null);
-        const newCard = {
-          id: 'card-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),
-          front: sf.front,
-          back: sf.back,
-          disciplineId: cardDiscId,
-          topic: cardTopic,
-          createdAt: Date.now(),
-          source: 'suggested',
-          interval: 1,
-          repetitions: 0,
-          easeFactor: 2.5,
-          nextReview: Date.now()
-        };
-        DATA.cards = DATA.cards || [];
-        DATA.cards.push(newCard);
-        if(errCtx){
-          errCtx.hasCard = true;
-          errCtx.cardId = newCard.id;
-        }
-        fb._suggestedAdded = true;
-        save();
-        addBtn.textContent = '✓ Adicionado ao deck';
-        addBtn.disabled = true;
-        addBtn.style.opacity = '.7';
-        addBtn.style.cursor = 'default';
-        showToast('Flashcard adicionado ao deck (sem custo)', 3000);
-      } catch(e){
-        console.warn('[suggested-card] erro ao adicionar:', e);
-        showToast('Erro ao adicionar flashcard. Tente novamente.', 4000);
+    sugActions.style.cssText='display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center';
+
+    function renderActions(){
+      sugActions.innerHTML = '';
+      const existing = findExistingCardInDeck();
+      if(existing){
+        // Estado "já está no deck" — mostra label + lixeira
+        const addedLbl = mk('span');
+        addedLbl.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(16,185,129,.12);color:var(--accent-text);border:1px solid rgba(16,185,129,.30);border-radius:6px;font-size:12.5px;font-weight:600';
+        addedLbl.innerHTML = '✓ Adicionado ao deck';
+        sugActions.appendChild(addedLbl);
+
+        const trashBtn = mkBtn('🗑','btn btn-sm');
+        trashBtn.title = 'Remover do meu deck';
+        trashBtn.setAttribute('aria-label', 'Remover flashcard do deck');
+        trashBtn.style.cssText = 'padding:6px 10px;background:transparent;border:1px solid var(--border);color:var(--red-text)';
+        trashBtn.addEventListener('click', ()=>{
+          // Confirmação leve via toast — clica de novo pra confirmar
+          if(!trashBtn._confirming){
+            trashBtn._confirming = true;
+            trashBtn.textContent = 'Clique de novo pra confirmar';
+            trashBtn.style.background = 'rgba(232,76,76,.10)';
+            trashBtn.style.borderColor = 'var(--red)';
+            setTimeout(()=>{
+              if(trashBtn._confirming){
+                trashBtn._confirming = false;
+                trashBtn.textContent = '🗑';
+                trashBtn.style.background = 'transparent';
+                trashBtn.style.borderColor = 'var(--border)';
+              }
+            }, 3500);
+            return;
+          }
+          // Confirmação dada — remove
+          try{
+            const idx = (DATA.cards || []).indexOf(existing);
+            if(idx >= 0){
+              DATA.cards.splice(idx, 1);
+              // Limpa flags do errCtx se apontavam pra este card
+              if(errCtx && errCtx.cardId === existing.id){
+                errCtx.hasCard = false;
+                errCtx.cardId = null;
+              }
+              fb._suggestedAdded = false;
+              save();
+              showToast('Flashcard removido do deck (segue disponível no banco)', 3500);
+              renderActions(); // re-renderiza pra voltar pro botão "+ Adicionar"
+            }
+          }catch(e){
+            console.warn('[suggested-card] erro ao remover:', e);
+            showToast('Erro ao remover flashcard. Tente novamente.', 4000);
+          }
+        });
+        sugActions.appendChild(trashBtn);
+      } else {
+        // Estado "não está no deck" — botão de adicionar
+        const addBtn = mkBtn('+ Adicionar ao deck','btn btn-p btn-sm');
+        addBtn.style.cssText='font-weight:600;padding:6px 14px';
+        addBtn.addEventListener('click',()=>{
+          try {
+            // V15.12.75.15 — Em acerto (cache hit) errCtx é null. Pega disciplina/topic
+            // da própria questão atual pra que o flashcard fique organizado.
+            const cardTopic = errCtx ? errCtx.topic : (ST.practQ?.topic || sourceQuestion?.topic || '');
+            const cardDiscId = errCtx ? errCtx.disciplineId :
+              (typeof inferDiscipline === 'function' ? inferDiscipline(cardTopic) : null);
+            const newCard = {
+              id: 'card-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),
+              front: sf.front,
+              back: sf.back,
+              disciplineId: cardDiscId,
+              topic: cardTopic,
+              createdAt: Date.now(),
+              source: 'suggested',
+              interval: 1,
+              repetitions: 0,
+              easeFactor: 2.5,
+              nextReview: Date.now()
+            };
+            DATA.cards = DATA.cards || [];
+            DATA.cards.push(newCard);
+            if(errCtx){
+              errCtx.hasCard = true;
+              errCtx.cardId = newCard.id;
+            }
+            fb._suggestedAdded = true;
+            save();
+            showToast('Flashcard adicionado ao deck (sem custo)', 3000);
+            renderActions(); // re-renderiza pra mostrar "Adicionado" + lixeira
+          } catch(e){
+            console.warn('[suggested-card] erro ao adicionar:', e);
+            showToast('Erro ao adicionar flashcard. Tente novamente.', 4000);
+          }
+        });
+        sugActions.appendChild(addBtn);
       }
-    });
-    sugActions.appendChild(addBtn);
+    }
+    renderActions();
     sugCard.appendChild(sugActions);
 
     // V15.12.75.15 — Selo de autoria do flashcard (mesma posição/estilo
