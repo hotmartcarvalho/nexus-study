@@ -24339,10 +24339,16 @@ function toggleAIQuestionFavorite(q){
   if(idx >= 0){
     DATA.aiFavoriteQuestions.splice(idx, 1);
     save();
+    // V15.12.75.31 — Sincroniza com Supabase (fire-and-forget)
+    if(supa && AUTH.user){
+      supa.rpc('delete_my_ai_favorite', {p_fav_key: key})
+        .then(()=>{})
+        .catch(e => console.warn('[ai-fav] delete sync falhou:', e.message));
+    }
     return false;
   }
   // Salva cópia leve da questão
-  DATA.aiFavoriteQuestions.push({
+  const favRecord = {
     key,
     question: q.question || q.enunciado || '',
     answer: q.correct_answer || q.answer || '',
@@ -24354,10 +24360,101 @@ function toggleAIQuestionFavorite(q){
     trap: q.trap || '',
     keyword: q.keyword || '',
     favoritedAt: Date.now()
-  });
+  };
+  DATA.aiFavoriteQuestions.push(favRecord);
   save();
+  // V15.12.75.31 — Sincroniza com Supabase (fire-and-forget)
+  if(supa && AUTH.user){
+    supa.rpc('upsert_my_ai_favorite', {
+      p_fav_key: favRecord.key,
+      p_question: favRecord.question,
+      p_answer: favRecord.answer || null,
+      p_alternatives: favRecord.alternatives,
+      p_kind: favRecord.kind,
+      p_topic: favRecord.topic || null,
+      p_difficulty: favRecord.difficulty || null,
+      p_explanation: favRecord.explanation || null,
+      p_trap: favRecord.trap || null,
+      p_keyword: favRecord.keyword || null
+    }).then(()=>{}).catch(e => console.warn('[ai-fav] upsert sync falhou:', e.message));
+  }
   return true;
 }
+
+// V15.12.75.31 — Hidrata DATA.aiFavoriteQuestions com dados do Supabase
+// no boot. Faz MERGE (união pela key) — não sobrescreve local. Útil quando
+// user troca de dispositivo: local vai estar vazio, remoto vem e popula.
+// Caso 2 dispositivos editem em paralelo, ambos os conjuntos preservados.
+async function hydrateAIFavoritesFromSupabase(){
+  if(!supa || !AUTH.user) return;
+  try{
+    const {data, error} = await supa.rpc('list_my_ai_favorites');
+    if(error){
+      console.warn('[ai-fav] hidratação falhou:', error.message);
+      return;
+    }
+    if(!Array.isArray(data) || data.length === 0) return;
+
+    DATA.aiFavoriteQuestions = DATA.aiFavoriteQuestions || [];
+    const localKeys = new Set(DATA.aiFavoriteQuestions.map(f => f.key));
+
+    let added = 0;
+    data.forEach(row => {
+      if(!row.out_fav_key) return;
+      if(localKeys.has(row.out_fav_key)) return; // já tem local
+      DATA.aiFavoriteQuestions.push({
+        key: row.out_fav_key,
+        question: row.out_question || '',
+        answer: row.out_answer || '',
+        alternatives: row.out_alternatives || null,
+        kind: row.out_kind || 'CE',
+        topic: row.out_topic || '',
+        difficulty: row.out_difficulty || 'medium',
+        explanation: row.out_explanation || '',
+        trap: row.out_trap || '',
+        keyword: row.out_keyword || '',
+        favoritedAt: row.out_favorited_at ? new Date(row.out_favorited_at).getTime() : Date.now()
+      });
+      added++;
+    });
+
+    if(added > 0){
+      save();
+      console.info('[ai-fav] hidratação: ' + added + ' favoritas baixadas do Supabase');
+    }
+
+    // Pushea favoritas LOCAIS que ainda não estão no Supabase
+    // (caso user tenha favoritado antes da V15.12.75.31 ou enquanto offline)
+    const remoteKeys = new Set(data.map(r => r.out_fav_key));
+    let pushed = 0;
+    for(const fav of DATA.aiFavoriteQuestions){
+      if(remoteKeys.has(fav.key)) continue;
+      try{
+        await supa.rpc('upsert_my_ai_favorite', {
+          p_fav_key: fav.key,
+          p_question: fav.question || '',
+          p_answer: fav.answer || null,
+          p_alternatives: fav.alternatives || null,
+          p_kind: fav.kind || 'CE',
+          p_topic: fav.topic || null,
+          p_difficulty: fav.difficulty || null,
+          p_explanation: fav.explanation || null,
+          p_trap: fav.trap || null,
+          p_keyword: fav.keyword || null
+        });
+        pushed++;
+      }catch(e){
+        // ignora erro individual
+      }
+    }
+    if(pushed > 0){
+      console.info('[ai-fav] sincronização: ' + pushed + ' favoritas locais enviadas pro Supabase');
+    }
+  }catch(e){
+    console.warn('[ai-fav] hidratação exception:', e.message);
+  }
+}
+
 function makeAIFavoriteButton(q){
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -64691,6 +64788,8 @@ async function initAuth(){
       }).catch(()=>{});
       // V14: Carrega notificações + inicia poll a cada 60s
       fetchNotifications({force: true}).catch(()=>{});
+      // V15.12.75.31 — Sincroniza favoritas IA (merge local + remoto)
+      hydrateAIFavoritesFromSupabase().catch(()=>{});
       if(NOTIFS.pollIntervalId) clearInterval(NOTIFS.pollIntervalId);
       NOTIFS.pollIntervalId = setInterval(()=>fetchNotifications().catch(()=>{}), 60000);
       render();
@@ -64731,6 +64830,8 @@ async function initAuth(){
       // First login of this session — merge data
       await handleFirstLoginMerge();
       fetchQuota().then(()=>render()).catch(()=>{});
+      // V15.12.75.31 — Sincroniza favoritas IA (merge local + remoto)
+      hydrateAIFavoritesFromSupabase().catch(()=>{});
       fetchUserProfile(true).then(()=>{
         render();
         // V15.12.44 — Após carregar o profile, verifica se precisa completar
