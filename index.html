@@ -50570,6 +50570,24 @@ function renderAdminDashboard(){
   // Carrega contadores assíncronos
   loadAdminModerationHub(modHubGrid);
 
+  // V15.12.75.45 — Card: Lista geral de usuários (busca + ações).
+  // Posicionado logo após o Centro de Moderação pra acesso rápido —
+  // é a entrada principal pra gerenciar qualquer conta manualmente.
+  const allUsersCard = mk('section','admin-card');
+  allUsersCard.appendChild(adminSectionLabel('👥 Usuários'));
+  const allUsersHead = mk('h2','admin-section-title');
+  allUsersHead.textContent = 'Lista geral de usuários';
+  allUsersCard.appendChild(allUsersHead);
+  const allUsersHelp = mk('p');
+  allUsersHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem;line-height:1.5';
+  allUsersHelp.textContent = 'Busque por email ou username. Click em qualquer usuário pra ver detalhes completos, suspender, desbloquear ou adicionar à whitelist.';
+  allUsersCard.appendChild(allUsersHelp);
+  const allUsersBody = mk('div','admin-users-body');
+  allUsersBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando...</div>';
+  allUsersCard.appendChild(allUsersBody);
+  wrap.appendChild(allUsersCard);
+  loadAdminAllUsers(allUsersBody);
+
   // === V15.12.61 — Card: Moderação de questões IA reportadas ===
   // Lista reports não-resolvidos da tabela ai_question_reports. Permite ao
   // admin: ver detalhes da questão + motivo, marcar como resolvido, ou
@@ -51291,6 +51309,365 @@ function formatTokens(n){
 // V15.12.68 — Lista users que bateram rate limit em alguma hora das últimas 24h
 // V15.12.75.36 — Lista emails protegidos da suspensão automática.
 // Admin pode adicionar (formulário inline) ou remover via lixeira.
+// V15.12.75.45 — Lista geral de usuários com busca, paginação e modal de detalhe.
+// State global da lista pra preservar entre re-renders
+const ADMIN_USERS_STATE = {
+  search: '',
+  page: 0,
+  pageSize: 25,
+  total: 0,
+  loading: false
+};
+
+async function loadAdminAllUsers(container){
+  if(!supa){
+    container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>';
+    return;
+  }
+  // Não destrói: monta uma vez a estrutura, só recarrega os dados
+  if(!container.querySelector('.aau-list')){
+    container.innerHTML = '';
+
+    // Barra de busca
+    const searchBar = mk('div');
+    searchBar.style.cssText = 'display:flex;gap:8px;margin-bottom:.75rem;flex-wrap:wrap;align-items:center';
+    const searchIn = mk('input');
+    searchIn.type = 'search';
+    searchIn.placeholder = 'Buscar por email ou @username...';
+    searchIn.value = ADMIN_USERS_STATE.search;
+    searchIn.style.cssText = 'flex:1;min-width:220px;padding:7px 11px;font-size:12.5px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit';
+    let searchTimer = null;
+    searchIn.addEventListener('input', ()=>{
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(()=>{
+        ADMIN_USERS_STATE.search = searchIn.value.trim();
+        ADMIN_USERS_STATE.page = 0;
+        loadAdminAllUsers(container);
+      }, 350);
+    });
+    searchBar.appendChild(searchIn);
+    const refreshBtn = mkBtn('↻', 'btn btn-sm');
+    refreshBtn.title = 'Recarregar';
+    refreshBtn.style.cssText = 'font-size:14px;padding:7px 12px';
+    refreshBtn.addEventListener('click', ()=>loadAdminAllUsers(container));
+    searchBar.appendChild(refreshBtn);
+    container.appendChild(searchBar);
+
+    // Container da lista (preenchido depois)
+    const listBox = mk('div','aau-list');
+    listBox.style.cssText = 'display:flex;flex-direction:column;gap:.375rem';
+    container.appendChild(listBox);
+
+    // Footer com paginação
+    const footer = mk('div','aau-footer');
+    footer.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-top:.75rem;font-size:12px;color:var(--text3);gap:8px;flex-wrap:wrap';
+    container.appendChild(footer);
+  }
+
+  const listBox = container.querySelector('.aau-list');
+  const footer = container.querySelector('.aau-footer');
+  listBox.innerHTML = '<div class="admin-loading" style="padding:.5rem 0"><span class="loading-spinner"></span> Carregando usuários...</div>';
+  footer.innerHTML = '';
+
+  try{
+    const {data, error} = await supa.rpc('admin_list_all_users', {
+      p_search: ADMIN_USERS_STATE.search || null,
+      p_limit: ADMIN_USERS_STATE.pageSize,
+      p_offset: ADMIN_USERS_STATE.page * ADMIN_USERS_STATE.pageSize
+    });
+    if(error) throw error;
+
+    listBox.innerHTML = '';
+    if(!data || data.length === 0){
+      listBox.innerHTML = '<div class="txt3" style="padding:1rem;text-align:center;font-size:13px">Nenhum usuário encontrado pra essa busca.</div>';
+      return;
+    }
+
+    ADMIN_USERS_STATE.total = data[0].out_total_count || 0;
+
+    data.forEach(u => {
+      const row = mk('div');
+      const isSuspended = !!u.out_suspended_at;
+      const isPaid = !!u.out_has_paid_sub;
+      const isProtected = !!u.out_is_protected;
+      let borderColor = 'var(--border)';
+      if(isSuspended) borderColor = 'var(--red)';
+      else if(isPaid) borderColor = 'var(--accent)';
+      else if(isProtected) borderColor = 'var(--gralia-purple)';
+      row.style.cssText = `display:flex;align-items:center;gap:10px;padding:.5rem .75rem;background:var(--surface2);border:1px solid var(--border);border-left:3px solid ${borderColor};border-radius:8px;cursor:pointer;transition:background .12s`;
+      row.onmouseenter = ()=>{ row.style.background = 'var(--surface)'; };
+      row.onmouseleave = ()=>{ row.style.background = 'var(--surface2)'; };
+
+      const created = u.out_created_at ? new Date(u.out_created_at).toLocaleDateString('pt-BR') : '?';
+      const lastSign = u.out_last_sign_in_at ? new Date(u.out_last_sign_in_at).toLocaleDateString('pt-BR') : '—';
+      const plan = u.out_plan_id || 'trial';
+
+      // Chips de status
+      const chips = [];
+      if(isSuspended) chips.push('<span style="padding:1px 6px;background:rgba(232,76,76,.12);color:var(--red-text);border-radius:8px;font-size:10px;font-weight:700">🚫 SUSPENSA</span>');
+      if(isPaid) chips.push('<span style="padding:1px 6px;background:rgba(16,185,129,.12);color:var(--accent-text);border-radius:8px;font-size:10px;font-weight:700">💎 PAGANTE</span>');
+      if(isProtected) chips.push('<span style="padding:1px 6px;background:rgba(124,92,255,.12);color:var(--gralia-purple);border-radius:8px;font-size:10px;font-weight:700">🛡 WHITELIST</span>');
+
+      row.innerHTML = `
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px">
+            <span style="font-weight:600;font-size:13px;color:var(--text);word-break:break-all">${escapeHTML(u.out_email || '?')}</span>
+            ${chips.join('')}
+          </div>
+          <div style="font-size:11px;color:var(--text3);display:flex;gap:10px;flex-wrap:wrap">
+            ${u.out_username ? '<span>@' + escapeHTML(u.out_username) + '</span>' : ''}
+            <span>📅 ${escapeHTML(created)}</span>
+            <span>🕒 último: ${escapeHTML(lastSign)}</span>
+            <span>💳 ${escapeHTML(plan)}</span>
+            <span>⚡ ${u.out_credits_balance || 0} créd</span>
+          </div>
+        </div>
+        <div style="color:var(--text3);font-size:14px;font-weight:700;flex-shrink:0">›</div>
+      `;
+      row.addEventListener('click', ()=>showAdminUserDetailModal(u));
+      listBox.appendChild(row);
+    });
+
+    // Footer com paginação
+    const totalPages = Math.ceil(ADMIN_USERS_STATE.total / ADMIN_USERS_STATE.pageSize);
+    const showingFrom = ADMIN_USERS_STATE.page * ADMIN_USERS_STATE.pageSize + 1;
+    const showingTo = Math.min(showingFrom + data.length - 1, ADMIN_USERS_STATE.total);
+
+    const info = mk('div');
+    info.textContent = `${showingFrom}–${showingTo} de ${ADMIN_USERS_STATE.total} usuários`;
+    footer.appendChild(info);
+
+    const pageBox = mk('div');
+    pageBox.style.cssText = 'display:flex;gap:6px;align-items:center';
+
+    const prevBtn = mkBtn('← Anterior', 'btn btn-sm');
+    prevBtn.style.cssText = 'padding:4px 10px;font-size:11.5px';
+    prevBtn.disabled = ADMIN_USERS_STATE.page === 0;
+    prevBtn.addEventListener('click', ()=>{
+      if(ADMIN_USERS_STATE.page > 0){
+        ADMIN_USERS_STATE.page--;
+        loadAdminAllUsers(container);
+      }
+    });
+    pageBox.appendChild(prevBtn);
+
+    const pageLbl = mk('span');
+    pageLbl.style.cssText = 'font-size:11.5px;color:var(--text3);padding:0 6px';
+    pageLbl.textContent = `${ADMIN_USERS_STATE.page + 1} / ${Math.max(1, totalPages)}`;
+    pageBox.appendChild(pageLbl);
+
+    const nextBtn = mkBtn('Próxima →', 'btn btn-sm');
+    nextBtn.style.cssText = 'padding:4px 10px;font-size:11.5px';
+    nextBtn.disabled = ADMIN_USERS_STATE.page + 1 >= totalPages;
+    nextBtn.addEventListener('click', ()=>{
+      if(ADMIN_USERS_STATE.page + 1 < totalPages){
+        ADMIN_USERS_STATE.page++;
+        loadAdminAllUsers(container);
+      }
+    });
+    pageBox.appendChild(nextBtn);
+
+    footer.appendChild(pageBox);
+  }catch(e){
+    listBox.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro: ${escapeHTML(e.message||String(e))}</div>`;
+  }
+}
+
+// V15.12.75.45 — Modal de detalhe de usuário com ações.
+async function showAdminUserDetailModal(userRow){
+  const m = mk('div');
+  m.style.cssText = 'max-width:560px;width:100%';
+
+  const head = mk('div','modal-head');
+  const h = mk('h3');
+  h.style.cssText = 'word-break:break-all';
+  h.textContent = '👤 ' + (userRow.out_email || '?');
+  const cl = mkBtn('×','modal-close');
+  cl.addEventListener('click', closeModal);
+  head.appendChild(h);
+  head.appendChild(cl);
+  m.appendChild(head);
+
+  // Status badges
+  const isSuspended = !!userRow.out_suspended_at;
+  const isPaid = !!userRow.out_has_paid_sub;
+  const isProtected = !!userRow.out_is_protected;
+
+  const statusRow = mk('div');
+  statusRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem';
+  const buildChip = (txt, bg, fg) => {
+    const c = mk('span');
+    c.style.cssText = `padding:3px 10px;background:${bg};color:${fg};border-radius:10px;font-size:11px;font-weight:700`;
+    c.textContent = txt;
+    return c;
+  };
+  if(isSuspended) statusRow.appendChild(buildChip('🚫 Suspensa', 'rgba(232,76,76,.12)', 'var(--red-text)'));
+  if(isPaid) statusRow.appendChild(buildChip('💎 Pagante', 'rgba(16,185,129,.12)', 'var(--accent-text)'));
+  if(isProtected) statusRow.appendChild(buildChip('🛡 Whitelist', 'rgba(124,92,255,.12)', 'var(--gralia-purple)'));
+  if(!isSuspended && !isPaid && !isProtected) statusRow.appendChild(buildChip('Normal', 'var(--surface2)', 'var(--text2)'));
+  m.appendChild(statusRow);
+
+  // Grid de metadados básicos
+  const meta = mk('div');
+  meta.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:.75rem;font-size:12px';
+  meta.innerHTML = `
+    <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Username</div><div style="font-weight:600">${userRow.out_username ? '@' + escapeHTML(userRow.out_username) : '—'}</div></div>
+    <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Display</div><div style="font-weight:600">${escapeHTML(userRow.out_display_name || '—')}</div></div>
+    <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Plano</div><div style="font-weight:600">${escapeHTML(userRow.out_plan_id || 'trial')}</div></div>
+    <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Créditos</div><div style="font-weight:600">${userRow.out_credits_balance || 0}</div></div>
+    <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Criada em</div><div style="font-weight:600">${userRow.out_created_at ? new Date(userRow.out_created_at).toLocaleDateString('pt-BR') : '?'}</div></div>
+    <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Último login</div><div style="font-weight:600">${userRow.out_last_sign_in_at ? new Date(userRow.out_last_sign_in_at).toLocaleDateString('pt-BR') : '—'}</div></div>
+  `;
+  m.appendChild(meta);
+
+  // Motivo de suspensão (se aplicável)
+  if(isSuspended){
+    const susBox = mk('div');
+    susBox.style.cssText = 'padding:.5rem .75rem;background:rgba(232,76,76,.08);border:1px solid rgba(232,76,76,.22);border-left:3px solid var(--red);border-radius:8px;margin-bottom:.75rem;font-size:12.5px;line-height:1.5';
+    susBox.innerHTML = `<b>Motivo da suspensão:</b><br>${escapeHTML(userRow.out_suspended_reason || 'Sem motivo registrado')}<br><span style="font-size:11px;color:var(--text3)">Desde: ${new Date(userRow.out_suspended_at).toLocaleString('pt-BR')}</span>`;
+    m.appendChild(susBox);
+  }
+
+  // Detalhes extras carregados async
+  const extraLbl = mk('div');
+  extraLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:.75rem 0 .375rem';
+  extraLbl.textContent = '📊 Atividade e contexto';
+  m.appendChild(extraLbl);
+
+  const extra = mk('div');
+  extra.style.cssText = 'background:var(--surface2);border-radius:8px;padding:.5rem .75rem;font-size:12px;margin-bottom:.875rem';
+  extra.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando...</div>';
+  m.appendChild(extra);
+
+  // Ações
+  const actionsWrap = mk('div');
+  actionsWrap.style.cssText = 'border-top:1px solid var(--border);padding-top:.75rem;display:flex;gap:6px;flex-wrap:wrap';
+
+  const refreshList = ()=>{
+    closeModal();
+    const body = document.querySelector('.admin-users-body');
+    if(body) loadAdminAllUsers(body);
+  };
+
+  // Suspender / Desbloquear
+  if(isSuspended){
+    const unblockBtn = mkBtn('↻ Desbloquear', 'btn btn-sm');
+    unblockBtn.style.cssText = 'color:var(--accent-text);border-color:var(--accent);font-size:11.5px';
+    unblockBtn.addEventListener('click', async ()=>{
+      if(!confirm('Desbloquear esta conta? Usuário poderá voltar a usar normalmente.')) return;
+      unblockBtn.disabled = true;
+      try{
+        const {error} = await supa.rpc('admin_set_user_suspension', {
+          p_user_id: userRow.out_user_id, p_suspended: false, p_reason: null
+        });
+        if(error) throw error;
+        showToast('✓ Conta desbloqueada', 3000);
+        refreshList();
+      }catch(e){
+        unblockBtn.disabled = false;
+        showToast('Erro: ' + (e.message||String(e)), 4000);
+      }
+    });
+    actionsWrap.appendChild(unblockBtn);
+  } else {
+    const susBtn = mkBtn('🚫 Suspender', 'btn btn-sm');
+    susBtn.style.cssText = 'color:var(--red-text);border-color:var(--red-light);font-size:11.5px';
+    susBtn.addEventListener('click', async ()=>{
+      const reason = prompt('Motivo da suspensão (visível ao usuário):', 'Suspensão manual pelo administrador');
+      if(reason === null) return;
+      if(isProtected){
+        if(!confirm('⚠ Este email está na whitelist (não deveria ser suspenso). Suspender mesmo assim?')) return;
+      }
+      if(isPaid){
+        if(!confirm('⚠ Esta conta é PAGANTE ATIVA. Suspender vai bloquear acesso de um cliente pago. Tem certeza?')) return;
+      }
+      susBtn.disabled = true;
+      try{
+        const {error} = await supa.rpc('admin_set_user_suspension', {
+          p_user_id: userRow.out_user_id, p_suspended: true, p_reason: reason
+        });
+        if(error) throw error;
+        showToast('🚫 Conta suspensa', 3000);
+        refreshList();
+      }catch(e){
+        susBtn.disabled = false;
+        showToast('Erro: ' + (e.message||String(e)), 4000);
+      }
+    });
+    actionsWrap.appendChild(susBtn);
+  }
+
+  // Whitelist toggle
+  if(isProtected){
+    const unwlBtn = mkBtn('🛡 Remover whitelist', 'btn btn-sm');
+    unwlBtn.style.cssText = 'font-size:11.5px';
+    unwlBtn.addEventListener('click', async ()=>{
+      if(!confirm('Remover este email da whitelist? Ele voltará a ser sujeito ao anti-abuso automático.')) return;
+      unwlBtn.disabled = true;
+      try{
+        const {error} = await supa.from('protected_emails').delete().eq('email', userRow.out_email);
+        if(error) throw error;
+        showToast('Removido da whitelist', 3000);
+        refreshList();
+      }catch(e){
+        unwlBtn.disabled = false;
+        showToast('Erro: ' + (e.message||String(e)), 4000);
+      }
+    });
+    actionsWrap.appendChild(unwlBtn);
+  } else {
+    const wlBtn = mkBtn('🛡 + Whitelist', 'btn btn-sm');
+    wlBtn.style.cssText = 'color:var(--gralia-purple);border-color:var(--border);font-size:11.5px';
+    wlBtn.title = 'Adiciona à whitelist — conta nunca será suspensa automaticamente';
+    wlBtn.addEventListener('click', async ()=>{
+      const reason = prompt('Motivo da proteção (opcional):', '');
+      if(reason === null) return;
+      wlBtn.disabled = true;
+      try{
+        const {error} = await supa.from('protected_emails').insert({
+          email: userRow.out_email,
+          reason: reason || 'Adicionado via painel admin'
+        });
+        if(error) throw error;
+        showToast('✓ Adicionado à whitelist', 3000);
+        refreshList();
+      }catch(e){
+        wlBtn.disabled = false;
+        showToast('Erro: ' + (e.message||String(e)), 4000);
+      }
+    });
+    actionsWrap.appendChild(wlBtn);
+  }
+
+  m.appendChild(actionsWrap);
+  showModal(m);
+
+  // Carrega detalhes extras async
+  try{
+    const {data, error} = await supa.rpc('admin_get_user_details', {p_user_id: userRow.out_user_id});
+    if(error) throw error;
+    if(!data){
+      extra.innerHTML = '<div class="txt3">Sem dados adicionais.</div>';
+      return;
+    }
+    const sl = data.signup_log || {};
+    extra.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
+        <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">IP de signup</div><div style="font-family:ui-monospace,monospace;font-size:11.5px;word-break:break-all">${escapeHTML(data.signup_ip || '—')}</div></div>
+        <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Outras contas do mesmo IP</div><div style="font-weight:600;color:${data.signup_count_same_ip >= 3 ? 'var(--red-text)' : 'var(--text)'}">${data.signup_count_same_ip || 0}</div></div>
+        <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Falhas login (24h)</div><div style="font-weight:600;color:${data.failed_logins_24h >= 3 ? 'var(--amber-text)' : 'var(--text)'}">${data.failed_logins_24h || 0}</div></div>
+        <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Reports feitos</div><div style="font-weight:600">${data.reports_made || 0}</div></div>
+        <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Explicações shared</div><div style="font-weight:600">${data.explanations_shared || 0}</div></div>
+        <div><div style="color:var(--text3);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px">Trial concedido</div><div style="font-weight:600">${sl.trial_bonus_granted != null ? sl.trial_bonus_granted + ' créd' : '—'}</div></div>
+      </div>
+      ${sl.blocked_reason ? `<div style="margin-top:.5rem;padding:.375rem .5rem;background:rgba(245,158,11,.08);border-radius:6px;font-size:11.5px;color:var(--amber-text)"><b>Anti-abuso:</b> ${escapeHTML(sl.blocked_reason)}</div>` : ''}
+      ${sl.user_agent ? `<div style="margin-top:.5rem;font-size:10.5px;color:var(--text3);word-break:break-all"><b>UA:</b> ${escapeHTML(sl.user_agent)}</div>` : ''}
+    `;
+  }catch(e){
+    extra.innerHTML = `<div class="txt3" style="color:var(--red-text);font-size:11.5px">Erro carregando detalhes: ${escapeHTML(e.message||String(e))}</div>`;
+  }
+}
+
 async function loadAdminProtectedEmails(container){
   if(!supa){
     container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>';
