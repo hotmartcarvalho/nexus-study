@@ -2555,10 +2555,16 @@ h3{font-size:15px;font-weight:600}
    começa em #3a4a82 (azul escuro) e estava "vazando" 1px pra área da borda
    transparente (default background-clip:border-box pinta gradient até a borda),
    criando um artefato visível na esquerda. Com padding-box, o gradient fica
-   contido e a borda fica transparente de verdade, alinhada com o fundo. */
+   contido e a borda fica transparente de verdade, alinhada com o fundo.
+   V15.12.75.39 — Halo do box-shadow estava criando "anel roxo" visível no dark
+   (fundo escuro destaca o roxo 25% mais que o fundo claro). Reduzido pra
+   12% no dark e ajustado o raio do blur. No light fica como antes. */
 .btn-p.btn-lg{background:var(--gralia-gradient);background-clip:padding-box;-webkit-background-clip:padding-box;border:1px solid transparent;box-shadow:0 2px 8px rgba(124,92,255,.25)}
 .btn-p.btn-lg:hover:not(:disabled){opacity:1;background:var(--gralia-gradient);background-clip:padding-box;-webkit-background-clip:padding-box;border-color:transparent;transform:translateY(-1px);box-shadow:0 6px 18px rgba(124,92,255,.40)}
 .btn-p.btn-lg:active:not(:disabled){transform:translateY(0);box-shadow:0 2px 6px rgba(124,92,255,.25)}
+:root[data-theme="dark"] .btn-p.btn-lg{box-shadow:0 1px 4px rgba(124,92,255,.12)}
+:root[data-theme="dark"] .btn-p.btn-lg:hover:not(:disabled){box-shadow:0 4px 12px rgba(124,92,255,.22)}
+:root[data-theme="dark"] .btn-p.btn-lg:active:not(:disabled){box-shadow:0 1px 3px rgba(124,92,255,.12)}
 .btn-danger{color:var(--red-text);border-color:var(--red-light)}
 .btn-danger:hover:not(:disabled){background:var(--red-light)}
 .btn-sm{padding:6px 12px;font-size:12px}
@@ -64791,51 +64797,61 @@ function renderAuthScreen(){
     submitBtn.disabled=true;submitBtn.textContent='Aguarde...';
     ST.authError=null;
     try{
-      if(mode==='signup'){
-        // V15.12.75.38 — Pré-check de captcha condicional.
-        // Se IP já tem 3+ signups em 24h, exige resolver Turnstile antes.
-        // Caso contrário, segue direto (UX limpa pra usuários normais).
+      // V15.12.75.40 — Helper interno: roda captcha se necessário e retorna
+      // {ok: bool, verified: bool}. `verified=true` significa que captcha foi
+      // resolvido com sucesso. `ok=false` interrompe o fluxo (throw).
+      async function runCaptchaIfRequired(rpcName, rpcParams){
         let turnstileToken = null;
+        let verified = false;
         try{
-          const {data: precheck} = await supa.rpc('should_show_captcha_for_signup');
-          if(precheck && precheck.require_captcha){
-            // Renderiza widget num container temporário acima do botão
-            let widgetBox = document.getElementById('turnstile-widget-box');
-            if(!widgetBox){
-              widgetBox = mk('div');
-              widgetBox.id = 'turnstile-widget-box';
-              widgetBox.style.cssText = 'margin:.75rem 0;display:flex;flex-direction:column;align-items:center;gap:6px';
-              const lbl = mk('div');
-              lbl.style.cssText = 'font-size:11.5px;color:var(--text2);text-align:center';
-              lbl.textContent = '🛡️ Confirmação de segurança';
-              widgetBox.appendChild(lbl);
-              const turnstileMount = mk('div');
-              turnstileMount.id = 'turnstile-mount';
-              widgetBox.appendChild(turnstileMount);
-              submitBtn.parentNode.insertBefore(widgetBox, submitBtn);
-            }
-            submitBtn.textContent = 'Aguardando verificação...';
-            try{
-              turnstileToken = await renderTurnstileWidget(document.getElementById('turnstile-mount'));
-            }catch(turnErr){
-              throw new Error('Verificação de segurança falhou. Recarregue a página e tente novamente.');
-            }
-            // Valida token no servidor antes de prosseguir
-            submitBtn.textContent = 'Verificando...';
-            const isValid = await verifyTurnstileToken(turnstileToken);
-            if(!isValid){
-              throw new Error('Token de verificação inválido. Recarregue a página e tente novamente.');
-            }
-            // Token válido — armazena pra register_signup_ip usar depois
-            ST._turnstileVerified = true;
+          const {data: precheck} = await supa.rpc(rpcName, rpcParams || {});
+          if(!precheck || !precheck.require_captcha){
+            return {ok: true, verified: false};
           }
+          // Renderiza widget acima do botão
+          let widgetBox = document.getElementById('turnstile-widget-box');
+          if(!widgetBox){
+            widgetBox = mk('div');
+            widgetBox.id = 'turnstile-widget-box';
+            widgetBox.style.cssText = 'margin:.75rem 0;display:flex;flex-direction:column;align-items:center;gap:6px';
+            const lbl = mk('div');
+            lbl.style.cssText = 'font-size:11.5px;color:var(--text2);text-align:center';
+            lbl.textContent = '🛡️ Confirmação de segurança';
+            widgetBox.appendChild(lbl);
+            const turnstileMount = mk('div');
+            turnstileMount.id = 'turnstile-mount';
+            widgetBox.appendChild(turnstileMount);
+            submitBtn.parentNode.insertBefore(widgetBox, submitBtn);
+          }
+          submitBtn.textContent = 'Aguardando verificação...';
+          try{
+            turnstileToken = await renderTurnstileWidget(document.getElementById('turnstile-mount'));
+          }catch(turnErr){
+            throw new Error('Verificação de segurança falhou. Recarregue a página e tente novamente.');
+          }
+          submitBtn.textContent = 'Verificando...';
+          const isValid = await verifyTurnstileToken(turnstileToken);
+          if(!isValid){
+            throw new Error('Token de verificação inválido. Recarregue a página e tente novamente.');
+          }
+          verified = true;
+          return {ok: true, verified: true};
         }catch(preErr){
-          // Se erro foi do throw acima, propaga. Senão (RPC falhou), segue sem captcha.
+          // Se erro vem do throw acima (mensagem específica), propaga.
+          // Senão (RPC falhou), segue sem captcha pra não bloquear user.
           if(preErr.message && preErr.message.includes('Verificação')){
             throw preErr;
           }
           console.warn('[captcha] pré-check falhou, prosseguindo sem captcha:', preErr.message);
+          return {ok: true, verified: false};
         }
+      }
+
+      if(mode==='signup'){
+        // V15.12.75.40 — Captcha em TODO signup (decisão UX: reforça
+        // percepção de segurança + bloqueia bots desde o primeiro contato).
+        const cap = await runCaptchaIfRequired('should_show_captcha_for_signup');
+        if(cap.verified) ST._turnstileVerified = true;
 
         // V15.12.48 — Não passa mais username/displayName pro signUp.
         // O profile vai ser criado pelo trigger sem username, e o modal
@@ -64844,9 +64860,23 @@ function renderAuthScreen(){
         ST.authSuccess='Conta criada! Verifique seu email para ativar (se configurado) e faça login.';
         ST.authMode='login';ST.authPass='';
       } else {
-        await authSignIn(em,pw);
-        // onAuthStateChange triggers the session + first render
-        ST.authPass='';
+        // V15.12.75.40 — Captcha CONDICIONAL no login: só se IP/email já tem
+        // 3+ falhas em 15 min (anti credential-stuffing).
+        await runCaptchaIfRequired('should_show_captcha_for_login', {p_email: em});
+
+        try{
+          await authSignIn(em,pw);
+          // onAuthStateChange triggers the session + first render
+          ST.authPass='';
+        }catch(signInErr){
+          // V15.12.75.40 — Registra tentativa falhada pra trigger de captcha
+          // no próximo attempt. Fire-and-forget — não bloqueia mensagem.
+          try{
+            supa.rpc('register_failed_login', {p_email: em})
+              .then(()=>{}).catch(()=>{});
+          }catch(_){}
+          throw signInErr;
+        }
       }
     }catch(e){
       ST.authError = (e.message||'').includes('Invalid login')?'Email ou senha incorretos.':
@@ -64917,6 +64947,15 @@ function renderAuthScreen(){
   }
 
   card.appendChild(form);
+
+  // V15.12.75.40 — Chip de selo de segurança. Não roda captcha — é só
+  // sinal visual de que o site usa proteção Cloudflare Turnstile.
+  // Captcha real é executado pelo runCaptchaIfRequired conforme política.
+  const secChip = mk('div','auth-security-chip');
+  secChip.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px;margin-top:.75rem;padding:6px 10px;font-size:11px;color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:6px;line-height:1.3';
+  secChip.innerHTML = '<span style="font-size:13px">🛡️</span><span>Protegido por <b>Cloudflare Turnstile</b> · LGPD-compliant</span>';
+  secChip.title = 'Este site usa proteção anti-bot da Cloudflare. Suas tentativas de login são monitoradas pra prevenir ataques automatizados, sem rastreamento publicitário.';
+  card.appendChild(secChip);
 
   // Micro-note
   const note = mk('p','auth-note');
