@@ -8731,8 +8731,13 @@ async function voteSharedExplanation(explanationId, vote){
 // container: HTMLElement onde inserir o conteúdo
 // q: objeto da questão (com enunciado, alternatives, answer, kind)
 // wasCorrect: bool — se o usuário acertou, UI fica colapsada por padrão (menos intrusiva)
-async function renderSharedExplanationsUI(container, q, wasCorrect){
+async function renderSharedExplanationsUI(container, q, wasCorrect, opts){
   container.innerHTML = '';
+  opts = opts || {};
+  // V15.12.75.8 — opts.excludeText: explicação já mostrada no card principal
+  // (vinda do ai_question_pool em cache hit, ou do eval em fresh gen). Se uma
+  // shared_explanation tem texto idêntico/muito similar, será filtrada pra
+  // evitar duplicação visual.
 
   // Em acertos, encapsula em <details> colapsado por padrão pra não ser intrusivo
   if(wasCorrect){
@@ -8748,14 +8753,14 @@ async function renderSharedExplanationsUI(container, q, wasCorrect){
     details.addEventListener('toggle',()=>{
       if(details.open && !loaded){
         loaded = true;
-        renderSharedExplanationsBody(inner, q);
+        renderSharedExplanationsBody(inner, q, opts);
       }
     });
     return;
   }
 
   // Em erros, mostra direto (mais proeminente)
-  renderSharedExplanationsBody(container, q);
+  renderSharedExplanationsBody(container, q, opts);
 }
 
 // V15.12.37 — Modal de Reportar problema em explicação/flashcard compartilhado.
@@ -8891,8 +8896,16 @@ function showReportExplanationModal(item, q, kind){
   showModal(m);
 }
 
-async function renderSharedExplanationsBody(container, q){
+async function renderSharedExplanationsBody(container, q, opts){
   container.innerHTML = '';
+  opts = opts || {};
+  // V15.12.75.8 — Normaliza texto a excluir (do card principal) pra comparar
+  function normalizeText(s){
+    if(!s) return '';
+    return String(s).toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 200);
+  }
+  const excludeNorm = normalizeText(opts.excludeText || '');
+
   const wrap = mk('div','shexpl-wrap');
   container.appendChild(wrap);
 
@@ -8911,11 +8924,21 @@ async function renderSharedExplanationsBody(container, q){
   list.appendChild(loading);
 
   // Busca explicações + flashcards EM PARALELO pra reduzir tempo total
-  const [items, flashItems] = await Promise.all([
+  const [itemsRaw, flashItems] = await Promise.all([
     listExplanationsForQuestion(q.enunciado, 'explicacao'),
     listExplanationsForQuestion(q.enunciado, 'flashcard')
   ]);
   list.innerHTML = '';
+
+  // V15.12.75.8 — Filtra explicações que são iguais à mostrada no card principal.
+  // Compara primeiros 200 chars normalizados. Se for igual, descarta — evita
+  // duplicação visual (cima + comunidade mostrando exatamente o mesmo texto).
+  const items = excludeNorm
+    ? itemsRaw.filter(it => {
+        const itText = normalizeText((it.payload || {}).explanation || '');
+        return itText && itText !== excludeNorm;
+      })
+    : itemsRaw;
 
   // V15.12.37 — Header adaptativo + mensagem proeminente
   if(items.length > 0){
@@ -24897,15 +24920,15 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
   //  - Questão recém-criada (só tem o próprio user) → não duplica
   //  - Questão antiga com shared de outros → mostra
   //  - Independe se é cache hit ou fresh gen
-  // Pré-check assíncrono que renderiza só se vale a pena.
+  // V15.12.75.8 — Adiciona: filtra explicações idênticas à já mostrada no card
+  // principal (evita duplicação visual cima/baixo).
   if(sourceQuestion && typeof listExplanationsForQuestion === 'function'
      && typeof renderSharedExplanationsUI === 'function' && AUTH && AUTH.user){
     const enun = sourceQuestion.question || sourceQuestion.enunciado || '';
     if(enun && enun.length >= 20){
-      // Container reservado, vazio. Só popula se passar no filtro.
       const sharedWrap = mk('div');
       sharedWrap.style.cssText = 'margin-top:.875rem';
-      sharedWrap.style.display = 'none'; // hidden até confirmar que vale
+      sharedWrap.style.display = 'none';
       card.appendChild(sharedWrap);
       const myId = AUTH.user.id;
       const qForShared = {
@@ -24914,18 +24937,32 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
         answer: sourceQuestion.correct_answer || sourceQuestion.answer || '',
         kind: sourceQuestion.kind || (sourceQuestion.alternatives ? 'MC' : 'CE')
       };
-      // Pré-check: existe pelo menos 1 explicação OU flashcard de outro user?
+      // V15.12.75.8 — Texto a excluir: explicação que já está no card principal
+      // (evita duplicação). Vem de fb.explanation.
+      const explToExclude = fb.explanation || '';
+      function normalizeShortText(s){
+        return String(s||'').toLowerCase().replace(/\s+/g,' ').trim().slice(0,200);
+      }
+      const excludeNorm = normalizeShortText(explToExclude);
+      // Pré-check: existe pelo menos 1 explicação OU flashcard útil de outro user?
       Promise.all([
         listExplanationsForQuestion(enun, 'explicacao'),
         listExplanationsForQuestion(enun, 'flashcard')
       ]).then(([expls, flashes]) => {
-        const hasOthersExpl = (expls || []).some(it => it.author_id && it.author_id !== myId);
-        const hasOthersFlash = (flashes || []).some(it => it.author_id && it.author_id !== myId);
-        if(hasOthersExpl || hasOthersFlash){
+        // Explicações úteis: de outro user E texto diferente do já mostrado
+        const usefulExpls = (expls || []).filter(it => {
+          if(it.author_id === myId) return false;
+          const itNorm = normalizeShortText((it.payload || {}).explanation || '');
+          return itNorm && itNorm !== excludeNorm;
+        });
+        // Flashcards úteis: de outro user (não compara texto, são diferentes em natureza)
+        const usefulFlashes = (flashes || []).filter(it => it.author_id !== myId);
+        if(usefulExpls.length > 0 || usefulFlashes.length > 0){
           sharedWrap.style.display = '';
-          renderSharedExplanationsUI(sharedWrap, qForShared, ok);
+          // Passa excludeText pro render também filtrar internamente
+          renderSharedExplanationsUI(sharedWrap, qForShared, ok, {excludeText: explToExclude});
         }
-        // Se só tem do próprio user, não mostra nada. Reduz ruído visual.
+        // Se nada útil, fica invisível
       }).catch(()=>{/* falha silenciosa */});
     }
   }
@@ -36455,12 +36492,21 @@ async function practSubmit(answer){
       let nextCached = null;
       try{ nextCached = await tryFetchFromPool({method: 'practice'}); }catch(_){}
 
-      // V15.12.75.3 — Se a questão do pool não tem explicação (legado pré-eval),
-      // mostra mensagem útil com chamada pra ação (gerar com IA paga 1 crédito).
+      // V15.12.75.8 — Se a questão do pool não tem explicação salva, mostra
+      // mensagem útil. As ações disponíveis dependem do estado:
+      //  - User errou: pode clicar em "Não entendi, me ajuda?" (sempre disponível)
+      //    ou usar os botões de gerar com Sonnet/orientação que aparecem abaixo
+      //  - User acertou: questão ficou sem explicação, mas user já sabe a resposta;
+      //    pode usar comunidade ou seguir pra próxima
       const hasExplanation = q.explanation && q.explanation.trim().length > 10;
-      const fallbackMsg = hasExplanation
-        ? q.explanation
-        : 'Esta questão do banco ainda não tem explicação salva (foi gerada antes do sistema de enriquecimento). Clique em "Gerar outro flashcard com IA" pra entender melhor.';
+      let fallbackMsg;
+      if(hasExplanation){
+        fallbackMsg = q.explanation;
+      } else if(!ok){
+        fallbackMsg = 'Esta questão ainda não tem explicação salva no banco. Use "💡 Pedir ajuda à IA" abaixo ou veja se há explicações da comunidade no final desta tela.';
+      } else {
+        fallbackMsg = 'Você acertou! Esta questão ainda não tem explicação registrada no banco. Pode seguir pra próxima ou veja se há explicações da comunidade no final.';
+      }
 
       ST.practFb = {
         ok,
