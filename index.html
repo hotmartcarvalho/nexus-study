@@ -8702,9 +8702,17 @@ async function listExplanationsForQuestion(enunciado, kind){
       p_hash: hash,
       p_kind: kind || null
     });
-    if(error || !data) return [];
+    if(error){
+      console.warn('[list-expl] RPC erro:', error.message, '— hash:', hash, 'kind:', kind);
+      return [];
+    }
+    if(!data) return [];
+    console.info('[list-expl] retornou', data.length, 'itens — hash:', hash, 'kind:', kind);
     return data;
-  }catch(err){ return []; }
+  }catch(err){
+    console.warn('[list-expl] exception:', err.message);
+    return [];
+  }
 }
 
 // Salva explicação/flashcard gerado pela IA na biblioteca compartilhada
