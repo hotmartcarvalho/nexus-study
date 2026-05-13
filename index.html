@@ -36895,7 +36895,14 @@ function renderPractice(){
   const topBar = mk('div','flex');topBar.style.cssText='gap:8px;margin-bottom:.75rem;flex-wrap:wrap;align-items:center';
   // V15.12.75 — Badge "Banco Gralia" quando a questão veio do pool (cache hit).
   // Substitui o badge do modelo da IA porque não houve chamada de IA.
-  if(ST.practQ && ST.practQ._fromCache){
+  // V15.12.75.32 — Se veio de favorita, badge "⭐ Favorita" (mais específico)
+  if(ST.practQ && ST.practQ._fromFavorite){
+    const favChip = mk('span','pool-chip');
+    favChip.innerHTML = '<span>⭐</span><span>Favorita</span>';
+    favChip.title = 'Praticando uma questão favoritada — sem custo de IA';
+    favChip.style.cssText = 'background:rgba(124,92,255,.10);color:var(--gralia-purple);border-color:rgba(124,92,255,.30)';
+    topBar.appendChild(favChip);
+  } else if(ST.practQ && ST.practQ._fromCache){
     const cacheChip = mk('span','pool-chip');
     cacheChip.innerHTML = '<span>📚</span><span>Banco Gralia</span>';
     cacheChip.title = 'Questão do banco — sem custo de IA';
@@ -37556,16 +37563,38 @@ function renderAIFavorites(){
     enun.textContent = fav.question;
     card.appendChild(enun);
 
+    // V15.12.75.32 — Botão "Praticar" no topo das ações.
+    // Reaproveita o fluxo da prática IA (cache hit). Sem custo de créditos.
+    const practRow = mk('div');
+    practRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.75rem';
+    const practBtn = mkBtn('▶ Praticar essa questão', 'btn btn-sm btn-p');
+    practBtn.style.cssText = 'font-weight:600;font-size:12.5px';
+    practBtn.title = 'Reabre a questão pra você responder de novo (sem custo de créditos)';
+    practBtn.addEventListener('click', ()=>practFromFavorite(fav));
+    practRow.appendChild(practBtn);
+    card.appendChild(practRow);
+
+    // V15.12.75.32 — Resposta + alternativas dentro de <details> pra não
+    // estragar prática. User pode olhar se quiser, mas não vê por padrão.
+    const detailsBox = mk('details');
+    detailsBox.style.cssText = 'background:var(--surface2);border-radius:8px;padding:0;margin-bottom:.5rem';
+    const detailsSum = mk('summary');
+    detailsSum.style.cssText = 'padding:.5rem .75rem;font-size:12px;color:var(--text2);cursor:pointer;user-select:none;font-weight:600';
+    detailsSum.textContent = '👁 Ver gabarito e alternativas (atenção: spoiler)';
+    detailsBox.appendChild(detailsSum);
+    const detailsBody = mk('div');
+    detailsBody.style.cssText = 'padding:.5rem .75rem .75rem;border-top:1px solid var(--border)';
+
     // Alternativas (se MC)
     if(fav.kind === 'MC' && fav.alternatives){
       const altsBox = mk('div');
-      altsBox.style.cssText = 'margin:.5rem 0;display:flex;flex-direction:column;gap:4px';
+      altsBox.style.cssText = 'margin:.25rem 0;display:flex;flex-direction:column;gap:4px';
       ['A','B','C','D','E'].forEach(letter => {
         const text = fav.alternatives[letter];
         if(!text) return;
         const altRow = mk('div');
         const isCorrect = letter === fav.answer;
-        altRow.style.cssText = `display:flex;gap:8px;align-items:flex-start;padding:6px 10px;background:${isCorrect ? 'rgba(16,185,129,.10)' : 'var(--surface2)'};border-radius:6px;font-size:12.5px;line-height:1.45;border:1px solid ${isCorrect ? 'rgba(16,185,129,.30)' : 'transparent'}`;
+        altRow.style.cssText = `display:flex;gap:8px;align-items:flex-start;padding:6px 10px;background:${isCorrect ? 'rgba(16,185,129,.10)' : 'var(--surface)'};border-radius:6px;font-size:12.5px;line-height:1.45;border:1px solid ${isCorrect ? 'rgba(16,185,129,.30)' : 'transparent'}`;
         const lbl = mk('span');
         lbl.style.cssText = `font-weight:700;color:${isCorrect ? 'var(--accent-text)' : 'var(--gralia-purple)'};min-width:16px`;
         lbl.textContent = letter + ')';
@@ -37576,45 +37605,85 @@ function renderAIFavorites(){
         altRow.appendChild(txt);
         altsBox.appendChild(altRow);
       });
-      card.appendChild(altsBox);
+      detailsBody.appendChild(altsBox);
     } else {
-      // C/E — mostra gabarito como chip
+      // C/E — mostra gabarito como chip (dentro do spoiler)
       const gabChip = mk('div');
       gabChip.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(16,185,129,.10);border:1px solid rgba(16,185,129,.30);border-radius:6px;font-size:12px;font-weight:600;color:var(--accent-text);margin-bottom:.5rem';
       gabChip.innerHTML = `<span>Gabarito:</span><span>${fav.answer === 'C' ? 'Certo' : fav.answer === 'E' ? 'Errado' : fav.answer}</span>`;
-      card.appendChild(gabChip);
+      detailsBody.appendChild(gabChip);
     }
 
-    // Explicação (colapsada)
+    // Explicação salva (também dentro do spoiler)
     if(fav.explanation && fav.explanation.trim().length > 10){
-      const det = mk('details');
-      det.style.cssText = 'margin-top:.5rem;background:var(--surface2);border-radius:8px;padding:0';
-      const sum = mk('summary');
-      sum.style.cssText = 'padding:.5rem .75rem;font-size:12px;color:var(--text2);cursor:pointer;user-select:none;font-weight:600';
-      sum.textContent = '📝 Ver explicação salva';
-      det.appendChild(sum);
-      const expBody = mk('div');
-      expBody.style.cssText = 'padding:.5rem .75rem .75rem;border-top:1px solid var(--border)';
+      const expLbl = mk('div');
+      expLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:.625rem 0 .375rem';
+      expLbl.textContent = '📝 Explicação salva';
+      detailsBody.appendChild(expLbl);
       if(typeof renderStructuredExplanation === 'function'){
         const renderedExp = renderStructuredExplanation(fav.explanation, {
           isMC: fav.kind === 'MC',
           correctAnswer: fav.answer
         });
-        expBody.appendChild(renderedExp);
+        detailsBody.appendChild(renderedExp);
       } else {
         const p = mk('p','txt');
         p.style.cssText = 'margin:0;line-height:1.55;font-size:12.5px;white-space:pre-wrap';
         p.textContent = fav.explanation;
-        expBody.appendChild(p);
+        detailsBody.appendChild(p);
       }
-      det.appendChild(expBody);
-      card.appendChild(det);
     }
+    detailsBox.appendChild(detailsBody);
+    card.appendChild(detailsBox);
 
     wrap.appendChild(card);
   });
 
   return wrap;
+}
+
+// V15.12.75.32 — Inicia prática de uma favorita IA. Reaproveita o fluxo
+// de cache hit do practSubmit: marca _fromCache=true + _fromFavorite=true,
+// monta objeto compatível com formato IA, manda pra renderPractice.
+// Sem custo de créditos. Sem chamada Anthropic.
+function practFromFavorite(fav){
+  if(!fav || !fav.question){
+    showToast('Favorita inválida', 3000);
+    return;
+  }
+  // Reset estado da prática
+  ST.practQ = null;
+  ST.practFb = null;
+  ST.practHist = [];
+  ST.practLoading = false;
+  ST.practAnswered = false;
+
+  // Monta objeto compatível com o que practSubmit espera no cache hit
+  ST.practQ = {
+    _fromCache: true,
+    _fromFavorite: true,    // marca pra UI/handlers reconhecerem origem
+    _poolId: null,           // sem ID do pool (favoritada local pode não ter)
+    type: 'question',
+    kind: fav.kind || 'CE',
+    question: fav.question,
+    correct_answer: fav.answer || '',
+    enunciado: fav.question,
+    answer: fav.answer || '',
+    alternatives: fav.alternatives || null,
+    explanation: fav.explanation || '',
+    trap: fav.trap || '',
+    keyword: fav.keyword || '',
+    trap_type: 0,
+    topic: fav.topic || '',
+    difficulty: fav.difficulty || 'medium'
+  };
+  // Histórico vazio inicial (sem assistant ainda)
+  ST.practHist = [{role: 'user', content: 'Praticando uma favorita.'}];
+
+  // Navega pra tela de prática
+  ST.view = 'practice';
+  render();
+  showToast('▶ Praticando favorita — sem custo de créditos', 3500);
 }
 
 /* SIMULADO */
@@ -50283,12 +50352,32 @@ function renderAdminDashboard(){
 
   wrap.appendChild(modCard);
 
+  // V15.12.75.33 — Centro de moderação unificado.
+  // Resumo agregado no topo com contadores em tempo real + atalhos pra cada
+  // seção de moderação. Os cards individuais ficam embaixo (mantém fluxo
+  // testado), mas admin tem visão consolidada antes de descer.
+  const modHubCard = mk('section','admin-card');
+  modHubCard.appendChild(adminSectionLabel('🛡️ Centro de moderação'));
+  const modHubHead = mk('h2','admin-section-title');
+  modHubHead.textContent = 'Visão consolidada';
+  modHubCard.appendChild(modHubHead);
+  const modHubHelp = mk('p');
+  modHubHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem;line-height:1.5';
+  modHubHelp.textContent = 'Resumo de tudo que precisa da sua atenção. Clique em qualquer card pra ir direto pra seção correspondente.';
+  modHubCard.appendChild(modHubHelp);
+
+  const modHubGrid = mk('div');
+  modHubGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px';
+  modHubCard.appendChild(modHubGrid);
+  wrap.appendChild(modHubCard);
+
+  // Carrega contadores assíncronos
+  loadAdminModerationHub(modHubGrid);
+
   // === V15.12.61 — Card: Moderação de questões IA reportadas ===
   // Lista reports não-resolvidos da tabela ai_question_reports. Permite ao
   // admin: ver detalhes da questão + motivo, marcar como resolvido, ou
   // desabilitar a questão (status='disabled' no pool, sai do cache futuro).
-  // Esta página resolve a queixa: "preciso ver pra onde vão os reports e
-  // notificar o usuário sobre o que foi feito".
   const reportsCard = mk('section','admin-card');
   reportsCard.appendChild(adminSectionLabel('🚩 Moderação de questões IA'));
   const reportsHead = mk('h2','admin-section-title');
@@ -50578,6 +50667,140 @@ function renderAdminDashboard(){
 }
 
 // V15.12.75 — Carrega métricas do pool/cache via RPC
+// V15.12.75.33 — Carrega contadores do Centro de Moderação.
+// 4 cards: Reports pendentes / Voto negativo pendente / Auto-flagged /
+// Desativadas. Cada um clicável → scroll suave pra seção correspondente.
+async function loadAdminModerationHub(container){
+  if(!supa){
+    container.innerHTML = '<div class="txt3" style="grid-column:1/-1;padding:.75rem">Supabase não inicializado.</div>';
+    return;
+  }
+  container.innerHTML = '<div class="admin-loading" style="grid-column:1/-1"><span class="loading-spinner"></span> Carregando resumo...</div>';
+
+  try{
+    // Roda 5 contagens em paralelo
+    const [reportsRes, voteNegQuestRes, voteNegSharedRes, autoFlaggedRes, disabledRes] = await Promise.all([
+      // Reports pendentes (não-resolvidos)
+      supa.from('ai_question_reports')
+        .select('id', {count:'exact', head:true})
+        .is('resolved_at', null),
+      // Questões com voto negativo pendentes
+      supa.from('ai_question_pool')
+        .select('content_hash', {count:'exact', head:true})
+        .eq('status', 'active')
+        .is('admin_reviewed_at', null)
+        .gt('human_downvotes', 0),
+      // Shared explanations com voto negativo pendentes
+      supa.from('shared_explanations')
+        .select('id', {count:'exact', head:true})
+        .is('admin_reviewed_at', null)
+        .gt('downvotes', 0),
+      // Auto-flagged shared (3+ reports)
+      supa.from('shared_explanations')
+        .select('id', {count:'exact', head:true})
+        .not('auto_flagged_at', 'is', null)
+        .is('admin_reviewed_at', null),
+      // Questões desativadas (todas, pra admin saber tamanho da pilha)
+      supa.from('ai_question_pool')
+        .select('content_hash', {count:'exact', head:true})
+        .eq('status', 'disabled')
+    ]);
+
+    const nReports = reportsRes.count || 0;
+    const nVoteNegQ = voteNegQuestRes.count || 0;
+    const nVoteNegS = voteNegSharedRes.count || 0;
+    const nAutoFlagged = autoFlaggedRes.count || 0;
+    const nDisabled = disabledRes.count || 0;
+    const nVoteNeg = nVoteNegQ + nVoteNegS;
+
+    container.innerHTML = '';
+
+    function buildHubTile(opts){
+      const tile = mk('button');
+      const isUrgent = opts.urgent && opts.count > 0;
+      const isWarn = opts.warn && opts.count > 0;
+      const baseColor = isUrgent ? 'var(--red)' : isWarn ? 'var(--amber)' : 'var(--border)';
+      const bgColor = isUrgent ? 'rgba(232,76,76,.06)' : isWarn ? 'rgba(245,158,11,.06)' : 'var(--surface2)';
+      const valueColor = opts.count > 0 ? (isUrgent ? 'var(--red-text)' : isWarn ? 'var(--amber-text)' : 'var(--text)') : 'var(--text3)';
+      tile.style.cssText = `text-align:left;background:${bgColor};border:1px solid ${baseColor};border-radius:10px;padding:.875rem 1rem;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:transform .12s,box-shadow .12s;font-family:inherit`;
+      tile.onmouseenter = ()=>{ tile.style.transform = 'translateY(-1px)'; tile.style.boxShadow = '0 4px 12px rgba(0,0,0,.06)'; };
+      tile.onmouseleave = ()=>{ tile.style.transform = ''; tile.style.boxShadow = ''; };
+      tile.innerHTML = `
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:700;display:flex;align-items:center;gap:6px">
+          <span>${opts.icon}</span>
+          <span>${opts.label}</span>
+        </div>
+        <div style="font-size:22px;font-weight:800;color:${valueColor};line-height:1.1">${opts.count}</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.4">${opts.desc}</div>
+      `;
+      tile.addEventListener('click', ()=>{
+        if(opts.scrollTo){
+          const target = document.querySelector(opts.scrollTo);
+          if(target){
+            target.scrollIntoView({behavior:'smooth', block:'start'});
+            // Highlight temporário
+            const oldBg = target.style.boxShadow;
+            target.style.transition = 'box-shadow .3s';
+            target.style.boxShadow = '0 0 0 3px rgba(124,92,255,.25)';
+            setTimeout(()=>{ target.style.boxShadow = oldBg; }, 1500);
+          }
+        }
+        if(typeof opts.onClick === 'function') opts.onClick();
+      });
+      return tile;
+    }
+
+    container.appendChild(buildHubTile({
+      icon: '🚩',
+      label: 'Reports pendentes',
+      count: nReports,
+      desc: nReports === 0 ? 'Nenhum report aguardando' : 'Questões reportadas pela comunidade',
+      urgent: nReports >= 5,
+      warn: nReports >= 1,
+      scrollTo: '.admin-reports-body'
+    }));
+
+    container.appendChild(buildHubTile({
+      icon: '👎',
+      label: 'Voto negativo pendente',
+      count: nVoteNeg,
+      desc: nVoteNeg === 0 ? 'Tudo limpo' : `${nVoteNegQ} questões + ${nVoteNegS} explicações`,
+      warn: nVoteNeg >= 1,
+      scrollTo: '.admin-shared-mod-body'
+    }));
+
+    container.appendChild(buildHubTile({
+      icon: '⚠',
+      label: 'Auto-sinalizadas',
+      count: nAutoFlagged,
+      desc: nAutoFlagged === 0 ? 'Sem sinalizações automáticas' : 'Com 3+ reports — alta prioridade',
+      urgent: nAutoFlagged >= 1,
+      scrollTo: '.admin-shared-mod-body'
+    }));
+
+    container.appendChild(buildHubTile({
+      icon: '🚫',
+      label: 'Desativadas',
+      count: nDisabled,
+      desc: nDisabled === 0 ? 'Nenhuma desativada' : 'No banco, fora do reaproveitamento',
+      scrollTo: '.admin-shared-mod-body',
+      onClick: ()=>{
+        // Muda filtro pra "Desativadas" antes de scrollar
+        ST._adminModFilter = 'disabled';
+        const body = document.querySelector('.admin-shared-mod-body');
+        if(body) loadAdminSharedExplanationModeration(body);
+        // Atualiza chips
+        document.querySelectorAll('.admin-card .filter-chip').forEach(c => {
+          c.classList.remove('on');
+          if(c.textContent.includes('Desativados')) c.classList.add('on');
+        });
+      }
+    }));
+  }catch(e){
+    container.innerHTML = `<div class="txt3" style="grid-column:1/-1;color:var(--red-text);font-size:12px;padding:.75rem">Erro: ${escapeHTML(e.message||String(e))}</div>`;
+  }
+}
+
 async function loadAdminPoolStats(container){
   if(!supa){ container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>'; return; }
   try{
