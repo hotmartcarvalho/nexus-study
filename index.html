@@ -50166,19 +50166,43 @@ function renderAdminDashboard(){
   loadAdminAIReports(reportsBody);
 
   // V15.12.75.21 — Card: shared_explanations problemáticas
-  // Lista explicações/flashcards compartilhados com mais downvotes que upvotes
-  // (score negativo) — sinal de que a comunidade considera ruim. Admin pode
-  // revisar e excluir manualmente. NÃO automatiza (auto-flag depende de
-  // reports persistidos, ainda local — backlog).
+  // V15.12.75.27 — Padronização: 4 ações por item (Dispensar / Desativar /
+  // Excluir / Reativar) + filtro Pendentes/Dispensadas/Desativadas.
   const sharedModCard = mk('section','admin-card');
   sharedModCard.appendChild(adminSectionLabel('📚 Moderação de conteúdo compartilhado'));
   const sharedModHead = mk('h2','admin-section-title');
-  sharedModHead.textContent = 'Questões, explicações e flashcards com voto negativo';
+  sharedModHead.textContent = 'Questões, explicações e flashcards reportados ou com voto negativo';
   sharedModCard.appendChild(sharedModHead);
   const sharedModHelp = mk('p');
-  sharedModHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem';
-  sharedModHelp.textContent = 'Itens (questões e conteúdo compartilhado) com 1 ou mais votos negativos da comunidade. Revise antes de excluir/desativar — pode ser voto isolado injusto.';
+  sharedModHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem;line-height:1.5';
+  sharedModHelp.innerHTML = 'Cada item pode ser <b>Dispensado</b> (voto/report injusto, mantém ativo), <b>Desativado</b> (some do reaproveitamento mas pode reverter), <b>Excluído</b> (permanente) ou <b>Reativado</b> (volta pra ativo).';
   sharedModCard.appendChild(sharedModHelp);
+
+  // V15.12.75.27 — Filtro: pendentes (padrão) | dispensados | desativados
+  if(!ST._adminModFilter) ST._adminModFilter = 'pending';
+  const filterRow = mk('div');
+  filterRow.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem';
+  const filterOpts = [
+    ['pending', '⚠ Pendentes de revisão', 'Itens com voto negativo/reports que admin ainda não avaliou'],
+    ['dismissed', '✓ Dispensados', 'Itens que admin marcou como "voto injusto, manter ativo"'],
+    ['disabled', '🚫 Desativados', 'Itens que admin desativou (não aparecem mais no reaproveitamento)']
+  ];
+  filterOpts.forEach(([val, lbl, tooltip]) => {
+    const chip = mk('button', 'filter-chip' + (ST._adminModFilter === val ? ' on' : ''));
+    chip.textContent = lbl;
+    chip.title = tooltip;
+    chip.style.cssText = 'font-size:12px;padding:6px 12px';
+    chip.addEventListener('click', ()=>{
+      ST._adminModFilter = val;
+      loadAdminSharedExplanationModeration(sharedModBody);
+      // Atualiza visual dos chips
+      filterRow.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('on'));
+      chip.classList.add('on');
+    });
+    filterRow.appendChild(chip);
+  });
+  sharedModCard.appendChild(filterRow);
+
   const sharedModBody = mk('div','admin-shared-mod-body');
   sharedModBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando...</div>';
   sharedModCard.appendChild(sharedModBody);
@@ -50698,27 +50722,165 @@ async function loadAdminRateLimitedUsers(container){
 // V15.12.75.21 — Carrega e renderiza shared_explanations problemáticas pro
 // admin moderar. Lista itens com score negativo (downvotes > upvotes) — sinal
 // de que a comunidade considera ruim. Admin pode excluir manualmente.
+// V15.12.75.27 — Helper: renderiza linha de 4 ações padrão pra um item moderado.
+// Aplica a questões do pool e a shared_explanations (interface uniforme).
+//
+// Parâmetros:
+//   itemType: 'question' | 'shared'
+//   itemId: content_hash (questão) ou id bigint (shared)
+//   currentStatus: 'active' | 'disabled' (só pra questão)
+//   isReviewed: boolean — se já foi dispensado pelo admin
+//   onChange: callback chamado após ação bem-sucedida (re-render)
+function buildAdminModerationActions(itemType, itemId, currentStatus, isReviewed, onChange){
+  const actions = mk('div');
+  actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center;margin-top:.5rem';
+
+  // === 1. DISPENSAR (só pra itens não-dispensados não-desativados) ===
+  if(!isReviewed && currentStatus !== 'disabled'){
+    const dismissBtn = mkBtn('✓ Dispensar', 'btn btn-sm');
+    dismissBtn.title = 'Avaliei e considero OK — item continua ativo, mas sai da lista de problemas.';
+    dismissBtn.style.cssText = 'color:var(--accent-text);border-color:var(--accent);background:transparent;font-size:11.5px';
+    dismissBtn.addEventListener('click', async ()=>{
+      try{
+        dismissBtn.disabled = true;
+        dismissBtn.textContent = 'Dispensando...';
+        const rpcName = itemType === 'question' ? 'admin_pool_dismiss_negative' : 'admin_shared_dismiss_negative';
+        const params = itemType === 'question'
+          ? {p_content_hash: itemId}
+          : {p_explanation_id: itemId};
+        const {error} = await supa.rpc(rpcName, params);
+        if(error) throw error;
+        showToast('✓ Dispensado — item continua ativo', 3000);
+        if(typeof onChange === 'function') onChange();
+      }catch(e){
+        dismissBtn.disabled = false;
+        dismissBtn.textContent = '✓ Dispensar';
+        showToast('Erro: ' + (e.message||String(e)), 4000);
+      }
+    });
+    actions.appendChild(dismissBtn);
+  }
+
+  // === 2. DESATIVAR / REATIVAR (só pra questões) ===
+  if(itemType === 'question'){
+    if(currentStatus === 'disabled'){
+      // Reativar
+      const reactBtn = mkBtn('↻ Reativar', 'btn btn-sm');
+      reactBtn.title = 'Volta a aparecer no reaproveitamento.';
+      reactBtn.style.cssText = 'color:var(--accent-text);border-color:var(--accent);background:transparent;font-size:11.5px;font-weight:600';
+      reactBtn.addEventListener('click', async ()=>{
+        try{
+          reactBtn.disabled = true;
+          reactBtn.textContent = 'Reativando...';
+          const {error} = await supa
+            .from('ai_question_pool')
+            .update({status: 'active'})
+            .eq('content_hash', itemId);
+          if(error) throw error;
+          showToast('✓ Questão reativada', 3000);
+          if(typeof onChange === 'function') onChange();
+        }catch(e){
+          reactBtn.disabled = false;
+          reactBtn.textContent = '↻ Reativar';
+          showToast('Erro: ' + (e.message||String(e)), 4000);
+        }
+      });
+      actions.appendChild(reactBtn);
+    } else {
+      // Desativar
+      const disableBtn = mkBtn('🚫 Desativar', 'btn btn-sm');
+      disableBtn.title = 'Some do reaproveitamento. Pode reativar depois (a questão NÃO é excluída).';
+      disableBtn.style.cssText = 'color:var(--amber-text);border-color:var(--amber);background:transparent;font-size:11.5px';
+      disableBtn.addEventListener('click', async ()=>{
+        try{
+          disableBtn.disabled = true;
+          disableBtn.textContent = 'Desativando...';
+          const {error} = await supa
+            .from('ai_question_pool')
+            .update({status: 'disabled'})
+            .eq('content_hash', itemId);
+          if(error) throw error;
+          showToast('🚫 Questão desativada (pode reativar depois)', 3000);
+          if(typeof onChange === 'function') onChange();
+        }catch(e){
+          disableBtn.disabled = false;
+          disableBtn.textContent = '🚫 Desativar';
+          showToast('Erro: ' + (e.message||String(e)), 4000);
+        }
+      });
+      actions.appendChild(disableBtn);
+    }
+  }
+
+  // === 3. EXCLUIR (sempre disponível, confirmação dupla) ===
+  const delBtn = mkBtn('🗑 Excluir', 'btn btn-sm');
+  delBtn.title = 'EXCLUSÃO PERMANENTE. Use com cuidado — preferível desativar.';
+  delBtn.style.cssText = 'color:var(--red-text);border-color:var(--red);background:transparent;font-size:11.5px';
+  let confirmingDel = false;
+  delBtn.addEventListener('click', async ()=>{
+    if(!confirmingDel){
+      confirmingDel = true;
+      delBtn.textContent = 'Clique de novo pra confirmar';
+      delBtn.style.background = 'rgba(232,76,76,.10)';
+      setTimeout(()=>{
+        if(confirmingDel){
+          confirmingDel = false;
+          delBtn.textContent = '🗑 Excluir';
+          delBtn.style.background = 'transparent';
+        }
+      }, 4000);
+      return;
+    }
+    try{
+      delBtn.disabled = true;
+      delBtn.textContent = 'Excluindo...';
+      if(itemType === 'question'){
+        const {error} = await supa.rpc('admin_pool_delete_one', {p_content_hash: itemId});
+        if(error) throw error;
+      } else {
+        const {error} = await supa
+          .from('shared_explanations')
+          .delete()
+          .eq('id', itemId);
+        if(error) throw error;
+      }
+      showToast('🗑 Item excluído permanentemente', 3000);
+      if(typeof onChange === 'function') onChange();
+    }catch(e){
+      delBtn.disabled = false;
+      delBtn.textContent = '🗑 Excluir';
+      delBtn.style.background = 'transparent';
+      showToast('Erro: ' + (e.message||String(e)), 4000);
+    }
+  });
+  actions.appendChild(delBtn);
+
+  return actions;
+}
+
 async function loadAdminSharedExplanationModeration(container){
   if(!supa){
     container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>';
     return;
   }
   try{
-    // V15.12.75.26 — Busca EM PARALELO:
-    // 1. Explicações/flashcards com downvotes (shared_explanations.downvotes)
-    // 2. Questões com voto negativo (ai_question_pool.human_downvotes)
-    // Mostra ambos no mesmo painel pra admin ter visão completa.
+    // V15.12.75.27 — Filtra baseado em ST._adminModFilter:
+    //   'pending'   → status=active + sem admin_reviewed_at + (downvotes >= 1 OR reports >= 1)
+    //   'dismissed' → status=active + admin_reviewed_at != null
+    //   'disabled'  → status=disabled
+    const filter = ST._adminModFilter || 'pending';
+
     const [sharedRes, questionsRes] = await Promise.all([
       supa
         .from('shared_explanations')
-        .select('id, question_hash, kind, model, payload, author_id, author_username, upvotes, downvotes, created_at')
+        .select('id, question_hash, kind, model, payload, author_id, author_username, upvotes, downvotes, created_at, admin_reviewed_at')
         .order('downvotes', {ascending: false})
-        .limit(50),
+        .limit(100),
       supa
         .from('ai_question_pool')
-        .select('content_hash, status, kind, bank_id, discipline_id, difficulty, enunciado, human_upvotes, human_downvotes, reports_count, created_at')
+        .select('content_hash, status, kind, bank_id, discipline_id, difficulty, enunciado, human_upvotes, human_downvotes, reports_count, created_at, admin_reviewed_at')
         .order('human_downvotes', {ascending: false})
-        .limit(50)
+        .limit(100)
     ]);
 
     if(sharedRes.error){
@@ -50727,24 +50889,52 @@ async function loadAdminSharedExplanationModeration(container){
     }
     if(questionsRes.error){
       console.warn('[admin-mod] erro questões:', questionsRes.error.message);
-      // não bloqueia, segue com só explicações
     }
 
-    // Filtra explicações com pelo menos 1 downvote
-    const problematicShared = (sharedRes.data || []).filter(it =>
-      (it.downvotes || 0) >= 1
-    );
-    // Filtra questões com pelo menos 1 downvote humano
-    const problematicQuestions = ((questionsRes.data) || []).filter(q =>
-      (q.human_downvotes || 0) >= 1
-    );
+    // Aplica filtro
+    let problematicShared, problematicQuestions;
+    if(filter === 'pending'){
+      problematicShared = (sharedRes.data || []).filter(it =>
+        (it.downvotes || 0) >= 1 && !it.admin_reviewed_at
+      );
+      problematicQuestions = ((questionsRes.data) || []).filter(q =>
+        q.status === 'active' &&
+        !q.admin_reviewed_at &&
+        ((q.human_downvotes || 0) >= 1 || (q.reports_count || 0) >= 1)
+      );
+    } else if(filter === 'dismissed'){
+      problematicShared = (sharedRes.data || []).filter(it =>
+        !!it.admin_reviewed_at
+      );
+      problematicQuestions = ((questionsRes.data) || []).filter(q =>
+        q.status === 'active' && !!q.admin_reviewed_at
+      );
+    } else if(filter === 'disabled'){
+      problematicShared = []; // shared não tem status — apenas questões
+      problematicQuestions = ((questionsRes.data) || []).filter(q =>
+        q.status === 'disabled'
+      );
+    } else {
+      problematicShared = [];
+      problematicQuestions = [];
+    }
 
     container.innerHTML = '';
 
     if(problematicShared.length === 0 && problematicQuestions.length === 0){
       const ok = mk('div');
       ok.style.cssText = 'padding:1rem;color:var(--accent-text);font-size:13px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.22);border-radius:8px';
-      ok.innerHTML = '✓ <b>Nenhum conteúdo problemático.</b> Toda a biblioteca compartilhada e o banco de questões têm score positivo ou neutro.';
+      let msg;
+      if(filter === 'pending'){
+        msg = '✓ <b>Nenhum item pendente de revisão.</b> Tudo limpo no banco e nas explicações compartilhadas.';
+      } else if(filter === 'dismissed'){
+        msg = 'ℹ️ <b>Nenhum item dispensado ainda.</b> Quando você clicar "Dispensar" num item da aba Pendentes, ele aparece aqui.';
+      } else if(filter === 'disabled'){
+        msg = 'ℹ️ <b>Nenhuma questão desativada.</b> Questões desativadas (status="disabled") aparecem aqui.';
+      } else {
+        msg = '✓ <b>Nenhum conteúdo encontrado.</b>';
+      }
+      ok.innerHTML = msg;
       container.appendChild(ok);
       return;
     }
@@ -50799,34 +50989,23 @@ async function loadAdminSharedExplanationModeration(container){
         preview.textContent = String(q.enunciado||'').slice(0, 280);
         card.appendChild(preview);
 
-        const actions = mk('div');
-        actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end';
+        // V15.12.75.27 — 4 ações padrão via helper
+        const refreshList = ()=>loadAdminSharedExplanationModeration(container);
+        const actions = buildAdminModerationActions(
+          'question',
+          q.content_hash,
+          q.status,
+          !!q.admin_reviewed_at,
+          refreshList
+        );
 
-        // Botão desativar (status=disabled) — não exclui, só tira do reaproveitamento
-        const disableBtn = mkBtn(q.status === 'disabled' ? '✓ Reativar' : '🚫 Desativar', 'btn btn-sm');
-        disableBtn.title = q.status === 'disabled'
-          ? 'Volta a aparecer no reaproveitamento'
-          : 'Para de aparecer no reaproveitamento. Não exclui — pode reativar depois.';
-        disableBtn.style.cssText = q.status === 'disabled'
-          ? 'color:var(--accent-text);border-color:var(--accent);font-size:11.5px'
-          : 'color:var(--amber-text);border-color:var(--amber);font-size:11.5px';
-        disableBtn.addEventListener('click', async ()=>{
-          try{
-            disableBtn.disabled = true;
-            const newStatus = q.status === 'disabled' ? 'active' : 'disabled';
-            const {error: upErr} = await supa
-              .from('ai_question_pool')
-              .update({status: newStatus})
-              .eq('content_hash', q.content_hash);
-            if(upErr) throw upErr;
-            showToast(`✓ Questão ${newStatus === 'disabled' ? 'desativada' : 'reativada'}`, 3000);
-            card.style.display = 'none';
-          }catch(e){
-            disableBtn.disabled = false;
-            showToast('Erro: ' + (e.message||String(e)), 4000);
-          }
-        });
-        actions.appendChild(disableBtn);
+        // Se já foi dispensado, mostra chip "Dispensado" antes dos botões
+        if(q.admin_reviewed_at){
+          const dismissedChip = mk('span');
+          dismissedChip.style.cssText = 'display:inline-flex;align-items:center;padding:3px 8px;background:rgba(16,185,129,.10);color:var(--accent-text);border:1px solid rgba(16,185,129,.30);border-radius:6px;font-size:10.5px;font-weight:600;margin-right:auto';
+          dismissedChip.innerHTML = `✓ Dispensado em ${new Date(q.admin_reviewed_at).toLocaleDateString('pt-BR')}`;
+          actions.insertBefore(dismissedChip, actions.firstChild);
+        }
 
         card.appendChild(actions);
         container.appendChild(card);
@@ -50892,45 +51071,22 @@ async function loadAdminSharedExplanationModeration(container){
       preview.textContent = previewText;
       card.appendChild(preview);
 
-      // Ações
-      const actions = mk('div');
-      actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end';
+      // V15.12.75.27 — 4 ações padrão (shared não tem desativar — só dispensar e excluir)
+      const refreshList = ()=>loadAdminSharedExplanationModeration(container);
+      const actions = buildAdminModerationActions(
+        'shared',
+        item.id,
+        null, // shared não tem status disabled
+        !!item.admin_reviewed_at,
+        refreshList
+      );
 
-      const delBtn = mkBtn('🗑 Excluir','btn btn-sm');
-      delBtn.style.cssText = 'color:var(--red-text);border-color:var(--red);background:transparent;font-size:11.5px';
-      let confirming = false;
-      delBtn.addEventListener('click', async ()=>{
-        if(!confirming){
-          confirming = true;
-          delBtn.textContent = 'Clique de novo pra confirmar exclusão';
-          delBtn.style.background = 'rgba(232,76,76,.10)';
-          setTimeout(()=>{
-            if(confirming){
-              confirming = false;
-              delBtn.textContent = '🗑 Excluir';
-              delBtn.style.background = 'transparent';
-            }
-          }, 4000);
-          return;
-        }
-        try{
-          delBtn.disabled = true;
-          delBtn.textContent = 'Excluindo...';
-          const {error: delErr} = await supa
-            .from('shared_explanations')
-            .delete()
-            .eq('id', item.id);
-          if(delErr) throw delErr;
-          showToast('Conteúdo excluído', 3000);
-          card.style.display = 'none';
-        }catch(e){
-          delBtn.disabled = false;
-          delBtn.textContent = '🗑 Excluir';
-          delBtn.style.background = 'transparent';
-          showToast('Erro ao excluir: ' + (e.message||String(e)), 4000);
-        }
-      });
-      actions.appendChild(delBtn);
+      if(item.admin_reviewed_at){
+        const dismissedChip = mk('span');
+        dismissedChip.style.cssText = 'display:inline-flex;align-items:center;padding:3px 8px;background:rgba(16,185,129,.10);color:var(--accent-text);border:1px solid rgba(16,185,129,.30);border-radius:6px;font-size:10.5px;font-weight:600;margin-right:auto';
+        dismissedChip.innerHTML = `✓ Dispensado em ${new Date(item.admin_reviewed_at).toLocaleDateString('pt-BR')}`;
+        actions.insertBefore(dismissedChip, actions.firstChild);
+      }
 
       card.appendChild(actions);
       container.appendChild(card);
