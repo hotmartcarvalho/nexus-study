@@ -36491,6 +36491,13 @@ async function practSubmit(answer){
       // Tenta cachear PRÓXIMA questão também (lookup novo)
       let nextCached = null;
       try{ nextCached = await tryFetchFromPool({method: 'practice'}); }catch(_){}
+      console.info('[cache-eval] processado:', {
+        ok,
+        userAnswer,
+        correctAnswer,
+        hasNext: !!nextCached,
+        nextId: nextCached?._poolId || null
+      });
 
       // V15.12.75.8 — Se a questão do pool não tem explicação salva, mostra
       // mensagem útil. As ações disponíveis dependem do estado:
