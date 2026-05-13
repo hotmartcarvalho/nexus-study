@@ -25913,7 +25913,12 @@ function saveAIQuestion(method, q, modelId, opts){
       discipline_id: discSlug,
       difficulty: difficulty,
       ai_score: quality.score,
-      status: quality.status,
+      // V15.12.75.12 — Se a questão ainda não tem explicação (caso típico de
+      // prefetch que o user não respondeu), entra como DRAFT no pool. Cache
+      // lookup ignora drafts. Quando o user responder e o eval enriquecer
+      // via ai_pool_enrich, daí pula pra ACTIVE.
+      // Isso impede que questões "vazias" virem cache hit pra outros users.
+      status: (q.explanation && q.explanation.trim().length > 10) ? quality.status : 'draft',
       created_by_user_id: AUTH.user.id
     };
     setTimeout(()=>{
