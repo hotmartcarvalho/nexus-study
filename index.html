@@ -50173,11 +50173,11 @@ function renderAdminDashboard(){
   const sharedModCard = mk('section','admin-card');
   sharedModCard.appendChild(adminSectionLabel('📚 Moderação de conteúdo compartilhado'));
   const sharedModHead = mk('h2','admin-section-title');
-  sharedModHead.textContent = 'Explicações e flashcards com votos negativos';
+  sharedModHead.textContent = 'Questões, explicações e flashcards com voto negativo';
   sharedModCard.appendChild(sharedModHead);
   const sharedModHelp = mk('p');
   sharedModHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem';
-  sharedModHelp.textContent = 'Itens com 1 ou mais downvotes da comunidade. Revise o conteúdo antes de excluir — pode ser voto isolado injusto.';
+  sharedModHelp.textContent = 'Itens (questões e conteúdo compartilhado) com 1 ou mais votos negativos da comunidade. Revise antes de excluir/desativar — pode ser voto isolado injusto.';
   sharedModCard.appendChild(sharedModHelp);
   const sharedModBody = mk('div','admin-shared-mod-body');
   sharedModBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando...</div>';
@@ -50704,43 +50704,143 @@ async function loadAdminSharedExplanationModeration(container){
     return;
   }
   try{
-    // Busca itens com score negativo. Sem RPC dedicado — query direta
-    // (admin já tem permissão de read em shared_explanations).
-    const {data: items, error} = await supa
-      .from('shared_explanations')
-      .select('id, question_hash, kind, model, payload, author_id, author_username, upvotes, downvotes, created_at')
-      .order('downvotes', {ascending: false})
-      .limit(50);
+    // V15.12.75.26 — Busca EM PARALELO:
+    // 1. Explicações/flashcards com downvotes (shared_explanations.downvotes)
+    // 2. Questões com voto negativo (ai_question_pool.human_downvotes)
+    // Mostra ambos no mesmo painel pra admin ter visão completa.
+    const [sharedRes, questionsRes] = await Promise.all([
+      supa
+        .from('shared_explanations')
+        .select('id, question_hash, kind, model, payload, author_id, author_username, upvotes, downvotes, created_at')
+        .order('downvotes', {ascending: false})
+        .limit(50),
+      supa
+        .from('ai_question_pool')
+        .select('content_hash, status, kind, bank_id, discipline_id, difficulty, enunciado, human_upvotes, human_downvotes, reports_count, created_at')
+        .order('human_downvotes', {ascending: false})
+        .limit(50)
+    ]);
 
-    if(error){
-      container.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro ao carregar: ${escapeHTML(error.message||String(error))}</div>`;
+    if(sharedRes.error){
+      container.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro ao carregar explicações: ${escapeHTML(sharedRes.error.message||String(sharedRes.error))}</div>`;
       return;
     }
+    if(questionsRes.error){
+      console.warn('[admin-mod] erro questões:', questionsRes.error.message);
+      // não bloqueia, segue com só explicações
+    }
 
-    // Filtra itens com pelo menos 1 downvote (admin precisa visibilidade
-    // ampla pra moderar). V15.12.75.22 — antes era score < 0 (downvotes
-    // só apareciam se já tinha MAIS downs que ups). Agora mostra todos
-    // com 1+ downvote pra admin avaliar antes do problema piorar.
-    const problematic = (items||[]).filter(it =>
+    // Filtra explicações com pelo menos 1 downvote
+    const problematicShared = (sharedRes.data || []).filter(it =>
       (it.downvotes || 0) >= 1
+    );
+    // Filtra questões com pelo menos 1 downvote humano
+    const problematicQuestions = ((questionsRes.data) || []).filter(q =>
+      (q.human_downvotes || 0) >= 1
     );
 
     container.innerHTML = '';
 
-    if(problematic.length === 0){
+    if(problematicShared.length === 0 && problematicQuestions.length === 0){
       const ok = mk('div');
       ok.style.cssText = 'padding:1rem;color:var(--accent-text);font-size:13px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.22);border-radius:8px';
-      ok.innerHTML = '✓ <b>Nenhum conteúdo problemático.</b> Toda a biblioteca compartilhada tem score positivo ou neutro.';
+      ok.innerHTML = '✓ <b>Nenhum conteúdo problemático.</b> Toda a biblioteca compartilhada e o banco de questões têm score positivo ou neutro.';
       container.appendChild(ok);
       return;
     }
 
-    const meta = mk('p');
-    meta.style.cssText = 'font-size:12px;color:var(--text3);margin:0 0 .75rem';
-    meta.innerHTML = `<b>${problematic.length}</b> item${problematic.length>1?'ns':''} com score negativo.`;
-    container.appendChild(meta);
+    // Seção 1: Questões com voto negativo (vêm primeiro porque são mais graves)
+    if(problematicQuestions.length > 0){
+      const qHead = mk('div');
+      qHead.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:0 0 .5rem';
+      qHead.innerHTML = `📝 Questões com voto negativo (${problematicQuestions.length})`;
+      container.appendChild(qHead);
 
-    problematic.forEach(item => {
+      problematicQuestions.forEach(q => {
+        const card = mk('div');
+        card.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px;padding:.75rem 1rem;margin-bottom:.5rem';
+
+        const score = (q.human_upvotes||0) - (q.human_downvotes||0);
+        const header = mk('div');
+        header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:.375rem;flex-wrap:wrap';
+
+        const headerLeft = mk('div');
+        headerLeft.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+        const kindChip = mk('span');
+        kindChip.style.cssText = 'padding:2px 8px;background:rgba(124,92,255,.10);color:var(--gralia-purple);border-radius:10px;font-size:10.5px;font-weight:600;text-transform:uppercase';
+        kindChip.textContent = q.kind || 'CE';
+        headerLeft.appendChild(kindChip);
+
+        const statusChip = mk('span');
+        statusChip.style.cssText = `padding:2px 8px;background:var(--surface);color:${q.status==='active' ? 'var(--accent-text)' : 'var(--text3)'};border-radius:10px;font-size:10.5px;font-weight:600`;
+        statusChip.textContent = q.status || '?';
+        headerLeft.appendChild(statusChip);
+
+        const meta = mk('span');
+        meta.style.cssText = 'font-size:11px;color:var(--text3)';
+        meta.textContent = `${q.bank_id || '?'} · ${q.discipline_id || '?'} · ${q.difficulty || '?'}`;
+        headerLeft.appendChild(meta);
+
+        header.appendChild(headerLeft);
+
+        const scoreChip = mk('span');
+        scoreChip.style.cssText = 'padding:3px 10px;background:rgba(232,76,76,.10);color:var(--red-text);border:1px solid rgba(232,76,76,.30);border-radius:10px;font-size:11.5px;font-weight:700';
+        scoreChip.innerHTML = `${score} <span style="font-weight:500;opacity:.8">(${q.human_upvotes||0}👍 / ${q.human_downvotes||0}👎)</span>`;
+        header.appendChild(scoreChip);
+        card.appendChild(header);
+
+        const ids = mk('div');
+        ids.style.cssText = 'font-size:10.5px;color:var(--text3);margin-bottom:.5rem;font-family:ui-monospace,monospace';
+        ids.textContent = `hash ${(q.content_hash||'').slice(0,16)}${q.reports_count ? ` · 🚩 ${q.reports_count} reports` : ''}`;
+        card.appendChild(ids);
+
+        const preview = mk('div');
+        preview.style.cssText = 'font-size:12.5px;color:var(--text);line-height:1.5;margin-bottom:.5rem;padding:.5rem .625rem;background:var(--surface);border-radius:6px';
+        preview.textContent = String(q.enunciado||'').slice(0, 280);
+        card.appendChild(preview);
+
+        const actions = mk('div');
+        actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end';
+
+        // Botão desativar (status=disabled) — não exclui, só tira do reaproveitamento
+        const disableBtn = mkBtn(q.status === 'disabled' ? '✓ Reativar' : '🚫 Desativar', 'btn btn-sm');
+        disableBtn.title = q.status === 'disabled'
+          ? 'Volta a aparecer no reaproveitamento'
+          : 'Para de aparecer no reaproveitamento. Não exclui — pode reativar depois.';
+        disableBtn.style.cssText = q.status === 'disabled'
+          ? 'color:var(--accent-text);border-color:var(--accent);font-size:11.5px'
+          : 'color:var(--amber-text);border-color:var(--amber);font-size:11.5px';
+        disableBtn.addEventListener('click', async ()=>{
+          try{
+            disableBtn.disabled = true;
+            const newStatus = q.status === 'disabled' ? 'active' : 'disabled';
+            const {error: upErr} = await supa
+              .from('ai_question_pool')
+              .update({status: newStatus})
+              .eq('content_hash', q.content_hash);
+            if(upErr) throw upErr;
+            showToast(`✓ Questão ${newStatus === 'disabled' ? 'desativada' : 'reativada'}`, 3000);
+            card.style.display = 'none';
+          }catch(e){
+            disableBtn.disabled = false;
+            showToast('Erro: ' + (e.message||String(e)), 4000);
+          }
+        });
+        actions.appendChild(disableBtn);
+
+        card.appendChild(actions);
+        container.appendChild(card);
+      });
+    }
+
+    // Seção 2: Explicações/flashcards com voto negativo
+    if(problematicShared.length > 0){
+      const sHead = mk('div');
+      sHead.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:1rem 0 .5rem';
+      sHead.innerHTML = `📚 Explicações e flashcards com voto negativo (${problematicShared.length})`;
+      container.appendChild(sHead);
+
+      problematicShared.forEach(item => {
       const card = mk('div');
       card.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px;padding:.75rem 1rem;margin-bottom:.5rem';
 
@@ -50835,6 +50935,7 @@ async function loadAdminSharedExplanationModeration(container){
       card.appendChild(actions);
       container.appendChild(card);
     });
+    } // V15.12.75.26 — fecha if(problematicShared.length > 0)
   }catch(e){
     container.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro: ${escapeHTML(e.message||String(e))}</div>`;
   }
