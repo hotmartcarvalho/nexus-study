@@ -8144,41 +8144,19 @@ function buildCompactHistory(history, opts){
   summaryParts.push('Evite repetir esses tópicos exatos; varie nas próximas.');
   const summary = summaryParts.join('. ') + '.';
 
-  // V15.12.75.17 — Comprime também o conteúdo do "recent" (último turn).
-  // Antes preservávamos o assistant inteiro (1500+ chars com explanation,
-  // trap, keyword, suggested_flashcard, next embutidos). Agora extraímos só
-  // metadados essenciais pra IA ter contexto, sem inflar o input. Economia
-  // típica: 4500 → 800 chars em sessão de 5+ questões.
-  const compactRecent = recent.map(entry => {
-    if(entry.role !== 'assistant') return entry;
-    try{
-      const parsed = JSON.parse(entry.content);
-      // Mantém apenas o ESSENCIAL pro contexto da IA na próxima questão:
-      // - is_correct (saber se user acertou pra ajustar dificuldade)
-      // - topic (saber tópico recente pra evitar repetir)
-      // - trap_type (saber armadilhas usadas pra variar)
-      const compactObj = {
-        type: parsed.type || 'feedback',
-        is_correct: parsed.is_correct,
-        topic: parsed.topic ? String(parsed.topic).slice(0, 60) : undefined,
-        trap_type: parsed.trap_type
-      };
-      // Remove undefined pra JSON ficar limpo
-      Object.keys(compactObj).forEach(k => compactObj[k] === undefined && delete compactObj[k]);
-      return {role: 'assistant', content: JSON.stringify(compactObj)};
-    }catch(_){
-      // Se não parse, mantém original (pode ser texto livre)
-      return entry;
-    }
-  });
+  // V15.12.75.25 — REVERTE compactação agressiva do recent.
+  // A V15.12.75.17 comprimia o último assistant pra economizar tokens, mas
+  // estava deixando a IA confusa sem o JSON completo de contexto, resultando
+  // em "IA retornou resposta vazia ou sem campos esperados". Voltamos pra
+  // manter o último turn intacto. Compactação dos antigos (via summary acima)
+  // continua funcionando e cobre a parte da economia.
 
-  // Monta nova história: [initial, summaryUser, summaryAssistant, ...compactRecent]
-  // summaryUser/summaryAssistant fingem ser um turn pro modelo entender o resumo
+  // Monta nova história: [initial, summaryUser, summaryAssistant, ...recent]
   return [
     initial,
     {role: 'user', content: '[Resumo de turnos anteriores]'},
     {role: 'assistant', content: summary},
-    ...compactRecent
+    ...recent
   ];
 }
 
