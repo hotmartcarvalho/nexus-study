@@ -17409,73 +17409,184 @@ function showLegalModal(kind){
   if(kind === 'terms'){
     t.textContent = 'Termos de Uso';
     body.innerHTML = `
-      <p><b>Última atualização:</b> ${_today}</p>
-      <p>Bem-vindo ao Gralia. Ao criar conta e usar a plataforma, você concorda com estes termos.</p>
+      <p><b>Última atualização:</b> ${_today} · <b>Versão:</b> 2.0 (beta)</p>
+      <p>Bem-vindo ao Gralia (a "Plataforma"). Ao criar conta e usar a Plataforma, você concorda com estes Termos de Uso e a Política de Privacidade. Se não concordar, não use a Plataforma.</p>
 
-      <h3 style="margin:1rem 0 .375rem;font-size:14px">1. Cadastro</h3>
-      <p>Você precisa ter pelo menos 13 anos pra criar conta. Cadastre dados verdadeiros — você é responsável por tudo que fizer com sua conta.</p>
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">1. Sobre a Plataforma</h3>
+      <p>O Gralia é uma plataforma online de preparação para concursos públicos que utiliza inteligência artificial pra gerar questões, explicações, flashcards e ferramentas adaptativas de estudo. A Plataforma encontra-se em fase <b>beta</b> e pode sofrer alterações, ajustes e indisponibilidades sem aviso prévio.</p>
 
-      <h3 style="margin:1rem 0 .375rem;font-size:14px">2. Uso da plataforma</h3>
-      <p>Você usa o Gralia pra estudar. É proibido: copiar conteúdo de outros usuários sem autorização, fazer engenharia reversa do app, automatizar cadastros pra burlar limites de créditos gratuitos, ou enviar conteúdo ilegal.</p>
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">2. Cadastro e conta</h3>
+      <p>Pra criar conta você deve ter pelo menos <b>13 anos</b>. Menores de 18 anos só podem usar com <b>autorização expressa de pelo menos um dos responsáveis legais</b>, que assumem responsabilidade pela autorização (LGPD art. 14 e Código Civil). Você é responsável pela veracidade dos dados informados e pela segurança da sua senha — não compartilhe credenciais.</p>
+      <p>É proibido criar múltiplas contas pra burlar limites de créditos, benefícios ou regras. Detectamos signups massivos do mesmo IP automaticamente e podemos limitar ou bloquear contas suspeitas (veja seção 8).</p>
 
-      <h3 style="margin:1rem 0 .375rem;font-size:14px">3. Conteúdo gerado por IA</h3>
-      <p>O Gralia gera questões, explicações e flashcards usando IA. Apesar dos filtros de qualidade, podem ocorrer erros. Você é responsável por verificar conteúdos críticos com fontes oficiais (livros, vídeo-aulas, jurisprudência atualizada). O Gralia não substitui estudo de teoria.</p>
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">3. Uso permitido</h3>
+      <p>O conteúdo gerado pela Plataforma destina-se ao seu estudo pessoal. É <b>proibido</b>:</p>
+      <ul style="padding-left:1.25rem;margin:.25rem 0">
+        <li>Revender, redistribuir comercialmente ou republicar conteúdo gerado;</li>
+        <li>Usar bots, scrapers ou ferramentas automatizadas pra extrair dados;</li>
+        <li>Fazer engenharia reversa do código ou da infraestrutura;</li>
+        <li>Compartilhar conteúdo ilegal, ofensivo, discriminatório, racista ou que viole direitos de terceiros;</li>
+        <li>Tentar acessar áreas restritas, contas de outros usuários ou painéis administrativos.</li>
+      </ul>
 
-      <h3 style="margin:1rem 0 .375rem;font-size:14px">4. Materiais que você adiciona</h3>
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">4. Conteúdo gerado por IA</h3>
+      <p>O Gralia gera questões, explicações e flashcards usando modelos de IA da Anthropic (Claude). Apesar dos filtros de qualidade automáticos, podem ocorrer erros — especialmente em legislação recente, jurisprudência atualizada, estatísticas e dados regionais.</p>
+      <p>Você é responsável por verificar conteúdos críticos com fontes oficiais (livros, materiais oficiais do órgão da banca, jurisprudência atualizada). <b>O Gralia não substitui</b> estudo de teoria, professores qualificados, materiais oficiais nem orientação jurídica.</p>
+
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">5. Materiais que você adiciona</h3>
       <p>Quando você adiciona uma fonte (PDF, texto, apostila), garante que tem direito de uso e que o conteúdo não viola direitos de terceiros (cursos pagos, autores, plataformas).</p>
-      <p><b>Política de compartilhamento (atualizada):</b> Toda fonte adicionada por você é automaticamente enviada para revisão de moderadores e, após aprovada, fica disponível para todos os assinantes do Gralia consultarem e importarem. Esse modelo torna o Gralia mais útil para todos — nenhum usuário precisa duplicar trabalho de digitalizar/transcrever materiais comuns.</p>
-      <p>Antes da liberação pública: a fonte fica visível só para você e moderadores. Os moderadores removem referências a cursos pagos, gabaritos e autores, garantindo que o conteúdo seja conhecimento técnico geral. Se sua fonte for rejeitada, ela continua disponível para o seu uso pessoal.</p>
-      <p>Você pode excluir sua fonte a qualquer momento. Após exclusão, moderadores são notificados para decidir se mantém ou remove a versão pública (se já tinha sido aprovada e usada por outros usuários).</p>
-      <p><b>Importante:</b> ao adicionar uma fonte, você concorda em compartilhá-la com a comunidade após revisão. Se quiser estudar com material confidencial ou privado, considere se ele realmente é apropriado para a plataforma.</p>
+      <p><b>Política de compartilhamento:</b> Toda fonte adicionada é automaticamente enviada para revisão de moderadores e, após aprovada, fica disponível para outros assinantes consultarem e importarem. Esse modelo torna o Gralia mais útil para todos — nenhum usuário precisa duplicar trabalho de digitalizar materiais comuns.</p>
+      <p>Antes da liberação pública: a fonte fica visível só pra você e moderadores. Os moderadores removem referências a cursos pagos, gabaritos e autores, garantindo que o conteúdo seja conhecimento técnico geral. Se sua fonte for rejeitada, ela continua disponível pro seu uso pessoal.</p>
+      <p>Você pode excluir sua fonte a qualquer momento. Após exclusão, moderadores são notificados pra decidir se mantém ou remove a versão pública (caso já aprovada e em uso por outros usuários).</p>
+      <p><b>Importante:</b> ao adicionar uma fonte, você concorda em compartilhá-la com a comunidade após revisão. Se quiser estudar com material confidencial ou privado, considere se ele realmente é apropriado pra Plataforma.</p>
 
-      <h3 style="margin:1rem 0 .375rem;font-size:14px">5. Créditos e pagamentos</h3>
-      <p>Estamos em versão BETA. Créditos iniciais são grátis. Os 500 primeiros usuários terão desconto progressivo em assinaturas futuras (30% pra 1-100, 20% pra 101-300, 10% pra 301-500). Esse desconto é vitalício enquanto a conta estiver ativa.</p>
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">6. Comunidade e moderação</h3>
+      <p>Você pode compartilhar explicações e flashcards com a comunidade. Conteúdo compartilhado pode ser moderado, removido, desativado ou sinalizado pela equipe a qualquer momento se violar estes Termos.</p>
+      <p>Sistema de moderação por usuários: votos negativos e reports da comunidade alimentam um sistema de auto-sinalização — conteúdo com 3+ reports não-resolvidos é automaticamente flagged pra revisão prioritária pelo administrador. Use os botões de reportar com responsabilidade — abuso de reports pode resultar em advertência ou suspensão.</p>
 
-      <h3 style="margin:1rem 0 .375rem;font-size:14px">6. Encerramento</h3>
-      <p>Você pode apagar sua conta a qualquer momento em Configurações. Reservamos o direito de suspender contas que violem estes termos.</p>
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">7. Créditos e assinaturas</h3>
+      <p>A Plataforma oferece créditos iniciais gratuitos pra novos usuários (trial) e planos pagos por assinatura. Os créditos são consumidos conforme uso de funcionalidades de IA. Preços e quantidades podem ser ajustados — alterações relevantes serão comunicadas por email ou aviso na Plataforma.</p>
+      <p>Promoções específicas pra usuários early-adopter (descontos vitalícios, bônus de cadastro, etc.) são comunicadas separadamente e podem ter regras próprias.</p>
+      <p><b>Pagamentos:</b> processados via Mercado Pago. Não armazenamos dados de cartão. Cancelamentos podem ser feitos a qualquer momento pelo painel da conta — pagamentos já efetuados não são reembolsáveis exceto nos casos previstos pelo Código de Defesa do Consumidor.</p>
+      <p><b>Menores de 18 anos:</b> a contratação de assinaturas pagas requer autorização expressa do responsável legal, que assume responsabilidade financeira. O uso gratuito (trial e funcionalidades não-pagas) segue as regras da seção 2.</p>
 
-      <h3 style="margin:1rem 0 .375rem;font-size:14px">7. Limitação de responsabilidade</h3>
-      <p>O Gralia é uma ferramenta de auxílio ao estudo. Não garantimos aprovação em prova alguma. Resultados dependem do seu esforço pessoal e da qualidade do estudo de teoria que você faz.</p>
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">8. Anti-abuso e suspensão de conta</h3>
+      <p>A Plataforma utiliza sistema anti-abuso multi-camadas:</p>
+      <ul style="padding-left:1.25rem;margin:.25rem 0">
+        <li><b>Verificação anti-bot:</b> Cloudflare Turnstile valida que signups e logins não são automatizados;</li>
+        <li><b>Limite de signups por IP:</b> múltiplas contas criadas do mesmo endereço em 24h podem ter trial reduzido ou negado;</li>
+        <li><b>Suspensão automática:</b> em casos de abuso severo (10+ signups do mesmo IP em 24h), a conta pode ser suspensa automaticamente.</li>
+      </ul>
+      <p>Conta suspensa por sistema automatizado pode ser <b>contestada via "Fale conosco"</b> — analisamos cada caso individualmente. Contas pagantes ativas e contas em whitelist administrativa nunca são suspensas automaticamente.</p>
+      <p>Também podemos suspender contas que violem estes Termos, façam fraude em créditos, tentem invadir o sistema, ou estejam inadimplentes.</p>
+
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">9. Encerramento</h3>
+      <p>Você pode apagar sua conta a qualquer momento em Configurações. Após exclusão, seus dados pessoais são removidos conforme a Política de Privacidade (até 30 dias), exceto registros que devemos manter por obrigação legal.</p>
+      <p>Nos reservamos o direito de suspender ou encerrar contas que violem estes termos, mediante notificação quando aplicável.</p>
+
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">10. Propriedade intelectual</h3>
+      <p>Marca, logo, design, código, infraestrutura, métodos descritos e conteúdo institucional do Gralia são protegidos por direitos autorais e propriedade exclusiva da Plataforma. Não podem ser copiados, reproduzidos ou usados em outras plataformas sem autorização.</p>
+      <p>O conteúdo que você produz e armazena na sua conta (notas, comentários, perfil) permanece seu — você concede licença pra exibi-lo conforme suas configurações de privacidade.</p>
+
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">11. Limitação de responsabilidade</h3>
+      <p>A Plataforma é oferecida "no estado em que se encontra". <b>Não garantimos aprovação em prova alguma</b> — resultados dependem do seu esforço pessoal e da qualidade do estudo de teoria. Não garantimos disponibilidade ininterrupta. Em caso de bug ou indisponibilidade, faremos esforço razoável pra resolver, mas não nos responsabilizamos por perdas indiretas.</p>
+
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">12. Alterações destes Termos</h3>
+      <p>Podemos atualizar estes Termos periodicamente. Mudanças relevantes serão comunicadas por email ou aviso destacado na Plataforma. Uso continuado após alteração implica aceitação da nova versão. A data de última atualização sempre estará no topo deste documento.</p>
+
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">13. Contato</h3>
+      <p>Dúvidas, reclamações ou solicitações: use o <b>"Fale conosco"</b> dentro da Plataforma. Respondemos em até 7 dias úteis (15 dias úteis pra requisições formais relacionadas à LGPD).</p>
+
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">14. Foro e legislação aplicável</h3>
+      <p>Estes Termos são regidos pelas leis brasileiras, em especial pelo Código de Defesa do Consumidor (Lei nº 8.078/1990) e pela Lei Geral de Proteção de Dados (Lei nº 13.709/2018). Fica eleito o foro da comarca de <b>Curitiba/PR</b> pra dirimir qualquer questão decorrente, ressalvada a competência exclusiva do consumidor prevista em lei.</p>
+
+      <p style="margin-top:1.5rem;padding:.625rem .875rem;background:var(--surface2);border-radius:6px;font-size:11.5px;color:var(--text3);border-left:3px solid var(--gralia-purple)">
+        ⚠️ Esta é uma versão <b>beta</b> dos Termos de Uso, em desenvolvimento ativo. O texto pode ser revisto e atualizado antes da versão final comercial. Recomendamos relê-los periodicamente.
+      </p>
     `;
   } else if(kind === 'privacy'){
     t.textContent = 'Política de Privacidade (LGPD)';
     body.innerHTML = `
-      <p><b>Última atualização:</b> ${_today}</p>
-      <p>Em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018).</p>
+      <p><b>Última atualização:</b> ${_today} · <b>Base legal:</b> Lei nº 13.709/2018 (LGPD) · <b>Versão:</b> 2.0 (beta)</p>
+      <p>Esta Política descreve como o Gralia (a "Plataforma") coleta, usa, armazena e protege seus dados pessoais, em conformidade com a Lei Geral de Proteção de Dados Pessoais (LGPD).</p>
 
-      <h3 style="margin:1rem 0 .375rem;font-size:14px">Quais dados coletamos</h3>
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">1. Quais dados coletamos</h3>
       <ul style="padding-left:1.25rem;margin:0">
-        <li><b>Cadastrais:</b> email, username, nome de exibição (opcional). Senha é criptografada.</li>
-        <li><b>Uso:</b> questões respondidas, erros, flashcards, sessões de estudo. Servem pra você ver seu progresso.</li>
-        <li><b>Login Google (opcional):</b> nome e foto do perfil Google, se você optar por logar com Google.</li>
-        <li><b>Conteúdo que você adiciona:</b> apostilas, fontes, anotações. Por política da plataforma, fontes adicionadas passam por revisão e ficam disponíveis para outros assinantes após aprovação (ver Termos de Uso, item 4). Apenas conteúdo técnico — referências a cursos pagos, autores e gabaritos são removidos pelos moderadores.</li>
+        <li><b>Cadastrais:</b> email, senha (armazenada com hash bcrypt — impossível recuperar texto plano), username, nome de exibição (opcional).</li>
+        <li><b>Login Google (opcional):</b> nome e foto do perfil Google, caso você opte por logar com Google em vez de email/senha.</li>
+        <li><b>De uso:</b> questões respondidas, erros, flashcards, sessões de estudo, métricas de desempenho, interações com a comunidade. Servem pra você ver seu progresso e pra personalizar a experiência.</li>
+        <li><b>Conteúdo que você adiciona:</b> apostilas, fontes, anotações. Fontes adicionadas passam por revisão e ficam disponíveis pra outros assinantes após aprovação (ver Termos de Uso, seção 5).</li>
+        <li><b>Técnicos:</b> endereço IP, tipo de navegador, sistema operacional, registros de acesso (logs).</li>
+        <li><b>Pagamento:</b> processados via Mercado Pago — não armazenamos dados de cartão na nossa infraestrutura.</li>
+        <li><b>Anti-abuso:</b> IP de signup, IP de tentativas de login falhadas, tokens de verificação Cloudflare Turnstile. Mantidos por até <b>30 dias</b> pra prevenção de fraude.</li>
       </ul>
 
-      <h3 style="margin:1rem 0 .375rem;font-size:14px">Como usamos</h3>
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">2. Pra que usamos seus dados</h3>
       <ul style="padding-left:1.25rem;margin:0">
-        <li>Pra personalizar suas questões, flashcards e análises.</li>
-        <li>Pra processar conteúdo via IA (envio para API da Anthropic, conforme política deles).</li>
-        <li>Pra mostrar seu desempenho e progresso.</li>
-        <li><b>Não vendemos dados</b>. Não compartilhamos com terceiros pra fins comerciais.</li>
+        <li>Operar a Plataforma e fornecer as funcionalidades contratadas;</li>
+        <li>Personalizar suas questões, flashcards, análises e recomendações;</li>
+        <li>Processar conteúdo via IA (envio à API da Anthropic conforme política deles — dados não são usados pra treinar modelos);</li>
+        <li>Processar pagamentos e gerenciar assinaturas;</li>
+        <li>Prevenir fraudes, abusos e atividades maliciosas (anti-bot, rate-limit, IP signup limit, suspensão automática);</li>
+        <li>Enviar comunicações relevantes sobre a conta (não enviamos marketing sem opt-in);</li>
+        <li>Cumprir obrigações legais e responder a autoridades quando exigido por lei.</li>
+      </ul>
+      <p style="margin-top:.5rem"><b>Não vendemos seus dados.</b> Não compartilhamos com terceiros pra fins comerciais ou publicitários.</p>
+
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">3. Base legal (LGPD art. 7º)</h3>
+      <ul style="padding-left:1.25rem;margin:0">
+        <li><b>Execução de contrato:</b> dados cadastrais e de uso são essenciais pra fornecer o serviço contratado.</li>
+        <li><b>Consentimento:</b> recursos opcionais (perfil público, comunidade visível, login Google) dependem do seu consentimento explícito.</li>
+        <li><b>Legítimo interesse:</b> dados anti-abuso (IP, tentativas falhadas, tokens Turnstile) protegem a Plataforma e todos os usuários.</li>
+        <li><b>Cumprimento de obrigação legal:</b> retenção de registros fiscais (até 5 anos) e logs por prazo legalmente exigido.</li>
       </ul>
 
-      <h3 style="margin:1rem 0 .375rem;font-size:14px">Onde armazenamos</h3>
-      <p>Servidores Supabase com criptografia em repouso e em trânsito. Backups regulares.</p>
-
-      <h3 style="margin:1rem 0 .375rem;font-size:14px">Seus direitos (LGPD)</h3>
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">4. Com quem compartilhamos (operadores de dados)</h3>
+      <p>Compartilhamos apenas com provedores essenciais pra operar a Plataforma:</p>
       <ul style="padding-left:1.25rem;margin:0">
-        <li><b>Acessar</b> seus dados — em Configurações → "Baixar todos os meus dados"</li>
-        <li><b>Corrigir</b> dados incorretos — em Configurações</li>
-        <li><b>Apagar</b> sua conta e tudo associado — em Configurações → "Apagar conta"</li>
-        <li><b>Portabilidade</b> — exportação em JSON</li>
-        <li><b>Anonimato</b> — visibilidade pública é opt-in. Por padrão, sua conta é privada.</li>
+        <li><b>Supabase:</b> banco de dados e autenticação (armazenamento criptografado em repouso e em trânsito);</li>
+        <li><b>Vercel:</b> hospedagem da aplicação web;</li>
+        <li><b>Anthropic (Claude):</b> processamento de IA pra gerar conteúdo de estudo. Dados enviados não são usados pra treinar modelos por padrão;</li>
+        <li><b>Cloudflare Turnstile:</b> proteção anti-bot — usa tokens temporários de verificação, sem cookies de tracking publicitário;</li>
+        <li><b>Mercado Pago:</b> processamento de pagamentos de assinaturas e créditos avulsos.</li>
+      </ul>
+      <p style="margin-top:.5rem">Compartilhamos com <b>autoridades públicas</b> apenas mediante ordem judicial ou requisição legal válida.</p>
+
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">5. Onde e como armazenamos</h3>
+      <p>Servidores Supabase com criptografia em repouso e em trânsito (HTTPS/TLS). Controle de acesso a banco de dados por Row Level Security (RLS) — cada usuário só acessa seus próprios dados, exceto quando ele optou por compartilhar. Backups regulares automatizados.</p>
+
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">6. Seus direitos (LGPD art. 18)</h3>
+      <p>Você pode, a qualquer momento:</p>
+      <ul style="padding-left:1.25rem;margin:0">
+        <li><b>Confirmar</b> a existência de tratamento de dados;</li>
+        <li><b>Acessar</b> seus dados — em Configurações → "Baixar todos os meus dados" (formato JSON);</li>
+        <li><b>Corrigir</b> dados incompletos, inexatos ou desatualizados — em Configurações;</li>
+        <li><b>Solicitar anonimização, bloqueio ou eliminação</b> de dados desnecessários;</li>
+        <li><b>Portabilidade</b> — exportação completa em JSON;</li>
+        <li><b>Revogar consentimento</b> a qualquer momento (recursos opt-in);</li>
+        <li><b>Apagar a conta</b> — em Configurações → "Apagar conta". Remove todos os seus dados pessoais (com ressalvas da seção 7);</li>
+        <li><b>Anonimato por padrão:</b> visibilidade pública (perfil, conteúdo compartilhado) é opt-in.</li>
+      </ul>
+      <p style="margin-top:.5rem">Pra exercer qualquer direito, use o <b>"Fale conosco"</b>. Respondemos em até <b>15 dias úteis</b> conforme prazo legal.</p>
+
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">7. Retenção de dados</h3>
+      <p>Mantemos seus dados enquanto sua conta estiver ativa. Após exclusão da conta:</p>
+      <ul style="padding-left:1.25rem;margin:0">
+        <li>Dados pessoais (nome, email, métricas) — removidos em até <b>30 dias</b>;</li>
+        <li>Logs anti-fraude (IP signup, tentativas falhadas) — mantidos por até 30 dias após exclusão;</li>
+        <li>Registros financeiros (faturas, pagamentos) — mantidos por até <b>5 anos</b> conforme exigência fiscal;</li>
+        <li>Conteúdo compartilhado anonimamente com a comunidade permanece (sem associação ao seu perfil).</li>
       </ul>
 
-      <h3 style="margin:1rem 0 .375rem;font-size:14px">Cookies</h3>
-      <p>Usamos cookies essenciais pra manter sua sessão de login. Não temos cookies de rastreamento publicitário.</p>
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">8. Segurança</h3>
+      <p>Adotamos medidas técnicas e administrativas pra proteger seus dados:</p>
+      <ul style="padding-left:1.25rem;margin:0">
+        <li>Senhas armazenadas com hash bcrypt;</li>
+        <li>Conexões criptografadas via HTTPS/TLS;</li>
+        <li>Controle de acesso a banco por Row Level Security (RLS);</li>
+        <li>Proteção anti-bot via Cloudflare Turnstile;</li>
+        <li>Rate limit de chamadas de API por plano;</li>
+        <li>Sistema de detecção de abuso por IP e suspensão automática.</li>
+      </ul>
+      <p style="margin-top:.5rem">Em caso de incidente de segurança que afete seus dados pessoais, comunicaremos você e a <b>ANPD</b> (Autoridade Nacional de Proteção de Dados) conforme exigido pela LGPD.</p>
 
-      <h3 style="margin:1rem 0 .375rem;font-size:14px">Contato</h3>
-      <p>Encarregado de proteção de dados (DPO): use a opção <b>"Fale conosco"</b> em Configurações.</p>
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">9. Armazenamento local (localStorage)</h3>
+      <p>A Plataforma usa <b>localStorage</b> do navegador (não cookies) pra manter sua sessão de login, preferências de interface e cache de dados locais. <b>Não temos cookies de tracking publicitário.</b> Você pode limpar o localStorage a qualquer momento pelas configurações do navegador (isso vai te deslogar).</p>
+      <p>Cloudflare Turnstile pode usar tokens temporários durante verificações de signup/login, sem rastreamento entre sessões.</p>
+
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">10. Menores de idade</h3>
+      <p>A Plataforma aceita usuários a partir de <b>13 anos</b>. Pra menores de 18 anos, é exigido <b>consentimento específico e em destaque de pelo menos um dos responsáveis legais</b>, conforme o artigo 14 da LGPD. O responsável assume autorização pelo uso da conta e por eventuais contratações de planos pagos (que seguem regra adicional dos Termos de Uso, seção 7).</p>
+      <p>Tratamos dados de menores no melhor interesse do estudante, limitando o uso ao estritamente necessário pra fornecer o serviço educacional. Não tratamos dados de menores de 13 anos.</p>
+
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">11. Encarregado de Dados (DPO)</h3>
+      <p>Pra solicitações relacionadas à LGPD ou questões sobre tratamento de dados, entre em contato pelo <b>"Fale conosco"</b> em Configurações. Responderemos em até 15 dias úteis conforme prazo legal.</p>
+
+      <h3 style="margin:1rem 0 .375rem;font-size:14px">12. Alterações nesta Política</h3>
+      <p>Esta Política pode ser atualizada periodicamente. Mudanças relevantes serão comunicadas por email ou aviso destacado na Plataforma. A versão atual sempre estará disponível nesta página, com data da última atualização no topo.</p>
+
+      <p style="margin-top:1.5rem;padding:.625rem .875rem;background:var(--surface2);border-radius:6px;font-size:11.5px;color:var(--text3);border-left:3px solid var(--gralia-purple)">
+        ⚠️ Esta é uma versão <b>beta</b> da Política de Privacidade. O texto pode ser revisto antes da versão final comercial.
+      </p>
     `;
   } else if(kind === 'copyright'){
     t.textContent = 'Direitos Autorais';
@@ -64786,12 +64897,53 @@ function renderAuthScreen(){
     form.appendChild(err);
   }
 
+  // V15.12.75.41 — Checkbox de aceite de Termos + Privacidade (apenas signup).
+  // Obrigatório. Estado em ST.authTermsAccepted (volátil — limpa ao trocar
+  // de modo ou recarregar). Links abrem modais reusáveis.
+  if(mode === 'signup'){
+    const termsRow = mk('div');
+    termsRow.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:.5rem .25rem;font-size:12.5px;line-height:1.5;color:var(--text2)';
+    const termsCb = mk('input');
+    termsCb.type = 'checkbox';
+    termsCb.id = 'auth-terms-accept';
+    termsCb.style.cssText = 'margin-top:3px;flex-shrink:0;cursor:pointer';
+    termsCb.checked = !!ST.authTermsAccepted;
+    termsCb.addEventListener('change', () => {
+      ST.authTermsAccepted = termsCb.checked;
+    });
+    const termsLbl = mk('label');
+    termsLbl.setAttribute('for', 'auth-terms-accept');
+    termsLbl.style.cssText = 'cursor:pointer;flex:1';
+    termsLbl.innerHTML = 'Li e aceito os <a href="#" id="auth-link-terms" style="color:var(--gralia-purple);text-decoration:none;font-weight:600">Termos de Uso</a> e a <a href="#" id="auth-link-privacy" style="color:var(--gralia-purple);text-decoration:none;font-weight:600">Política de Privacidade</a>.';
+    termsRow.appendChild(termsCb);
+    termsRow.appendChild(termsLbl);
+    form.appendChild(termsRow);
+
+    // Event delegation pros links (usa showLegalModal existente — ver L17403)
+    setTimeout(() => {
+      const linkTerms = document.getElementById('auth-link-terms');
+      const linkPriv = document.getElementById('auth-link-privacy');
+      if(linkTerms){
+        linkTerms.addEventListener('click', e => { e.preventDefault(); showLegalModal('terms'); });
+      }
+      if(linkPriv){
+        linkPriv.addEventListener('click', e => { e.preventDefault(); showLegalModal('privacy'); });
+      }
+    }, 0);
+  }
+
   const submitBtn = mkBtn(mode==='signup'?'Criar conta':'Entrar','btn btn-p btn-lg auth-submit');
   submitBtn.addEventListener('click',async()=>{
     const em = (ST.authEmail||'').trim();
     const pw = ST.authPass||'';
     if(!em||!pw){ST.authError='Preencha email e senha.';render();return;}
     if(mode==='signup'&&pw.length<6){ST.authError='Senha deve ter ao menos 6 caracteres.';render();return;}
+    // V15.12.75.41 — Aceite obrigatório dos termos antes de criar conta
+    if(mode==='signup' && !ST.authTermsAccepted){
+      ST.authError='Você precisa ler e aceitar os Termos de Uso e a Política de Privacidade pra criar uma conta.';
+      render();
+      return;
+    }
     // V15.12.48 — Username não é mais validado aqui. O modal pós-signup
     // (showCompleteProfileModal) cuida dessa etapa após a conta ser criada.
     submitBtn.disabled=true;submitBtn.textContent='Aguarde...';
@@ -64953,14 +65105,16 @@ function renderAuthScreen(){
   // Captcha real é executado pelo runCaptchaIfRequired conforme política.
   const secChip = mk('div','auth-security-chip');
   secChip.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:6px;margin-top:.75rem;padding:6px 10px;font-size:11px;color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:6px;line-height:1.3';
-  secChip.innerHTML = '<span style="font-size:13px">🛡️</span><span>Protegido por <b>Cloudflare Turnstile</b> · LGPD-compliant</span>';
-  secChip.title = 'Este site usa proteção anti-bot da Cloudflare. Suas tentativas de login são monitoradas pra prevenir ataques automatizados, sem rastreamento publicitário.';
+  secChip.innerHTML = '<span style="font-size:13px">🛡️</span><span>Protegido por <b>Cloudflare Turnstile</b></span>';
+  secChip.title = 'Este site usa proteção anti-bot da Cloudflare pra prevenir ataques automatizados de login e signup.';
   card.appendChild(secChip);
 
   // Micro-note
+  // V15.12.75.41 — No signup, o checkbox de aceite acima já cobre os termos.
+  // Aqui só mensagem técnica relevante por modo.
   const note = mk('p','auth-note');
   note.textContent = mode==='signup'
-    ? 'Ao criar conta, você concorda com os termos de uso. Seus dados ficam armazenados com segurança.'
+    ? 'Seus dados ficam armazenados com segurança seguindo a LGPD.'
     : 'Login requer conexão com internet.';
   card.appendChild(note);
 
@@ -65613,9 +65767,13 @@ function maybeShowTutorial(retries){
     const noSources = !(DATA.sources||[]).length;
     if(!noSources || DATA.tutorialOffered) return;
     if(ST.modal){
-      // Outro modal aberto — espera ele fechar
-      if(retries < 3){
+      // V15.12.75.41 — Retry estendido: antes era 3×2s=6s. Se user demorava
+      // pra concluir o modal de username, o tutorial era perdido pra sempre.
+      // Agora retry até 15×2s=30s — tempo suficiente pra qualquer fluxo.
+      if(retries < 15){
         setTimeout(()=> maybeShowTutorial(retries + 1), 2000);
+      } else {
+        console.warn('[tutorial] desistiu após 30s — outro modal persistente');
       }
       return;
     }
