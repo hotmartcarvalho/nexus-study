@@ -441,7 +441,10 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
 /* V15.12.23: altura 48→38 — Jean reportou que 48 ficou exagerada visualmente */
 /* V15.12.24: 38→30 — ainda estava grande comparado a outros elementos da topbar */
 /* V15.12.28: 30→27 (-10%) — Jean reportou que ainda estava um pouco grande */
-.brand .brand-bird{height:27px;max-width:122px;object-fit:contain}
+/* V15.12.75.57: 27→31 (+15%) — nova logo tem detalhe acima do G, aumento
+   compensa a altura extra ocupada pelo detalhe pra letras ficarem do mesmo
+   tamanho visual de antes. max-width acompanha (122→140) pra preservar proporção. */
+.brand .brand-bird{height:31px;max-width:140px;object-fit:contain}
 .brand .brand-name{display:none}
 .brand .brand-name.brand-fallback.show{display:inline-flex}
 .brand-bird-dark{display:none}
