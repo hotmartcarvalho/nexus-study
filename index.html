@@ -24533,6 +24533,9 @@ function toggleAIQuestionFavorite(q){
     explanation: q.explanation || '',
     trap: q.trap || '',
     keyword: q.keyword || '',
+    // V15.12.75.55 — Flashcard sugerido (se IA gerou). Só local — Supabase
+    // ainda não tem coluna pra isso. Não-bloqueante: sync remoto omite.
+    suggestedFlashcard: q.suggestedFlashcard || null,
     favoritedAt: Date.now()
   };
   DATA.aiFavoriteQuestions.push(favRecord);
@@ -24784,6 +24787,25 @@ function makeAIFavoriteButton(q){
   paint();
   btn.addEventListener('click', (e)=>{
     e.stopPropagation();
+    // V15.12.75.55 — Antes do toggle, enriquece q com dados do feedback ativo
+    // (ST.practFb / ST.drillFb / ST.calibFb / ST.turboFb). Quando user
+    // favorita DEPOIS de ver a explicação, esses dados já existem mas o
+    // q original (passado no questionCard antes da resposta) ainda não tem.
+    // Sem este enrich, favoritas ficavam só com gabarito (sem explicação,
+    // sem flashcard, sem pegadinha, sem palavra-gatilho).
+    const fb = ST.practFb || ST.drillFb || ST.calibFb || ST.turboFb || null;
+    if(fb && !isAIQuestionFavorite(q)){
+      // Só enriquece quando favoritando (não tem essa info pra remover)
+      if(!q.explanation && fb.explanation) q.explanation = fb.explanation;
+      if(!q.trap && fb.trap) q.trap = fb.trap;
+      if(!q.keyword && fb.keyword) q.keyword = fb.keyword;
+      // Topic vem da própria questão geralmente, mas redundância protege casos raros
+      if(!q.topic && fb.q && fb.q.topic) q.topic = fb.q.topic;
+      // Flashcard sugerido (se a IA gerou): salva como objeto leve
+      if(!q.suggestedFlashcard && fb.suggestedFlashcard){
+        q.suggestedFlashcard = fb.suggestedFlashcard;
+      }
+    }
     const newState = toggleAIQuestionFavorite(q);
     paint();
     showToast(newState ? 'Questão IA favoritada' : 'Removida dos favoritos', 2200);
@@ -37970,6 +37992,56 @@ function renderAIFavorites(){
         detailsBody.appendChild(p);
       }
     }
+
+    // V15.12.75.55 — Flashcard sugerido (se a IA gerou no momento da resposta)
+    if(fav.suggestedFlashcard && fav.suggestedFlashcard.front && fav.suggestedFlashcard.back){
+      const flashLbl = mk('div');
+      flashLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:.75rem 0 .375rem';
+      flashLbl.textContent = '🃏 Flashcard sugerido';
+      detailsBody.appendChild(flashLbl);
+      const flashBox = mk('div');
+      flashBox.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--gralia-purple);border-radius:6px;padding:.5rem .75rem;font-size:12.5px;line-height:1.5';
+      const frontLbl = mk('div');
+      frontLbl.style.cssText = 'font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px';
+      frontLbl.textContent = 'FRENTE';
+      const frontTxt = mk('div');
+      frontTxt.style.cssText = 'margin-bottom:6px;color:var(--text)';
+      frontTxt.textContent = fav.suggestedFlashcard.front;
+      const backLbl = mk('div');
+      backLbl.style.cssText = 'font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px';
+      backLbl.textContent = 'VERSO';
+      const backTxt = mk('div');
+      backTxt.style.cssText = 'color:var(--text2)';
+      backTxt.textContent = fav.suggestedFlashcard.back;
+      flashBox.appendChild(frontLbl);
+      flashBox.appendChild(frontTxt);
+      flashBox.appendChild(backLbl);
+      flashBox.appendChild(backTxt);
+      detailsBody.appendChild(flashBox);
+    }
+
+    // V15.12.75.55 — Pegadinha e palavra-gatilho (se salvos)
+    if(fav.trap && fav.trap.trim().length > 5){
+      const trapLbl = mk('div');
+      trapLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--amber-text);text-transform:uppercase;letter-spacing:.4px;margin:.75rem 0 .375rem';
+      trapLbl.textContent = '⚠ Pegadinha da banca';
+      detailsBody.appendChild(trapLbl);
+      const trapTxt = mk('p');
+      trapTxt.style.cssText = 'margin:0 0 .5rem;padding:.5rem .75rem;background:rgba(245,158,11,.06);border-left:3px solid var(--amber);border-radius:6px;font-size:12.5px;line-height:1.5';
+      trapTxt.textContent = fav.trap;
+      detailsBody.appendChild(trapTxt);
+    }
+    if(fav.keyword && fav.keyword.trim().length > 3){
+      const kwLbl = mk('div');
+      kwLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:.5rem 0 .25rem';
+      kwLbl.textContent = '🎯 Palavra-gatilho';
+      detailsBody.appendChild(kwLbl);
+      const kwChip = mk('div');
+      kwChip.style.cssText = 'display:inline-block;padding:3px 10px;background:rgba(124,92,255,.10);color:var(--gralia-purple);border:1px solid rgba(124,92,255,.25);border-radius:8px;font-size:12px;font-weight:500';
+      kwChip.textContent = fav.keyword;
+      detailsBody.appendChild(kwChip);
+    }
+
     detailsBox.appendChild(detailsBody);
     card.appendChild(detailsBox);
 
