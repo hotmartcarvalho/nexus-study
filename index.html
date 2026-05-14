@@ -8083,6 +8083,17 @@ async function tryFetchFromPool(opts){
     return {
       _fromCache: true,
       _poolId: picked.out_id,
+      // V15.12.75.53/54 — Adiciona source/canonicalHash que faltavam.
+      // buildAiFeedbackRow rejeita questões sem esses campos.
+      // V15.12.75.54 FIX: canonicalHash deve ser o hash de 16 chars gerado
+      // por questionHash(enunciado), NÃO o picked.out_id que é o content_hash
+      // curto (6 chars) do banco. A RPC ai_question_report aceita ambos
+      // (busca por content_hash OR content_hash_canonical), mas é mais
+      // robusto enviar sempre o canônico de 16 chars.
+      source: 'ai',
+      canonicalHash: (typeof questionHash === 'function')
+        ? questionHash(picked.out_enunciado)
+        : picked.out_id,
       type: 'question',
       kind: picked.out_kind,
       // Formato do render (q.question, q.correct_answer)
