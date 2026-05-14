@@ -24577,6 +24577,67 @@ async function checkUserSuspension(){
   }
 }
 
+// V15.12.75.47 — Migra reports antigos (pré-V15.12.75.29) que ficaram só em
+// DATA._reportedExplanations local pro Supabase. Roda no boot.
+//
+// Critério: itens com syncedToSupabase falsy (undefined ou false) e que tenham
+// itemId numérico (necessário pra chamar RPC). Após tentativa:
+//   - sucesso  → marca syncedToSupabase: true (não tenta de novo)
+//   - falha    → marca syncedToSupabase: 'failed' (não tenta de novo)
+//
+// Silencioso: sem toast nem alerta. Logs no console pra audit. Não bloqueia UI.
+async function migrateLegacyReportsToSupabase(){
+  if(!supa || !AUTH.user) return;
+  const reports = (DATA._reportedExplanations || []);
+  if(reports.length === 0) return;
+
+  // Filtra candidatos: precisa ter itemId numérico válido e estar não-sincronizado
+  const candidates = reports.filter(r => {
+    if(r.syncedToSupabase === true) return false;       // já sincronizado
+    if(r.syncedToSupabase === 'failed') return false;   // já tentou, falhou
+    const itemId = typeof r.itemId === 'number' ? r.itemId : parseInt(r.itemId, 10);
+    if(!itemId || isNaN(itemId)) return false;          // sem itemId numérico
+    if(!r.reason) return false;                          // sem reason
+    return true;
+  });
+
+  if(candidates.length === 0) return;
+
+  console.info('[reports-migration] tentando migrar', candidates.length, 'reports legados pro Supabase');
+  let migrated = 0;
+  let failed = 0;
+
+  for(const r of candidates){
+    const itemId = typeof r.itemId === 'number' ? r.itemId : parseInt(r.itemId, 10);
+    try{
+      const {error} = await supa.rpc('report_shared_explanation', {
+        p_explanation_id: itemId,
+        p_reason: r.reason,
+        p_note: r.note || null
+      });
+      if(error){
+        // Item pode não existir mais no Supabase, ou outro erro de validação
+        r.syncedToSupabase = 'failed';
+        r.syncFailReason = error.message;
+        failed++;
+      } else {
+        r.syncedToSupabase = true;
+        migrated++;
+      }
+    }catch(e){
+      r.syncedToSupabase = 'failed';
+      r.syncFailReason = e.message;
+      failed++;
+    }
+  }
+
+  // Persiste mudanças nas flags
+  if(migrated > 0 || failed > 0){
+    save();
+    console.info('[reports-migration] resultado: ' + migrated + ' migrados, ' + failed + ' falharam');
+  }
+}
+
 // V15.12.75.31 — Hidrata DATA.aiFavoriteQuestions com dados do Supabase
 // no boot. Faz MERGE (união pela key) — não sobrescreve local. Útil quando
 // user troca de dispositivo: local vai estar vazio, remoto vem e popula.
@@ -66346,6 +66407,8 @@ async function initAuth(){
       hydrateAIFavoritesFromSupabase().catch(()=>{});
       // V15.12.75.35 — Check se conta está suspensa (anti-abuso)
       checkUserSuspension().catch(()=>{});
+      // V15.12.75.47 — Migra reports antigos locais pro Supabase (silencioso)
+      migrateLegacyReportsToSupabase().catch(()=>{});
       if(NOTIFS.pollIntervalId) clearInterval(NOTIFS.pollIntervalId);
       NOTIFS.pollIntervalId = setInterval(()=>fetchNotifications().catch(()=>{}), 60000);
       render();
@@ -66390,6 +66453,8 @@ async function initAuth(){
       hydrateAIFavoritesFromSupabase().catch(()=>{});
       // V15.12.75.35 — Check se conta está suspensa (anti-abuso)
       checkUserSuspension().catch(()=>{});
+      // V15.12.75.47 — Migra reports antigos locais pro Supabase (silencioso)
+      migrateLegacyReportsToSupabase().catch(()=>{});
       fetchUserProfile(true).then(()=>{
         render();
         // V15.12.44 — Após carregar o profile, verifica se precisa completar
