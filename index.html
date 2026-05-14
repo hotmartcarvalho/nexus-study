@@ -24536,6 +24536,11 @@ function toggleAIQuestionFavorite(q){
     // V15.12.75.55 — Flashcard sugerido (se IA gerou). Só local — Supabase
     // ainda não tem coluna pra isso. Não-bloqueante: sync remoto omite.
     suggestedFlashcard: q.suggestedFlashcard || null,
+    // V15.12.75.56 — Resultado da resposta do user (se ele já respondeu antes
+    // de favoritar). Permite exibir chip "✓ Você acertou" ou "✗ Você errou"
+    // na tela de favoritas. Se favoritou antes de responder, fica null.
+    userAnsweredOk: (typeof q._userAnsweredOk === 'boolean') ? q._userAnsweredOk : null,
+    userChose: q._userChose || null,
     favoritedAt: Date.now()
   };
   DATA.aiFavoriteQuestions.push(favRecord);
@@ -24805,6 +24810,11 @@ function makeAIFavoriteButton(q){
       if(!q.suggestedFlashcard && fb.suggestedFlashcard){
         q.suggestedFlashcard = fb.suggestedFlashcard;
       }
+      // V15.12.75.56 — Captura resultado da resposta do user (acerto/erro)
+      // pra exibir chip indicador na tela de favoritas. Se user favoritou
+      // ANTES de responder, fb não existe ou userChose é null — fica neutro.
+      if(typeof fb.ok === 'boolean') q._userAnsweredOk = fb.ok;
+      if(fb.userChose) q._userChose = fb.userChose;
     }
     const newState = toggleAIQuestionFavorite(q);
     paint();
@@ -37871,15 +37881,33 @@ function renderAIFavorites(){
     const card = mk('div');
     card.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:1rem;margin-bottom:.75rem';
 
-    // Header: tópico + estrela pra remover + data
+    // Header: tópico + chip resultado + estrela pra remover + data
     const header = mk('div');
-    header.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:.5rem;flex-wrap:wrap';
+    header.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:.5rem;flex-wrap:wrap';
     const topicTag = mk('span','topic-tag');
     topicTag.textContent = fav.topic || 'Sem tópico';
     header.appendChild(topicTag);
 
+    // V15.12.75.56 — Chip indicador de acerto/erro do user (se ele já tinha
+    // respondido antes de favoritar). Ajuda a saber se a favorita é uma
+    // questão que pegou ele de surpresa (errou — boa pra revisar) ou que
+    // ele acertou mas marcou pra revisar mesmo assim. Sem essa info, só
+    // dava pra ver o gabarito, sem saber se bateu com a escolha do user.
+    if(typeof fav.userAnsweredOk === 'boolean'){
+      const resultChip = mk('span');
+      if(fav.userAnsweredOk){
+        resultChip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:2px 9px;background:rgba(16,185,129,.12);color:var(--accent-text);border:1px solid rgba(16,185,129,.30);border-radius:10px;font-size:10.5px;font-weight:700;letter-spacing:.2px';
+        resultChip.textContent = '✓ Você acertou';
+      } else {
+        resultChip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:2px 9px;background:rgba(232,76,76,.12);color:var(--red-text);border:1px solid rgba(232,76,76,.30);border-radius:10px;font-size:10.5px;font-weight:700;letter-spacing:.2px';
+        resultChip.textContent = '✗ Você errou';
+      }
+      resultChip.title = fav.userChose ? `Sua resposta: ${fav.userChose}` : 'Resultado da sua resposta no momento da favoritação';
+      header.appendChild(resultChip);
+    }
+
     const headerRight = mk('div');
-    headerRight.style.cssText = 'display:flex;align-items:center;gap:8px';
+    headerRight.style.cssText = 'display:flex;align-items:center;gap:8px;margin-left:auto';
     const dateLbl = mk('span');
     dateLbl.style.cssText = 'font-size:11px;color:var(--text3)';
     const days = Math.floor((Date.now() - (fav.favoritedAt||0)) / (1000*60*60*24));
@@ -37966,11 +37994,18 @@ function renderAIFavorites(){
       });
       detailsBody.appendChild(altsBox);
     } else {
-      // C/E — mostra gabarito como chip (dentro do spoiler)
-      const gabChip = mk('div');
-      gabChip.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(16,185,129,.10);border:1px solid rgba(16,185,129,.30);border-radius:6px;font-size:12px;font-weight:600;color:var(--accent-text);margin-bottom:.5rem';
-      gabChip.innerHTML = `<span>Gabarito:</span><span>${fav.answer === 'C' ? 'Certo' : fav.answer === 'E' ? 'Errado' : fav.answer}</span>`;
-      detailsBody.appendChild(gabChip);
+      // C/E — mostra gabarito como chip APENAS se não houver explicação salva.
+      // V15.12.75.56 — Quando tem fav.explanation, a renderStructuredExplanation
+      // já mostra um bloco "GABARITO: X" — adicionar o chip aqui duplicaria.
+      // Sem explicação (favorita antiga ou favoritada antes de responder),
+      // o chip continua sendo a única fonte da informação.
+      const hasExplanation = fav.explanation && fav.explanation.trim().length > 10;
+      if(!hasExplanation){
+        const gabChip = mk('div');
+        gabChip.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(16,185,129,.10);border:1px solid rgba(16,185,129,.30);border-radius:6px;font-size:12px;font-weight:600;color:var(--accent-text);margin-bottom:.5rem';
+        gabChip.innerHTML = `<span>Gabarito:</span><span>${fav.answer === 'C' ? 'Certo' : fav.answer === 'E' ? 'Errado' : fav.answer}</span>`;
+        detailsBody.appendChild(gabChip);
+      }
     }
 
     // Explicação salva (também dentro do spoiler)
@@ -38020,27 +38055,13 @@ function renderAIFavorites(){
       detailsBody.appendChild(flashBox);
     }
 
-    // V15.12.75.55 — Pegadinha e palavra-gatilho (se salvos)
-    if(fav.trap && fav.trap.trim().length > 5){
-      const trapLbl = mk('div');
-      trapLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--amber-text);text-transform:uppercase;letter-spacing:.4px;margin:.75rem 0 .375rem';
-      trapLbl.textContent = '⚠ Pegadinha da banca';
-      detailsBody.appendChild(trapLbl);
-      const trapTxt = mk('p');
-      trapTxt.style.cssText = 'margin:0 0 .5rem;padding:.5rem .75rem;background:rgba(245,158,11,.06);border-left:3px solid var(--amber);border-radius:6px;font-size:12.5px;line-height:1.5';
-      trapTxt.textContent = fav.trap;
-      detailsBody.appendChild(trapTxt);
-    }
-    if(fav.keyword && fav.keyword.trim().length > 3){
-      const kwLbl = mk('div');
-      kwLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:.5rem 0 .25rem';
-      kwLbl.textContent = '🎯 Palavra-gatilho';
-      detailsBody.appendChild(kwLbl);
-      const kwChip = mk('div');
-      kwChip.style.cssText = 'display:inline-block;padding:3px 10px;background:rgba(124,92,255,.10);color:var(--gralia-purple);border:1px solid rgba(124,92,255,.25);border-radius:8px;font-size:12px;font-weight:500';
-      kwChip.textContent = fav.keyword;
-      detailsBody.appendChild(kwChip);
-    }
+    // V15.12.75.56 — Removidos blocos extras de "⚠ Pegadinha da banca" e
+    // "🎯 Palavra-gatilho" que estavam adicionados aqui (V15.12.75.55).
+    // Ambos JÁ aparecem renderizados dentro do bloco "Explicação salva"
+    // via renderStructuredExplanation — adicionar de novo causava duplicação
+    // visual conforme observado nos prints da V15.12.75.55. Mantidos os
+    // dados em fav.trap / fav.keyword no localStorage, mas só renderizados
+    // quando vierem como blocos da explicação estruturada (caso comum).
 
     detailsBox.appendChild(detailsBody);
     card.appendChild(detailsBox);
