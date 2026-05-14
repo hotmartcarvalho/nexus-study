@@ -10043,10 +10043,41 @@ function _DEPRECATED_startPrefetchExplanation(q, model){
   return entry;
 }
 
+// V15.12.75.58 — Detecta se questão é importada (não-IA).
+// Critérios (qualquer um basta):
+//  - q.source === 'imported' (sessões, histórico recente)
+//  - q.fromImported === true (flag explícita em alguns fluxos)
+//  - q está em DATA.importedQuestions (banco do user)
+//  - q.importedFromResource (questão de fonte importada)
+// Usado pra decidir se geração de explicação/flashcard precisa de fonte ativa
+// (não precisa — questão já tem enunciado + gabarito completos).
+function isImportedQuestion(q){
+  if(!q) return false;
+  if(q.source === 'imported') return true;
+  if(q.fromImported === true) return true;
+  if(q.importedFromResource) return true;
+  if(q.id && Array.isArray(DATA.importedQuestions)){
+    if(DATA.importedQuestions.some(iq => iq.id === q.id)) return true;
+  }
+  return false;
+}
+
 async function generateAndSaveExplanation(q, model, container, triggerBtn, opts){
   opts = opts || {};
   const customFocus = (opts.customFocus || '').trim();
   const userAnswered = ST.importedAnswer;
+
+  // V15.12.75.58 — Pre-flight: enunciado + gabarito são essenciais. Sem eles,
+  // bloqueia ANTES de cobrar crédito ou abrir loading. Evita placeholder
+  // infinito por dado ruim.
+  if(!q || !q.enunciado || !String(q.enunciado).trim()){
+    alert('Esta questão não tem enunciado. Não é possível gerar explicação.');
+    return;
+  }
+  if(!q.answer){
+    alert('Esta questão não tem gabarito definido. Não é possível gerar explicação confiável.');
+    return;
+  }
   // V15.12.12: usa modal customizado em vez de confirm() nativo
   const action_id = model === 'sonnet' ? 'imported_question_explanation_premium' : 'imported_question_explanation';
   const desc = model === 'sonnet'
@@ -10103,18 +10134,44 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn, opts)
       const qText = q.kind==='MC'
         ? `${q.enunciado}\n\nAlternativas:\n${normalizeAlternatives(q).map(a=>`${a.letter}) ${a.text}`).join('\n')}`
         : q.enunciado;
+
+      // V15.12.75.58 — Detecta questão importada pra passar skipContent (não
+      // exige fonte ativa — questão já tem enunciado completo) e enriquece o
+      // prompt com metadados disponíveis (banca, disciplina, ano, cargo,
+      // assunto) já que sem fonte a IA precisa desse contexto pra explicar
+      // bem. Pra questão IA (geração via prática IA), comportamento histórico
+      // preservado: usa buildContent normalmente.
+      const isImported = isImportedQuestion(q);
+
+      // Constrói cabeçalho de metadados (banca/ano/disciplina/cargo/assunto)
+      // que aparecerá no prompt. Só inclui campos preenchidos.
+      let metaLines = [];
+      if(q.banca) metaLines.push(`Banca: ${q.banca}`);
+      if(q.year || q.ano) metaLines.push(`Ano: ${q.year || q.ano}`);
+      if(q.cargo) metaLines.push(`Cargo: ${q.cargo}`);
+      const discName = q.disciplineId ? (getDiscipline(q.disciplineId)||{}).name : null;
+      if(discName || q.discipline) metaLines.push(`Disciplina: ${discName || q.discipline}`);
+      if(q.topic || q.assunto) metaLines.push(`Assunto: ${q.topic || q.assunto}`);
+      const metaBlock = metaLines.length > 0
+        ? `\n\nMETADADOS DA QUESTÃO:\n${metaLines.join('\n')}`
+        : '';
+
       const sys = model === 'sonnet'
         ? 'Você é professor especialista em concursos públicos brasileiros. Sua resposta deve ter clareza, profundidade e identificar armadilhas com precisão. Responda SEMPRE em JSON puro, sem markdown.'
         : 'Você é professor de concursos. Responda SEMPRE em JSON puro, sem markdown.';
       // V15.12.41 — Quando há customFocus, ataca DIRETAMENTE o ponto pedido
       let prompt;
       if(customFocus){
-        prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nCandidato respondeu ${userAnswered||'(em branco)'} e ${userAnswered===q.answer?'acertou':'errou'}.\n\nFOCO DA MELHORIA PEDIDA: "${customFocus}"\n\nGere uma explicação que ATAQUE DIRETAMENTE o ponto que o estudante pediu (acima). Mantenha 2-4 frases, identifique a armadilha (o motivo de muitos errarem) e a palavra-gatilho. Não fuja do foco. Responda em JSON:\n{"explanation":"...","trap":"...","keyword":"..."}`;
+        prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}${metaBlock}\n\nCandidato respondeu ${userAnswered||'(em branco)'} e ${userAnswered===q.answer?'acertou':'errou'}.\n\nFOCO DA MELHORIA PEDIDA: "${customFocus}"\n\nGere uma explicação que ATAQUE DIRETAMENTE o ponto que o estudante pediu (acima). Mantenha 2-4 frases, identifique a armadilha (o motivo de muitos errarem) e a palavra-gatilho. Não fuja do foco. Responda em JSON:\n{"explanation":"...","trap":"...","keyword":"..."}`;
       } else {
-        prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nCandidato respondeu ${userAnswered||'(em branco)'} e ${userAnswered===q.answer?'acertou':'errou'}. Explique o gabarito em 2-4 frases, identifique a armadilha (o motivo de muitos errarem) e a palavra-gatilho do enunciado. Responda em JSON:\n{"explanation":"...","trap":"...","keyword":"..."}`;
+        prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}${metaBlock}\n\nCandidato respondeu ${userAnswered||'(em branco)'} e ${userAnswered===q.answer?'acertou':'errou'}. Explique o gabarito em 2-4 frases, identifique a armadilha (o motivo de muitos errarem) e a palavra-gatilho do enunciado. Responda em JSON:\n{"explanation":"...","trap":"...","keyword":"..."}`;
       }
       const modelStr = model === 'sonnet' ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
-      const res = await callAPI(sys, [{role:'user', content: prompt}], {model: modelStr, action: action_id});
+      const res = await callAPI(sys, [{role:'user', content: prompt}], {
+        model: modelStr,
+        action: action_id,
+        skipContent: isImported   // V15.12.75.58 — questão importada não exige fonte
+      });
       payload = {
         explanation: res.explanation || '',
         trap: res.trap || '',
@@ -10197,6 +10254,17 @@ async function generateAndSaveFlashcard(q, model, container, triggerBtn, opts){
   // então pulamos aqui se opts.skipConfirm for true.
   opts = opts || {};
   const customFocus = (opts.customFocus || '').trim();
+
+  // V15.12.75.58 — Pre-flight idem generateAndSaveExplanation
+  if(!q || !q.enunciado || !String(q.enunciado).trim()){
+    alert('Esta questão não tem enunciado. Não é possível gerar flashcard.');
+    return;
+  }
+  if(!q.answer){
+    alert('Esta questão não tem gabarito definido. Não é possível gerar flashcard confiável.');
+    return;
+  }
+
   if(!opts.skipConfirm){
     const ok = await confirmAction({
       title: '🎴 Gerar flashcard com Haiku',
@@ -10219,19 +10287,39 @@ async function generateAndSaveFlashcard(q, model, container, triggerBtn, opts){
     const qText = q.kind==='MC'
       ? `${q.enunciado}\n\nAlternativas:\n${normalizeAlternatives(q).map(a=>`${a.letter}) ${a.text}`).join('\n')}`
       : q.enunciado;
+
+    // V15.12.75.58 — Mesma lógica de generateAndSaveExplanation: questão
+    // importada não precisa de fonte ativa. Enriquece prompt com metadados
+    // pra IA ter contexto de banca/disciplina/assunto.
+    const isImported = isImportedQuestion(q);
+    let metaLines = [];
+    if(q.banca) metaLines.push(`Banca: ${q.banca}`);
+    if(q.year || q.ano) metaLines.push(`Ano: ${q.year || q.ano}`);
+    if(q.cargo) metaLines.push(`Cargo: ${q.cargo}`);
+    const discName = q.disciplineId ? (getDiscipline(q.disciplineId)||{}).name : null;
+    if(discName || q.discipline) metaLines.push(`Disciplina: ${discName || q.discipline}`);
+    if(q.topic || q.assunto) metaLines.push(`Assunto: ${q.topic || q.assunto}`);
+    const metaBlock = metaLines.length > 0
+      ? `\n\nMETADADOS DA QUESTÃO:\n${metaLines.join('\n')}`
+      : '';
+
     const sys = model === 'sonnet'
       ? 'Você é especialista em criar flashcards eficazes para concursos brasileiros. Use repetição espaçada (SRS). FRENTE: pergunta ou conceito-gatilho concreto. VERSO: resposta direta com no máximo 2 frases. Foque no que diferencia esse conceito de outros parecidos. Responda em JSON puro.'
       : 'Você cria flashcards SRS pra concursos. FRENTE: pergunta concreta. VERSO: resposta breve. Responda em JSON puro.';
     // V15.12.40 — Quando há customFocus, o flashcard é direcionado pelo usuário
     let prompt;
     if(customFocus){
-      prompt = `Crie UM flashcard a partir desta questão, FOCADO especificamente no que o estudante quer fixar:\n\nFOCO DO ESTUDANTE: "${customFocus}"\n\nQUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nCrie um flashcard que ataca DIRETAMENTE o ponto que o estudante mencionou. A frente deve ser uma pergunta que testa esse aspecto específico; o verso deve responder de forma clara. Não fuja do foco pedido.\n\nResponda em JSON:\n{"front":"...","back":"...","type":"concept"}`;
+      prompt = `Crie UM flashcard a partir desta questão, FOCADO especificamente no que o estudante quer fixar:\n\nFOCO DO ESTUDANTE: "${customFocus}"\n\nQUESTÃO: ${qText}\nGABARITO: ${q.answer}${metaBlock}\n\nCrie um flashcard que ataca DIRETAMENTE o ponto que o estudante mencionou. A frente deve ser uma pergunta que testa esse aspecto específico; o verso deve responder de forma clara. Não fuja do foco pedido.\n\nResponda em JSON:\n{"front":"...","back":"...","type":"concept"}`;
     } else {
-      prompt = `Crie UM flashcard a partir desta questão:\n\nQUESTÃO: ${qText}\nGABARITO: ${q.answer}\n\nO flashcard deve testar o CONCEITO da questão, não decorar a questão. Foque na regra/princípio que ela cobra.\n\nResponda em JSON:\n{"front":"...","back":"...","type":"concept"}`;
+      prompt = `Crie UM flashcard a partir desta questão:\n\nQUESTÃO: ${qText}\nGABARITO: ${q.answer}${metaBlock}\n\nO flashcard deve testar o CONCEITO da questão, não decorar a questão. Foque na regra/princípio que ela cobra.\n\nResponda em JSON:\n{"front":"...","back":"...","type":"concept"}`;
     }
 
     const modelStr = model === 'sonnet' ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
-    const res = await callAPI(sys, [{role:'user', content: prompt}], {model: modelStr, action: 'error_flashcard'});
+    const res = await callAPI(sys, [{role:'user', content: prompt}], {
+      model: modelStr,
+      action: 'error_flashcard',
+      skipContent: isImported   // V15.12.75.58 — questão importada não exige fonte
+    });
 
     if(!res || !res.front || !res.back){
       if(triggerBtn){ triggerBtn.disabled = false; triggerBtn.textContent = originalLabel; }
@@ -15531,35 +15619,49 @@ async function apiRespToError(r, action_id){
 // Chamadas passam pelo proxy /api/generate (Vercel) que adiciona a chave Anthropic
 // no servidor. Assim a chave nunca é exposta ao cliente.
 async function callAPI(system, msgs, opts){
-  const content = buildContent();
-  if(!content){
-    // V15: Diagnóstico claro pro usuário (Jean reportou geração quebrada após V15)
-    const totalSources = (DATA.sources||[]).length;
-    const totalDiscs = (DATA.disciplines||[]).length;
-    const activeDiscs = (DATA.disciplines||[]).filter(d=>d.active).length;
-    const sourcesWithDisc = (DATA.sources||[]).filter(s=>s.disciplineId).length;
-    console.error('[callAPI] no-content. Diagnóstico:', {
-      totalSources, totalDiscs, activeDiscs, sourcesWithDisc,
-      activeSourcesCount: typeof activeSources === 'function' ? activeSources().length : 'fn missing'
-    });
-    if(totalSources === 0){
-      throw new Error('no-content: você ainda não importou nenhuma fonte. Vá em Fontes → Adicionar e importe um material de estudo primeiro.');
+  // V15.12.75.58 — opts.skipContent: se true, pula buildContent() inteiro.
+  // Usado pra ações que NÃO dependem de fonte ativa pra funcionar — ex:
+  // gerar explicação de questão importada (já tem enunciado/gabarito/banca).
+  // Default false: comportamento histórico preservado (todas as chamadas
+  // existentes continuam exigindo fonte). Nenhuma regressão na prática IA.
+  const skipContent = !!(opts && opts.skipContent);
+  let content = '';
+  if(!skipContent){
+    content = buildContent();
+    if(!content){
+      // V15: Diagnóstico claro pro usuário (Jean reportou geração quebrada após V15)
+      const totalSources = (DATA.sources||[]).length;
+      const totalDiscs = (DATA.disciplines||[]).length;
+      const activeDiscs = (DATA.disciplines||[]).filter(d=>d.active).length;
+      const sourcesWithDisc = (DATA.sources||[]).filter(s=>s.disciplineId).length;
+      console.error('[callAPI] no-content. Diagnóstico:', {
+        totalSources, totalDiscs, activeDiscs, sourcesWithDisc,
+        activeSourcesCount: typeof activeSources === 'function' ? activeSources().length : 'fn missing'
+      });
+      if(totalSources === 0){
+        throw new Error('no-content: você ainda não importou nenhuma fonte. Vá em Fontes → Adicionar e importe um material de estudo primeiro.');
+      }
+      if(activeDiscs === 0){
+        throw new Error('no-content: você tem fontes, mas nenhuma disciplina está ATIVA. Vá em Configurações → Disciplinas e ative pelo menos uma.');
+      }
+      if(sourcesWithDisc === 0){
+        throw new Error('no-content: suas fontes não têm disciplina vinculada. Edite uma fonte e selecione a disciplina.');
+      }
+      throw new Error('no-content: nenhuma fonte ativa encontrada. Verifique se a disciplina das suas fontes está ativa em Configurações.');
     }
-    if(activeDiscs === 0){
-      throw new Error('no-content: você tem fontes, mas nenhuma disciplina está ATIVA. Vá em Configurações → Disciplinas e ative pelo menos uma.');
-    }
-    if(sourcesWithDisc === 0){
-      throw new Error('no-content: suas fontes não têm disciplina vinculada. Edite uma fonte e selecione a disciplina.');
-    }
-    throw new Error('no-content: nenhuma fonte ativa encontrada. Verifique se a disciplina das suas fontes está ativa em Configurações.');
   }
   // Build system as array with cache_control on the content block.
   // The system instructions change between methods but the content block is reused
   // between chat turns of the same method — so caching it saves ~90% on repeated calls.
-  const systemArr = [
-    {type:'text',text:system},
-    {type:'text',text:'CONTEÚDO DO CANDIDATO:\n\n'+content,cache_control:{type:'ephemeral'}}
-  ];
+  // V15.12.75.58 — Quando skipContent, system vai sem o bloco de conteúdo
+  // (não há fonte) e sem cache_control. Continua sendo array de blocos pra
+  // manter formato compatível com apiGenerate.
+  const systemArr = skipContent
+    ? [{type:'text',text:system}]
+    : [
+        {type:'text',text:system},
+        {type:'text',text:'CONTEÚDO DO CANDIDATO:\n\n'+content,cache_control:{type:'ephemeral'}}
+      ];
   const finalMsgs = msgs; // user messages ficam limpos, sem conteúdo duplicado
   const modelOverride = opts&&opts.model;
   // V15.12.10 (auditoria créditos): action_id é obrigatório pro backend V2.
