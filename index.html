@@ -6761,6 +6761,9 @@ const SUPABASE_CONFIG = {
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRybHRyY29mbG1mcmV6bXJ3eW1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5OTU2MzMsImV4cCI6MjA5MjU3MTYzM30.dP221PCV3b8joTCd212_f81Iktj3olv2AhBX5mGm8ZI'
 };
 
+// V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
+window.GRALIA_VERSION = 'V15.12.75.64';
+
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
 function initSupabase(){
@@ -9056,6 +9059,13 @@ async function renderSharedExplanationsBody(container, q, opts){
   const list = mk('div','shexpl-list');
   wrap.appendChild(list);
 
+  // V15.12.75.59 — Declara balance no escopo top da função pra que blocos
+  // após o fechamento do `else` de `filtroZerouExplicacoes` (L9311) também
+  // consigam acessar. Antes era declarado dentro do else (L9186) e quebrava
+  // a renderização de flashcards com "ReferenceError: balance is not defined"
+  // toda vez que o feedback de questão era renderizado.
+  const balance = (typeof QUOTA === 'object' && QUOTA && typeof QUOTA.remaining === 'number') ? QUOTA.remaining : null;
+
   // Loading state
   const loading = mk('div','shexpl-loading');
   loading.innerHTML = '<span class="loading-spinner"></span><span>Procurando explicações disponíveis…</span>';
@@ -9183,15 +9193,15 @@ async function renderSharedExplanationsBody(container, q, opts){
   genWrap.style.cssText = 'margin-top:.75rem;padding-top:.625rem;border-top:1px solid var(--border)';
   const genLabel = mk('div');
   genLabel.style.cssText = 'font-size:11.5px;color:var(--text3);margin-bottom:6px';
-  const balance = (typeof QUOTA === 'object' && QUOTA && typeof QUOTA.remaining === 'number') ? QUOTA.remaining : null;
+  // V15.12.75.59 — `balance` agora vem do escopo top da função (L9056+).
   const haikuCost = (typeof AI_COSTS === 'object' && AI_COSTS && AI_COSTS.imported_question_explanation) || 2;
   const sonnetCost = (typeof AI_COSTS === 'object' && AI_COSTS && AI_COSTS.imported_question_explanation_premium) || 5;
   const insuficienteHaiku = (balance != null && balance < haikuCost);
   const insuficienteSonnet = (balance != null && balance < sonnetCost);
   if(items.length > 0){
-    genLabel.innerHTML = `⚠ Gerar nova explicação consome créditos. Use só se as acima não forem suficientes.${balance != null ? ` <span style="color:var(--text3)">Saldo: ${balance} créd</span>` : ''}`;
+    genLabel.innerHTML = `⚠ Gerar nova explicação consome créditos. Use só se as acima não forem suficientes.${balance != null ? ` <span style="color:var(--text3)">Saldo: ${formatCredits(balance)} créd</span>` : ''}`;
   } else {
-    genLabel.innerHTML = `Gerar com IA — uma cópia ficará disponível pra outros estudantes economizarem.${balance != null ? ` <span style="color:var(--text3)">Saldo: ${balance} créd</span>` : ''}`;
+    genLabel.innerHTML = `Gerar com IA — uma cópia ficará disponível pra outros estudantes economizarem.${balance != null ? ` <span style="color:var(--text3)">Saldo: ${formatCredits(balance)} créd</span>` : ''}`;
   }
   genWrap.appendChild(genLabel);
   const genRow = mk('div','shexpl-gen-row');
@@ -9221,20 +9231,33 @@ async function renderSharedExplanationsBody(container, q, opts){
     mainBtn = mkBtn(`🤖 Gerar com IA · ${haikuCost} créd`,'btn btn-sm');
     mainBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
     if(insuficienteHaiku){
-      mainBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${haikuCost} necessários)`;
+      mainBtn.title = `Saldo insuficiente (${formatCredits(balance)} créd disponíveis, ${haikuCost} necessários)`;
       mainBtn.style.opacity = '0.6';
     }
     mainBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'haiku', container, mainBtn));
   } else if(haveOnlyOthers){
     // CASO 2: só explicações de outros users — "Gerar minha versão"
-    mainBtn = mkBtn(`🤖 Gerar minha versão · ${haikuCost} créd`,'btn btn-sm');
-    mainBtn.title = 'Gera a sua versão da explicação (Haiku). Útil se as da comunidade não atendem.';
-    mainBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
-    if(insuficienteHaiku){
-      mainBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${haikuCost} necessários)`;
-      mainBtn.style.opacity = '0.6';
+    // V15.12.75.60 — Antes gerava genérico (sem orientação) → vinha muito
+    // parecida com a que outro user já gerou. Agora se existe explicação
+    // de OUTRO user com o mesmo modelo (Haiku), abre modal de orientação
+    // pra forçar variação. Só permite "gerar genérico" se nenhum outro user
+    // gerou em Haiku (situação rara).
+    const haveOthersHaiku = items.some(i => i.model === 'haiku');
+    if(haveOthersHaiku){
+      mainBtn = mkBtn(`🎯 Gerar minha versão com orientação`,'btn btn-sm');
+      mainBtn.title = 'Já existe explicação Haiku de outro usuário pra esta questão. Pra não gerar igual, descreva o que você quer destacar.';
+      mainBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600;font-size:12.5px';
+      mainBtn.addEventListener('click', ()=>showImproveExplanationModal(q, container, mainBtn));
+    } else {
+      mainBtn = mkBtn(`🤖 Gerar minha versão · ${haikuCost} créd`,'btn btn-sm');
+      mainBtn.title = 'Gera a sua versão da explicação (Haiku). Útil se as da comunidade não atendem.';
+      mainBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
+      if(insuficienteHaiku){
+        mainBtn.title = `Saldo insuficiente (${formatCredits(balance)} créd disponíveis, ${haikuCost} necessários)`;
+        mainBtn.style.opacity = '0.6';
+      }
+      mainBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'haiku', container, mainBtn));
     }
-    mainBtn.addEventListener('click',()=>generateAndSaveExplanation(q, 'haiku', container, mainBtn));
   } else {
     // CASO 3: user já tem alguma explicação sua → ação principal é "Melhorar"
     mainBtn = mkBtn('🎯 Melhorar com orientação','btn btn-sm');
@@ -9254,14 +9277,14 @@ async function renderSharedExplanationsBody(container, q, opts){
       label: `🎯 Melhorar Sonnet · ${sonnetCost} créd`,
       handler: ()=>showImproveExplanationModal(q, container, mainBtn, 'sonnet'),
       enabled: !insuficienteSonnet,
-      tooltip: insuficienteSonnet ? `Saldo insuficiente (${balance} créd)` : 'Versão Sonnet direcionada com orientação'
+      tooltip: insuficienteSonnet ? `Saldo insuficiente (${formatCredits(balance)} créd)` : 'Versão Sonnet direcionada com orientação'
     });
   } else {
     secondaryOptions.push({
       label: `⚡ Gerar com Sonnet · ${sonnetCost} créd`,
       handler: ()=>generateAndSaveExplanation(q, 'sonnet', container, mainBtn),
       enabled: !insuficienteSonnet,
-      tooltip: insuficienteSonnet ? `Saldo insuficiente (${balance} créd)` : 'Modelo premium — análise mais profunda'
+      tooltip: insuficienteSonnet ? `Saldo insuficiente (${formatCredits(balance)} créd)` : 'Modelo premium — análise mais profunda'
     });
   }
 
@@ -9271,7 +9294,7 @@ async function renderSharedExplanationsBody(container, q, opts){
       label: `🤖 Gerar com Haiku · ${haikuCost} créd`,
       handler: ()=>generateAndSaveExplanation(q, 'haiku', container, mainBtn),
       enabled: !insuficienteHaiku,
-      tooltip: insuficienteHaiku ? `Saldo insuficiente (${balance} créd)` : 'Versão padrão (Haiku) — você ainda não gerou'
+      tooltip: insuficienteHaiku ? `Saldo insuficiente (${formatCredits(balance)} créd)` : 'Versão padrão (Haiku) — você ainda não gerou'
     });
   }
 
@@ -9382,7 +9405,7 @@ async function renderSharedExplanationsBody(container, q, opts){
       fcBtn.style.cssText = 'border-color:var(--accent);color:var(--accent-text);background:var(--accent-light);font-weight:600';
     }
     if(balance != null && balance < fcCost){
-      fcBtn.title = `Saldo insuficiente (${balance} créd disponíveis, ${fcCost} necessários)`;
+      fcBtn.title = `Saldo insuficiente (${formatCredits(balance)} créd disponíveis, ${fcCost} necessários)`;
       fcBtn.style.opacity = '0.6';
     } else if(flashItems.length > 0){
       fcBtn.title = 'Você ainda não gerou flashcard Haiku pra esta questão. Os existentes são da comunidade.';
@@ -9608,6 +9631,35 @@ function renderSharedExplanationCard(item, q){
     k.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:.5rem .75rem;background:rgba(245,158,11,.11);border:1px solid rgba(245,158,11,.22);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;font-size:12.5px;line-height:1.5;margin-top:6px';
     k.innerHTML = `<span style="font-size:14px;flex-shrink:0">🎯</span><span style="color:var(--text)"><b style="color:var(--amber-text)">Palavra-gatilho:</b> ${escapeHTML(p.keyword)}</span>`;
     body.appendChild(k);
+  }
+
+  // V15.12.75.60 — Alternativas erradas (só MC). Colapsável + sutil — fica
+  // recolhido por padrão pra não poluir, user expande se quer revisar.
+  if(Array.isArray(p.wrong_alternatives) && p.wrong_alternatives.length > 0 && q && q.kind === 'MC'){
+    const det = mk('details');
+    det.style.cssText = 'margin-top:8px;padding:.375rem .625rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:12px';
+    const sum = mk('summary');
+    sum.style.cssText = 'cursor:pointer;color:var(--text2);font-weight:600;list-style:none;padding:2px 0';
+    sum.textContent = `📋 Por que as outras estão erradas (${p.wrong_alternatives.length})`;
+    det.appendChild(sum);
+    const list = mk('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)';
+    p.wrong_alternatives.forEach(w => {
+      if(!w || !w.letter || !w.reason) return;
+      const row = mk('div');
+      row.style.cssText = 'display:flex;gap:8px;align-items:flex-start;line-height:1.5';
+      const letter = mk('span');
+      letter.style.cssText = 'flex-shrink:0;font-weight:700;color:var(--red-text);min-width:18px;font-size:12.5px';
+      letter.textContent = w.letter + ')';
+      const reason = mk('span');
+      reason.style.cssText = 'color:var(--text2);font-size:12px';
+      reason.textContent = w.reason;
+      row.appendChild(letter);
+      row.appendChild(reason);
+      list.appendChild(row);
+    });
+    det.appendChild(list);
+    body.appendChild(det);
   }
   card.appendChild(body);
 
@@ -10062,6 +10114,57 @@ function isImportedQuestion(q){
   return false;
 }
 
+// V15.12.75.59 — Garante que a questão tem disciplina válida no localStorage
+// pra vincular flashcards. Resolve o caso onde questão importada tem
+// `q.discipline` (string da banca, ex: "Direito Administrativo") mas o user
+// não tem essa disciplina cadastrada na conta dele.
+//
+// Lógica:
+// 1. Se q.disciplineId existe E está em DATA.disciplines → usa ele
+// 2. Se q.discipline (string) existe → procura por nome (case-insensitive)
+//    - Achou → retorna ID dela
+//    - Não achou → CRIA nova disciplina inativa (pra não interferir em buildContent)
+//      e retorna ID dela
+// 3. Sem nenhum dos dois → retorna null (flashcard fica sem disciplina)
+//
+// Disciplinas criadas automaticamente ficam com active=false (não interferem
+// em geração de questões IA por buildContent) mas existem pra agrupar cards.
+function ensureDisciplineForQuestion(q){
+  if(!q) return null;
+  if(!Array.isArray(DATA.disciplines)) DATA.disciplines = [];
+
+  // Caso 1: tem disciplineId válido
+  if(q.disciplineId){
+    const exists = DATA.disciplines.find(d => d.id === q.disciplineId);
+    if(exists) return q.disciplineId;
+  }
+
+  // Caso 2: tem nome — procura/cria
+  const discName = (q.discipline || '').trim();
+  if(!discName) return null;
+
+  const norm = discName.toLowerCase();
+  const found = DATA.disciplines.find(d => (d.name||'').toLowerCase().trim() === norm);
+  if(found){
+    return found.id;
+  }
+
+  // Não existe — cria inativa pra agrupar flashcards
+  const newDisc = {
+    id: 'disc_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
+    name: discName,
+    active: false,  // não interfere em buildContent
+    color: '#7c5cff',
+    createdAt: Date.now(),
+    autoCreated: true,
+    autoCreatedReason: 'Criada automaticamente pra agrupar flashcard de questão importada'
+  };
+  DATA.disciplines.push(newDisc);
+  save();
+  console.info('[ensureDiscipline] criou disciplina inativa:', newDisc.name);
+  return newDisc.id;
+}
+
 async function generateAndSaveExplanation(q, model, container, triggerBtn, opts){
   opts = opts || {};
   const customFocus = (opts.customFocus || '').trim();
@@ -10160,11 +10263,26 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn, opts)
         ? 'Você é professor especialista em concursos públicos brasileiros. Sua resposta deve ter clareza, profundidade e identificar armadilhas com precisão. Responda SEMPRE em JSON puro, sem markdown.'
         : 'Você é professor de concursos. Responda SEMPRE em JSON puro, sem markdown.';
       // V15.12.41 — Quando há customFocus, ataca DIRETAMENTE o ponto pedido
+      // V15.12.75.59 — Agora gera flashcard JUNTO com a explicação no mesmo
+      // JSON. Economiza créditos (1 chamada vs 2) e tempo (1 espera vs 2).
+      // Mantém custo atual (imported_question_explanation) — flashcard de
+      // brinde. User ainda pode gerar OUTRO flashcard direcionado depois
+      // se quiser variação.
       let prompt;
+      // V15.12.75.60 — Pra MC, pedimos também explicações curtas das alternativas
+      // erradas (1 frase cada). Mantém JSON estendido só pra MC — CE não precisa.
+      const isMC = q.kind === 'MC';
+      const wrongAltsInstr = isMC
+        ? '\n3. Pra CADA alternativa ERRADA (todas exceto a correta), uma frase curta (max 15 palavras) explicando por que está errada. Use o formato {"letter":"A","reason":"..."}.'
+        : '';
+      const wrongAltsJsonField = isMC
+        ? ',"wrong_alternatives":[{"letter":"A","reason":"..."}]'
+        : '';
+
       if(customFocus){
-        prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}${metaBlock}\n\nCandidato respondeu ${userAnswered||'(em branco)'} e ${userAnswered===q.answer?'acertou':'errou'}.\n\nFOCO DA MELHORIA PEDIDA: "${customFocus}"\n\nGere uma explicação que ATAQUE DIRETAMENTE o ponto que o estudante pediu (acima). Mantenha 2-4 frases, identifique a armadilha (o motivo de muitos errarem) e a palavra-gatilho. Não fuja do foco. Responda em JSON:\n{"explanation":"...","trap":"...","keyword":"..."}`;
+        prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}${metaBlock}\n\nCandidato respondeu ${userAnswered||'(em branco)'} e ${userAnswered===q.answer?'acertou':'errou'}.\n\nFOCO DA MELHORIA PEDIDA: "${customFocus}"\n\nGere os resultados num JSON único:\n1. Uma explicação que ATAQUE DIRETAMENTE o ponto que o estudante pediu. Mantenha 2-4 frases, identifique a armadilha e a palavra-gatilho.\n2. UM flashcard que teste o conceito da questão (não decorar a questão). Frente: pergunta direta; verso: resposta breve (até 2 frases).${wrongAltsInstr}\n\nResponda em JSON:\n{"explanation":"...","trap":"...","keyword":"...","flashcard":{"front":"...","back":"...","type":"concept"}${wrongAltsJsonField}}`;
       } else {
-        prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}${metaBlock}\n\nCandidato respondeu ${userAnswered||'(em branco)'} e ${userAnswered===q.answer?'acertou':'errou'}. Explique o gabarito em 2-4 frases, identifique a armadilha (o motivo de muitos errarem) e a palavra-gatilho do enunciado. Responda em JSON:\n{"explanation":"...","trap":"...","keyword":"..."}`;
+        prompt = `QUESTÃO: ${qText}\nGABARITO: ${q.answer}${metaBlock}\n\nCandidato respondeu ${userAnswered||'(em branco)'} e ${userAnswered===q.answer?'acertou':'errou'}. Gere os resultados num JSON único:\n1. Uma explicação do gabarito em 2-4 frases, identificando a armadilha e a palavra-gatilho.\n2. UM flashcard que teste o conceito (não decorar a questão). Frente: pergunta direta; verso: resposta breve (até 2 frases).${wrongAltsInstr}\n\nResponda em JSON:\n{"explanation":"...","trap":"...","keyword":"...","flashcard":{"front":"...","back":"...","type":"concept"}${wrongAltsJsonField}}`;
       }
       const modelStr = model === 'sonnet' ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
       const res = await callAPI(sys, [{role:'user', content: prompt}], {
@@ -10175,10 +10293,41 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn, opts)
       payload = {
         explanation: res.explanation || '',
         trap: res.trap || '',
-        keyword: res.keyword || ''
+        keyword: res.keyword || '',
+        // V15.12.75.60 — Lista curta de alternativas erradas (só MC)
+        wrong_alternatives: Array.isArray(res.wrong_alternatives) ? res.wrong_alternatives : null
       };
       // Salva em background — não bloqueia UI
       saveSharedExplanation(q.enunciado, 'explicacao', model, payload).catch(()=>{});
+
+      // V15.12.75.59 — Se o JSON trouxe flashcard, salva em paralelo (sem
+      // cobrar de novo). Vinculado à disciplina da questão (Teste B do user:
+      // flashcard deve usar disciplina da questão importada, não fonte ativa).
+      if(res.flashcard && res.flashcard.front && res.flashcard.back){
+        const flashPayload = {
+          front: res.flashcard.front,
+          back: res.flashcard.back,
+          type: res.flashcard.type || 'concept'
+        };
+        // Compartilha pra comunidade
+        saveSharedExplanation(q.enunciado, 'flashcard', model, flashPayload).catch(()=>{});
+        // Adiciona ao deck pessoal (silencioso — o toast vem da explicação)
+        // V15.12.75.59 — ensureDisciplineForQuestion garante que a questão tem
+        // disciplina (cria inativa se não existir na conta) pra agrupar cards
+        const discId = ensureDisciplineForQuestion(q);
+        try{
+          addCardToDeck({
+            front: flashPayload.front,
+            back: flashPayload.back,
+            type: flashPayload.type,
+            disciplineId: discId,
+            topic: q.topic || null,
+            sourceQuestion: q.id,
+            generatedBy: 'self-'+model,
+            _silent: true
+          });
+        }catch(_){}
+      }
     }
 
     // V15.12.39 — Optimistic update SEM refetch posterior (eliminou flicker e
@@ -10224,12 +10373,19 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn, opts)
         const lbl = genLabelEl.previousElementSibling;
         if(lbl && lbl.tagName === 'DIV' && lbl.textContent && lbl.textContent.includes('Gerar com IA')){
           const balance = (typeof QUOTA === 'object' && QUOTA && typeof QUOTA.remaining === 'number') ? QUOTA.remaining : null;
-          lbl.innerHTML = `⚠ Gerar nova explicação consome créditos. Use só se a acima não for suficiente.${balance != null ? ` <span style="color:var(--text3)">Saldo: ${balance} créd</span>` : ''}`;
+          lbl.innerHTML = `⚠ Gerar nova explicação consome créditos. Use só se a acima não for suficiente.${balance != null ? ` <span style="color:var(--text3)">Saldo: ${formatCredits(balance)} créd</span>` : ''}`;
         }
       }
     }catch(_){}
     // Limpa prefetch usado
     clearPrefetchedShared(q, 'explicacao', model);
+    // V15.12.75.59 — Restaura o botão também no caminho de sucesso. Antes
+    // só restaurava no catch — em sucesso, o botão ficava preso "⏳ Gerando..."
+    // disabled até o user trocar de aba/voltar (visibility change forçava render).
+    if(triggerBtn){
+      triggerBtn.disabled = false;
+      triggerBtn.textContent = originalLabel;
+    }
     showToast('✓ Explicação gerada e compartilhada');
     // V15.12.39 — REMOVIDO o setTimeout(refetch, 1200) que causava flicker.
     // O optimistic item já está visível com copy correto. Quando o user voltar
@@ -10336,11 +10492,13 @@ async function generateAndSaveFlashcard(q, model, container, triggerBtn, opts){
 
     // V15.12.39 — Adiciona ao deck local (silent: pulou toast simples; vamos usar
     // toast com Undo abaixo).
+    // V15.12.75.59 — ensureDisciplineForQuestion garante disciplina (cria se preciso)
+    const discId = ensureDisciplineForQuestion(q);
     const newCardId = addCardToDeck({
       front: res.front,
       back: res.back,
       type: res.type || 'concept',
-      disciplineId: q.disciplineId || null,
+      disciplineId: discId,
       topic: q.topic || null,
       sourceQuestion: q.id,
       generatedBy: 'self-'+model,
@@ -10527,7 +10685,7 @@ function showImproveExplanationModal(q, container, srcBtn){
   if(balance != null){
     const bal = mk('div');
     bal.style.cssText = 'margin-top:.75rem;font-size:11.5px;color:var(--text3);text-align:right';
-    bal.textContent = `Saldo: ${balance} créd`;
+    bal.textContent = `Saldo: ${formatCredits(balance)} créd`;
     m.appendChild(bal);
   }
 
@@ -14753,6 +14911,14 @@ function setChipProcessing(delta){
   if(chip) updateCreditsChip(chip);
 }
 
+// V15.12.75.64 — Helper global pra formatar créditos com separador de milhar pt-BR.
+// 1234 → "1.234" | 999 → "999" | null/undefined → "0"
+function formatCredits(n){
+  if(n === null || n === undefined || isNaN(n)) return '0';
+  const num = Number(n);
+  return num >= 1000 ? num.toLocaleString('pt-BR') : String(num);
+}
+
 function updateCreditsChip(chip){
   if(!chip)return;
   if(QUOTA.remaining===null){
@@ -14764,17 +14930,20 @@ function updateCreditsChip(chip){
   // saldo atual + indicador sutil de processamento (bolinha animada).
   // Evita o "saldo dança" durante cobrança/estorno.
   const r = QUOTA.remaining;
+  // V15.12.75.64 — Formata com separador de milhar pt-BR pra valores ≥1000.
+  // Antes: "12500 créd." (difícil de ler) → Agora: "12.500 créd."
+  const rFmt = formatCredits(r);
   if(_chipProcessing > 0){
-    chip.innerHTML = `${r} créd. <span class="chip-dot-processing" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-left:3px;opacity:.7;animation:chip-pulse 1.2s ease-in-out infinite"></span>`;
+    chip.innerHTML = `${rFmt} créd. <span class="chip-dot-processing" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-left:3px;opacity:.7;animation:chip-pulse 1.2s ease-in-out infinite"></span>`;
     chip.className = 'credits-chip processing';
     chip.title = 'Processando...';
     return;
   }
-  chip.textContent = r+' créd.';
+  chip.textContent = rFmt+' créd.';
   chip.className = 'credits-chip';
   if(r===0)chip.classList.add('empty');
   else if(r<=5)chip.classList.add('low');
-  chip.title = `Plano ${QUOTA.plan} · ${r} créditos restantes · clique pra ver o que cada ação consome`;
+  chip.title = `Plano ${QUOTA.plan} · ${rFmt} créditos restantes · clique pra ver o que cada ação consome`;
 }
 
 // V12: Popover rico explicando o que cada ação consome.
@@ -15555,7 +15724,10 @@ function confirmAction(opts){
   opts = opts || {};
   return new Promise((resolve) => {
     const modal = mk('div');
-    modal.style.cssText='max-width:420px;padding:1.5rem';
+    // V15.12.75.59 — Removido padding:1.5rem que duplicava o padding:1.25rem
+    // do .modal wrapper (showModal envolve em div.modal com padding). Antes
+    // o popup ficava com ~44px de borda interna em vez de 20px.
+    modal.style.cssText='max-width:420px';
 
     if(opts.title){
       const t = mk('h2');
@@ -15580,7 +15752,7 @@ function confirmAction(opts){
       const ccost = meta ? meta.base_credits : null;
       let html = `Custo: <b>${aiCostBadgeHTML(opts.costAction)}</b>`;
       if(typeof cur === 'number'){
-        html += ` &nbsp;·&nbsp; Saldo: <b>${cur}</b>`;
+        html += ` &nbsp;·&nbsp; Saldo: <b>${formatCredits(cur)}</b>`;
       }
       cost.innerHTML = html;
       modal.appendChild(cost);
@@ -15723,6 +15895,24 @@ async function callAPI(system, msgs, opts){
       cacheCreation:d.usage.cache_creation_input_tokens||0,
       cacheRead:d.usage.cache_read_input_tokens||0
     };
+    // V15.12.75.62 — Log no Supabase pra dashboard custo Anthropic (admin).
+    // Fire-and-forget — não bloqueia resposta, falha silenciosa.
+    // Modelo é deduzido pelo string usado na chamada (haiku-X / sonnet-X).
+    if(supa && AUTH && AUTH.user && opts && opts.action){
+      const modelStr = (modelOverride || DATA.config.model || '').toLowerCase();
+      const modelKey = modelStr.includes('sonnet') ? 'sonnet' : 'haiku';
+      supa.from('anthropic_usage_log').insert({
+        user_id: AUTH.user.id,
+        action_id: opts.action,
+        model: modelKey,
+        input_tokens: ST._lastUsage.input,
+        output_tokens: ST._lastUsage.output,
+        cache_read_tokens: ST._lastUsage.cacheRead,
+        cache_creation_tokens: ST._lastUsage.cacheCreation
+      }).then(({error}) => {
+        if(error) console.warn('[anthropic-log] insert falhou:', error.message);
+      }).catch(()=>{});
+    }
   }
   // Modo raw: retorna texto puro sem tentar extrair JSON
   // Usado pra explicações conversacionais (ex: "Não entendi") onde queremos texto livre
@@ -24662,7 +24852,9 @@ function toggleAIQuestionFavorite(q){
       p_difficulty: favRecord.difficulty || null,
       p_explanation: favRecord.explanation || null,
       p_trap: favRecord.trap || null,
-      p_keyword: favRecord.keyword || null
+      p_keyword: favRecord.keyword || null,
+      // V15.12.75.60 — Flashcard sugerido cross-device (precisa Migration 29)
+      p_suggested_flashcard: favRecord.suggestedFlashcard || null
     }).then(()=>{}).catch(e => console.warn('[ai-fav] upsert sync falhou:', e.message));
   }
   return true;
@@ -24841,6 +25033,8 @@ async function hydrateAIFavoritesFromSupabase(){
         explanation: row.out_explanation || '',
         trap: row.out_trap || '',
         keyword: row.out_keyword || '',
+        // V15.12.75.60 — Flashcard sugerido vindo do Supabase (Migration 29)
+        suggestedFlashcard: row.out_suggested_flashcard || null,
         favoritedAt: row.out_favorited_at ? new Date(row.out_favorited_at).getTime() : Date.now()
       });
       added++;
@@ -24869,7 +25063,9 @@ async function hydrateAIFavoritesFromSupabase(){
           p_difficulty: fav.difficulty || null,
           p_explanation: fav.explanation || null,
           p_trap: fav.trap || null,
-          p_keyword: fav.keyword || null
+          p_keyword: fav.keyword || null,
+          // V15.12.75.60 — Flashcard sugerido cross-device
+          p_suggested_flashcard: fav.suggestedFlashcard || null
         });
         pushed++;
       }catch(e){
@@ -26402,12 +26598,16 @@ function renderBankFilters(stateKey,bank){
   // sempre que tem disciplinas ativas com questões. Resolve queixa "antes via
   // disciplinas, agora não vejo mais": o usuário pode ter aplicado filtro que
   // restringiu pra 1 disciplina e a barra sumia, parecendo bug.
-  const actDiscsTop = activeDisciplines();
-  // Calcula contagem PRE-filtros pra evitar barra sumir após filtro reduzir tudo
-  // a 1 disciplina. Usa DATA.importedQuestions direto (todas as questões antes
-  // dos filtros aplicados pelo applyBankFilters).
+  // V15.12.75.60 — Antes mostrava só disciplinas ATIVAS. Agora mostra TODAS
+  // as disciplinas que têm pelo menos 1 questão no banco do user (mesmo se
+  // estão inativas ou foram auto-criadas pra agrupar flashcards). Pra filtrar
+  // por disciplina "Direito Administrativo" mesmo sem ter fonte ativa dela.
   const allBank = (DATA.importedQuestions || []);
-  const discsWithQTop = actDiscsTop.filter(d => allBank.some(q => q.disciplineId === d.id));
+  // Coleta IDs de disciplina realmente presentes nas questões
+  const discIdsInBank = new Set();
+  allBank.forEach(q => { if(q.disciplineId) discIdsInBank.add(q.disciplineId); });
+  // Resolve IDs → objetos disciplina (filtra inválidos)
+  const discsWithQTop = (DATA.disciplines || []).filter(d => discIdsInBank.has(d.id));
   if(discsWithQTop.length >= 1){
     const discQuickRow = mk('div');
     discQuickRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:.625rem;flex-wrap:wrap;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px';
@@ -26678,8 +26878,11 @@ function renderBankFilters(stateKey,bank){
   }
 
   // Discipline filter
-  const actDiscs = activeDisciplines();
-  const discsWithQ = actDiscs.filter(d=>bank.some(q=>q.disciplineId===d.id));
+  // V15.12.75.60 — Mesma lógica do filtro de chips top: TODAS disciplinas que
+  // tem questão (inclui inativas/auto-criadas), não só ativas.
+  const _discIdsInBank2 = new Set();
+  bank.forEach(q => { if(q.disciplineId) _discIdsInBank2.add(q.disciplineId); });
+  const discsWithQ = (DATA.disciplines || []).filter(d => _discIdsInBank2.has(d.id));
   if(discsWithQ.length>=2){
     const opts = [['all','Todas',bank.length]].concat(discsWithQ.map(d=>{
       const cnt = bank.filter(q=>q.disciplineId===d.id).length;
@@ -28669,7 +28872,7 @@ function showImportCostModal({ estimate, parserResult, fileName }){
     if(insufBalance){
       const warn = mk('div');
       warn.style.cssText = 'padding:.75rem 1rem;background:rgba(232,76,76,.06);border:1px solid rgba(232,76,76,.30);border-left:3px solid var(--red);border-radius:9px;margin-bottom:1rem;font-size:12.5px;color:var(--red-text);line-height:1.5';
-      warn.innerHTML = `<b>⚠ Saldo insuficiente.</b> Faltam <b>${estimate.shortBy} créditos</b> para processar tudo. Reduza o limite acima para o seu saldo (${estimate.balance}) ou recarregue créditos.`;
+      warn.innerHTML = `<b>⚠ Saldo insuficiente.</b> Faltam <b>${formatCredits(estimate.shortBy)} créditos</b> para processar tudo. Reduza o limite acima para o seu saldo (${formatCredits(estimate.balance)}) ou recarregue créditos.`;
       m.appendChild(warn);
     }
 
@@ -33775,6 +33978,51 @@ function renderImportedPractice(wrap){
     wrap.appendChild(small);
   }
   if(!ST.importedCurrent||!pool.find(q=>q.id===ST.importedCurrent.id)){
+    // V15.12.75.59 — Pool de 1 questão: detecta caso especial. Quando user
+    // termina e clica "Próxima", antes voltava a MESMA questão (UX ruim).
+    // Agora detecta e mostra tela de fim de sessão com escolhas claras.
+    if(pool.length === 1 && ST.importedLastId === pool[0].id){
+      // Já respondeu a única questão desta seleção — fim natural da sessão
+      const finishCard = mk('div','card fade');
+      finishCard.style.cssText = 'text-align:center;padding:1.5rem 1.25rem';
+      const icon = mk('div');
+      icon.style.cssText = 'font-size:42px;margin-bottom:.5rem';
+      icon.textContent = '✓';
+      finishCard.appendChild(icon);
+      const title = mk('h3');
+      title.style.cssText = 'margin:0 0 .375rem;font-size:18px;font-weight:700';
+      title.textContent = 'Você terminou esta seleção';
+      finishCard.appendChild(title);
+      const desc = mk('p','txt2');
+      desc.style.cssText = 'margin:0 0 1rem;font-size:13px';
+      desc.textContent = 'Esta sessão tinha só 1 questão. Escolha como continuar:';
+      finishCard.appendChild(desc);
+      const btnRow = mk('div','flex');
+      btnRow.style.cssText = 'gap:8px;justify-content:center;flex-wrap:wrap';
+      const refazerBtn = mkBtn('🔁 Refazer essa questão', 'btn');
+      refazerBtn.addEventListener('click', ()=>{
+        ST.importedCurrent = pool[0];
+        ST.importedAnswered = false;
+        ST.importedAnswer = null;
+        render();
+      });
+      btnRow.appendChild(refazerBtn);
+      const cadernosBtn = mkBtn('📚 Outras questões', 'btn btn-p');
+      cadernosBtn.addEventListener('click', ()=>{
+        // Volta pra lista geral, limpa seleção
+        ST.importedPracticeIds = null;
+        ST.importedCurrent = null;
+        ST.importedAnswered = false;
+        ST._importedSessionSeen = {};
+        ST.importedSubview = 'list';
+        render();
+      });
+      btnRow.appendChild(cadernosBtn);
+      finishCard.appendChild(btnRow);
+      wrap.appendChild(finishCard);
+      return wrap;
+    }
+
     // V15.12.37 — Anti-repetição: mantém fila da sessão pra evitar mostrar
     // a mesma questão duas vezes em pouco tempo. Reseta quando todas foram vistas
     // ou quando o pool muda (custom/disciplina).
@@ -50927,6 +51175,24 @@ function renderAdminDashboard(){
   wrap.appendChild(allUsersCard);
   loadAdminAllUsers(allUsersBody);
 
+  // V15.12.75.62 — Card: Dashboard de custos Anthropic
+  // Agregado por janela (24h/7d/30d/all) pra admin monitorar gasto IA real.
+  // Dados vêm da tabela anthropic_usage_log (Migration 31).
+  const anthCostCard = mk('section','admin-card');
+  anthCostCard.appendChild(adminSectionLabel('💰 Custos IA'));
+  const anthCostHead = mk('h2','admin-section-title');
+  anthCostHead.textContent = 'Consumo Anthropic';
+  anthCostCard.appendChild(anthCostHead);
+  const anthCostHelp = mk('p');
+  anthCostHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem;line-height:1.5';
+  anthCostHelp.textContent = 'Tokens consumidos + custo estimado em USD. Preços baseados na tabela atual da Anthropic — ajuste em ANTHROPIC_PRICES se mudarem.';
+  anthCostCard.appendChild(anthCostHelp);
+  const anthCostBody = mk('div','admin-cost-body');
+  anthCostBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando...</div>';
+  anthCostCard.appendChild(anthCostBody);
+  wrap.appendChild(anthCostCard);
+  loadAdminAnthropicCost(anthCostBody);
+
   // === V15.12.61 — Card: Moderação de questões IA reportadas ===
   // Lista reports não-resolvidos da tabela ai_question_reports. Permite ao
   // admin: ver detalhes da questão + motivo, marcar como resolvido, ou
@@ -51657,6 +51923,222 @@ const ADMIN_USERS_STATE = {
   total: 0,
   loading: false
 };
+
+// V15.12.75.62 — Constantes de preço Anthropic (USD por 1M tokens).
+// Valores aproximados — atualize aqui quando Anthropic mudar tabela.
+// Cache read = 10% do input (90% desconto). Cache write = 125% do input.
+const ANTHROPIC_PRICES = {
+  haiku: {
+    input: 1.0,          // USD per 1M input tokens
+    output: 5.0,         // USD per 1M output tokens
+    cache_read: 0.10,    // 10% of input
+    cache_creation: 1.25 // 125% of input
+  },
+  sonnet: {
+    input: 3.0,
+    output: 15.0,
+    cache_read: 0.30,
+    cache_creation: 3.75
+  }
+};
+
+function calcAnthropicCostUSD(model, tokens){
+  const p = ANTHROPIC_PRICES[model] || ANTHROPIC_PRICES.haiku;
+  const cost =
+    (tokens.input_tokens || 0) * p.input / 1e6 +
+    (tokens.output_tokens || 0) * p.output / 1e6 +
+    (tokens.cache_read_tokens || 0) * p.cache_read / 1e6 +
+    (tokens.cache_creation_tokens || 0) * p.cache_creation / 1e6;
+  return cost;
+}
+
+function formatUSD(n){
+  if(typeof n !== 'number' || isNaN(n)) return '$0.00';
+  if(n < 0.01) return '<$0.01';
+  if(n < 1) return '$' + n.toFixed(3);
+  if(n < 100) return '$' + n.toFixed(2);
+  return '$' + Math.round(n).toLocaleString('en-US');
+}
+
+function formatBRL(usd){
+  // Estimativa BRL (1 USD ≈ 5 BRL — atualizar se câmbio variar muito)
+  const brl = usd * 5;
+  if(brl < 0.01) return 'R$0,00';
+  if(brl < 1) return 'R$' + brl.toFixed(3).replace('.', ',');
+  if(brl < 100) return 'R$' + brl.toFixed(2).replace('.', ',');
+  return 'R$' + Math.round(brl).toLocaleString('pt-BR');
+}
+
+const ADMIN_COST_STATE = { window: '7d' };
+
+async function loadAdminAnthropicCost(container){
+  if(!supa){
+    container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>';
+    return;
+  }
+  // Monta UI uma vez: tabs + body
+  if(!container.querySelector('.acost-tabs')){
+    container.innerHTML = '';
+
+    const tabs = mk('div','acost-tabs');
+    tabs.style.cssText = 'display:flex;gap:6px;margin-bottom:.75rem;flex-wrap:wrap';
+    const tabDef = [
+      {w:'24h', lbl:'Últimas 24h'},
+      {w:'7d', lbl:'Últimos 7 dias'},
+      {w:'30d', lbl:'Últimos 30 dias'},
+      {w:'90d', lbl:'Últimos 90 dias'},
+      {w:'all', lbl:'Tudo'}
+    ];
+    tabDef.forEach(t => {
+      const b = mkBtn(t.lbl, 'btn btn-sm');
+      b.style.cssText = 'font-size:11.5px;padding:5px 11px';
+      if(ADMIN_COST_STATE.window === t.w){
+        b.style.cssText += ';background:var(--gralia-purple);color:#fff;border-color:var(--gralia-purple)';
+      }
+      b.addEventListener('click', () => {
+        ADMIN_COST_STATE.window = t.w;
+        // Re-renderiza tabs com nova seleção
+        container.innerHTML = '';
+        loadAdminAnthropicCost(container);
+      });
+      tabs.appendChild(b);
+    });
+    container.appendChild(tabs);
+
+    const body = mk('div','acost-body');
+    body.innerHTML = '<div class="admin-loading" style="padding:.75rem"><span class="loading-spinner"></span> Carregando estatísticas...</div>';
+    container.appendChild(body);
+  }
+
+  const body = container.querySelector('.acost-body');
+
+  try{
+    const {data, error} = await supa.rpc('admin_anthropic_stats', {p_window: ADMIN_COST_STATE.window});
+    if(error) throw error;
+    if(!data){
+      body.innerHTML = '<div class="txt3" style="padding:1rem">Sem dados pra esta janela.</div>';
+      return;
+    }
+
+    const t = data.totals || {};
+    if(!t.calls){
+      body.innerHTML = '<div class="txt3" style="padding:1rem;text-align:center">Sem chamadas registradas nesta janela.</div>';
+      return;
+    }
+
+    // Calcula custo USD agregando por modelo
+    let totalUSD = 0;
+    const byModel = data.by_model || [];
+    byModel.forEach(m => {
+      m._cost_usd = calcAnthropicCostUSD(m.model, m);
+      totalUSD += m._cost_usd;
+    });
+
+    body.innerHTML = '';
+
+    // Big numbers (4 KPIs)
+    const kpis = mk('div');
+    kpis.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1rem';
+    const totalTokens = (t.input_tokens||0) + (t.output_tokens||0) + (t.cache_read_tokens||0) + (t.cache_creation_tokens||0);
+    const cacheRatio = totalTokens > 0 ? ((t.cache_read_tokens||0) / totalTokens * 100) : 0;
+    const kpiData = [
+      {lbl:'Chamadas', val:t.calls.toLocaleString('pt-BR'), sub:t.unique_users + ' user' + (t.unique_users===1?'':'s')},
+      {lbl:'Tokens totais', val:(totalTokens/1000).toFixed(1) + 'k', sub:(t.input_tokens/1000).toFixed(1)+'k in / '+(t.output_tokens/1000).toFixed(1)+'k out'},
+      {lbl:'Cache hit', val:cacheRatio.toFixed(1)+'%', sub:(t.cache_read_tokens/1000).toFixed(1)+'k de '+(totalTokens/1000).toFixed(1)+'k'},
+      {lbl:'Custo estimado', val:formatUSD(totalUSD), sub:formatBRL(totalUSD)+' aprox.', highlight:true}
+    ];
+    kpiData.forEach(k => {
+      const card = mk('div');
+      const bg = k.highlight ? 'rgba(124,92,255,.08)' : 'var(--surface2)';
+      const bd = k.highlight ? 'rgba(124,92,255,.30)' : 'var(--border)';
+      card.style.cssText = `padding:.75rem .875rem;background:${bg};border:1px solid ${bd};border-radius:8px`;
+      card.innerHTML = `
+        <div style="font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">${k.lbl}</div>
+        <div style="font-size:20px;font-weight:700;color:${k.highlight?'var(--gralia-purple)':'var(--text)'}">${k.val}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${k.sub}</div>
+      `;
+      kpis.appendChild(card);
+    });
+    body.appendChild(kpis);
+
+    // Breakdown por modelo
+    if(byModel.length > 0){
+      const mLbl = mk('div');
+      mLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:.875rem 0 .375rem';
+      mLbl.textContent = '🤖 Por modelo';
+      body.appendChild(mLbl);
+      const mTbl = mk('div');
+      mTbl.style.cssText = 'display:flex;flex-direction:column;gap:6px';
+      byModel.forEach(m => {
+        const row = mk('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:12.5px;gap:8px;flex-wrap:wrap';
+        row.innerHTML = `
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <span style="font-weight:700;color:${m.model==='sonnet'?'var(--gralia-purple)':'var(--accent-text)'}">${m.model === 'sonnet' ? '⚡ Sonnet' : '🤖 Haiku'}</span>
+            <span style="color:var(--text3);font-size:11.5px">${m.calls.toLocaleString('pt-BR')} chamadas</span>
+          </div>
+          <div style="display:flex;gap:14px;align-items:center;font-size:11.5px">
+            <span style="color:var(--text2)">${((parseInt(m.input_tokens)+parseInt(m.output_tokens))/1000).toFixed(1)}k tokens</span>
+            <span style="font-weight:700;color:var(--gralia-purple)">${formatUSD(m._cost_usd)}</span>
+          </div>
+        `;
+        mTbl.appendChild(row);
+      });
+      body.appendChild(mTbl);
+    }
+
+    // Top actions
+    const topActions = data.top_actions || [];
+    if(topActions.length > 0){
+      const aLbl = mk('div');
+      aLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:.875rem 0 .375rem';
+      aLbl.textContent = '⚡ Top ações (por tokens)';
+      body.appendChild(aLbl);
+      const aTbl = mk('div');
+      aTbl.style.cssText = 'display:flex;flex-direction:column;gap:4px';
+      topActions.forEach(a => {
+        const row = mk('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:.375rem .625rem;background:var(--surface2);border-radius:5px;font-size:12px';
+        row.innerHTML = `
+          <span style="font-family:ui-monospace,monospace;color:var(--text2)">${escapeHTML(a.action_id)}</span>
+          <span style="color:var(--text3)">${a.calls} · ${(parseInt(a.total_tokens)/1000).toFixed(1)}k tokens</span>
+        `;
+        aTbl.appendChild(row);
+      });
+      body.appendChild(aTbl);
+    }
+
+    // Top users
+    const topUsers = data.top_users || [];
+    if(topUsers.length > 0){
+      const uLbl = mk('div');
+      uLbl.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin:.875rem 0 .375rem';
+      uLbl.textContent = '👥 Top usuários (por tokens)';
+      body.appendChild(uLbl);
+      const uTbl = mk('div');
+      uTbl.style.cssText = 'display:flex;flex-direction:column;gap:4px';
+      topUsers.forEach(u => {
+        const row = mk('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:.375rem .625rem;background:var(--surface2);border-radius:5px;font-size:12px;gap:8px';
+        row.innerHTML = `
+          <span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(u.email || '?')}</span>
+          <span style="color:var(--text3);flex-shrink:0">${u.calls} · ${(parseInt(u.total_tokens)/1000).toFixed(1)}k tokens</span>
+        `;
+        uTbl.appendChild(row);
+      });
+      body.appendChild(uTbl);
+    }
+
+    // Disclaimer
+    const disc = mk('div');
+    disc.style.cssText = 'margin-top:.875rem;padding:.5rem .75rem;background:rgba(245,158,11,.06);border-left:3px solid var(--amber);border-radius:0 6px 6px 0;font-size:11px;color:var(--text3);line-height:1.5';
+    disc.innerHTML = '⚠ Custo estimado baseado em preços públicos da Anthropic (input/output/cache). Valor real pode variar levemente. Câmbio BRL: 1 USD = 5 BRL (aproximado).';
+    body.appendChild(disc);
+
+  }catch(e){
+    body.innerHTML = `<div class="txt3" style="padding:1rem;color:var(--red-text);font-size:12.5px">Erro: ${escapeHTML(e.message||String(e))}</div>`;
+  }
+}
 
 async function loadAdminAllUsers(container){
   if(!supa){
@@ -59385,12 +59867,17 @@ function buildForestScene(trees){
     let s = `<g class="araucaria araucaria-${type}" data-tree-id="${groupId}">`;
     s += `<foreignObject class="araucaria-video-fo" x="${foX}" y="${foY}" width="${size.w}" height="${size.h}">`;
     s += `<div xmlns="http://www.w3.org/1999/xhtml" class="araucaria-video-wrap">`;
-    // Vídeo A — primário, começa visível
+    // Vídeo A — primário, começa visível. preload=auto pra começar a tocar logo.
     s += `<video class="araucaria-video araucaria-video-a" muted playsinline preload="auto" aria-hidden="true">`;
     s += `<source src="${videoSrc}" type="video/webm">`;
     s += `</video>`;
     // Vídeo B — secundário, começa invisível e desfasado
-    s += `<video class="araucaria-video araucaria-video-b" muted playsinline preload="auto" aria-hidden="true">`;
+    // V15.12.75.63 — preload=metadata em vez de auto. Reduz carga de rede
+    // inicial: B só carrega o vídeo real quando o crossfade aciona play(),
+    // não baixa antes. Resultado: 30 árvores = 30 downloads imediatos + 30
+    // sob demanda (em vez de 60 imediatos). Crossfade ainda funciona — quando
+    // dá play(), browser baixa rapidamente o que falta.
+    s += `<video class="araucaria-video araucaria-video-b" muted playsinline preload="metadata" aria-hidden="true">`;
     s += `<source src="${videoSrc}" type="video/webm">`;
     s += `</video>`;
     s += `</div></foreignObject>`;
@@ -66567,6 +67054,124 @@ function maybeShowTutorial(retries){
     showTutorialModal();
   }catch(e){console.warn('[tutorial]', e);}
 }
+
+// V15.12.75.63 — Helpers globais pra debugar tutorial visual via console.
+// Uso: graliaTutorial.diagnose() | reset() | force() | dismiss()
+// Disponíveis em qualquer hora — facilita Jean reportar estado real do tutorial.
+window.graliaTutorial = {
+  diagnose(){
+    const state = {
+      isAuthed: typeof isAuthed === 'function' ? isAuthed() : '?',
+      tutorialOffered: DATA.tutorialOffered,
+      hasModalOpen: !!ST.modal,
+      modalContent: ST.modal ? (ST.modal.tagName || 'unknown') : null,
+      sourcesCount: (DATA.sources||[]).length,
+      view: ST.view
+    };
+    console.table(state);
+    if(state.tutorialOffered){
+      console.warn('Tutorial silenciado por DATA.tutorialOffered=true. Rode graliaTutorial.reset() pra liberar.');
+    } else if(state.hasModalOpen){
+      console.warn('Outro modal está aberto — tutorial vai aparecer quando esse fechar (até 30s de retry).');
+    } else if(!state.isAuthed){
+      console.warn('Não autenticado — tutorial só aparece após login.');
+    } else {
+      console.info('Tudo OK. Tutorial deveria aparecer. Rode graliaTutorial.force() pra abrir agora.');
+    }
+    return state;
+  },
+  reset(){
+    DATA.tutorialOffered = false;
+    save();
+    console.info('✓ DATA.tutorialOffered = false. Recarregue ou rode graliaTutorial.force() pra ver agora.');
+  },
+  force(){
+    if(typeof showTutorialModal === 'function'){
+      showTutorialModal();
+      console.info('✓ Tutorial aberto (showTutorialModal direto).');
+    } else {
+      console.error('showTutorialModal não disponível.');
+    }
+  },
+  dismiss(){
+    DATA.tutorialOffered = true;
+    save();
+    console.info('✓ Tutorial marcado como concluído. Não vai aparecer no próximo login.');
+  }
+};
+
+// V15.12.75.63 — Helpers de debug geral. Útil pra reportar bugs.
+// Uso: graliaDebug.state() | sources() | questions() | favorites() | clearSeen()
+window.graliaDebug = {
+  state(){
+    const s = {
+      version: (window.GRALIA_VERSION || '?'),
+      user: AUTH.user ? AUTH.user.email : null,
+      isAdmin: typeof isAdminUser === 'function' ? isAdminUser() : '?',
+      view: ST.view,
+      modalOpen: !!ST.modal,
+      supabase: !!supa,
+      sourcesCount: (DATA.sources||[]).length,
+      disciplinesCount: (DATA.disciplines||[]).length,
+      activeDisciplinesCount: (DATA.disciplines||[]).filter(d=>d.active).length,
+      importedQuestionsCount: (DATA.importedQuestions||[]).length,
+      flashcardsCount: ((DATA.srs||{}).cards||[]).length,
+      aiFavoritesCount: (DATA.aiFavoriteQuestions||[]).length,
+      tutorialOffered: DATA.tutorialOffered,
+      quota: typeof QUOTA === 'object' ? QUOTA.remaining : null,
+      planId: typeof SUBSCRIPTION === 'object' && SUBSCRIPTION.data ? SUBSCRIPTION.data.plan_id : null
+    };
+    console.table(s);
+    return s;
+  },
+  sources(){
+    const list = (DATA.sources||[]).map(s => ({
+      name: (s.name||'').slice(0,50),
+      disciplineId: s.disciplineId || null,
+      discipline: s.disciplineId ? ((getDiscipline(s.disciplineId)||{}).name || '?') : null,
+      hasContent: !!(s.content && s.content.length > 0),
+      contentChars: (s.content||'').length,
+      importedFromUser: s.importedFromUser || null
+    }));
+    console.table(list);
+    return list;
+  },
+  questions(limit){
+    limit = limit || 20;
+    const list = (DATA.importedQuestions||[]).slice(0, limit).map(q => ({
+      id: (q.id||'').slice(0,12),
+      kind: q.kind,
+      enunciado: (q.enunciado||'').slice(0,60) + '...',
+      answer: q.answer,
+      discipline: q.disciplineId ? ((getDiscipline(q.disciplineId)||{}).name || '?') : (q.discipline||null),
+      attempts: q.attempts || 0,
+      correct: q.correctCount || 0,
+      favorite: q.favorite || false
+    }));
+    console.table(list);
+    console.info(`Mostrando ${list.length} de ${(DATA.importedQuestions||[]).length}`);
+    return list;
+  },
+  favorites(){
+    const list = (DATA.aiFavoriteQuestions||[]).map(f => ({
+      key: (f.key||'').slice(0,12),
+      kind: f.kind,
+      question: (f.question||'').slice(0,60) + '...',
+      answer: f.answer,
+      hasExpl: !!f.explanation,
+      hasFlash: !!f.suggestedFlashcard,
+      userAnsweredOk: f.userAnsweredOk
+    }));
+    console.table(list);
+    return list;
+  },
+  clearSeen(){
+    // Limpa o set de questões vistas na sessão atual pra forçar repetição se quiser
+    ST._poolSeenThisSession = {};
+    ST._importedSessionSeen = {};
+    console.info('✓ Sets de "visto" limpos. Próxima prática pode mostrar questões já vistas.');
+  }
+};
 
 /* ============================================================
    AUTH INIT — roda no boot
