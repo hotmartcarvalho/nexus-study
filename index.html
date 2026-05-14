@@ -24890,19 +24890,32 @@ async function reportAiQuestion(canonicalHash, reason){
   }
   DATA.aiReports[canonicalHash] = {reason: reason, at: Date.now()};
   save();
+  // V15.12.75.52 — Logs detalhados. Antes silenciava erro com mensagens
+  // "does not exist"/"not found"/"function" assumindo que era a RPC velha
+  // ausente em ambientes antigos. Mas isso esconde erros reais (RLS,
+  // permission, parâmetros errados). Agora sempre loga.
+  console.info('[ai_report] disparando RPC ai_question_report', {
+    canonicalHash: canonicalHash.slice(0, 12),
+    reason,
+    has_supa: !!supa,
+    has_auth: !!(AUTH && AUTH.user)
+  });
   if(supa && AUTH.user){
     try{
-      const {error} = await supa.rpc('ai_question_report', {
+      const {data, error} = await supa.rpc('ai_question_report', {
         p_content_hash: canonicalHash,
         p_reason: reason
       });
       if(error){
-        const msg = (error.message||'').toLowerCase();
-        if(!msg.includes('does not exist') && !msg.includes('not found') && !msg.includes('function')){
-          console.warn('[ai_report] sync falhou:', error.message);
-        }
+        console.warn('[ai_report] RPC retornou erro:', error.message, error);
+      } else {
+        console.info('[ai_report] ✓ RPC OK, retorno:', data);
       }
-    }catch(_){}
+    }catch(err){
+      console.warn('[ai_report] exception:', err.message, err);
+    }
+  } else {
+    console.warn('[ai_report] sem supa ou auth — não chamou RPC');
   }
   return true;
 }
