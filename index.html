@@ -51639,6 +51639,56 @@ async function showAdminUserDetailModal(userRow){
     actionsWrap.appendChild(wlBtn);
   }
 
+  // V15.12.75.46 — Zona de perigo: Excluir conta completamente.
+  // Separada visualmente das outras ações. Pede confirmação digitando o email.
+  const dangerZone = mk('div');
+  dangerZone.style.cssText = 'margin-top:.625rem;padding-top:.625rem;border-top:1px dashed var(--border);width:100%';
+  const dangerLbl = mk('div');
+  dangerLbl.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--red-text);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.375rem';
+  dangerLbl.textContent = '⚠ Zona de perigo';
+  dangerZone.appendChild(dangerLbl);
+
+  const delBtn = mkBtn('🗑 Excluir conta completamente', 'btn btn-sm');
+  delBtn.style.cssText = 'color:var(--red-text);border-color:var(--red-light);background:transparent;font-size:11.5px;width:100%;justify-content:center';
+  delBtn.title = 'Remove o usuário e TODOS os dados associados (perfil, créditos, histórico, etc). Ação irreversível. Libera o email pra reuso.';
+  delBtn.addEventListener('click', async ()=>{
+    // Confirmação dupla: alerta + prompt do email exato
+    const isSelf = (AUTH.user && AUTH.user.id === userRow.out_user_id);
+    if(isSelf){
+      alert('Você não pode deletar a própria conta admin pelo painel. Logue como outro admin pra fazer isso.');
+      return;
+    }
+    if(userRow.out_has_paid_sub){
+      alert('⚠ Esta conta tem assinatura paga ativa. Cancele a assinatura no Mercado Pago primeiro pra evitar cobranças órfãs.');
+      return;
+    }
+    const confirmation = prompt(
+      '⚠ AÇÃO IRREVERSÍVEL\n\n' +
+      'Vai apagar TODOS os dados desta conta: perfil, créditos, histórico, explicações compartilhadas, favoritos, etc.\n\n' +
+      'O email "' + userRow.out_email + '" voltará a ficar disponível pra novo cadastro.\n\n' +
+      'Pra confirmar, digite o email exato da conta:'
+    );
+    if(confirmation === null) return;
+    if(confirmation.trim().toLowerCase() !== (userRow.out_email || '').toLowerCase()){
+      alert('Email não confere. Operação cancelada.');
+      return;
+    }
+    delBtn.disabled = true;
+    delBtn.textContent = 'Excluindo...';
+    try{
+      const {data, error} = await supa.rpc('admin_delete_user', {p_user_id: userRow.out_user_id});
+      if(error) throw error;
+      showToast('✓ Conta excluída: ' + (data?.email || userRow.out_email), 4000);
+      refreshList();
+    }catch(e){
+      delBtn.disabled = false;
+      delBtn.textContent = '🗑 Excluir conta completamente';
+      showToast('Erro: ' + (e.message||String(e)), 5000);
+    }
+  });
+  dangerZone.appendChild(delBtn);
+  actionsWrap.appendChild(dangerZone);
+
   m.appendChild(actionsWrap);
   showModal(m);
 
