@@ -24607,7 +24607,9 @@ async function migrateLegacyReportsToSupabase(){
   let migrated = 0;
   let failed = 0;
 
-  for(const r of candidates){
+  // V15.12.75.48 — Paralelizado. Antes rodava 1-a-1 sequencial, lentidão real
+  // se houvesse muitos reports antigos. Promise.all roda todos juntos.
+  await Promise.all(candidates.map(async (r) => {
     const itemId = typeof r.itemId === 'number' ? r.itemId : parseInt(r.itemId, 10);
     try{
       const {error} = await supa.rpc('report_shared_explanation', {
@@ -24616,7 +24618,6 @@ async function migrateLegacyReportsToSupabase(){
         p_note: r.note || null
       });
       if(error){
-        // Item pode não existir mais no Supabase, ou outro erro de validação
         r.syncedToSupabase = 'failed';
         r.syncFailReason = error.message;
         failed++;
@@ -24629,7 +24630,7 @@ async function migrateLegacyReportsToSupabase(){
       r.syncFailReason = e.message;
       failed++;
     }
-  }
+  }));
 
   // Persiste mudanças nas flags
   if(migrated > 0 || failed > 0){
@@ -24683,9 +24684,10 @@ async function hydrateAIFavoritesFromSupabase(){
     // Pushea favoritas LOCAIS que ainda não estão no Supabase
     // (caso user tenha favoritado antes da V15.12.75.31 ou enquanto offline)
     const remoteKeys = new Set(data.map(r => r.out_fav_key));
+    // V15.12.75.48 — Paralelizado. Antes 1-a-1 sequencial.
+    const localToPush = DATA.aiFavoriteQuestions.filter(f => !remoteKeys.has(f.key));
     let pushed = 0;
-    for(const fav of DATA.aiFavoriteQuestions){
-      if(remoteKeys.has(fav.key)) continue;
+    await Promise.all(localToPush.map(async (fav) => {
       try{
         await supa.rpc('upsert_my_ai_favorite', {
           p_fav_key: fav.key,
@@ -24703,7 +24705,7 @@ async function hydrateAIFavoritesFromSupabase(){
       }catch(e){
         // ignora erro individual
       }
-    }
+    }));
     if(pushed > 0){
       console.info('[ai-fav] sincronização: ' + pushed + ' favoritas locais enviadas pro Supabase');
     }
@@ -66403,12 +66405,21 @@ async function initAuth(){
       }).catch(()=>{});
       // V14: Carrega notificações + inicia poll a cada 60s
       fetchNotifications({force: true}).catch(()=>{});
-      // V15.12.75.31 — Sincroniza favoritas IA (merge local + remoto)
-      hydrateAIFavoritesFromSupabase().catch(()=>{});
-      // V15.12.75.35 — Check se conta está suspensa (anti-abuso)
-      checkUserSuspension().catch(()=>{});
-      // V15.12.75.47 — Migra reports antigos locais pro Supabase (silencioso)
-      migrateLegacyReportsToSupabase().catch(()=>{});
+      // V15.12.75.48 — Trabalhos pesados (sincronizar favoritas, checar
+      // suspensão, migrar reports antigos) movidos pra requestIdleCallback
+      // pra não bloquear o tempo até o app ficar interativo. Hard reload
+      // antes esperava esses 3 RPCs antes de render — agora roda em background
+      // quando o browser tiver ciclos ociosos.
+      const _runBackgroundSync = ()=>{
+        hydrateAIFavoritesFromSupabase().catch(()=>{});
+        checkUserSuspension().catch(()=>{});
+        migrateLegacyReportsToSupabase().catch(()=>{});
+      };
+      if(typeof requestIdleCallback === 'function'){
+        requestIdleCallback(_runBackgroundSync, {timeout: 3000});
+      } else {
+        setTimeout(_runBackgroundSync, 50);
+      }
       if(NOTIFS.pollIntervalId) clearInterval(NOTIFS.pollIntervalId);
       NOTIFS.pollIntervalId = setInterval(()=>fetchNotifications().catch(()=>{}), 60000);
       render();
@@ -66449,12 +66460,17 @@ async function initAuth(){
       // First login of this session — merge data
       await handleFirstLoginMerge();
       fetchQuota().then(()=>render()).catch(()=>{});
-      // V15.12.75.31 — Sincroniza favoritas IA (merge local + remoto)
-      hydrateAIFavoritesFromSupabase().catch(()=>{});
-      // V15.12.75.35 — Check se conta está suspensa (anti-abuso)
-      checkUserSuspension().catch(()=>{});
-      // V15.12.75.47 — Migra reports antigos locais pro Supabase (silencioso)
-      migrateLegacyReportsToSupabase().catch(()=>{});
+      // V15.12.75.48 — Sync em background via requestIdleCallback (idem auto-signin)
+      const _bgSync = ()=>{
+        hydrateAIFavoritesFromSupabase().catch(()=>{});
+        checkUserSuspension().catch(()=>{});
+        migrateLegacyReportsToSupabase().catch(()=>{});
+      };
+      if(typeof requestIdleCallback === 'function'){
+        requestIdleCallback(_bgSync, {timeout: 3000});
+      } else {
+        setTimeout(_bgSync, 50);
+      }
       fetchUserProfile(true).then(()=>{
         render();
         // V15.12.44 — Após carregar o profile, verifica se precisa completar
