@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gralia · Plataforma de estudos com IA</title>
+<!-- V15.12.75.49 — Favicon (PNG) -->
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="shortcut icon" type="image/png" href="/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@700;800&display=swap" rel="stylesheet">
@@ -8026,11 +8029,28 @@ async function tryFetchFromPool(opts){
     //   - Questão acertada: cooldown de 3 dias no banco, set local irrelevante
     if(!window._poolSeenThisSession){ window._poolSeenThisSession = new Set(); }
     const sessionSeen = window._poolSeenThisSession;
-    // Filtra candidatas que ainda não foram pegas nesta sessão
-    const fresh = data.filter(d => !sessionSeen.has(d.out_id));
+
+    // V15.12.75.49 — Filtra também questões já favoritadas pelo user.
+    // Favorita tem fluxo próprio (botão "▶ Praticar essa favorita" na tela
+    // de favoritas). No fluxo normal de prática, não deve repetir o que o
+    // user já marcou pra revisão deliberada — gera sensação de "voltou
+    // logo de cara o que acabei de favoritar".
+    const favoriteHashes = new Set();
+    if(Array.isArray(DATA.aiFavoriteQuestions)){
+      DATA.aiFavoriteQuestions.forEach(f => {
+        if(f.key) favoriteHashes.add(f.key);
+      });
+    }
+
+    // Filtra candidatas que ainda não foram pegas nesta sessão NEM estão favoritadas
+    const fresh = data.filter(d => {
+      if(sessionSeen.has(d.out_id)) return false;
+      // out_id é o content_hash do pool — usado também como key das favoritas
+      if(favoriteHashes.has(d.out_id)) return false;
+      return true;
+    });
     if(fresh.length === 0){
-      // Todas as candidatas do RPC já foram vistas nesta sessão — pool esgotado
-      console.info('[pool-cache] miss — todas as candidatas já vistas nesta sessão');
+      console.info('[pool-cache] miss — candidatas vistas/favoritadas nesta sessão');
       return null;
     }
     // Escolhe 1 aleatória entre as candidatas frescas
@@ -20196,8 +20216,11 @@ function showVisualTutorial(){
   m.appendChild(footer);
 
   function dismissTutorial(){
-    DATA.tutorialOffered = true;
-    save();
+    // V15.12.75.49 — Antes setava tutorialOffered=true ao fechar no X,
+    // impedindo o tutorial de reaparecer em logins futuros. Agora "fechar"
+    // significa "agora não" — tutorial reaparece no próximo login até
+    // user concluir (goNext até o último slide) ou abrir manualmente
+    // pelo menu da conta e dispensar lá.
     cleanup();
     closeModal();
   }
@@ -37717,11 +37740,13 @@ function practNext(){
     }
     render();
   } else {
-    // V15.12.75.7 — Fallback: a IA não retornou `next` (truncamento por output
-    // size, parse falhou, etc) ou next veio sem question. Em vez de travar,
-    // reseta o estado e re-renderiza a tela. O render mostra o botão "Iniciar"
-    // de novo, que dispara practStart no clique. Usuário não fica preso.
-    console.warn('[practNext] next ausente ou inválido. Resetando para tela inicial de prática.');
+    // V15.12.75.50 — Em vez de resetar pra tela inicial (UX ruim — user
+    // precisava clicar "Iniciar prática" de novo), chama practStart() que
+    // tenta cache, e se não tiver, gera fresh com IA. Mantém fluxo contínuo.
+    // ANTES: pool esgotado / next null → tela "Iniciar prática" voltava → user
+    // precisava clicar de novo. Era o feedback "Pronto pra próxima — clique
+    // em Iniciar prática" sumir aqui é a solução: continua sem fricção.
+    console.info('[practNext] next ausente — chamando practStart pra continuar fluxo');
     ST.practQ = null;
     ST.practFb = null;
     ST.practAnswered = false;
@@ -37730,8 +37755,14 @@ function practNext(){
       delete DATA.preloadedQuestions.practice;
       save();
     }
-    showToast('Pronto pra próxima — clique em "Iniciar prática"', 4000);
+    ST.practLoading = true;
     render();
+    // Dispara nova questão automaticamente (cache ou fresh IA)
+    practStart().catch(e => {
+      console.warn('[practNext] practStart falhou:', e && e.message);
+      ST.practLoading = false;
+      render();
+    });
   }
 }
 
@@ -66259,20 +66290,35 @@ function maybePromptProfileSetup(retries){
 function maybeShowTutorial(retries){
   retries = retries || 0;
   try{
-    if(!isAuthed()) return;
-    const noSources = !(DATA.sources||[]).length;
-    if(!noSources || DATA.tutorialOffered) return;
+    if(!isAuthed()){
+      console.info('[tutorial] skip: não autenticado');
+      return;
+    }
+    // V15.12.75.49 — Reformulada a condição:
+    // ANTES: !noSources OU tutorialOffered → bloqueava. Problema: se user
+    //   adicionasse 1 fonte (qualquer uma), tutorial sumia pra sempre mesmo
+    //   sem ter visto. Também: tutorialOffered ficava true no localStorage
+    //   por engano em testes anteriores, silenciando definitivamente.
+    // AGORA: só bloqueia se user JÁ concluiu o tutorial (tutorialOffered).
+    //   Tem fontes mas nunca viu tutorial? Mostra ainda assim — pode ser
+    //   user de retorno que beneficia da revisão.
+    // Pra REABRIR manualmente, sempre tem o item "🎓 Tutorial visual" no
+    //   menu da conta.
+    if(DATA.tutorialOffered){
+      console.info('[tutorial] skip: tutorialOffered=true (já completado/dispensado antes)');
+      return;
+    }
     if(ST.modal){
-      // V15.12.75.41 — Retry estendido: antes era 3×2s=6s. Se user demorava
-      // pra concluir o modal de username, o tutorial era perdido pra sempre.
-      // Agora retry até 15×2s=30s — tempo suficiente pra qualquer fluxo.
+      // Retry estendido (até 15×2s=30s)
       if(retries < 15){
+        console.info('[tutorial] modal aberto, tentando de novo em 2s (retry ' + (retries+1) + '/15)');
         setTimeout(()=> maybeShowTutorial(retries + 1), 2000);
       } else {
         console.warn('[tutorial] desistiu após 30s — outro modal persistente');
       }
       return;
     }
+    console.info('[tutorial] abrindo modal pela primeira vez');
     showTutorialModal();
   }catch(e){console.warn('[tutorial]', e);}
 }
