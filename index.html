@@ -6762,7 +6762,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.64';
+window.GRALIA_VERSION = 'V15.12.75.65';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -9409,6 +9409,11 @@ async function renderSharedExplanationsBody(container, q, opts){
       fcBtn.style.opacity = '0.6';
     } else if(flashItems.length > 0){
       fcBtn.title = 'Você ainda não gerou flashcard Haiku pra esta questão. Os existentes são da comunidade.';
+    } else {
+      // V15.12.75.65 — Aviso explícito: explicação já cria flashcard junto sem
+      // custo extra (V15.12.75.59). Se user ainda não gerou explicação E vai
+      // gerar só o flashcard, perde a chance. Tooltip alerta sobre isso.
+      fcBtn.title = '💡 Dica: gerar uma explicação já cria flashcard junto sem custo extra. Use este botão se quiser apenas o flashcard ou variação adicional.';
     }
     fcBtn.addEventListener('click',()=>generateAndSaveFlashcard(q, 'haiku', container, fcBtn));
     fcGenRow.appendChild(fcBtn);
@@ -10114,6 +10119,23 @@ function isImportedQuestion(q){
   return false;
 }
 
+// V15.12.75.65 — Detecta se a questão é "auto-suficiente" — tem enunciado +
+// gabarito completos, ou seja, IA pode gerar explicação SEM precisar de fonte
+// ativa do user. Cobre 3 casos:
+//   1. Importadas (TEC/colar)
+//   2. Questões IA recém-geradas pra disciplina sem fonte ativa
+//   3. Questões IA do pool/cache que vieram de outros users
+// Antes era exigido fonte ativa pra TUDO via buildContent → erro confuso
+// "no-content" mesmo quando a questão já tinha tudo necessário.
+function isSelfContainedQuestion(q){
+  if(!q) return false;
+  // Critério primário: tem enunciado + gabarito? Já é auto-suficiente.
+  if(q.enunciado && String(q.enunciado).trim() && q.answer) return true;
+  // Fallback: é importada (legado — questões antigas podem não ter q.answer
+  // mas marcaram source='imported' por outro motivo)
+  return isImportedQuestion(q);
+}
+
 // V15.12.75.59 — Garante que a questão tem disciplina válida no localStorage
 // pra vincular flashcards. Resolve o caso onde questão importada tem
 // `q.discipline` (string da banca, ex: "Direito Administrativo") mas o user
@@ -10133,19 +10155,36 @@ function ensureDisciplineForQuestion(q){
   if(!q) return null;
   if(!Array.isArray(DATA.disciplines)) DATA.disciplines = [];
 
-  // Caso 1: tem disciplineId válido
+  // Log detalhado pra debug do bug "disciplina não foi criada"
+  // (V15.12.75.65 — Jean reportou que Sonnet gerou flashcard mas não criou disc nova)
+  const dbg = {
+    disciplineId: q.disciplineId || null,
+    discipline_str: q.discipline || null,
+    topic: q.topic || null,
+    source: q.source || null
+  };
+
+  // Caso 1: tem disciplineId válido E existe na conta
   if(q.disciplineId){
     const exists = DATA.disciplines.find(d => d.id === q.disciplineId);
-    if(exists) return q.disciplineId;
+    if(exists){
+      console.info('[ensureDiscipline] usando disciplina existente:', exists.name, dbg);
+      return q.disciplineId;
+    }
+    console.warn('[ensureDiscipline] q.disciplineId aponta pra disciplina que não existe:', q.disciplineId);
   }
 
-  // Caso 2: tem nome — procura/cria
+  // Caso 2: tem nome (q.discipline string) — procura/cria
   const discName = (q.discipline || '').trim();
-  if(!discName) return null;
+  if(!discName){
+    console.warn('[ensureDiscipline] q.discipline vazio — flashcard ficará sem disciplina', dbg);
+    return null;
+  }
 
   const norm = discName.toLowerCase();
   const found = DATA.disciplines.find(d => (d.name||'').toLowerCase().trim() === norm);
   if(found){
+    console.info('[ensureDiscipline] match por nome:', found.name, dbg);
     return found.id;
   }
 
@@ -10161,7 +10200,9 @@ function ensureDisciplineForQuestion(q){
   };
   DATA.disciplines.push(newDisc);
   save();
-  console.info('[ensureDiscipline] criou disciplina inativa:', newDisc.name);
+  console.info('[ensureDiscipline] ✓ CRIOU disciplina inativa:', newDisc.name, '(id:', newDisc.id, ')');
+  // Mostra toast pro user saber
+  try{ showToast(`📚 Nova disciplina criada: ${newDisc.name} (inativa)`, 5000); }catch(_){}
   return newDisc.id;
 }
 
@@ -10244,7 +10285,9 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn, opts)
       // assunto) já que sem fonte a IA precisa desse contexto pra explicar
       // bem. Pra questão IA (geração via prática IA), comportamento histórico
       // preservado: usa buildContent normalmente.
-      const isImported = isImportedQuestion(q);
+      // V15.12.75.58 → V15.12.75.65: Critério ampliado pra "auto-suficiente"
+      // (qualquer questão com enunciado+gabarito), não só importada.
+      const isImported = isSelfContainedQuestion(q);
 
       // Constrói cabeçalho de metadados (banca/ano/disciplina/cargo/assunto)
       // que aparecerá no prompt. Só inclui campos preenchidos.
@@ -10447,7 +10490,8 @@ async function generateAndSaveFlashcard(q, model, container, triggerBtn, opts){
     // V15.12.75.58 — Mesma lógica de generateAndSaveExplanation: questão
     // importada não precisa de fonte ativa. Enriquece prompt com metadados
     // pra IA ter contexto de banca/disciplina/assunto.
-    const isImported = isImportedQuestion(q);
+    // V15.12.75.58 → V15.12.75.65: Critério ampliado pra "auto-suficiente"
+    const isImported = isSelfContainedQuestion(q);
     let metaLines = [];
     if(q.banca) metaLines.push(`Banca: ${q.banca}`);
     if(q.year || q.ano) metaLines.push(`Ano: ${q.year || q.ano}`);
@@ -13622,7 +13666,7 @@ Questão nova (formato MC):
 {"type":"question","kind":"MC","topic":"tópico curto","question":"enunciado","alternatives":{"A":"...","B":"...","C":"...","D":"...","E":"..."},"correct_answer":"A|B|C|D|E","trap_type":"descrição curta da pegadinha principal","difficulty":"easy|medium|hard|very_hard"}
 
 Feedback+próxima:
-{"type":"feedback","is_correct":true,"trap_type":"...","explanation":"explicação seguindo o estilo do PERFIL DA BANCA injetado","trap":"qual armadilha foi usada (se errada)","keyword":"palavra-gatilho que denuncia","next":{...mesmo formato da questão nova...},"suggested_flashcard":{"front":"pergunta curta sobre o conceito","back":"resposta concisa, 1-2 frases"}}
+{"type":"feedback","is_correct":true,"trap_type":"...","explanation":"explicação seguindo o estilo do PERFIL DA BANCA injetado","trap":"qual armadilha foi usada (se errada)","keyword":"palavra-gatilho que denuncia","wrong_alternatives":[{"letter":"X","reason":"frase curta — APENAS pra MC, todas erradas"}],"next":{...mesmo formato da questão nova...},"suggested_flashcard":{"front":"pergunta curta sobre o conceito","back":"resposta concisa, 1-2 frases"}}
 
 REGRA explanation (estrutura visual premium):
 A explicação será parseada e renderizada como cards visuais separados pela UI.
@@ -13645,7 +13689,13 @@ PARA MC (FCC, FGV, Vunesp e similares):
   • "Por que sua escolha errou:" — APENAS quando user errou. 1-2 frases sobre o erro específico da alternativa que ele escolheu (não as outras).
   • "Pegadinha:" — 1 linha sobre a armadilha (se houver)
   • "Regra pra lembrar:" — 1 linha (opcional)
-  • NUNCA explique todas as alternativas, só a correta + a que o usuário marcou (se errou)
+  • NUNCA explique todas as alternativas no campo explanation. As alternativas erradas vão em campo separado (wrong_alternatives — veja abaixo).
+
+REGRA wrong_alternatives (APENAS pra MC):
+- Inclua o campo "wrong_alternatives" no JSON, com 1 frase curta (max 15 palavras) explicando por que CADA alternativa errada está errada.
+- Formato: "wrong_alternatives":[{"letter":"A","reason":"..."}, {"letter":"B","reason":"..."}, ...]
+- Inclua TODAS as alternativas erradas (todas exceto a correta).
+- Pra C/E: OMITA o campo (não tem alternativas).
 
 REGRAS UNIVERSAIS:
 - Mantenha CADA seção curta (1-2 frases, máximo 30 palavras).
@@ -25860,6 +25910,36 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
       meta.appendChild(k);
     }
     card.appendChild(meta);
+  }
+
+  // V15.12.75.65 — Alternativas erradas em MC. Colapsável (igual ao card de
+  // explicação compartilhada). Paridade entre prática IA e prática importada.
+  // Aparece só quando IA retornou wrong_alternatives no JSON do feedback.
+  if(isMC && Array.isArray(fb.wrong_alternatives) && fb.wrong_alternatives.length > 0){
+    const det = mk('details');
+    det.style.cssText = 'margin-bottom:.875rem;padding:.5rem .75rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:12.5px';
+    const sum = mk('summary');
+    sum.style.cssText = 'cursor:pointer;color:var(--text2);font-weight:600;list-style:none;padding:2px 0';
+    sum.textContent = `📋 Por que as outras estão erradas (${fb.wrong_alternatives.length})`;
+    det.appendChild(sum);
+    const list = mk('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)';
+    fb.wrong_alternatives.forEach(w => {
+      if(!w || !w.letter || !w.reason) return;
+      const row = mk('div');
+      row.style.cssText = 'display:flex;gap:8px;align-items:flex-start;line-height:1.5';
+      const letter = mk('span');
+      letter.style.cssText = 'flex-shrink:0;font-weight:700;color:var(--red-text);min-width:20px;font-size:13px';
+      letter.textContent = w.letter + ')';
+      const reason = mk('span');
+      reason.style.cssText = 'color:var(--text2);font-size:12.5px';
+      reason.textContent = w.reason;
+      row.appendChild(letter);
+      row.appendChild(reason);
+      list.appendChild(row);
+    });
+    det.appendChild(list);
+    card.appendChild(det);
   }
 
   // V14: Botão "🤔 Não entendi, me ajuda?" REMOVIDO daqui (item 30).
@@ -53050,7 +53130,8 @@ function buildAdminModerationActions(itemType, itemId, currentStatus, isReviewed
   // === 1. DISPENSAR (só pra itens não-dispensados não-desativados) ===
   if(!isReviewed && currentStatus !== 'disabled'){
     const dismissBtn = mkBtn('✓ Dispensar', 'btn btn-sm');
-    dismissBtn.title = 'Avaliei e considero OK — item continua ativo, mas sai da lista de problemas.';
+    // V15.12.75.65 — Tooltip mais claro. Antes ficava ambíguo vs "Resolver reports".
+    dismissBtn.title = 'Eu avaliei e considero OK. Marca a QUESTÃO como revisada (some da lista de pendentes). NÃO marca reports individuais — use "Resolver reports" pra isso.';
     dismissBtn.style.cssText = 'color:var(--accent-text);border-color:var(--accent);background:transparent;font-size:11.5px';
     dismissBtn.addEventListener('click', async ()=>{
       try{
@@ -53062,7 +53143,19 @@ function buildAdminModerationActions(itemType, itemId, currentStatus, isReviewed
           : {p_explanation_id: itemId};
         const {error} = await supa.rpc(rpcName, params);
         if(error) throw error;
-        showToast('✓ Dispensado — item continua ativo', 3000);
+        // V15.12.75.65 — Dispensar agora ALSO resolve reports pendentes
+        // dessa questão. Antes só marcava admin_reviewed_at e os reports
+        // continuavam pendentes — gerava confusão "cliquei Dispensar mas
+        // não saiu da lista".
+        if(itemType === 'question'){
+          try{
+            await supa.from('ai_question_reports')
+              .update({resolved_at: new Date().toISOString(), resolved_by: AUTH.user.id})
+              .eq('content_hash', itemId)
+              .is('resolved_at', null);
+          }catch(_){}
+        }
+        showToast('✓ Dispensado — questão revisada e reports resolvidos', 3500);
         if(typeof onChange === 'function') onChange();
       }catch(e){
         dismissBtn.disabled = false;
@@ -67395,10 +67488,26 @@ async function initAuth(){
       // V15.12.48 — Não dispara se o modal de profile setup vai/está aberto;
       // nesse caso, o tutorial é encadeado pelo handler do modal (após skip
       // ou conclusão). Evita o tutorial empilhar em cima do username modal.
-      setTimeout(()=>{
-        if(isProfileSetupNeeded() || ST.modal) return;
+      // V15.12.75.65 — Bug reportado: em conta nova com email reusado, o
+      // tutorial nunca aparecia. Causa: setTimeout 3500ms verifica
+      // isProfileSetupNeeded() / ST.modal e dá `return` silenciosamente — se
+      // modal de outro tipo estiver aberto (welcome toast, etc), tutorial
+      // perde a janela. Solução: retry com timeouts crescentes pra dar mais
+      // chances. Se em 30s não conseguir abrir, desiste (usuário pode acionar
+      // manualmente via avatar → Tutorial visual).
+      const tryShowTutorial = (attempt) => {
+        attempt = attempt || 0;
+        if(attempt > 5) return; // 6 tentativas: 3.5s, 7s, 12s, 18s, 25s, 30s
+        if(DATA.tutorialOffered) return; // já concluído, não retry
+        if(isProfileSetupNeeded() || ST.modal){
+          // ainda tem modal/profile pendente — espera mais
+          const delays = [3500, 3500, 5000, 6000, 7000, 5000];
+          setTimeout(() => tryShowTutorial(attempt + 1), delays[attempt]);
+          return;
+        }
         maybeShowTutorial();
-      }, 3500);
+      };
+      setTimeout(()=> tryShowTutorial(0), 3500);
       // V15.12.51 — Após signup, verifica se o trial bonus foi creditado pelo
       // trigger handle_new_user. Só roda em usuários recém-criados (< 2 min)
       // — login normal não dispara. Delay maior (4500ms) pra dar tempo do
