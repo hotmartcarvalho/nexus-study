@@ -8937,25 +8937,48 @@ function showReportExplanationModal(item, q, kind){
 
     const itemIdNum = (typeof item.id === 'number') ? item.id : (item.id ? parseInt(item.id, 10) : null);
 
+    // V15.12.75.51 — Logs detalhados pra diagnosticar reports não chegando
+    // no Supabase. Permite ver no console: tipo do id, valor convertido,
+    // se entrou no branch supabase, resposta da RPC.
+    console.info('[report] handler disparado', {
+      item_id: item.id,
+      item_id_type: typeof item.id,
+      itemIdNum,
+      kind,
+      reason: selected,
+      has_supa: !!supa,
+      has_auth_user: !!(AUTH && AUTH.user),
+      auth_user_id: AUTH?.user?.id?.slice(0,8)
+    });
+
     // V15.12.75.29 — Tenta Supabase primeiro (RPC report_shared_explanation).
     // Se falhar (RPC inexistente, item.id não numérico, sem auth), cai pro
     // armazenamento local antigo pra não quebrar o fluxo do user.
     let savedToSupa = false;
     if(supa && AUTH.user && itemIdNum && !isNaN(itemIdNum)){
+      console.info('[report] entrando no branch Supabase, chamando RPC...');
       try{
-        const {error} = await supa.rpc('report_shared_explanation', {
+        const {data, error} = await supa.rpc('report_shared_explanation', {
           p_explanation_id: itemIdNum,
           p_reason: selected,
           p_note: note.value.trim() || null
         });
+        console.info('[report] RPC retornou', {data, error});
         if(!error){
           savedToSupa = true;
+          console.info('[report] ✓ salvo no Supabase com sucesso, report_id:', data);
         } else {
-          console.warn('[report] RPC erro, usando fallback local:', error.message);
+          console.warn('[report] RPC erro, usando fallback local:', error.message, error);
         }
       }catch(err){
-        console.warn('[report] exception, usando fallback local:', err.message);
+        console.warn('[report] exception, usando fallback local:', err.message, err);
       }
+    } else {
+      console.warn('[report] pulou branch Supabase — motivo:', {
+        no_supa: !supa,
+        no_auth: !AUTH?.user,
+        bad_itemIdNum: !itemIdNum || isNaN(itemIdNum)
+      });
     }
 
     // Fallback local — também mantém pra usar offline / pra items sem id numérico
