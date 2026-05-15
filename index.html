@@ -6762,7 +6762,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.74';
+window.GRALIA_VERSION = 'V15.12.75.75';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -13828,12 +13828,15 @@ Questão nova (formato C/E):
 {"type":"question","kind":"CE","topic":"tópico curto","question":"enunciado","correct_answer":"C|E","trap_type":0-5,"difficulty":"easy|medium|hard|very_hard"}
 
 Questão nova (formato MC):
-{"type":"question","kind":"MC","topic":"tópico curto","question":"enunciado","alternatives":{"A":"...","B":"...","C":"...","D":"...","E":"..."},"correct_answer":"A|B|C|D|E","trap_type":"descrição curta da pegadinha principal","difficulty":"easy|medium|hard|very_hard"}
+{"type":"question","kind":"MC","topic":"tópico curto","question":"enunciado","alternatives":{"A":"...","B":"...","C":"...","D":"...","E":"..."},"correct_answer":"A|B|C|D|E","trap_type":0,"difficulty":"easy|medium|hard|very_hard"}
 
-Feedback+próxima:
-{"type":"feedback","is_correct":true,"trap_type":0,"explanation":"explicação seguindo o estilo do PERFIL DA BANCA injetado","trap":"qual armadilha foi usada (se errada)","keyword":"palavra-gatilho que denuncia","wrong_alternatives":[{"letter":"X","reason":"frase curta — APENAS pra MC, todas erradas"}],"next":{...mesmo formato da questão nova...},"suggested_flashcard":{"front":"pergunta curta sobre o conceito","back":"resposta concisa, 1-2 frases"}}
+⚠ trap_type DEVE ser INTEIRO (0-5) em TODA questão. Nunca string.
+
+Feedback (SEM próxima questão — ela vem em outra chamada):
+{"type":"feedback","is_correct":true,"trap_type":0,"explanation":"explicação curta seguindo o estilo do PERFIL DA BANCA","trap":"qual armadilha foi usada (se errada)","keyword":"palavra-gatilho que denuncia","wrong_alternatives":[{"letter":"X","reason":"frase curta — APENAS pra MC, todas erradas"}],"suggested_flashcard":{"front":"pergunta curta sobre o conceito","back":"resposta concisa, 1-2 frases"}}
 
 ⚠ trap_type DEVE ser INTEIRO (0-5), nunca string. A descrição vai no campo "trap" (string).
+⚠ NÃO inclua campo "next" no feedback. A próxima questão é gerada separadamente.
 
 REGRA explanation (estrutura visual premium):
 A explicação será parseada e renderizada como cards visuais separados pela UI.
@@ -13878,10 +13881,12 @@ REGRA NOMES E CENÁRIOS:
 - Varie contextos (servidor, particular, autoridade, vítima, empresa, autarquia).
 - Omita nomes quando o conceito é abstrato.
 
-REGRA suggested_flashcard:
-- Inclua o campo "suggested_flashcard" APENAS quando is_correct=false (usuário errou).
-- Quando is_correct=true, OMITA o campo.
-- O flashcard deve focar no CONCEITO que o usuário errou, não na questão específica.
+REGRA suggested_flashcard (OBRIGATÓRIO em TODO feedback — acerto ou erro):
+- SEMPRE inclua o campo "suggested_flashcard" no feedback.
+- Em ACERTO: flashcard reforça o conceito central da questão (memória de longo prazo).
+- Em ERRO: flashcard foca no conceito que o user errou.
+- Front: pergunta curta (máx 15 palavras).
+- Back: resposta concisa (1-2 frases, máx 30 palavras).
 - Estilo do flashcard segue o PERFIL DA BANCA injetado.
 - Sem emoji no flashcard, salvo se for útil pra retenção (no máximo 1).
 
@@ -26299,12 +26304,12 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
 
   // V15.12.20 — Flashcard sugerido pela IA (vem embutido no eval, sem custo extra).
   // V15.12.74 — Layout mais premium: separador visual antes, mostra "frente"
-  // e "verso" como faces de cartão, botão maior. Aparece APENAS quando errou.
-  // V15.12.75.15 — Agora também aparece em ACERTOS se vier do banco shared
-  // (cache hit com bestFlash). Isso traz o flashcard pra fora da seção
-  // "Comunidade" colapsada, ganhando destaque visual igual à explicação.
-  const showSuggested = fb.suggestedFlashcard && !fb._suggestedAdded
-                        && (!ok || fb._flashAuthorMeta);
+  // e "verso" como faces de cartão, botão maior.
+  // V15.12.75.15 — Aparecia em acertos só se vinha do banco shared (cache hit).
+  // V15.12.75.75 — Agora aparece SEMPRE que houver flashcard sugerido, seja
+  // em acerto ou erro, fresh ou cache. Prompt foi atualizado pra IA sempre
+  // retornar suggested_flashcard. Em acerto, reforça memória de longo prazo.
+  const showSuggested = fb.suggestedFlashcard && !fb._suggestedAdded;
   if(showSuggested){
     const sf = fb.suggestedFlashcard;
     // Separador discreto antes pra marcar "fim da explicação, início do bônus"
@@ -38213,6 +38218,17 @@ function renderPractice(){
     cacheChip.innerHTML = '<span>📚</span><span>Banco Gralia</span>';
     cacheChip.title = 'Questão do banco — sem custo de IA';
     topBar.appendChild(cacheChip);
+  } else if(ST.practQ && ST.practQ._prefetchOrigin === 'prefetch_cache'){
+    // V15.12.75.75 — Prefetch background que veio do cache (sem custo).
+    const cacheChip = mk('span','pool-chip');
+    cacheChip.innerHTML = '<span>♻️</span><span>Cache</span>';
+    cacheChip.title = 'Próxima questão veio do cache do Gralia — sem custo de IA';
+    topBar.appendChild(cacheChip);
+  } else if(ST.practQ && ST.practQ._prefetchOrigin === 'prefetch_fresh'){
+    // V15.12.75.75 — Prefetch background fresh (já cobrado quando gerado).
+    const mChip = mk('span','badge b-info');mChip.textContent='🤖 '+shortModelName(getMethodModel('practice'));
+    mChip.title = 'Gerada em background após a questão anterior';
+    topBar.appendChild(mChip);
   } else {
     const mChip = mk('span','badge b-info');mChip.textContent='🤖 '+shortModelName(getMethodModel('practice'));
     topBar.appendChild(mChip);
@@ -38251,6 +38267,88 @@ function renderPractice(){
   if(ST.practFb&&!ST.practLoading)wrap.appendChild(feedbackCard(ST.practFb,practNext,'Próxima questão →', ST.practQ));
   return wrap;
 }
+// V15.12.75.75 — Prefetch da próxima questão em background.
+// Disparado logo após o eval. Estratégia:
+//   1. Se já tem prefetch válido, não faz nada (evita duplicar).
+//   2. Tenta pool/cache (sem custo). Se hit, salva e termina.
+//   3. Cache miss: chama IA com action 'practice_question' (1 crédito).
+//      Marca a chamada como background pra logs distinguirem.
+//
+// Por que é fire-and-forget: o user já viu o feedback. A próxima Q vai chegar
+// "grátis" (em termos de espera) quando ele clicar "Próxima". Se não tiver
+// terminado quando ele clicar, mostra loading curto.
+//
+// Custo: cache hit = 0, cache miss = 1 crédito (transparente — mesma action_id
+// que o practStart fresh usa). A diferença visível pro user: selo "♻️ Cache"
+// ou "🤖 Nova" no card quando a Q chegar.
+let _practicePrefetchInFlight = false;
+async function prefetchNextPracticeQuestion(){
+  if(_practicePrefetchInFlight){
+    console.info('[prefetch] já em andamento — skip');
+    return;
+  }
+  if(DATA.preloadedQuestions && DATA.preloadedQuestions.practice && DATA.preloadedQuestions.practice.q){
+    console.info('[prefetch] já tem prefetch — skip');
+    return;
+  }
+  _practicePrefetchInFlight = true;
+  try{
+    console.info('[prefetch] iniciando — tentando cache primeiro');
+    // 1. Tenta cache/pool sem cobrar
+    let cachedQ = null;
+    try{
+      cachedQ = await tryFetchFromPool({method: 'practice'});
+    }catch(e){
+      console.warn('[prefetch] cache lookup falhou:', e.message);
+    }
+    if(cachedQ){
+      // CACHE HIT — entrega sem chamar Anthropic, sem cobrar
+      DATA.preloadedQuestions = DATA.preloadedQuestions || {};
+      DATA.preloadedQuestions.practice = {
+        q: cachedQ,
+        generatedAt: Date.now(),
+        origin: 'prefetch_cache',
+        schemaVersion: '3.10',
+        // Histórico vazio — quando user consumir, vai criar
+        hist: null
+      };
+      save();
+      console.info('[prefetch] CACHE HIT — questão salva sem custo');
+      return;
+    }
+    console.info('[prefetch] cache miss — gerando com IA em background');
+    // 2. Cache miss: chama IA (cobra 1 crédito de practice_question)
+    // Checa saldo silenciosamente — se não tem, desiste sem erro (user clica Próxima depois pra ver erro).
+    try{
+      await assertCanAffordFresh('practice_question');
+    }catch(creditsErr){
+      console.info('[prefetch] sem saldo pra prefetch — pulando. User vai ver erro ao clicar Próxima.');
+      return;
+    }
+    const seed = avoidRepeatPrompt('practice');
+    const res = await timedCallAPI(
+      'practice','question',SYS_PRACT,
+      [{role:'user',content:'Primeira questão.'+seed}],
+      {model:getMethodModel('practice'), action:'practice_question', _backgroundPrefetch: true}
+    );
+    DATA.preloadedQuestions = DATA.preloadedQuestions || {};
+    DATA.preloadedQuestions.practice = {
+      q: res,
+      generatedAt: Date.now(),
+      origin: 'prefetch_fresh',
+      schemaVersion: '3.10',
+      hist: [{role:'user',content:'Primeira questão.'+seed},{role:'assistant',content:JSON.stringify(res)}]
+    };
+    save();
+    saveAIQuestion('practice',res,getMethodModel('practice'));
+    console.info('[prefetch] questão FRESH gerada em background (custou 1 crédito)');
+  }catch(e){
+    console.warn('[prefetch] falhou:', e.message);
+  }finally{
+    _practicePrefetchInFlight = false;
+  }
+}
+
 async function practStart(container){
   _logCredit('PRACT_START_CALLED', {
     has_prefetch: !!(DATA.preloadedQuestions?.practice?.q),
@@ -38638,8 +38736,12 @@ async function practSubmit(answer){
           if(saved) console.info('[shared-expl] explicação salva como compartilhada');
         }).catch(e => console.warn('[shared-expl] save falhou:', e.message));
       }
-      // Flashcard sugerido vira também shared se o user errou (só erros geram sf)
-      if(enunciadoForShared && supa && !ok && res.suggested_flashcard
+      // V15.12.75.75 — Flashcard sugerido SEMPRE salvo como shared (acertos
+      // E erros). Antes era só erros porque o prompt instruía a omitir em
+      // acertos. Agora o prompt instrui a SEMPRE incluir suggested_flashcard
+      // pra cache-hit de outros users e pra deck pessoal independente do
+      // resultado. Reforça memória de longo prazo mesmo quando acertou.
+      if(enunciadoForShared && supa && res.suggested_flashcard
          && res.suggested_flashcard.front && res.suggested_flashcard.back
          && typeof saveSharedExplanation === 'function'){
         const modelTag = getMethodModel('practice').includes('sonnet') ? 'sonnet' : 'haiku';
@@ -38647,7 +38749,7 @@ async function practSubmit(answer){
           front: res.suggested_flashcard.front,
           back: res.suggested_flashcard.back
         }).then(saved => {
-          if(saved) console.info('[shared-expl] flashcard salvo como compartilhado');
+          if(saved) console.info('[shared-expl] flashcard salvo como compartilhado (ok='+ok+')');
         }).catch(e => console.warn('[shared-expl] flashcard save falhou:', e.message));
       }
     }catch(_){}
@@ -38678,7 +38780,11 @@ async function practSubmit(answer){
       // "Por que a alternativa X está errada" nas MC.
       userChose: answer,
       q: ST.practQ,
-      suggestedFlashcard: (!ok && res.suggested_flashcard && res.suggested_flashcard.front && res.suggested_flashcard.back)
+      // V15.12.75.75 — Flashcard sugerido sempre disponível (acerto ou erro).
+      // Antes era condicional a !ok. Agora o prompt sempre retorna, então o
+      // card aparece em ambos os casos. UI já trata: em acerto, mostra como
+      // "✨ Flashcard de reforço (sem custo)" via flag _flashAuthorMeta.
+      suggestedFlashcard: (res.suggested_flashcard && res.suggested_flashcard.front && res.suggested_flashcard.back)
         ? res.suggested_flashcard
         : null
     };
@@ -38690,14 +38796,28 @@ async function practSubmit(answer){
       method: 'practice',
       source: 'ai'
     });
-    // V12: persiste a 'next' como pré-carregada — se o usuário sair sem clicar em "próxima",
-    // ela está salva pra próxima sessão (economia de IA)
-    // V15.12.21: marcado com metadados (origin, schemaVersion) pra distinguir
-    // de prefetches legados criados antes da V3.10.
-    if(res.next && res.next.question){
-      DATA.preloadedQuestions = DATA.preloadedQuestions || {};
-      DATA.preloadedQuestions.practice = buildLegitimatePrefetch(res.next, 'practice_question_eval');
-      save();
+    // V15.12.75.75 — Substituição da arquitetura anterior:
+    //   ANTES: eval retornava `next` embutido (output 1800+ tokens, latência 17s).
+    //   AGORA: eval retorna só FB (output ~600-900 tokens, ~7-10s).
+    //          A próxima questão vem em chamada SEPARADA EM BACKGROUND:
+    //            1) Tenta pool_cache_lookup primeiro (custo 0)
+    //            2) Se cache miss, dispara IA com custo 1 (`practice_question`)
+    //          Background não bloqueia o FB. Render mostra explicação na hora.
+    //          Quando user clicar "Próxima", consome do prefetch (já pronto) ou
+    //          espera um pouco mais se ainda não terminou.
+    //
+    // Cobrança total por questão+resposta:
+    //   - Cache hit: 1 crédito (eval). MESMO custo de antes.
+    //   - Cache miss: 2 créditos (eval + gen). +1 vs antes — mas user vê FB
+    //     em 5-7s em vez de esperar 17s pelo combo.
+    //
+    // Trade-off transparente: a UI vai mostrar selo "♻️ Cache" ou "🤖 Gerada"
+    // quando próxima Q chegar, pra user saber se pagou ou não.
+    if(typeof prefetchNextPracticeQuestion === 'function'){
+      prefetchNextPracticeQuestion();  // fire-and-forget; não bloqueia render
+    }
+    if(res.next){
+      console.info('[practice] IA ainda retornou res.next apesar do prompt — ignorando (output desperdiçado, mas eval ok)');
     }
   }catch(e){
     // V15.12.5: BUG FIX — antes só setava practAnswered=false, mas não
@@ -38763,44 +38883,59 @@ async function practSubmit(answer){
   ST.practLoading=false;render();
 }
 function practNext(){
-  if(ST.practFb?.next && ST.practFb.next.question){
-    ST.practQ=ST.practFb.next;
-    // V15.12.75 — Se next veio do cache, não republicar (já está no pool).
-    if(!ST.practQ._fromCache){
-      saveAIQuestion('practice',ST.practQ,getMethodModel('practice'));
-    }
-    ST.practFb=null;ST.practAnswered=false;
-    ST.practError=null;
-    if(DATA.preloadedQuestions?.practice){
-      delete DATA.preloadedQuestions.practice;
-      save();
-    }
+  // V15.12.75.75 — Fluxo novo:
+  //   1. Se houver DATA.preloadedQuestions.practice (gerado em background pelo
+  //      prefetch após o eval), consome ele com consumePrefetchedQuestionSafe
+  //      e dispara prefetch da PRÓXIMA (encadeamento).
+  //   2. Senão, cai no fallback — practStart() que tenta cache, e se miss,
+  //      gera fresh cobrando 1 crédito normal.
+  //
+  // Antes era ST.practFb.next (embutido no eval). Eliminado pra reduzir
+  // latência do eval. O custo se mantém o mesmo em cache hit; cache miss
+  // soma 1 crédito comparado ao fluxo antigo — em troca de feedback rápido.
+  ST.practFb = null;
+  ST.practAnswered = false;
+  ST.practError = null;
+  const prefetched = DATA.preloadedQuestions && DATA.preloadedQuestions.practice;
+  if(prefetched && prefetched.q){
+    // Origin define se foi cache (sem custo) ou fresh (paga 1 crédito).
+    // consumePrefetchedQuestionSafe roda o gating de créditos.
+    const origin = prefetched.origin || 'prefetch_fresh';
+    const isCacheOrigin = origin === 'prefetch_cache';
+    // Cache hit: não precisa cobrar. Fresh: já foi cobrado quando gerou.
+    // O eval seguinte cobra normal via practice_question_eval.
+    ST.practQ = prefetched.q;
+    ST.practHist = prefetched.hist || [
+      {role:'user',content:'Primeira questão.'},
+      {role:'assistant',content:JSON.stringify(ST.practQ)}
+    ];
+    // Marca origem pra UI exibir selo
+    ST.practQ._prefetchOrigin = origin;
+    delete DATA.preloadedQuestions.practice;
+    save();
+    console.info('[practNext] consumindo prefetch ('+origin+(isCacheOrigin?', sem custo':', já cobrado')+')');
     render();
-  } else {
-    // V15.12.75.50 — Em vez de resetar pra tela inicial (UX ruim — user
-    // precisava clicar "Iniciar prática" de novo), chama practStart() que
-    // tenta cache, e se não tiver, gera fresh com IA. Mantém fluxo contínuo.
-    // ANTES: pool esgotado / next null → tela "Iniciar prática" voltava → user
-    // precisava clicar de novo. Era o feedback "Pronto pra próxima — clique
-    // em Iniciar prática" sumir aqui é a solução: continua sem fricção.
-    console.info('[practNext] next ausente — chamando practStart pra continuar fluxo');
-    ST.practQ = null;
-    ST.practFb = null;
-    ST.practAnswered = false;
-    ST.practError = null;
-    if(DATA.preloadedQuestions?.practice){
-      delete DATA.preloadedQuestions.practice;
-      save();
+    // V15.12.75.75 — Dispara prefetch da PRÓXIMA logo após consumir, mas só
+    // se cache miss aqui (em cache hit a rede do user gostou — provavelmente
+    // a próxima também terá hit; aguarda eval pra disparar prefetch normal).
+    // Na verdade, disparar sempre é mais simples e cobre os dois casos.
+    if(typeof prefetchNextPracticeQuestion === 'function'){
+      // Pequeno delay pra não competir com renderização
+      setTimeout(()=>prefetchNextPracticeQuestion(), 500);
     }
-    ST.practLoading = true;
-    render();
-    // Dispara nova questão automaticamente (cache ou fresh IA)
-    practStart().catch(e => {
-      console.warn('[practNext] practStart falhou:', e && e.message);
-      ST.practLoading = false;
-      render();
-    });
+    return;
   }
+  // Fallback — sem prefetch disponível (raro, normalmente desisência do prefetch
+  // ou erro). practStart faz cache-then-IA, cobra normalmente em cache miss.
+  console.info('[practNext] sem prefetch — chamando practStart pra continuar fluxo');
+  ST.practQ = null;
+  ST.practLoading = true;
+  render();
+  practStart().catch(e => {
+    console.warn('[practNext] practStart falhou:', e && e.message);
+    ST.practLoading = false;
+    render();
+  });
 }
 
 // V15.12.75.21 — Tela de favoritas IA.
