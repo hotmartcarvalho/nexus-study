@@ -6762,7 +6762,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.66';
+window.GRALIA_VERSION = 'V15.12.75.67';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -9342,7 +9342,7 @@ async function renderSharedExplanationsBody(container, q, opts){
   }
   wrap.appendChild(flashHead);
   if(flashItems.length > 0){
-    const flashList = mk('div','shexpl-list');
+    const flashList = mk('div','shexpl-list shexpl-flash-list');
     // V15.12.40 — Ordena por score desc (igual explicações). Flashcards muito
     // negativos (score <= -3) NÃO aparecem na lista principal — ficam atrás
     // do <details> "Mostrar flashcards menos avaliados".
@@ -10160,7 +10160,10 @@ function ensureDisciplineForQuestion(q){
   const dbg = {
     disciplineId: q.disciplineId || null,
     discipline_str: q.discipline || null,
+    disciplinaName: q.disciplinaName || null,
+    disciplina: q.disciplina || null,
     topic: q.topic || null,
+    assunto: q.assunto || null,
     source: q.source || null
   };
 
@@ -10174,13 +10177,15 @@ function ensureDisciplineForQuestion(q){
     console.warn('[ensureDiscipline] q.disciplineId aponta pra disciplina que não existe:', q.disciplineId);
   }
 
-  // Caso 2: tem nome (q.discipline string) — procura/cria
-  let discName = (q.discipline || '').trim();
+  // V15.12.75.67 — Prioridade ALTA: nome explícito da disciplina vindo do
+  // parser (q.disciplinaName ou q.disciplina). Pra questões importadas (TEC,
+  // colar texto) esses campos já contêm "Contabilidade", "Direito Adm" etc.
+  // Antes essa info era ignorada — o sistema caía no mapa de topic e inferia
+  // ERRADO (caso reportado: questão de Contabilidade virava Direito Proc Civil).
+  let discName = (q.disciplinaName || q.disciplina || q.discipline || '').trim();
 
-  // V15.12.75.66 — Caso 2b: nome vazio mas tem topic — tenta inferir do topic.
-  // Heurística por palavras-chave de disciplina. Cobre o caso comum reportado:
-  // q vindo do pool compartilhado com disciplineId='d1' que não existe E
-  // q.discipline=''. Sem isso, flashcard ficaria sem disciplina pra sempre.
+  // V15.12.75.66 — Caso de fallback: nome vazio mas tem topic — tenta inferir
+  // do topic. SÓ entra aqui se NENHUM dos campos de nome estava preenchido.
   if(!discName && q.topic){
     const t = String(q.topic).toLowerCase();
     // Mapa de palavras-chave → nome da disciplina (case insensitive)
@@ -10202,7 +10207,7 @@ function ensureDisciplineForQuestion(q){
       {disc:'Informática', keys:['informatica','informática','windows','linux','excel','word','powerpoint','internet','navegador','seguranca digital','segurança digital','firewall','redes']},
       {disc:'Inglês', keys:['english','reading','grammar','vocabulary','present perfect','simple past']},
       {disc:'Administração', keys:['gestao publica','gestão pública','planejamento estrategico','planejamento estratégico','administracao geral','administração geral','liderança','liderança','motivacao','motivação']},
-      {disc:'Contabilidade', keys:['contabilidade','balanco','balanço','debito','débito','credito','crédito','escrituracao','escrituração','demonstracao','demonstração']},
+      {disc:'Contabilidade', keys:['contabilidade','balanco','balanço','debito','débito','credito','crédito','escrituracao','escrituração','demonstracao','demonstração','ativo','passivo','patrimonio liquido','patrimônio líquido','dre','balanço patrimonial']},
       {disc:'Atualidades', keys:['atualidades','noticias','notícias','politica internacional','política internacional','eventos recentes']},
     ];
     for(const entry of DISC_MAP){
@@ -10234,7 +10239,7 @@ function ensureDisciplineForQuestion(q){
     color: '#7c5cff',
     createdAt: Date.now(),
     autoCreated: true,
-    autoCreatedReason: 'Criada automaticamente pra agrupar flashcard de questão (inferida via topic se preciso)'
+    autoCreatedReason: 'Criada automaticamente pra agrupar flashcard de questão (priorizado disciplinaName do parser; fallback topic se preciso)'
   };
   DATA.disciplines.push(newDisc);
   save();
@@ -10408,12 +10413,16 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn, opts)
             _silent: true
           });
         }catch(_){}
-        // V15.12.75.66 — Optimistic insert do flashcard na UI (igual à
-        // explicação acima). Antes o flashcard só aparecia após o user
-        // trocar de aba e voltar — porque o saveSharedExplanation é
-        // background e a lista de flashcards não re-renderizava.
-        // Marca como __pendingOptimistic pra inserir depois junto com o card
-        // de explicação (ordem: explicação primeiro, depois flashcard).
+        // V15.12.75.66 — Optimistic insert do flashcard na UI.
+        // V15.12.75.67 — Bug fixes:
+        //   1. Usava renderSharedExplanationCard pra flashcard → card vazio
+        //      duplicado. Trocado pra renderSharedFlashcardCard (existe L9745).
+        //   2. Container .shexpl-flash-list só existia se flashItems.length>0
+        //      no momento do render. Pra "primeiro flashcard", não existia →
+        //      fallback caía em .shexpl-list (lista de explicações) e
+        //      duplicava como card de explicação. Solução: re-render completo
+        //      via renderSharedExplanationsBody se não tem container — mais
+        //      simples e correto que tentar inserir num lugar inexistente.
         const flashOptimisticItem = {
           id: 'optimistic-flash-'+Date.now(),
           kind: 'flashcard',
@@ -10428,19 +10437,22 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn, opts)
           my_vote: 0,
           __justGenerated: true
         };
-        // Insere via timeout pra rodar após o insert da explicação
         setTimeout(() => {
           try{
-            const flashCard = renderSharedExplanationCard(flashOptimisticItem, q);
-            // Procura container de flashcards na mesma área
-            const flashList = container.querySelector('.shexpl-flash-list') || container.querySelector('.shexpl-list');
+            const flashList = container.querySelector('.shexpl-flash-list');
             if(flashList){
+              // Container já existe — insere card direto no topo
+              const flashCard = renderSharedFlashcardCard(flashOptimisticItem, q);
               flashList.insertBefore(flashCard, flashList.firstChild);
             } else {
-              container.appendChild(flashCard);
+              // Container não existe (era primeiro flashcard) — re-renderiza
+              // tudo. Caro mas correto. Próxima inserção usa caminho rápido.
+              if(typeof renderSharedExplanationsBody === 'function'){
+                renderSharedExplanationsBody(container, q);
+              }
             }
           }catch(e){ console.warn('[flash-optimistic]', e); }
-        }, 50);
+        }, 100);
       }
     }
 
@@ -38090,6 +38102,10 @@ async function practSubmit(answer){
         explanation: finalExplanation,
         trap: finalTrap,
         keyword: finalKeyword,
+        // V15.12.75.67 — Cache hit não tem wrong_alternatives ainda — só
+        // questões frescas geradas após V15.12.75.65 vão ter no pool.
+        // À medida que pool se renova, mais questões cache hit terão.
+        wrong_alternatives: null,
         next: nextCached, // se null, "Próxima questão" vai chamar startPractice de novo
         errCtx,
         userChose: answer,
@@ -38228,6 +38244,12 @@ async function practSubmit(answer){
       explanation:res.explanation,
       trap:res.trap,
       keyword:res.keyword,
+      // V15.12.75.67 — Propaga wrong_alternatives da resposta da IA pro feedback.
+      // Sem isso, feedbackCard.L26011 nunca renderizava o <details> "Por que as
+      // outras estão erradas" mesmo quando IA retornava o campo. Era um bug de
+      // propagação — Jean reportou que só importadas mostravam (renderSharedExplanationsBody
+      // tinha o render, mas prática IA tinha que ler do practFb).
+      wrong_alternatives: Array.isArray(res.wrong_alternatives) ? res.wrong_alternatives : null,
       next:res.next,
       errCtx,
       // V15.12.74 — Passa resposta do user pro renderer mostrar
@@ -67155,10 +67177,20 @@ function showCompleteProfileModal(){
       closeModal();
       showToast('✓ Perfil criado! Bem-vindo ao Gralia, @' + u + '.', 6000);
       render();
-      // V15.12.48 — Após concluir cadastro, agenda tutorial visual
-      // (em vez de rodar em paralelo com o modal de username, o que causava
-      // o tutorial ser empilhado e a ordem ficar invertida).
-      setTimeout(() => maybeShowTutorial(), 1200);
+      // V15.12.75.67 — Tutorial DIRETO sem heuristics. Antes passava por
+      // maybeShowTutorial() que tinha 3 condições + retry complexo, falhava
+      // em casos reais (conta nova, sem fontes, etc). Agora: 1.2s pra render
+      // estabilizar e showTutorialModal() força. Se DATA.tutorialOffered já
+      // estava true (impossível aqui — conta acabou de ser criada), nem assim
+      // bloqueia: limpamos antes de mostrar.
+      setTimeout(() => {
+        DATA.tutorialOffered = false; // garantia: conta nova sempre vê tour
+        save();
+        try{
+          console.info('[tutorial] disparando DIRETAMENTE após createProfile');
+          showTutorialModal();
+        }catch(e){ console.error('[tutorial] erro:', e); }
+      }, 1200);
     }catch(err){
       errBox.textContent = (err && err.message) ? err.message : 'Erro ao criar perfil. Tente de novo.';
       errBox.style.display = 'block';
@@ -67565,6 +67597,35 @@ async function initAuth(){
           showToast('👋 Bem-vindo ao Gralia!' + credLine, 6000);
         }catch(e){}
       }, 1500);
+      // V15.12.75.67 — Tutorial DIRETO pra usuário recém-criado (< 10min).
+      // Abordagem mais simples: detecta freshly created, espera 4s pra UI
+      // estabilizar (modal username/welcome toast saírem), reseta a flag e
+      // dispara showTutorialModal DIRETAMENTE — sem maybeShowTutorial,
+      // sem retry complexo, sem dependência de view. Se outro modal estiver
+      // aberto naquele momento, fazemos 1 retry em mais 4s. Só.
+      // Antes a lógica de flag pendente + render() falhava em conta nova com
+      // email reusado (modal de profile setup nem abria pq profile já existia).
+      if(typeof isFreshlyCreatedUser === 'function' && isFreshlyCreatedUser()){
+        const fireTutorial = (attempt) => {
+          attempt = attempt || 0;
+          if(attempt > 4) {
+            console.warn('[tutorial-fresh] desistiu após 4 tentativas');
+            return;
+          }
+          if(ST.modal){
+            console.info('[tutorial-fresh] modal aberto, retry em 4s (' + (attempt+1) + '/4)');
+            setTimeout(()=> fireTutorial(attempt + 1), 4000);
+            return;
+          }
+          // Limpa flag pra garantir que showTutorialModal não trave em algum check
+          DATA.tutorialOffered = false;
+          save();
+          console.info('[tutorial-fresh] disparando DIRETAMENTE — user freshly created');
+          try{ showTutorialModal(); }catch(e){ console.error('[tutorial-fresh] erro:', e); }
+        };
+        setTimeout(()=> fireTutorial(0), 4000);
+      }
+
       // V14: Tutorial guiado — só pra usuários sem fontes E que ainda não viram
       // V15.12.48 — Não dispara se o modal de profile setup vai/está aberto;
       // nesse caso, o tutorial é encadeado pelo handler do modal (após skip
