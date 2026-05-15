@@ -6762,7 +6762,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.71';
+window.GRALIA_VERSION = 'V15.12.75.72';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -40017,7 +40017,17 @@ function renderSRSStudy(wrap,due,total){
     } else {
       info.textContent=total===0?'Nenhum card ainda. Gere com IA ou crie manualmente.':'Todos os cards foram revisados. Volte depois.';
     }
-    wrap.appendChild(info);return wrap;
+    wrap.appendChild(info);
+    // V15.12.75.72 — Quando user terminava o ÚLTIMO card no Modo Foco, o
+    // overlay anterior ficava preso no DOM com os botões de rating do card
+    // já avaliado. Visualmente parecia que os botões "bugavam" — clicar
+    // não fazia nada (estado já tinha mudado). Fix: chamar overlay com
+    // card=null pra ele renderizar a tela "🌳 Tudo revisado!" (que já
+    // existe na função, branch do !card).
+    if(ST.srsFocusActive){
+      setTimeout(()=>renderSRSFocusOverlay(null, []), 0);
+    }
+    return wrap;
   }
   if(!ST.srsCurrent||!filteredDue.find(c=>c.id===ST.srsCurrent.id)){ST.srsCurrent=filteredDue[0];ST.srsShowBack=false;}
   const card = ST.srsCurrent;
