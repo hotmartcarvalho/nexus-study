@@ -6762,7 +6762,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.65';
+window.GRALIA_VERSION = 'V15.12.75.66';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -10175,9 +10175,47 @@ function ensureDisciplineForQuestion(q){
   }
 
   // Caso 2: tem nome (q.discipline string) — procura/cria
-  const discName = (q.discipline || '').trim();
+  let discName = (q.discipline || '').trim();
+
+  // V15.12.75.66 — Caso 2b: nome vazio mas tem topic — tenta inferir do topic.
+  // Heurística por palavras-chave de disciplina. Cobre o caso comum reportado:
+  // q vindo do pool compartilhado com disciplineId='d1' que não existe E
+  // q.discipline=''. Sem isso, flashcard ficaria sem disciplina pra sempre.
+  if(!discName && q.topic){
+    const t = String(q.topic).toLowerCase();
+    // Mapa de palavras-chave → nome da disciplina (case insensitive)
+    // Cobre as principais disciplinas de concurso brasileiro
+    const DISC_MAP = [
+      // Direito
+      {disc:'Direito Constitucional', keys:['constitucional','cf/88','cf 88','habeas data','mandado de seguranca','mandado de segurança','remedios constitucionais','direitos fundamentais','controle de constitucionalidade']},
+      {disc:'Direito Administrativo', keys:['administrativo','licitacao','licitação','servidor publico','servidor público','improbidade','poderes administrativos','ato administrativo','contratos administrativos','principios administrativos','princípios administrativos']},
+      {disc:'Direito Penal', keys:['penal','crime','homicidio','homicídio','dolo','culpa','tipicidade','antijuridicidade','culpabilidade','codigo penal','código penal']},
+      {disc:'Direito Civil', keys:['civil','obrigacoes','obrigações','contratos civis','responsabilidade civil','direitos reais','familia','família','sucessoes','sucessões']},
+      {disc:'Direito Processual Civil', keys:['processo civil','cpc','procedimento comum','recursos civeis','recursos cíveis','execucao civil','execução civil']},
+      {disc:'Direito Processual Penal', keys:['processo penal','cpp','inquerito policial','inquérito policial','prisao','prisão','medidas cautelares']},
+      {disc:'Direito Tributário', keys:['tributario','tributário','tributo','imposto','icms','iptu','ipi','ctn','codigo tributario','código tributário']},
+      {disc:'Direito do Trabalho', keys:['trabalho','clt','empregado','empregador','sindicato','reclamacao trabalhista','reclamação trabalhista']},
+      // Outras
+      {disc:'Língua Portuguesa', keys:['acentuacao','acentuação','crase','concordancia','concordância','regencia','regência','pontuacao','pontuação','ortografia','semantica','semântica','sintaxe','morfologia','interpretacao de texto','interpretação de texto']},
+      {disc:'Raciocínio Lógico', keys:['raciocinio logico','raciocínio lógico','proposicao','proposição','tabela verdade','silogismo','sequencia logica','sequência lógica','probabilidade','combinatoria','combinatória']},
+      {disc:'Matemática', keys:['matematica','matemática','equacao','equação','funcao','função','geometria','algebra','álgebra','aritmetica','aritmética','porcentagem','juros']},
+      {disc:'Informática', keys:['informatica','informática','windows','linux','excel','word','powerpoint','internet','navegador','seguranca digital','segurança digital','firewall','redes']},
+      {disc:'Inglês', keys:['english','reading','grammar','vocabulary','present perfect','simple past']},
+      {disc:'Administração', keys:['gestao publica','gestão pública','planejamento estrategico','planejamento estratégico','administracao geral','administração geral','liderança','liderança','motivacao','motivação']},
+      {disc:'Contabilidade', keys:['contabilidade','balanco','balanço','debito','débito','credito','crédito','escrituracao','escrituração','demonstracao','demonstração']},
+      {disc:'Atualidades', keys:['atualidades','noticias','notícias','politica internacional','política internacional','eventos recentes']},
+    ];
+    for(const entry of DISC_MAP){
+      if(entry.keys.some(k => t.includes(k))){
+        discName = entry.disc;
+        console.info('[ensureDiscipline] disciplina INFERIDA via topic "' + q.topic + '" →', discName);
+        break;
+      }
+    }
+  }
+
   if(!discName){
-    console.warn('[ensureDiscipline] q.discipline vazio — flashcard ficará sem disciplina', dbg);
+    console.warn('[ensureDiscipline] q.discipline vazio e topic não inferiu — flashcard ficará sem disciplina', dbg);
     return null;
   }
 
@@ -10196,7 +10234,7 @@ function ensureDisciplineForQuestion(q){
     color: '#7c5cff',
     createdAt: Date.now(),
     autoCreated: true,
-    autoCreatedReason: 'Criada automaticamente pra agrupar flashcard de questão importada'
+    autoCreatedReason: 'Criada automaticamente pra agrupar flashcard de questão (inferida via topic se preciso)'
   };
   DATA.disciplines.push(newDisc);
   save();
@@ -10370,6 +10408,39 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn, opts)
             _silent: true
           });
         }catch(_){}
+        // V15.12.75.66 — Optimistic insert do flashcard na UI (igual à
+        // explicação acima). Antes o flashcard só aparecia após o user
+        // trocar de aba e voltar — porque o saveSharedExplanation é
+        // background e a lista de flashcards não re-renderizava.
+        // Marca como __pendingOptimistic pra inserir depois junto com o card
+        // de explicação (ordem: explicação primeiro, depois flashcard).
+        const flashOptimisticItem = {
+          id: 'optimistic-flash-'+Date.now(),
+          kind: 'flashcard',
+          model: model,
+          payload: flashPayload,
+          author_id: AUTH.user.id,
+          author_username: (AUTH.profile && AUTH.profile.username) || (AUTH.user.email||'').split('@')[0],
+          upvotes: 0,
+          downvotes: 0,
+          score: 0,
+          created_at: new Date().toISOString(),
+          my_vote: 0,
+          __justGenerated: true
+        };
+        // Insere via timeout pra rodar após o insert da explicação
+        setTimeout(() => {
+          try{
+            const flashCard = renderSharedExplanationCard(flashOptimisticItem, q);
+            // Procura container de flashcards na mesma área
+            const flashList = container.querySelector('.shexpl-flash-list') || container.querySelector('.shexpl-list');
+            if(flashList){
+              flashList.insertBefore(flashCard, flashList.firstChild);
+            } else {
+              container.appendChild(flashCard);
+            }
+          }catch(e){ console.warn('[flash-optimistic]', e); }
+        }, 50);
       }
     }
 
@@ -17366,6 +17437,16 @@ function buildAppSidebar(){
 /* RENDER */
 const APP = $('app');
 function render(){
+  // V15.12.75.66 — Tutorial pendente: assim que possível (sem modal nem
+  // profile pendente), dispara. Setado em onAuthStateChange:SIGNED_IN.
+  // Abordagem mais robusta que timer com retry (V15.12.75.65 falhou pq
+  // user navegava entre views e perdia a janela do setTimeout).
+  if(ST._tutorialPending && !DATA.tutorialOffered && !ST.modal && typeof isProfileSetupNeeded === 'function' && !isProfileSetupNeeded()){
+    ST._tutorialPending = false;
+    console.info('[tutorial] disparando agora — render() detectou janela limpa');
+    setTimeout(() => { try{ maybeShowTutorial(); }catch(_){} }, 200);
+  }
+
   // V15.12.58 — Reset onboarding usa ?showLogin=1 pra forçar tela de login após logout.
   // V15.12.59 — Quando consumimos o param, marcamos `_postResetLogin` em ST.
   // Isso é consumido no SIGNED_IN pra forçar fluxo de "novo usuário" (modal
@@ -67488,26 +67569,14 @@ async function initAuth(){
       // V15.12.48 — Não dispara se o modal de profile setup vai/está aberto;
       // nesse caso, o tutorial é encadeado pelo handler do modal (após skip
       // ou conclusão). Evita o tutorial empilhar em cima do username modal.
-      // V15.12.75.65 — Bug reportado: em conta nova com email reusado, o
-      // tutorial nunca aparecia. Causa: setTimeout 3500ms verifica
-      // isProfileSetupNeeded() / ST.modal e dá `return` silenciosamente — se
-      // modal de outro tipo estiver aberto (welcome toast, etc), tutorial
-      // perde a janela. Solução: retry com timeouts crescentes pra dar mais
-      // chances. Se em 30s não conseguir abrir, desiste (usuário pode acionar
-      // manualmente via avatar → Tutorial visual).
-      const tryShowTutorial = (attempt) => {
-        attempt = attempt || 0;
-        if(attempt > 5) return; // 6 tentativas: 3.5s, 7s, 12s, 18s, 25s, 30s
-        if(DATA.tutorialOffered) return; // já concluído, não retry
-        if(isProfileSetupNeeded() || ST.modal){
-          // ainda tem modal/profile pendente — espera mais
-          const delays = [3500, 3500, 5000, 6000, 7000, 5000];
-          setTimeout(() => tryShowTutorial(attempt + 1), delays[attempt]);
-          return;
-        }
-        maybeShowTutorial();
-      };
-      setTimeout(()=> tryShowTutorial(0), 3500);
+      // V15.12.75.66 — Abordagem nova: setflag pendente. A função render()
+      // (chamada toda vez que view muda) verifica e dispara tutorial assim
+      // que ST.modal estiver livre. Antes era timer rígido com retry — se
+      // user navegasse rápido entre páginas, perdia a janela.
+      if(!DATA.tutorialOffered){
+        ST._tutorialPending = true;
+        console.info('[tutorial] pendente — vai disparar na primeira oportunidade');
+      }
       // V15.12.51 — Após signup, verifica se o trial bonus foi creditado pelo
       // trigger handle_new_user. Só roda em usuários recém-criados (< 2 min)
       // — login normal não dispara. Delay maior (4500ms) pra dar tempo do
