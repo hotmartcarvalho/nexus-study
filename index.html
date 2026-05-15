@@ -6819,7 +6819,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.82';
+window.GRALIA_VERSION = 'V15.12.75.83';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -13777,7 +13777,7 @@ const METHOD_INFO = {
   interleaving:{
     icon:'🔀',title:'Intercalação',tag:'CLÁSSICO',
     short:'Alterna tópicos a cada questão para memória mais sólida e duradoura.',
-    long:'Em vez de fazer 20 questões seguidas do mesmo assunto, o sistema muda de tópico a cada rodada. Parece mais difícil no início — e é. Mas essa dificuldade extra força o cérebro a escolher a regra certa antes de responder, o que fixa muito melhor do que estudo em bloco.',
+    long:'Em vez de fazer 20 questões seguidas do mesmo assunto, o sistema muda de tópico a cada rodada. Cada questão é sobre UM tópico só (não mistura dois numa só) — mas a próxima vem de tópico diferente. Às vezes a IA escolhe tópicos que se confundem entre si (ex: Mandado de Injunção depois de ADI por Omissão) pra treinar discriminação entre conceitos parecidos. Parece mais difícil no início — e é. Mas essa dificuldade extra força o cérebro a escolher a regra certa antes de responder, o que fixa muito melhor do que estudo em bloco.',
     trust:'Na prova real, disciplinas aparecem misturadas. Treinar intercalado te prepara para o padrão que a banca usa, não para uma versão facilitada dele.'
   },
   calibration:{
@@ -13989,36 +13989,32 @@ Se kind=CE, omita alternatives e use correct_answer = "C" ou "E".
 Se kind=MC, inclua alternatives e use correct_answer = "A"|"B"|"C"|"D"|"E".`;
 
 // Drill focado em um tipo específico
-const SYS_DRILL = `Você é examinador de concurso público brasileiro. Drill focado em UM tipo de armadilha. Baseie-se APENAS no conteúdo.
+// V15.12.75.83 — SYS_DRILL agora herda SYS_QUICK_CE inteiro + addon do método.
+// Antes era prompt separado, perdia todas as regras de formato/wrong_alts/
+// suggested_flashcard/remoção do next que adicionamos pro SYS_QUICK_CE.
+// Resultado anterior: drill sem flashcard, sem wrong_alternatives, com next
+// embutido (que adicionava latência). Agora herda tudo.
+const SYS_DRILL = SYS_QUICK_CE + `
 
-REGRAS UNIVERSAIS:
-1. Apenas UMA ideia central
-2. Terminologia técnica do conteúdo
-3. Siga o PERFIL DA BANCA injetado (formato, tamanho, casuística)
-4. Siga as armadilhas da DISCIPLINA injetada
-5. Calibre conforme DIFICULDADE injetada
+────────── ADDON: DRILL FOCADO EM UMA ARMADILHA ──────────
+Este é o método Drill DNA: o candidato escolheu UMA armadilha específica que costuma errar (ex: causa/consequência invertidas, sempre/nunca, etc).
+- Use EXCLUSIVAMENTE o tipo de armadilha solicitado pelo candidato.
+- A explicação segue o mesmo formato definido nas REGRAS DE FORMATAÇÃO acima — não mude o estilo.
+- Não cria seções "NORMA DE..." nem "X vs Y" dentro da explicação; siga os rótulos padrão (Gabarito, Por que..., Pegadinha, Regra pra lembrar).`;
 
-IMPORTANTE: use EXCLUSIVAMENTE o tipo de armadilha solicitado pelo candidato.
+// V15.12.75.83 — Idem pro SYS_INTER. Mantém só a regra específica da
+// metodologia: tópico da próxima diferente do atual. Mas como removemos o
+// `next` do feedback (V75), essa regra agora se aplica à PRÓXIMA chamada,
+// não no mesmo retorno. Vou deixar a instrução como "ao gerar a próxima
+// questão, evite repetir o tópico recém-respondido" — a UI passa o último
+// tópico no prompt do user.
+const SYS_INTER = SYS_QUICK_CE + `
 
-SAÍDA (JSON puro):
-Questão: {"type":"question","kind":"CE|MC","topic":"...","question":"...","alternatives":{...se MC},"correct_answer":"C|E ou A-E","trap_type":"...","difficulty":"medium"}
-Feedback+próxima: {"type":"feedback","is_correct":true,"trap_type":"...","explanation":"...","trap":"...","keyword":"...","next":{...mesma estrutura...}}`;
-
-// Interleaving (alterna tópicos)
-const SYS_INTER = `Você é examinador de concurso público brasileiro aplicando Intercalação. Baseie-se APENAS no conteúdo.
-
-REGRAS UNIVERSAIS:
-1. Apenas UMA ideia central
-2. Terminologia técnica do conteúdo
-3. Siga o PERFIL DA BANCA injetado (formato, tamanho, casuística, armadilhas)
-4. Siga as armadilhas da DISCIPLINA injetada
-5. Calibre conforme DIFICULDADE injetada
-
-REGRA EXTRA: em cada feedback, o campo next.topic DEVE ser diferente do tópico anterior.
-
-SAÍDA (JSON puro):
-Questão: {"type":"question","kind":"CE|MC","topic":"...","question":"...","alternatives":{...se MC},"correct_answer":"...","trap_type":"...","difficulty":"medium"}
-Feedback+próxima: {"type":"feedback","is_correct":true,"trap_type":"...","explanation":"...","trap":"...","keyword":"...","next":{"kind":"CE|MC","topic":"TÓPICO DIFERENTE","question":"...","alternatives":{...se MC},"correct_answer":"...","trap_type":"...","difficulty":"medium"}}`;
+────────── ADDON: INTERCALAÇÃO ──────────
+Este é o método de Intercalação (interleaving): o candidato alterna entre tópicos para fortalecer discriminação entre conteúdos parecidos.
+- Quando o usuário pedir uma "próxima questão", o tópico DEVE ser diferente do tópico da questão anterior (informado no histórico).
+- Mantenha questões coesas em UM tópico cada (não misture dois tópicos numa só questão; intercalação é entre questões, não dentro de uma).
+- Tudo o mais segue as regras universais e o formato de explicação definido acima.`;
 
 // Examiner Invertido — usuário cria armadilhas. Mantém estrutura própria.
 // Sempre usa C/E na "real_question" gerada como modelo, independentemente da banca,
@@ -17277,7 +17273,17 @@ function methodTopStrip(methodKey,kind){
   return strip;
 }
 const mkBtn = (txt,cls) => {const b=mk('button',cls);b.textContent=txt;return b;};
-const loading = txt => {const d=mk('div','loading-row');const sp=mk('span','spinner');d.appendChild(sp);d.appendChild(document.createTextNode(' '+txt));return d;};
+// V15.12.75.83 — Atualizado pra usar neuralLoader em vez do spinner circular
+// genérico. Cobre TODAS as chamadas a loading() — intercalação, examiner,
+// elaborativa, e quaisquer outros lugares com geração de IA que usam o helper
+// antigo (em vez de dynamicLoading que já foi atualizado na V79).
+const loading = txt => {
+  const d = mk('div','loading-row');
+  const sp = typeof neuralLoader === 'function' ? neuralLoader(true) : mk('span','spinner');
+  d.appendChild(sp);
+  d.appendChild(document.createTextNode(' '+txt));
+  return d;
+};
 
 /* Loading messages that rotate every 2.5s during longer generations.
    Sets of messages tailored to the kind of operation. */
@@ -37798,6 +37804,10 @@ function renderCalibration(){
     const card = feedbackCard(ST.calibFb,calibNext,'Próxima questão →', ST.calibQ);
     if(isOc){
       const warn = mk('div','warn-box');
+      // V15.12.75.83 — Margin-top extra porque está sendo inserido DENTRO do
+      // feedbackCard, logo após os chips "Incorreto"/"Revisado". Sem isso,
+      // fica colado nas etiquetas (problema visual reportado).
+      warn.style.marginTop = '.875rem';
       warn.innerHTML='⚠ <b>Falsa segurança detectada.</b> Você disse "tenho certeza" e errou. Releia o enunciado — encontre a armadilha.';
       card.insertBefore(warn,card.children[1]);
     }
@@ -40040,10 +40050,32 @@ function renderInterleaving(){
 
   wrap.appendChild(methodTopStrip('interleaving','question'));
   if(DATA.session.total>0)wrap.appendChild(progressBar(Math.round(DATA.session.correct/DATA.session.total*100)));
+  // V15.12.75.83 — Últimos tópicos visualmente como chips com setas, em vez
+  // de paredão de texto. Mostra até 3 últimos. Cada chip é compacto, com
+  // truncate se o nome for muito longo. Visual mais legível e identifica
+  // melhor o que é "intercalação" — alternância entre tópicos.
   if(ST.interTopics.length>1){
-    const ch = mk('p','txt3');ch.style.marginBottom='.5rem';
-    ch.textContent='↻ Últimos tópicos: '+ST.interTopics.slice(-3).join(' → ');
-    wrap.appendChild(ch);
+    const topicsBar = mk('div');
+    topicsBar.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:.75rem;padding:8px 12px;background:rgba(128,66,250,.04);border:1px solid rgba(128,66,250,.12);border-radius:8px';
+    const lbl = mk('span');
+    lbl.style.cssText = 'font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-right:4px';
+    lbl.innerHTML = '↻ Últimos tópicos';
+    topicsBar.appendChild(lbl);
+    const recent = ST.interTopics.slice(-3);
+    recent.forEach((topic, idx) => {
+      const chip = mk('span');
+      chip.style.cssText = 'font-size:11.5px;padding:3px 9px;background:var(--surface);border:1px solid var(--border);border-radius:999px;color:var(--text2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.4';
+      chip.textContent = topic;
+      chip.title = topic; // tooltip mostra completo
+      topicsBar.appendChild(chip);
+      if(idx < recent.length - 1){
+        const arrow = mk('span');
+        arrow.style.cssText = 'color:var(--text3);font-size:11px';
+        arrow.textContent = '→';
+        topicsBar.appendChild(arrow);
+      }
+    });
+    wrap.appendChild(topicsBar);
   }
   wrap.appendChild(questionCard(ST.interQ));
   if(!ST.interFb&&!ST.interLoading)wrap.appendChild(answerButtons(interSubmit,ST.interAnswered, ST.interQ));
