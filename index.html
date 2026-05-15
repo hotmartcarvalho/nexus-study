@@ -6762,7 +6762,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.73';
+window.GRALIA_VERSION = 'V15.12.75.74';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -13864,19 +13864,17 @@ REGRA wrong_alternatives (APENAS pra MC):
 - Pra C/E: OMITA o campo (não tem alternativas).
 - NUNCA retorne wrong_alternatives como string ou objeto solto — SEMPRE array, mesmo com 1 item.
 
-REGRAS UNIVERSAIS:
-- Mantenha CADA seção curta (1-2 frases, máximo 30 palavras).
-- Texto total deve ficar entre 5-10 linhas — nada de paredão.
+REGRAS DE FORMATAÇÃO DA EXPLICAÇÃO:
+- Cada seção curta (1-2 frases, máx 30 palavras).
+- Texto total 5-10 linhas — nada de paredão.
 - Sem emojis no texto.
-- Use os rótulos EXATAMENTE como acima (case-sensitive importa pra UI).
-- Ordem das seções: Gabarito → Por que está certa/errada → Por que sua resposta errou (só se errou) → Pegadinha → Regra pra lembrar.
+- Use os rótulos EXATAMENTE como acima (case-sensitive).
+- Ordem: Gabarito → Por que está certa/errada → Por que sua resposta errou (só se errou) → Pegadinha → Regra pra lembrar.
 
-REGRA VARIAÇÃO DE NOMES E CENÁRIOS (casos concretos):
-- Não use sempre os mesmos nomes (João, Maria, Pedro, Tício, Caio).
-- Varie: use nomes diversos brasileiros (Ana, Beatriz, Rafael, Luana, Marcos, Camila, Felipe, Larissa, Bruno, Letícia, Diego, Patrícia, Gustavo, Renata).
-- Varie também os contextos: servidor público, particular, autoridade, investigado, vítima, testemunha, empresa, autarquia, órgão público.
-- Quando a questão NÃO precisar de nome (regra abstrata, conceito puro), evite usar nome.
-- Não use nomes em excesso quando uma única referência basta.
+REGRA NOMES E CENÁRIOS:
+- Varie nomes brasileiros (não use sempre João/Maria/Pedro/Tício/Caio).
+- Varie contextos (servidor, particular, autoridade, vítima, empresa, autarquia).
+- Omita nomes quando o conceito é abstrato.
 
 REGRA suggested_flashcard:
 - Inclua o campo "suggested_flashcard" APENAS quando is_correct=false (usuário errou).
@@ -14874,7 +14872,7 @@ async function throttleApiCall(actionId){
     waitMs = Math.max(waitMs, burstExtra);
   }
   if(waitMs > 0){
-    console.info('[throttle] aguardando', waitMs, 'ms (burst:', _apiCallTimestamps.length, ')');
+    console.warn('[throttle]', actionId || '?', '— esperando', waitMs+'ms (burst:', _apiCallTimestamps.length+' chamadas em 30s)');
     await new Promise(r => setTimeout(r, waitMs));
   }
   _apiCallTimestamps.push(Date.now());
@@ -14883,6 +14881,9 @@ async function throttleApiCall(actionId){
 async function apiGenerate(body){
   // V15.12.70 — DIAGNÓSTICO: loga tamanho exato de cada chamada antes de enviar.
   // V15.12.71 — Corrigido pra medir system como array de blocos (formato real).
+  // V15.12.75.74 — Timing fine-grained: separa throttle / network / parse pra
+  // diagnosticar lentidão. Aparece no console como [api-timing] com breakdown.
+  const _t = { start: performance.now() };
   try{
     // system pode ser string OU array de blocos [{type:'text', text:'...'}, ...]
     let systemChars = 0;
@@ -14924,7 +14925,11 @@ async function apiGenerate(body){
 
   // V15.12.67 — Throttle antes de qualquer coisa
   if(body && body.action_id){
+    const _tThrottle = performance.now();
     await throttleApiCall(body.action_id);
+    _t.throttleMs = Math.round(performance.now() - _tThrottle);
+  } else {
+    _t.throttleMs = 0;
   }
   // V15.12.73 — Cooldown local após 429 Anthropic. Bloqueia chamadas
   // novas localmente em vez de bater de novo no backend e queimar mais tokens.
@@ -16153,12 +16158,14 @@ async function callAPI(system, msgs, opts){
     body._silentOn402 = true;
   }
   let r;
+  const _netStart = performance.now();
   try{
     r = await apiGenerate(body);
   }catch(netErr){
     console.error('Network error:',netErr);
     throw new Error('network: '+(netErr.message||'falha de rede'));
   }
+  const _netMs = Math.round(performance.now() - _netStart);
   if(!r.ok){
     let errText = '';
     let parsed = null;
@@ -16183,6 +16190,22 @@ async function callAPI(system, msgs, opts){
       cacheCreation:d.usage.cache_creation_input_tokens||0,
       cacheRead:d.usage.cache_read_input_tokens||0
     };
+    // V15.12.75.74 — Log timing detalhado pra diagnóstico de lentidão.
+    // Mostra throttle/network/cache hit ratio. Útil pra distinguir lentidão
+    // Anthropic vs throttle local vs cache miss.
+    try{
+      const cacheRatio = ST._lastUsage.input > 0
+        ? Math.round((ST._lastUsage.cacheRead / (ST._lastUsage.cacheRead + ST._lastUsage.input)) * 100)
+        : 0;
+      const totalMs = Math.round(performance.now() - (_netStart - 1));
+      console.info(
+        '[api-timing]', actionId,
+        '| network:', _netMs+'ms',
+        '| in:', ST._lastUsage.input, 'tok (cache:'+ST._lastUsage.cacheRead+', '+cacheRatio+'%)',
+        '| out:', ST._lastUsage.output, 'tok',
+        '| modelo:', (modelOverride || DATA.config.model || '?').replace('claude-','').replace('-20251001','').replace('-20250929','')
+      );
+    }catch(_){}
     // V15.12.75.62 — Log no Supabase pra dashboard custo Anthropic (admin).
     // Fire-and-forget — não bloqueia resposta, falha silenciosa.
     // Modelo é deduzido pelo string usado na chamada (haiku-X / sonnet-X).
