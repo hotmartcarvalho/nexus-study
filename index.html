@@ -6762,7 +6762,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.67';
+window.GRALIA_VERSION = 'V15.12.75.68';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -14470,6 +14470,77 @@ function isFreshlyCreatedUser(){
   }
 }
 
+// V15.12.75.68 — Painel debug tutorial visível na tela. Aparece no canto
+// inferior direito mostrando estado em tempo real. Ativa-se via console:
+// `graliaTutorial.debug(true)` ou auto pra conta fresh sem tutorialOffered.
+// Atualizado em todo render() pra mostrar exatamente o que o auto-trigger
+// está vendo.
+function ensureTutorialDebugPanel(){
+  let panel = document.getElementById('tutorial-debug-panel');
+  if(panel) return panel;
+  panel = document.createElement('div');
+  panel.id = 'tutorial-debug-panel';
+  panel.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:99999;background:rgba(15,20,30,.95);color:#e5e7eb;font:11px/1.5 ui-monospace,monospace;padding:10px 14px;border:2px solid #7c5cff;border-radius:8px;max-width:340px;box-shadow:0 4px 16px rgba(0,0,0,.4);backdrop-filter:blur(4px)';
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;border-bottom:1px solid #444;padding-bottom:4px">
+      <b style="color:#a78bfa">🎓 Tutorial Debug</b>
+      <button id="tut-dbg-close" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:14px">×</button>
+    </div>
+    <div id="tut-dbg-body">aguardando primeiro render...</div>
+    <div style="margin-top:8px;padding-top:6px;border-top:1px solid #444;display:flex;gap:6px;flex-wrap:wrap">
+      <button id="tut-dbg-force" style="background:#7c5cff;color:white;border:none;border-radius:4px;padding:3px 8px;font-size:10.5px;cursor:pointer">Forçar agora</button>
+      <button id="tut-dbg-reset" style="background:#1f2937;color:#e5e7eb;border:1px solid #4b5563;border-radius:4px;padding:3px 8px;font-size:10.5px;cursor:pointer">Reset flags</button>
+    </div>
+  `;
+  document.body.appendChild(panel);
+  document.getElementById('tut-dbg-close').onclick = () => panel.remove();
+  document.getElementById('tut-dbg-force').onclick = () => {
+    DATA.tutorialOffered = false;
+    ST._tutorialFired = false;
+    save();
+    try{ showTutorialModal(); }catch(e){ alert('Erro: ' + e.message); }
+  };
+  document.getElementById('tut-dbg-reset').onclick = () => {
+    DATA.tutorialOffered = false;
+    ST._tutorialFired = false;
+    save();
+    updateTutorialDebugPanel('flags resetadas');
+  };
+  return panel;
+}
+
+function updateTutorialDebugPanel(lastEvent){
+  const panel = document.getElementById('tutorial-debug-panel');
+  if(!panel) return;
+  const body = document.getElementById('tut-dbg-body');
+  if(!body) return;
+  const authed = (typeof isAuthed === 'function' && isAuthed()) ? '✅' : '❌';
+  const fresh = (typeof isFreshlyCreatedUser === 'function' && isFreshlyCreatedUser()) ? '✅' : '❌';
+  const tutOffered = DATA.tutorialOffered ? '✅' : '❌';
+  const hasModal = ST.modal ? '✅' : '❌';
+  const profilePending = (typeof isProfileSetupNeeded === 'function' && isProfileSetupNeeded()) ? '✅' : '❌';
+  const fired = ST._tutorialFired ? '✅' : '❌';
+  const userAge = AUTH.user?.created_at
+    ? Math.round((Date.now() - new Date(AUTH.user.created_at).getTime())/1000)+'s'
+    : 'n/a';
+  const wouldFire = (typeof isAuthed === 'function' && isAuthed())
+    && !ST._tutorialFired
+    && !DATA.tutorialOffered
+    && !ST.modal
+    && (typeof isFreshlyCreatedUser === 'function' && isFreshlyCreatedUser())
+    && (typeof isProfileSetupNeeded === 'function' && !isProfileSetupNeeded());
+  body.innerHTML = `
+    <div>auth: ${authed} fresh: ${fresh} <span style="color:#9ca3af">(${userAge})</span></div>
+    <div>tutOffered: ${tutOffered} fired: ${fired}</div>
+    <div>hasModal: ${hasModal} profilePending: ${profilePending}</div>
+    <div>view: <b>${ST.view || '?'}</b></div>
+    <div style="margin-top:4px;padding-top:4px;border-top:1px dashed #444">
+      <span style="color:${wouldFire?'#10b981':'#f59e0b'}">dispararia agora: ${wouldFire?'SIM':'NÃO'}</span>
+    </div>
+    <div style="font-size:10px;color:#9ca3af;margin-top:2px">último: ${lastEvent || '?'}</div>
+  `;
+}
+
 // Verifica se o trial foi creditado e exibe feedback ao usuário.
 // Tenta fallback automático se quota estiver zerada.
 async function verifyTrialActivation(){
@@ -17449,15 +17520,46 @@ function buildAppSidebar(){
 /* RENDER */
 const APP = $('app');
 function render(){
-  // V15.12.75.66 — Tutorial pendente: assim que possível (sem modal nem
-  // profile pendente), dispara. Setado em onAuthStateChange:SIGNED_IN.
-  // Abordagem mais robusta que timer com retry (V15.12.75.65 falhou pq
-  // user navegava entre views e perdia a janela do setTimeout).
-  if(ST._tutorialPending && !DATA.tutorialOffered && !ST.modal && typeof isProfileSetupNeeded === 'function' && !isProfileSetupNeeded()){
-    ST._tutorialPending = false;
-    console.info('[tutorial] disparando agora — render() detectou janela limpa');
-    setTimeout(() => { try{ maybeShowTutorial(); }catch(_){} }, 200);
+  // V15.12.75.68 — Tutorial auto: lógica ÚNICA e simples. Em todo render(),
+  // checa se: user existe + recém-criado (<10min) + não viu tour + sem modal
+  // + profile completo. Se sim, dispara. Cobre TODOS os caminhos (signup novo,
+  // reload, OAuth, etc) num só ponto. Antes tinha 3 lugares com timers
+  // diferentes — não funcionava.
+  // Flag _tutorialFired evita disparar 2x na mesma sessão.
+  if(typeof isAuthed === 'function' && isAuthed()
+     && !ST._tutorialFired
+     && !DATA.tutorialOffered
+     && !ST.modal
+     && typeof isFreshlyCreatedUser === 'function' && isFreshlyCreatedUser()
+     && typeof isProfileSetupNeeded === 'function' && !isProfileSetupNeeded()){
+    ST._tutorialFired = true; // marca antes de disparar (não em await)
+    console.info('[tutorial-auto] disparando — user fresh, sem modal, profile OK');
+    // setTimeout 250ms pra render terminar antes de abrir o modal
+    setTimeout(() => {
+      try{
+        if(typeof updateTutorialDebugPanel === 'function') updateTutorialDebugPanel('disparando agora');
+        showTutorialModal();
+      }catch(e){
+        console.error('[tutorial-auto] ERRO:', e);
+        ST._tutorialFired = false; // permite retry se falhou
+      }
+    }, 250);
   }
+
+  // Atualiza painel debug se existir (não bloqueia render)
+  try{
+    // V15.12.75.68 — Auto-mostra painel quando user é fresh + sem tutorial.
+    // Útil pra diagnosticar bug do "tour não aparece". Some quando user
+    // completa o tour (tutorialOffered=true) ou clica X manualmente.
+    if(typeof isAuthed === 'function' && isAuthed()
+       && typeof isFreshlyCreatedUser === 'function' && isFreshlyCreatedUser()
+       && !DATA.tutorialOffered
+       && !document.getElementById('tutorial-debug-panel')
+       && typeof ensureTutorialDebugPanel === 'function'){
+      ensureTutorialDebugPanel();
+    }
+    if(typeof updateTutorialDebugPanel === 'function') updateTutorialDebugPanel('render() check');
+  }catch(_){}
 
   // V15.12.58 — Reset onboarding usa ?showLogin=1 pra forçar tela de login após logout.
   // V15.12.59 — Quando consumimos o param, marcamos `_postResetLogin` em ST.
@@ -67302,7 +67404,21 @@ window.graliaTutorial = {
   dismiss(){
     DATA.tutorialOffered = true;
     save();
-    console.info('✓ Tutorial marcado como concluído. Não vai aparecer no próximo login.');
+    console.info('✓ Tutorial marcado como concluído. Não vai aparecer no próximo login.');  },
+  debug(show){
+    if(show === false){
+      const panel = document.getElementById('tutorial-debug-panel');
+      if(panel) panel.remove();
+      console.info('✓ Painel fechado.');
+      return;
+    }
+    if(typeof ensureTutorialDebugPanel === 'function'){
+      ensureTutorialDebugPanel();
+      updateTutorialDebugPanel('debug aberto manualmente');
+      console.info('✓ Painel de debug visível no canto inferior direito. Atualiza a cada render().');
+    } else {
+      console.error('ensureTutorialDebugPanel não disponível.');
+    }
   }
 };
 
@@ -67451,6 +67567,14 @@ async function initAuth(){
     const isInitialAutoSignIn = event==='SIGNED_IN' && !_initialSessionHandled && !oauthCallback;
     if(isInitialAutoSignIn){
       _initialSessionHandled = true;
+      // V15.12.75.68 — DIAGNÓSTICO TUTORIAL — qual branch dispara em signup novo?
+      console.info('[auth-branch] CAIU EM isInitialAutoSignIn', {
+        event, wasAuthed, hasUser: !!AUTH.user,
+        userCreated: AUTH.user?.created_at,
+        isFresh: typeof isFreshlyCreatedUser === 'function' && isFreshlyCreatedUser(),
+        tutorialOffered: DATA.tutorialOffered,
+        hasLocalSetup: DATA.setup
+      });
       // Sessão já existente — apenas carrega dados, sem prompt de merge
       ST.showAuth = false;
       // V14: Detecta ausência prolongada e mostra toast de "Bem-vindo de volta"
@@ -67524,6 +67648,11 @@ async function initAuth(){
       }
       if(NOTIFS.pollIntervalId) clearInterval(NOTIFS.pollIntervalId);
       NOTIFS.pollIntervalId = setInterval(()=>fetchNotifications().catch(()=>{}), 60000);
+
+      // V15.12.75.68 — Tutorial agora é disparado em render() (lógica única).
+      // Removido tutorial-fresh-A daqui — render() rodará logo abaixo e
+      // checará se deve mostrar.
+
       render();
       return;
     }
@@ -67534,6 +67663,13 @@ async function initAuth(){
       // serem desviados do branch isInitialAutoSignIn pelo cleanOAuthArtifacts.
       // V15.12.59 — Consome ST._postResetLogin pra garantir fluxo "novo" após
       // reset de onboarding (modal username + tutorial visual + checklist).
+      // V15.12.75.68 — DIAGNÓSTICO
+      console.info('[auth-branch] CAIU EM SIGNED_IN novo (wasAuthed=false)', {
+        event, hasUser: !!AUTH.user,
+        userCreated: AUTH.user?.created_at,
+        isFresh: typeof isFreshlyCreatedUser === 'function' && isFreshlyCreatedUser(),
+        tutorialOffered: DATA.tutorialOffered
+      });
       const isPostReset = !!ST._postResetLogin;
       ST._postResetLogin = false;
       _initialSessionHandled = true; // evita reentrância pelo getSession() final
@@ -67597,47 +67733,10 @@ async function initAuth(){
           showToast('👋 Bem-vindo ao Gralia!' + credLine, 6000);
         }catch(e){}
       }, 1500);
-      // V15.12.75.67 — Tutorial DIRETO pra usuário recém-criado (< 10min).
-      // Abordagem mais simples: detecta freshly created, espera 4s pra UI
-      // estabilizar (modal username/welcome toast saírem), reseta a flag e
-      // dispara showTutorialModal DIRETAMENTE — sem maybeShowTutorial,
-      // sem retry complexo, sem dependência de view. Se outro modal estiver
-      // aberto naquele momento, fazemos 1 retry em mais 4s. Só.
-      // Antes a lógica de flag pendente + render() falhava em conta nova com
-      // email reusado (modal de profile setup nem abria pq profile já existia).
-      if(typeof isFreshlyCreatedUser === 'function' && isFreshlyCreatedUser()){
-        const fireTutorial = (attempt) => {
-          attempt = attempt || 0;
-          if(attempt > 4) {
-            console.warn('[tutorial-fresh] desistiu após 4 tentativas');
-            return;
-          }
-          if(ST.modal){
-            console.info('[tutorial-fresh] modal aberto, retry em 4s (' + (attempt+1) + '/4)');
-            setTimeout(()=> fireTutorial(attempt + 1), 4000);
-            return;
-          }
-          // Limpa flag pra garantir que showTutorialModal não trave em algum check
-          DATA.tutorialOffered = false;
-          save();
-          console.info('[tutorial-fresh] disparando DIRETAMENTE — user freshly created');
-          try{ showTutorialModal(); }catch(e){ console.error('[tutorial-fresh] erro:', e); }
-        };
-        setTimeout(()=> fireTutorial(0), 4000);
-      }
+      // V15.12.75.68 — Tutorial agora é disparado em render() (lógica única).
+      // Removido tutorial-fresh e _tutorialPending — render() checará e
+      // mostrará automaticamente quando user for fresh + sem modal + profile OK.
 
-      // V14: Tutorial guiado — só pra usuários sem fontes E que ainda não viram
-      // V15.12.48 — Não dispara se o modal de profile setup vai/está aberto;
-      // nesse caso, o tutorial é encadeado pelo handler do modal (após skip
-      // ou conclusão). Evita o tutorial empilhar em cima do username modal.
-      // V15.12.75.66 — Abordagem nova: setflag pendente. A função render()
-      // (chamada toda vez que view muda) verifica e dispara tutorial assim
-      // que ST.modal estiver livre. Antes era timer rígido com retry — se
-      // user navegasse rápido entre páginas, perdia a janela.
-      if(!DATA.tutorialOffered){
-        ST._tutorialPending = true;
-        console.info('[tutorial] pendente — vai disparar na primeira oportunidade');
-      }
       // V15.12.51 — Após signup, verifica se o trial bonus foi creditado pelo
       // trigger handle_new_user. Só roda em usuários recém-criados (< 2 min)
       // — login normal não dispara. Delay maior (4500ms) pra dar tempo do
