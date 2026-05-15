@@ -6819,7 +6819,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.83';
+window.GRALIA_VERSION = 'V15.12.75.84';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -12941,6 +12941,25 @@ const ST = {
   importInput:{text:'',disciplineId:'',topic:''},
   importPreview:[],
   importParseMode:'auto',
+  // V15.12.75.84 — Estado da busca no pool global ("Buscar no Gralia"):
+  //  - filters: critérios atuais
+  //  - results: array de questões retornadas pela query
+  //  - selectedIds: Set de content_hash selecionados pra ação em batch
+  //  - page/pageSize: paginação client-side (RPC já limita o batch via LIMIT)
+  //  - loading: flag de busca em andamento
+  //  - lastQueriedAt: pra evitar duplicar query
+  poolSearch: {
+    filters: {bank:'',disciplineSlug:'',kind:'',difficulty:'',topicQ:'',trapType:'',minScore:50},
+    results: [],
+    selectedIds: new Set(),
+    page: 0,
+    pageSize: 20,
+    loading: false,
+    totalFound: null,
+    hasMore: false,
+    lastQueriedAt: 0,
+    error: null
+  },
   // Practice source: 'ai' = generated via API, 'imported' = from imported bank
   practiceSource:'ai',
   importedIdx:0,importedCurrent:null,importedAnswered:false,importedAnswer:null,
@@ -33348,7 +33367,11 @@ function renderImported(){
 
   const sub2 = ST.importedSubview||'list';
   const st = mk('div','sub-tabs');
-  [['list','Todas as questões'],['notebooks','Cadernos'],['import','+ Importar'],['practice','Praticar']].forEach(([v,lbl])=>{
+  // V15.12.75.84 — Nova aba "🔍 Buscar no Gralia" pra buscar no pool global
+  // de questões (todos os users), com filtros TEC-style. Default continua
+  // 'list' (só do user). Performance preservada — pool só é consultado quando
+  // user clica buscar.
+  [['list','Todas as minhas'],['notebooks','Cadernos'],['import','+ Importar'],['practice','Praticar'],['search','🔍 Buscar no Gralia']].forEach(([v,lbl])=>{
     const t = mkBtn(lbl,'sub-tab'+(sub2===v?' on':''));
     t.addEventListener('click',()=>{
       ST.importedSubview=v;
@@ -33365,6 +33388,7 @@ function renderImported(){
   if(sub2==='notebooks')return renderNotebooks(wrap);
   if(sub2==='import')return renderImportedImport(wrap);
   if(sub2==='practice')return renderImportedPractice(wrap);
+  if(sub2==='search')return renderPoolSearch(wrap);
   return wrap;
 }
 
@@ -33866,6 +33890,555 @@ function renderImportedList(wrap){
   // V15.12.36 — Garante botão "voltar ao topo" presente
   ensureBackToTopButton();
   return wrap;
+}
+
+// V15.12.75.84 — Busca paginada no ai_question_pool com filtros TEC-style.
+// Executa query direta no Supabase com .from('ai_question_pool').select().
+// Retorna até pageSize+1 itens pra detectar hasMore. Aplica filtros via .eq()
+// e .gte() / .ilike() conforme o tipo. status='active' sempre (não traz draft).
+async function searchPoolQuestions(filters, page, pageSize){
+  if(!supa) throw new Error('Supabase não disponível');
+  pageSize = pageSize || 20;
+  page = page || 0;
+  const from = page * pageSize;
+  const to = from + pageSize; // pega 1 a mais pra saber se tem próxima
+  let q = supa.from('ai_question_pool')
+    .select('content_hash, enunciado, answer, kind, explanation, trap, keyword, topic, ai_method, ai_model, difficulty, ai_score, bank_id, discipline_id, trap_type, contributor_id, created_at', {count:'exact'})
+    .eq('status', 'active');
+  if(filters.bank) q = q.eq('bank_id', filters.bank);
+  if(filters.disciplineSlug) q = q.eq('discipline_id', filters.disciplineSlug);
+  if(filters.kind) q = q.eq('kind', filters.kind);
+  if(filters.difficulty) q = q.eq('difficulty', filters.difficulty);
+  if(filters.topicQ && filters.topicQ.trim()) q = q.ilike('topic', '%'+filters.topicQ.trim()+'%');
+  if(filters.trapType !== '' && filters.trapType !== null && filters.trapType !== undefined){
+    const tt = parseInt(filters.trapType, 10);
+    if(!isNaN(tt)) q = q.eq('trap_type', tt);
+  }
+  if(filters.minScore) q = q.gte('ai_score', filters.minScore);
+  q = q.order('ai_score', {ascending: false}).order('created_at', {ascending: false}).range(from, to);
+  const {data, error, count} = await q;
+  if(error) throw new Error(error.message);
+  const items = data || [];
+  const hasMore = items.length > pageSize;
+  return {
+    items: hasMore ? items.slice(0, pageSize) : items,
+    hasMore,
+    total: count
+  };
+}
+
+// V15.12.75.84 — Importa as questões selecionadas do pool pro DATA local.
+// Reusa o canonical_hash existente pra evitar duplicatas. Não cobra créditos
+// (já estão no banco). Retorna lista de IDs locais criados.
+function importPoolQuestionsToLocal(poolItems, opts){
+  opts = opts || {};
+  if(!DATA.importedQuestions) DATA.importedQuestions = [];
+  const existingHashes = new Set();
+  (DATA.importedQuestions||[]).forEach(q => {
+    if(q.canonicalHash) existingHashes.add(q.canonicalHash);
+    if(q.contentHash) existingHashes.add(q.contentHash);
+  });
+  const newIds = [];
+  let dupCount = 0;
+  poolItems.forEach(p => {
+    const hash = p.content_hash;
+    if(existingHashes.has(hash)){
+      dupCount++;
+      // Encontra ID local pra incluir no caderno
+      const local = DATA.importedQuestions.find(x => x.canonicalHash === hash || x.contentHash === hash);
+      if(local) newIds.push(local.id);
+      return;
+    }
+    existingHashes.add(hash);
+    const id = 'pool_' + hash.slice(0, 12) + '_' + Math.random().toString(36).slice(2,5);
+    const disc = (DATA.disciplines||[]).find(d =>
+      d.name && p.discipline_id && d.name.toLowerCase().includes(p.discipline_id.replace(/_/g,' ').toLowerCase())
+    );
+    DATA.importedQuestions.push({
+      id,
+      enunciado: p.enunciado,
+      answer: p.answer,
+      kind: p.kind,
+      alternatives: null, // pool não armazena alternativas detalhadas por enquanto
+      disciplineId: disc ? disc.id : null,
+      topic: p.topic || '',
+      source: 'pool',
+      aiMethod: p.ai_method || 'pool',
+      aiModel: p.ai_model || null,
+      explanation: p.explanation || '',
+      trap: p.trap || '',
+      keyword: p.keyword || '',
+      trapType: p.trap_type ?? 0,
+      createdAt: Date.now(),
+      seenCount: 1,
+      attempts: 0, correctCount: 0,
+      bankId: p.bank_id,
+      disciplineSlug: p.discipline_id,
+      difficulty: p.difficulty,
+      aiScore: p.ai_score,
+      canonicalHash: hash,
+      contentHash: hash,
+      importedFromPool: true,
+      contributorId: p.contributor_id
+    });
+    newIds.push(id);
+  });
+  save();
+  return {newIds, dupCount};
+}
+
+function renderPoolSearch(wrap){
+  const PS = ST.poolSearch;
+  // Intro card
+  const intro = mk('div','card');
+  intro.style.cssText = 'padding:.875rem 1rem;margin-bottom:1rem;background:rgba(128,66,250,.04);border:1px solid rgba(128,66,250,.18);border-left:3px solid var(--gralia-purple)';
+  intro.innerHTML = `<b>🔍 Buscar no banco completo do Gralia</b><br><span style="font-size:12.5px;color:var(--text2);line-height:1.55">Aqui você procura questões de TODOS os usuários do Gralia (não só as suas). Aplique filtros, busque, selecione as que interessam e crie cadernos, ou importe para o seu banco pessoal. <b>Sem custo de IA</b> — questões já existem no banco.</span>`;
+  wrap.appendChild(intro);
+
+  // ----- Form de filtros -----
+  const filtersCard = mk('div','card');
+  filtersCard.style.cssText = 'padding:1rem 1.125rem;margin-bottom:1rem';
+  const filtersHead = mk('div','section-label');
+  filtersHead.textContent = 'Filtros';
+  filtersCard.appendChild(filtersHead);
+
+  const grid = mk('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:.5rem';
+
+  const mkField = (label, ctrl) => {
+    const f = mk('div');
+    const l = mk('label');
+    l.style.cssText = 'display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin-bottom:4px';
+    l.textContent = label;
+    f.appendChild(l);
+    f.appendChild(ctrl);
+    return f;
+  };
+
+  const baseInputCss = 'width:100%;padding:.45rem .6rem;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit';
+
+  // Banca
+  const bankSel = mk('select');bankSel.style.cssText = baseInputCss;
+  [['','Qualquer'],['cebraspe_default','Cebraspe'],['fgv','FGV'],['fcc','FCC'],['vunesp','VUNESP'],['ibfc','IBFC']].forEach(([v,lbl])=>{
+    const o = mk('option');o.value=v;o.textContent=lbl;
+    if(PS.filters.bank===v) o.selected=true;
+    bankSel.appendChild(o);
+  });
+  bankSel.addEventListener('change',e=>{PS.filters.bank = e.target.value;});
+  grid.appendChild(mkField('Banca', bankSel));
+
+  // Disciplina (do user — facilita)
+  const discSel = mk('select');discSel.style.cssText = baseInputCss;
+  const optAny = mk('option');optAny.value='';optAny.textContent='Qualquer';
+  discSel.appendChild(optAny);
+  (DATA.disciplines||[]).forEach(d => {
+    const slug = (typeof disciplineSlug === 'function') ? disciplineSlug(d.id) : d.id;
+    if(!slug || slug === 'unknown') return;
+    const o = mk('option');o.value=slug;o.textContent=d.name;
+    if(PS.filters.disciplineSlug===slug) o.selected=true;
+    discSel.appendChild(o);
+  });
+  discSel.addEventListener('change',e=>{PS.filters.disciplineSlug = e.target.value;});
+  grid.appendChild(mkField('Disciplina', discSel));
+
+  // Tipo
+  const kindSel = mk('select');kindSel.style.cssText = baseInputCss;
+  [['','Qualquer'],['CE','Certo/Errado'],['MC','Múltipla escolha']].forEach(([v,lbl])=>{
+    const o = mk('option');o.value=v;o.textContent=lbl;
+    if(PS.filters.kind===v) o.selected=true;
+    kindSel.appendChild(o);
+  });
+  kindSel.addEventListener('change',e=>{PS.filters.kind = e.target.value;});
+  grid.appendChild(mkField('Tipo', kindSel));
+
+  // Dificuldade
+  const diffSel = mk('select');diffSel.style.cssText = baseInputCss;
+  [['','Qualquer'],['easy','Fácil'],['medium','Média'],['hard','Difícil'],['very_hard','Muito difícil']].forEach(([v,lbl])=>{
+    const o = mk('option');o.value=v;o.textContent=lbl;
+    if(PS.filters.difficulty===v) o.selected=true;
+    diffSel.appendChild(o);
+  });
+  diffSel.addEventListener('change',e=>{PS.filters.difficulty = e.target.value;});
+  grid.appendChild(mkField('Dificuldade', diffSel));
+
+  // Tópico (text search)
+  const topInp = mk('input');topInp.type='text';topInp.style.cssText = baseInputCss;
+  topInp.placeholder = 'Ex: peculato, hábeas corpus...';
+  topInp.value = PS.filters.topicQ || '';
+  topInp.addEventListener('input',e=>{PS.filters.topicQ = e.target.value;});
+  topInp.addEventListener('keydown',e=>{ if(e.key==='Enter') doSearch(); });
+  grid.appendChild(mkField('Tópico (busca)', topInp));
+
+  // Score mínimo
+  const scoreSel = mk('select');scoreSel.style.cssText = baseInputCss;
+  [['0','Qualquer'],['50','≥ 50 (médio)'],['70','≥ 70 (bom)'],['85','≥ 85 (excelente)']].forEach(([v,lbl])=>{
+    const o = mk('option');o.value=v;o.textContent=lbl;
+    if(String(PS.filters.minScore)===v) o.selected=true;
+    scoreSel.appendChild(o);
+  });
+  scoreSel.addEventListener('change',e=>{PS.filters.minScore = parseInt(e.target.value, 10);});
+  grid.appendChild(mkField('Score mínimo', scoreSel));
+
+  filtersCard.appendChild(grid);
+
+  // Botões
+  const actions = mk('div');
+  actions.style.cssText = 'display:flex;gap:8px;margin-top:1rem;align-items:center;flex-wrap:wrap';
+  const searchBtn = mkBtn('🔍 Buscar','btn btn-p');
+  searchBtn.style.cssText = 'font-weight:600;padding:.55rem 1.25rem';
+  searchBtn.addEventListener('click',()=>doSearch());
+  actions.appendChild(searchBtn);
+  const clearBtn = mkBtn('Limpar filtros','btn btn-sm');
+  clearBtn.addEventListener('click',()=>{
+    PS.filters = {bank:'',disciplineSlug:'',kind:'',difficulty:'',topicQ:'',trapType:'',minScore:50};
+    PS.results = [];
+    PS.selectedIds = new Set();
+    PS.totalFound = null;
+    PS.error = null;
+    render();
+  });
+  actions.appendChild(clearBtn);
+  filtersCard.appendChild(actions);
+  wrap.appendChild(filtersCard);
+
+  // ----- Função de busca -----
+  async function doSearch(resetPage){
+    if(PS.loading) return;
+    if(resetPage !== false){
+      PS.page = 0;
+      PS.results = [];
+      PS.selectedIds = new Set();
+    }
+    PS.loading = true;
+    PS.error = null;
+    PS.lastQueriedAt = Date.now();
+    render();
+    try{
+      const r = await searchPoolQuestions(PS.filters, PS.page, PS.pageSize);
+      if(PS.page === 0) PS.results = r.items;
+      else PS.results = PS.results.concat(r.items);
+      PS.hasMore = r.hasMore;
+      PS.totalFound = r.total;
+    }catch(e){
+      PS.error = e.message || String(e);
+      console.warn('[pool-search] erro:', e);
+    }finally{
+      PS.loading = false;
+      render();
+    }
+  }
+
+  // ----- Loading -----
+  if(PS.loading){
+    wrap.appendChild(loading('Buscando no banco do Gralia...'));
+    return wrap;
+  }
+
+  // ----- Erro -----
+  if(PS.error){
+    wrap.appendChild(errorBox('⚠ '+PS.error));
+    return wrap;
+  }
+
+  // ----- Resultados -----
+  if(PS.results.length === 0 && PS.lastQueriedAt > 0){
+    wrap.appendChild(infoBox('Nenhuma questão encontrada com esses filtros. Tente afrouxar critérios (score mínimo menor, tipo "Qualquer", etc).'));
+    return wrap;
+  }
+
+  if(PS.results.length === 0){
+    const hint = mk('div','txt2');
+    hint.style.cssText = 'padding:1rem;text-align:center;font-size:13px;line-height:1.6';
+    hint.textContent = 'Clique em "Buscar" pra ver questões. Filtros são opcionais — sem nenhum, traz as mais bem avaliadas.';
+    wrap.appendChild(hint);
+    return wrap;
+  }
+
+  // Header dos resultados + ações em batch
+  const headRow = mk('div');
+  headRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:.75rem;padding:.625rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:8px';
+
+  const headLeft = mk('div');
+  headLeft.style.cssText = 'font-size:13px;color:var(--text)';
+  const totalStr = PS.totalFound !== null ? PS.totalFound.toLocaleString('pt-BR') : '?';
+  const selCount = PS.selectedIds.size;
+  headLeft.innerHTML = `<b>${PS.results.length}</b> de <b>${totalStr}</b> questões${selCount > 0 ? ` · <span style="color:var(--accent-text);font-weight:600">${selCount} selecionada${selCount>1?'s':''}</span>` : ''}`;
+
+  const headRight = mk('div');
+  headRight.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
+
+  const selAllBtn = mkBtn(PS.selectedIds.size === PS.results.length && PS.results.length > 0 ? 'Desmarcar todas' : 'Selecionar tudo','btn btn-sm');
+  selAllBtn.addEventListener('click',()=>{
+    if(PS.selectedIds.size === PS.results.length){
+      PS.selectedIds = new Set();
+    } else {
+      PS.selectedIds = new Set(PS.results.map(r => r.content_hash));
+    }
+    render();
+  });
+  headRight.appendChild(selAllBtn);
+
+  if(selCount > 0){
+    const actBtn = mkBtn(`Ações (${selCount}) ▾`,'btn btn-sm btn-p');
+    actBtn.style.fontWeight = '600';
+    actBtn.addEventListener('click',()=>showPoolBatchActionsModal());
+    headRight.appendChild(actBtn);
+  }
+
+  headRow.appendChild(headLeft);
+  headRow.appendChild(headRight);
+  wrap.appendChild(headRow);
+
+  // Lista de questões
+  PS.results.forEach((p, idx) => {
+    const card = mk('div','card');
+    card.style.cssText = 'padding:.75rem .875rem;margin-bottom:.5rem';
+
+    // Header da questão
+    const top = mk('div');
+    top.style.cssText = 'display:flex;align-items:flex-start;gap:10px;margin-bottom:.5rem';
+
+    const chk = mk('input');
+    chk.type = 'checkbox';
+    chk.style.cssText = 'width:18px;height:18px;margin-top:2px;cursor:pointer;flex-shrink:0';
+    chk.checked = PS.selectedIds.has(p.content_hash);
+    chk.addEventListener('change',e=>{
+      if(e.target.checked) PS.selectedIds.add(p.content_hash);
+      else PS.selectedIds.delete(p.content_hash);
+      render();
+    });
+    top.appendChild(chk);
+
+    const meta = mk('div');
+    meta.style.cssText = 'flex:1;display:flex;gap:6px;flex-wrap:wrap;align-items:center';
+    const mkChip = (txt, color) => {
+      const c = mk('span');
+      c.style.cssText = `font-size:10.5px;padding:2px 8px;border-radius:999px;font-weight:600;background:${color||'var(--surface2)'};color:${color?'#fff':'var(--text2)'};border:1px solid var(--border)`;
+      c.textContent = txt;
+      return c;
+    };
+    meta.appendChild(mkChip(p.kind === 'MC' ? 'MC' : 'C/E'));
+    if(p.difficulty) meta.appendChild(mkChip(({easy:'Fácil',medium:'Média',hard:'Difícil',very_hard:'Muito difícil'})[p.difficulty] || p.difficulty));
+    if(p.bank_id) meta.appendChild(mkChip(p.bank_id.replace('_default','').toUpperCase()));
+    if(p.topic) meta.appendChild(mkChip('📚 '+p.topic.slice(0, 40)));
+    if(p.ai_score) meta.appendChild(mkChip(`★ ${p.ai_score}`, p.ai_score >= 80 ? 'var(--accent)' : (p.ai_score >= 60 ? 'var(--amber)' : null)));
+    top.appendChild(meta);
+
+    card.appendChild(top);
+
+    // Enunciado
+    const stm = mk('div');
+    stm.style.cssText = 'font-size:13px;line-height:1.6;color:var(--text);white-space:pre-wrap;margin-left:28px';
+    const fullText = p.enunciado || '';
+    const isLong = fullText.length > 260;
+    stm.textContent = isLong ? fullText.slice(0, 260) + '...' : fullText;
+    card.appendChild(stm);
+
+    // Gabarito + expandir
+    const bot = mk('div');
+    bot.style.cssText = 'display:flex;align-items:center;gap:10px;margin-top:.5rem;margin-left:28px;flex-wrap:wrap;font-size:11.5px;color:var(--text3)';
+    bot.innerHTML = `<span><b style="color:var(--accent-text)">Gabarito:</b> ${p.answer || '—'}</span>`;
+    if(isLong){
+      const expBtn = mk('a');expBtn.href='#';
+      expBtn.style.cssText='color:var(--gralia-purple);text-decoration:none;font-weight:600';
+      expBtn.textContent='Ver completo';
+      expBtn.addEventListener('click',e=>{
+        e.preventDefault();
+        stm.textContent = fullText;
+        expBtn.style.display='none';
+      });
+      bot.appendChild(expBtn);
+    }
+    card.appendChild(bot);
+
+    wrap.appendChild(card);
+  });
+
+  // ----- Paginação -----
+  if(PS.hasMore){
+    const more = mkBtn('Carregar mais','btn btn-sm');
+    more.style.cssText = 'margin-top:.5rem;width:100%;padding:.625rem';
+    more.addEventListener('click',()=>{
+      PS.page = (PS.page || 0) + 1;
+      doSearch(false); // não reseta page nem seleção
+    });
+    wrap.appendChild(more);
+  }
+
+  return wrap;
+}
+
+// V15.12.75.84 — Modal de ações em batch sobre questões selecionadas do pool
+function showPoolBatchActionsModal(){
+  const PS = ST.poolSearch;
+  const selectedHashes = Array.from(PS.selectedIds);
+  if(selectedHashes.length === 0){ closeModal(); return; }
+  const selected = PS.results.filter(r => PS.selectedIds.has(r.content_hash));
+
+  // Agrupa por discipline_id pra mostrar resumo + ações "em série"
+  const byDisc = {};
+  selected.forEach(s => {
+    const k = s.discipline_id || 'sem_disciplina';
+    if(!byDisc[k]) byDisc[k] = [];
+    byDisc[k].push(s);
+  });
+  const discKeys = Object.keys(byDisc);
+
+  const m = mk('div');
+  m.style.cssText = 'max-width:520px;max-height:80vh;overflow-y:auto';
+
+  const t = mk('h3');t.style.cssText = 'margin:0 0 .25rem;font-size:16px;font-weight:700';
+  t.textContent = 'O que fazer com as ' + selected.length + ' questões?';
+  m.appendChild(t);
+
+  const sub = mk('p','txt2');sub.style.cssText = 'margin:0 0 .875rem;font-size:12.5px;line-height:1.5';
+  sub.textContent = 'Distribuição por disciplina: ' + discKeys.map(k => `${(byDisc[k][0].discipline_id||'sem').replace(/_/g,' ')} (${byDisc[k].length})`).join(', ');
+  m.appendChild(sub);
+
+  const mkOption = (icon, label, desc, onClick) => {
+    const opt = mk('button','btn');
+    opt.style.cssText = 'display:flex;align-items:flex-start;gap:12px;padding:.75rem .875rem;text-align:left;width:100%;background:var(--surface);border:1px solid var(--border);margin-bottom:.5rem;border-radius:10px;cursor:pointer;line-height:1.4';
+    opt.innerHTML = `<span style="font-size:22px;flex-shrink:0">${icon}</span><span style="flex:1"><b style="display:block;font-size:13.5px;color:var(--text);margin-bottom:2px">${label}</b><span style="font-size:11.5px;color:var(--text3)">${desc}</span></span>`;
+    opt.addEventListener('mouseenter',()=>{opt.style.borderColor = 'var(--gralia-purple)';});
+    opt.addEventListener('mouseleave',()=>{opt.style.borderColor = 'var(--border)';});
+    opt.addEventListener('click',onClick);
+    return opt;
+  };
+
+  // Opção 1: caderno único
+  m.appendChild(mkOption(
+    '📓','Criar 1 caderno único',
+    'Todas as questões num caderno só. Bom pra revisão temática.',
+    ()=>doActionCreateSingleNotebook(selected)
+  ));
+
+  // Opção 2: cadernos em série por disciplina (só faz sentido com 2+ disciplinas)
+  if(discKeys.length >= 2){
+    m.appendChild(mkOption(
+      '📚','Criar '+discKeys.length+' cadernos (1 por disciplina)',
+      'Cada disciplina vira um caderno separado. Útil pra estudar por matéria.',
+      ()=>doActionCreateSeriesNotebooks(selected, byDisc)
+    ));
+  }
+
+  // Opção 3: adicionar a caderno existente
+  if((DATA.notebooks||[]).length > 0){
+    m.appendChild(mkOption(
+      '➕','Adicionar a um caderno existente',
+      'Escolhe um caderno seu e anexa as questões. Sem criar novo.',
+      ()=>doActionAddToExistingNotebook(selected)
+    ));
+  }
+
+  // Opção 4: só importar pro banco geral (sem caderno)
+  m.appendChild(mkOption(
+    '📥','Importar pro meu banco (sem caderno)',
+    'Questões viram suas — disponíveis na aba "Todas as minhas". Você organiza depois.',
+    ()=>doActionImportToBank(selected)
+  ));
+
+  const btnRow = mk('div','flex');
+  btnRow.style.cssText = 'gap:8px;justify-content:flex-end;margin-top:1rem;padding-top:.875rem;border-top:1px solid var(--border)';
+  const cancelB = mkBtn('Cancelar','btn btn-sm');
+  cancelB.addEventListener('click',closeModal);
+  btnRow.appendChild(cancelB);
+  m.appendChild(btnRow);
+
+  showModal(m);
+}
+
+// V15.12.75.84 — Ações em batch (caderno único / série / adicionar existente / importar bank)
+function doActionCreateSingleNotebook(selected){
+  const defaultName = 'Caderno do Gralia ' + new Date().toLocaleDateString('pt-BR');
+  const name = (prompt('Nome do caderno:', defaultName) || '').trim();
+  if(!name){ closeModal(); return; }
+  const {newIds, dupCount} = importPoolQuestionsToLocal(selected);
+  const nb = createNotebook(name, `Importado do banco Gralia em ${new Date().toLocaleString('pt-BR')}`);
+  if(!nb){ alert('Erro ao criar caderno.'); return; }
+  if(newIds.length > 0) addQuestionsToNotebook(nb.id, newIds);
+  ST.poolSearch.selectedIds = new Set();
+  closeModal();
+  const dupMsg = dupCount > 0 ? ` (${dupCount} já existiam no seu banco — reusadas)` : '';
+  showToast(`✓ Caderno "${name}" criado com ${newIds.length} questões${dupMsg}`, 5500);
+  ST.view = 'imported';
+  ST.importedSubview = 'notebooks';
+  ST.notebookCurrentId = nb.id;
+  ST.notebookSubview = 'manage';
+  render();
+}
+
+function doActionCreateSeriesNotebooks(selected, byDisc){
+  const prefix = (prompt('Prefixo do nome dos cadernos:', 'Gralia ' + new Date().toLocaleDateString('pt-BR')) || '').trim();
+  if(!prefix){ closeModal(); return; }
+  const createdNotebooks = [];
+  let totalNew = 0, totalDup = 0;
+  Object.keys(byDisc).forEach(discKey => {
+    const items = byDisc[discKey];
+    const discName = discKey === 'sem_disciplina' ? 'Sem disciplina' : discKey.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+    const nbName = prefix + ' — ' + discName;
+    const {newIds, dupCount} = importPoolQuestionsToLocal(items);
+    totalNew += newIds.length;
+    totalDup += dupCount;
+    const nb = createNotebook(nbName, `Importado do banco Gralia (${discName}) em ${new Date().toLocaleString('pt-BR')}`);
+    if(nb && newIds.length > 0){
+      addQuestionsToNotebook(nb.id, newIds);
+      createdNotebooks.push(nb);
+    }
+  });
+  ST.poolSearch.selectedIds = new Set();
+  closeModal();
+  showToast(`✓ ${createdNotebooks.length} cadernos criados com ${totalNew} questões${totalDup > 0 ? ` (${totalDup} reusadas)` : ''}`, 6000);
+  ST.view = 'imported';
+  ST.importedSubview = 'notebooks';
+  render();
+}
+
+function doActionAddToExistingNotebook(selected){
+  const notebooks = DATA.notebooks || [];
+  if(notebooks.length === 0){ alert('Você não tem cadernos.'); return; }
+
+  closeModal();
+  // Sub-modal: lista de cadernos
+  const m = mk('div');
+  m.style.cssText = 'max-width:480px;max-height:75vh;overflow-y:auto';
+  const t = mk('h3');t.style.cssText = 'margin:0 0 .5rem;font-size:16px;font-weight:700';
+  t.textContent = 'Em qual caderno adicionar?';
+  m.appendChild(t);
+  const sub = mk('p','txt2');sub.style.cssText = 'margin:0 0 .875rem;font-size:12.5px';
+  sub.textContent = selected.length + ' questões serão anexadas ao caderno escolhido.';
+  m.appendChild(sub);
+  notebooks.forEach(nb => {
+    const row = mk('button','btn');
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:.625rem .875rem;width:100%;background:var(--surface);border:1px solid var(--border);margin-bottom:.375rem;border-radius:8px;cursor:pointer;text-align:left;font-family:inherit';
+    const qCount = (nb.questionIds||[]).length;
+    row.innerHTML = `<span style="font-weight:600;flex:1">${escapeHTML(nb.name)}</span><span style="font-size:11px;color:var(--text3);flex-shrink:0">${qCount} questões</span>`;
+    row.addEventListener('click',()=>{
+      const {newIds, dupCount} = importPoolQuestionsToLocal(selected);
+      addQuestionsToNotebook(nb.id, newIds);
+      ST.poolSearch.selectedIds = new Set();
+      closeModal();
+      showToast(`✓ ${newIds.length} questões adicionadas a "${nb.name}"${dupCount > 0 ? ` (${dupCount} reusadas)` : ''}`, 5000);
+      render();
+    });
+    m.appendChild(row);
+  });
+  const btnRow = mk('div','flex');
+  btnRow.style.cssText = 'gap:8px;justify-content:flex-end;margin-top:.875rem;padding-top:.625rem;border-top:1px solid var(--border)';
+  const cancelB = mkBtn('Cancelar','btn btn-sm');
+  cancelB.addEventListener('click',closeModal);
+  btnRow.appendChild(cancelB);
+  m.appendChild(btnRow);
+  showModal(m);
+}
+
+function doActionImportToBank(selected){
+  const {newIds, dupCount} = importPoolQuestionsToLocal(selected);
+  ST.poolSearch.selectedIds = new Set();
+  closeModal();
+  showToast(`✓ ${newIds.length} questões importadas pro seu banco${dupCount > 0 ? ` (${dupCount} já existiam)` : ''}`, 5500);
+  ST.view = 'imported';
+  ST.importedSubview = 'list';
+  render();
 }
 
 function renderImportedImport(wrap){
