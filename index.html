@@ -6762,7 +6762,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.75';
+window.GRALIA_VERSION = 'V15.12.75.76';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -13862,12 +13862,21 @@ PARA MC (FCC, FGV, Vunesp e similares):
   • NUNCA explique todas as alternativas no campo explanation. As alternativas erradas vão em campo separado (wrong_alternatives — veja abaixo).
 
 REGRA wrong_alternatives (APENAS pra MC):
-⚠ OBRIGATÓRIO pra TODA questão MC — não omita.
-- Inclua o campo "wrong_alternatives" no JSON, com 1 frase MUITO curta (máx 10 palavras) explicando por que CADA alternativa errada está errada.
+⚠⚠ CRÍTICO: SEMPRE INCLUA, nunca omita pra questão MC. Sua resposta SEM este campo é considerada INCOMPLETA.
 - Formato EXATO (array de objetos): "wrong_alternatives":[{"letter":"A","reason":"..."}, {"letter":"B","reason":"..."}, ...]
 - Inclua TODAS as alternativas erradas (todas exceto a correta). Se MC tem 5 alternativas e a correta é C, o array deve ter 4 itens (A, B, D, E).
+- Cada "reason" é 1 frase MUITO curta (máx 10 palavras) explicando por que aquela alternativa está errada.
 - Pra C/E: OMITA o campo (não tem alternativas).
-- NUNCA retorne wrong_alternatives como string ou objeto solto — SEMPRE array, mesmo com 1 item.
+- NUNCA retorne como string ou objeto solto — SEMPRE array, mesmo com 1 item.
+
+REGRA suggested_flashcard (OBRIGATÓRIO em TODO feedback):
+⚠⚠ CRÍTICO: SEMPRE INCLUA, em acerto e em erro. Sua resposta SEM este campo é considerada INCOMPLETA.
+- Em ACERTO: flashcard reforça o conceito central da questão.
+- Em ERRO: flashcard foca no conceito que o user errou.
+- Front: pergunta curta (máx 15 palavras).
+- Back: resposta concisa (1-2 frases, máx 30 palavras).
+- Estilo segue o PERFIL DA BANCA injetado.
+- Sem emoji, salvo se útil pra retenção (máx 1).
 
 REGRAS DE FORMATAÇÃO DA EXPLICAÇÃO:
 - Cada seção curta (1 frase, máx 20 palavras).
@@ -13880,15 +13889,6 @@ REGRA NOMES E CENÁRIOS:
 - Varie nomes brasileiros (não use sempre João/Maria/Pedro/Tício/Caio).
 - Varie contextos (servidor, particular, autoridade, vítima, empresa, autarquia).
 - Omita nomes quando o conceito é abstrato.
-
-REGRA suggested_flashcard (OBRIGATÓRIO em TODO feedback — acerto ou erro):
-- SEMPRE inclua o campo "suggested_flashcard" no feedback.
-- Em ACERTO: flashcard reforça o conceito central da questão (memória de longo prazo).
-- Em ERRO: flashcard foca no conceito que o user errou.
-- Front: pergunta curta (máx 15 palavras).
-- Back: resposta concisa (1-2 frases, máx 30 palavras).
-- Estilo do flashcard segue o PERFIL DA BANCA injetado.
-- Sem emoji no flashcard, salvo se for útil pra retenção (no máximo 1).
 
 REGRA difficulty:
 - O campo difficulty deve refletir a dificuldade real da questão gerada.
@@ -38219,10 +38219,12 @@ function renderPractice(){
     cacheChip.title = 'Questão do banco — sem custo de IA';
     topBar.appendChild(cacheChip);
   } else if(ST.practQ && ST.practQ._prefetchOrigin === 'prefetch_cache'){
-    // V15.12.75.75 — Prefetch background que veio do cache (sem custo).
+    // V15.12.75.75 — Prefetch background que veio do cache.
+    // V15.12.75.76 — Unificado visualmente com _fromCache: ambos vieram do
+    // banco do Gralia sem custo. Pro user a distinção é técnica e confusa.
     const cacheChip = mk('span','pool-chip');
-    cacheChip.innerHTML = '<span>♻️</span><span>Cache</span>';
-    cacheChip.title = 'Próxima questão veio do cache do Gralia — sem custo de IA';
+    cacheChip.innerHTML = '<span>📚</span><span>Banco Gralia</span>';
+    cacheChip.title = 'Questão do banco — sem custo de IA';
     topBar.appendChild(cacheChip);
   } else if(ST.practQ && ST.practQ._prefetchOrigin === 'prefetch_fresh'){
     // V15.12.75.75 — Prefetch background fresh (já cobrado quando gerado).
@@ -38673,6 +38675,32 @@ async function practSubmit(answer){
     if(!hasMinimalContent){
       throw new Error('IA retornou resposta vazia ou sem campos esperados');
     }
+    // V15.12.75.76 — Detecta quando IA omite campos obrigatórios do prompt.
+    // Log avisa pra rastrear não-determinismo do Haiku. Reportar via thumbs-down
+    // ajuda Anthropic a ajustar. Não bloqueia a UI — só registra.
+    try{
+      const _qKind = (ST.practQ && ST.practQ.kind) || 'CE';
+      const _missing = [];
+      if(_qKind === 'MC'){
+        const wa = normalizeWrongAlts(res.wrong_alternatives);
+        if(!wa || wa.length === 0){
+          _missing.push('wrong_alternatives');
+        } else {
+          // Conta alternativas pra ver se IA cobriu todas as erradas
+          const altCount = ST.practQ.alternatives ? Object.keys(ST.practQ.alternatives).length : 0;
+          const expectedWrong = Math.max(0, altCount - 1);
+          if(wa.length < expectedWrong){
+            console.warn('[ia-incompleto] wrong_alternatives veio com', wa.length, 'itens mas esperava', expectedWrong, '(faltam algumas alternativas erradas)');
+          }
+        }
+      }
+      if(!res.suggested_flashcard || !res.suggested_flashcard.front || !res.suggested_flashcard.back){
+        _missing.push('suggested_flashcard');
+      }
+      if(_missing.length > 0){
+        console.warn('[ia-incompleto] eval MC veio sem campos obrigatórios:', _missing.join(', '), '— prompt está sendo ignorado pelo modelo nessa chamada (não-determinismo do Haiku).');
+      }
+    }catch(_){}
     // V15.12.73 — Salva histórico CHEIO (não compactado) pra ter material
     // pra compactar nas próximas chamadas. Compactação só na ida pra Anthropic.
     ST.practHist=[...fullHist,{role:'assistant',content:JSON.stringify(res)}];
@@ -38925,8 +38953,58 @@ function practNext(){
     }
     return;
   }
-  // Fallback — sem prefetch disponível (raro, normalmente desisência do prefetch
-  // ou erro). practStart faz cache-then-IA, cobra normalmente em cache miss.
+  // Fallback — sem prefetch disponível. Pode ser porque o user clicou
+  // Próxima muito rápido (antes do prefetch background iniciar) ou porque
+  // o prefetch falhou. V15.12.75.76 — se prefetch está em andamento, espera
+  // ele terminar (com timeout) ao invés de duplicar chamada via practStart.
+  if(_practicePrefetchInFlight){
+    console.info('[practNext] prefetch em andamento — aguardando até 12s antes de fallback');
+    ST.practLoading = true;
+    ST.practQ = null;
+    render();
+    // Poll a cada 200ms até prefetch acabar ou timeout
+    let waited = 0;
+    const POLL_MS = 200;
+    const MAX_WAIT_MS = 12000;
+    const tick = () => {
+      // Já tem prefetch? consome
+      const pf = DATA.preloadedQuestions && DATA.preloadedQuestions.practice;
+      if(pf && pf.q){
+        const origin = pf.origin || 'prefetch_fresh';
+        ST.practQ = pf.q;
+        ST.practHist = pf.hist || [
+          {role:'user',content:'Primeira questão.'},
+          {role:'assistant',content:JSON.stringify(ST.practQ)}
+        ];
+        ST.practQ._prefetchOrigin = origin;
+        delete DATA.preloadedQuestions.practice;
+        save();
+        ST.practLoading = false;
+        console.info('[practNext] prefetch terminou em '+waited+'ms — consumindo ('+origin+')');
+        render();
+        // Encadeia próximo prefetch
+        if(typeof prefetchNextPracticeQuestion === 'function'){
+          setTimeout(()=>prefetchNextPracticeQuestion(), 500);
+        }
+        return;
+      }
+      // Ainda processando — continua aguardando se não bateu timeout
+      if(_practicePrefetchInFlight && waited < MAX_WAIT_MS){
+        waited += POLL_MS;
+        setTimeout(tick, POLL_MS);
+        return;
+      }
+      // Timeout ou prefetch desistiu — cai no fallback final (practStart)
+      console.warn('[practNext] aguardou '+waited+'ms sem prefetch — fallback pra practStart');
+      practStart().catch(e => {
+        console.warn('[practNext] practStart falhou:', e && e.message);
+        ST.practLoading = false;
+        render();
+      });
+    };
+    setTimeout(tick, POLL_MS);
+    return;
+  }
   console.info('[practNext] sem prefetch — chamando practStart pra continuar fluxo');
   ST.practQ = null;
   ST.practLoading = true;
