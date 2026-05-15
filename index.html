@@ -6762,7 +6762,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.68';
+window.GRALIA_VERSION = 'V15.12.75.69';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -10418,11 +10418,15 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn, opts)
         //   1. Usava renderSharedExplanationCard pra flashcard → card vazio
         //      duplicado. Trocado pra renderSharedFlashcardCard (existe L9745).
         //   2. Container .shexpl-flash-list só existia se flashItems.length>0
-        //      no momento do render. Pra "primeiro flashcard", não existia →
-        //      fallback caía em .shexpl-list (lista de explicações) e
-        //      duplicava como card de explicação. Solução: re-render completo
-        //      via renderSharedExplanationsBody se não tem container — mais
-        //      simples e correto que tentar inserir num lugar inexistente.
+        //      no momento do render. Pra "primeiro flashcard", não existia.
+        // V15.12.75.69 — Bug ainda persistia: flashcard só aparecia ao trocar
+        //   de aba. Causa real: `renderSharedExplanationsBody` é async e faz
+        //   refetch via listExplanationsForQuestion. Race condition: o INSERT
+        //   do flashcard em background (saveSharedExplanation) pode não ter
+        //   terminado quando o refetch roda. Resultado: lista volta vazia, UI
+        //   mostra "Ainda nenhum disponível". Solução: manipular DOM direto
+        //   sem refetch — atualiza header de "Ainda nenhum" → "Flashcard
+        //   disponível" + cria container se não existir + insere card.
         const flashOptimisticItem = {
           id: 'optimistic-flash-'+Date.now(),
           kind: 'flashcard',
@@ -10439,14 +10443,34 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn, opts)
         };
         setTimeout(() => {
           try{
-            const flashList = container.querySelector('.shexpl-flash-list');
+            // Procura header e lista de flashcards no container atual
+            const flashHeads = container.querySelectorAll('.shexpl-head');
+            let flashHead = null;
+            flashHeads.forEach(h => {
+              const txt = h.textContent || '';
+              if(txt.includes('Flashcard') || txt.includes('Ainda nenhum')) flashHead = h;
+            });
+            let flashList = container.querySelector('.shexpl-flash-list');
+
+            // Renderiza o card optimistic
+            const flashCard = renderSharedFlashcardCard(flashOptimisticItem, q);
+
             if(flashList){
               // Container já existe — insere card direto no topo
-              const flashCard = renderSharedFlashcardCard(flashOptimisticItem, q);
               flashList.insertBefore(flashCard, flashList.firstChild);
+              // Atualiza header pro estado "disponível"
+              if(flashHead){
+                flashHead.innerHTML = `<span class="she-icon" style="color:var(--accent-text)">🎴</span><b style="color:var(--accent-text)">Flashcard disponível</b><span class="she-sub" style="color:var(--accent-text);font-weight:600">— sem custo</span>`;
+              }
+            } else if(flashHead){
+              // Primeiro flashcard — atualiza header + cria lista após ele
+              flashHead.innerHTML = `<span class="she-icon" style="color:var(--accent-text)">🎴</span><b style="color:var(--accent-text)">Flashcard disponível</b><span class="she-sub" style="color:var(--accent-text);font-weight:600">— sem custo</span>`;
+              flashList = mk('div','shexpl-list shexpl-flash-list');
+              flashList.appendChild(flashCard);
+              // Insere lista logo após o header
+              flashHead.parentNode.insertBefore(flashList, flashHead.nextSibling);
             } else {
-              // Container não existe (era primeiro flashcard) — re-renderiza
-              // tudo. Caro mas correto. Próxima inserção usa caminho rápido.
+              // Nem header existe (caso raro) — fallback ao refetch antigo
               if(typeof renderSharedExplanationsBody === 'function'){
                 renderSharedExplanationsBody(container, q);
               }
@@ -17546,18 +17570,11 @@ function render(){
     }, 250);
   }
 
-  // Atualiza painel debug se existir (não bloqueia render)
+  // V15.12.75.69 — Painel debug agora SÓ opt-in via graliaTutorial.debug().
+  // Antes auto-mostrava pra conta fresh sem tutorial. Tour foi confirmado
+  // funcionando na V15.12.75.68 — não precisa mais aparecer toda vez.
+  // Quem quiser diagnosticar abre via console.
   try{
-    // V15.12.75.68 — Auto-mostra painel quando user é fresh + sem tutorial.
-    // Útil pra diagnosticar bug do "tour não aparece". Some quando user
-    // completa o tour (tutorialOffered=true) ou clica X manualmente.
-    if(typeof isAuthed === 'function' && isAuthed()
-       && typeof isFreshlyCreatedUser === 'function' && isFreshlyCreatedUser()
-       && !DATA.tutorialOffered
-       && !document.getElementById('tutorial-debug-panel')
-       && typeof ensureTutorialDebugPanel === 'function'){
-      ensureTutorialDebugPanel();
-    }
     if(typeof updateTutorialDebugPanel === 'function') updateTutorialDebugPanel('render() check');
   }catch(_){}
 
