@@ -2639,6 +2639,51 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 .topic-tag{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);display:inline-block;margin-bottom:.875rem}
 .spinner{display:inline-block;width:15px;height:15px;border:2px solid var(--border2);border-top-color:var(--accent-mid);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* V15.12.75.79 — Neural loader: animação para indicar "IA pensando".
+   Usado em geração/avaliação/etc. via dynamicLoading(). 3 nós conectados
+   pulsando + 1 pulso viajando entre eles. Identidade do produto sem ser
+   kitsch. SVG inline (sem dependência externa, sem flash). */
+.neural-loader{
+  display:inline-block;width:28px;height:28px;flex-shrink:0;
+  vertical-align:middle;line-height:0;
+}
+.neural-loader svg{display:block;width:100%;height:100%;overflow:visible}
+.neural-loader .nl-node{
+  fill:var(--gralia-purple,#8042fa);
+  transform-origin:center;
+  transform-box:fill-box;
+  animation:nl-pulse 1.6s ease-in-out infinite;
+}
+.neural-loader .nl-node-1{animation-delay:0s}
+.neural-loader .nl-node-2{animation-delay:.35s}
+.neural-loader .nl-node-3{animation-delay:.7s}
+.neural-loader .nl-line{
+  stroke:var(--gralia-purple,#8042fa);
+  stroke-width:1.2;
+  opacity:.30;
+  fill:none;
+}
+.neural-loader .nl-pulse{
+  fill:var(--gralia-purple,#8042fa);
+  opacity:0;
+  animation:nl-travel 1.8s ease-in-out infinite;
+}
+.neural-loader .nl-pulse-2{animation-delay:.6s}
+.neural-loader .nl-pulse-3{animation-delay:1.2s}
+@keyframes nl-pulse{
+  0%,100%{transform:scale(.7);opacity:.55}
+  50%{transform:scale(1.1);opacity:1}
+}
+@keyframes nl-travel{
+  0%{opacity:0;transform:translate(0,0)}
+  10%{opacity:1}
+  90%{opacity:1}
+  100%{opacity:0;transform:translate(14px,8px)}
+}
+/* Versão pequena (inline com texto, ex: "Carregando...") */
+.neural-loader.nl-sm{width:18px;height:18px}
+.neural-loader.nl-sm .nl-node{r:1.5}
 .fade{animation:fd .2s ease}
 @keyframes fd{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 .flex{display:flex;gap:10px;align-items:center}
@@ -6762,7 +6807,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.78';
+window.GRALIA_VERSION = 'V15.12.75.79';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -17361,12 +17406,39 @@ const LOADING_ETA = {
   audio_script: 18
 };
 
+// V15.12.75.79 — Cria o ícone de "IA pensando" como SVG inline. Usado por
+// dynamicLoading() em todas as chamadas que envolvem IA (gerar questão,
+// avaliar, gerar fonte, etc). Substitui o spinner circular genérico — dá
+// identidade ao Gralia sem ser kitsch.
+// Visual: 3 nós roxos pulsando em fase deslocada + linhas tênues conectando
+// + pulso viajando entre eles. Vetor único, sem dependência externa.
+function neuralLoader(small){
+  const el = mk('span', 'neural-loader' + (small ? ' nl-sm' : ''));
+  el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = `<svg viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+    <!-- Linhas conectando os nós -->
+    <line class="nl-line" x1="6" y1="8" x2="22" y2="8"></line>
+    <line class="nl-line" x1="6" y1="8" x2="14" y2="20"></line>
+    <line class="nl-line" x1="22" y1="8" x2="14" y2="20"></line>
+    <!-- Pulsos viajando -->
+    <circle class="nl-pulse" cx="6" cy="8" r="1.4"></circle>
+    <circle class="nl-pulse nl-pulse-2" cx="22" cy="8" r="1.4"></circle>
+    <circle class="nl-pulse nl-pulse-3" cx="14" cy="20" r="1.4"></circle>
+    <!-- Nós principais -->
+    <circle class="nl-node nl-node-1" cx="6" cy="8" r="2.8"></circle>
+    <circle class="nl-node nl-node-2" cx="22" cy="8" r="2.8"></circle>
+    <circle class="nl-node nl-node-3" cx="14" cy="20" r="2.8"></circle>
+  </svg>`;
+  return el;
+}
+
 function dynamicLoading(kind,initialMsg){
   const msgs = LOADING_MSGS[kind]||[initialMsg||'Gerando...'];
   const etaSec = LOADING_ETA[kind] || 0;
   const d = mk('div','loading-row');
-  const sp = mk('span','spinner');
-  const txt = mk('span');txt.style.marginLeft='6px';
+  // V15.12.75.79 — neural loader em vez de spinner circular genérico
+  const sp = neuralLoader(true);
+  const txt = mk('span');txt.style.marginLeft='8px';
   txt.textContent = initialMsg||msgs[0];
   d.appendChild(sp);d.appendChild(txt);
 
