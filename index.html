@@ -6762,7 +6762,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.69';
+window.GRALIA_VERSION = 'V15.12.75.70';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -12822,8 +12822,10 @@ const ST = {
   turbo:{active:false,mode:null,item:null,step:'loading',card:null,q:null,fb:null,showBack:false,answered:false,loading:false,stats:{srs:0,errors:0,questions:0,correct:0,startTime:null}},
   historyFilter:'all',
   eveFilter:'all',
-  // Import questions
-  importInput:{text:'',disciplineId:'d1',topic:''},
+  // V15.12.75.70 — Default vazio = auto-detect via IA (hint). User pode
+  // selecionar manualmente uma disciplina existente OU criar nova no select.
+  // Antes era 'd1' hard-coded que nem sempre existia na conta.
+  importInput:{text:'',disciplineId:'',topic:''},
   importPreview:[],
   importParseMode:'auto',
   // Practice source: 'ai' = generated via API, 'imported' = from imported bank
@@ -33822,13 +33824,90 @@ function renderImportedImport(wrap){
   const col1 = mk('div');
   const lbl1 = mk('label');lbl1.textContent='Disciplina';
   const selD = mk('select');
+  selD.style.cssText = 'width:100%;padding:.5rem .625rem;font-size:13.5px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-family:inherit';
+  // V15.12.75.70 — Opções:
+  //   "" (auto-detect via IA hint)  — DEFAULT, recomendado
+  //   <disc-id> — uma das disciplinas existentes do user
+  //   "__new__" — abre prompt pra criar nova disciplina
+  //
+  // Quando vazio (auto), resolveDisciplineFromHint usa q.disciplineHint extraído
+  // pela IA na importação. Se não houver hint, fica sem disciplina (user pode
+  // atribuir depois). Pro user, é a opção mais simples: deixa o site decidir.
+  const autoOpt = mk('option');
+  autoOpt.value = '';
+  autoOpt.textContent = '🤖 Auto-detectar (recomendado)';
+  if(!ST.importInput.disciplineId) autoOpt.selected = true;
+  selD.appendChild(autoOpt);
+  // Separador visual (disabled option)
+  if((DATA.disciplines||[]).length > 0){
+    const sep = mk('option');
+    sep.disabled = true;
+    sep.textContent = '─── Minhas disciplinas ───';
+    selD.appendChild(sep);
+  }
   DATA.disciplines.forEach(d=>{
-    const o = mk('option');o.value=d.id;o.textContent=d.name;
+    const o = mk('option');o.value=d.id;o.textContent=d.name + (d.active===false ? ' (inativa)' : '');
     if(ST.importInput.disciplineId===d.id)o.selected=true;
     selD.appendChild(o);
   });
-  selD.addEventListener('change',e=>{ST.importInput.disciplineId=e.target.value;});
+  // Opção "criar nova"
+  const sep2 = mk('option');
+  sep2.disabled = true;
+  sep2.textContent = '─────────────';
+  selD.appendChild(sep2);
+  const newOpt = mk('option');
+  newOpt.value = '__new__';
+  newOpt.textContent = '➕ Criar nova disciplina…';
+  selD.appendChild(newOpt);
+  selD.addEventListener('change',e=>{
+    const v = e.target.value;
+    if(v === '__new__'){
+      // Pede o nome via prompt simples (mantém UX leve, sem abrir outro modal)
+      const name = (prompt('Nome da nova disciplina:') || '').trim();
+      if(!name){
+        // User cancelou — volta pra auto
+        ST.importInput.disciplineId = '';
+        e.target.value = '';
+        return;
+      }
+      // Verifica se já existe (case-insensitive)
+      const norm = name.toLowerCase();
+      const existing = (DATA.disciplines||[]).find(d => (d.name||'').toLowerCase().trim() === norm);
+      if(existing){
+        // Usa a existente
+        ST.importInput.disciplineId = existing.id;
+        showToast(`Disciplina "${existing.name}" já existia — selecionada.`, 4000);
+        render();
+        return;
+      }
+      // Cria nova (ativa por padrão — user explicitamente quis)
+      const COLORS = ['#5b9bd5','#10b981','#f59e0b','#ef4444','#8042fa','#ec4899','#0ea5e9','#84cc16'];
+      const newDisc = {
+        id: 'disc_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
+        name: name,
+        color: COLORS[(DATA.disciplines||[]).length % COLORS.length],
+        active: true,
+        createdAt: Date.now(),
+        autoCreated: false  // user criou explicitamente
+      };
+      if(!DATA.disciplines) DATA.disciplines = [];
+      DATA.disciplines.push(newDisc);
+      save();
+      ST.importInput.disciplineId = newDisc.id;
+      showToast(`✓ Disciplina "${name}" criada e selecionada.`, 4000);
+      render();
+      return;
+    }
+    ST.importInput.disciplineId = v;
+  });
   col1.appendChild(lbl1);col1.appendChild(selD);
+  // Hint sob o select: explica o "auto-detectar"
+  if(!ST.importInput.disciplineId){
+    const hint = mk('div');
+    hint.style.cssText = 'font-size:11px;color:var(--text3);margin-top:4px;line-height:1.4';
+    hint.textContent = 'A IA detecta a disciplina de cada questão e cria/usa a apropriada.';
+    col1.appendChild(hint);
+  }
   const col2 = mk('div');
   const lbl2 = mk('label');lbl2.textContent='Tópico (opcional)';
   const inpT = mk('input');inpT.type='text';inpT.placeholder='Ex: Ciclo de inteligência';
@@ -34120,13 +34199,34 @@ function renderImportedImport(wrap){
         return;
       }
       existingHashes.add(hash);
-      // Resolve disciplina: manual > hint da IA > nada
+      // Resolve disciplina: manual > hint da IA > inferência por tópico
+      // V15.12.75.70 — Quando user escolhe "Auto-detectar" (default agora),
+      // tentamos 3 caminhos em ordem:
+      //   1. hint explícito da IA (q.disciplineHint) — mais preciso
+      //   2. nome solto extraído do parser (q.disciplina/disciplinaName)
+      //   3. inferência por keywords no topic (mapa de palavras-chave em
+      //      ensureDisciplineForQuestion — cobre Contabilidade, Constitucional etc)
+      // Cada caminho cria a disciplina se não existir.
       let discId = ST.importInput.disciplineId;
       if(!discId && q.disciplineHint){
         const before = (DATA.disciplines||[]).length;
         discId = resolveDisciplineFromHint(q.disciplineHint);
         if(discId && (DATA.disciplines||[]).length > before){
           autoDisciplinesCreated.add(q.disciplineHint);
+        }
+      }
+      // Fallback adicional: usa ensureDisciplineForQuestion (que sabe disciplina/topic)
+      if(!discId && typeof ensureDisciplineForQuestion === 'function'){
+        const probeQ = {
+          disciplinaName: q.disciplina || q.disciplinaName || null,
+          discipline: q.discipline || null,
+          topic: q.topic || q.topicHint || q.assunto || null
+        };
+        const before = (DATA.disciplines||[]).length;
+        discId = ensureDisciplineForQuestion(probeQ);
+        if(discId && (DATA.disciplines||[]).length > before){
+          const disc = (DATA.disciplines||[]).find(d => d.id === discId);
+          if(disc) autoDisciplinesCreated.add(disc.name);
         }
       }
       const rec = {
