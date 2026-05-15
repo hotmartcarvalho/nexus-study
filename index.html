@@ -6762,7 +6762,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.72';
+window.GRALIA_VERSION = 'V15.12.75.73';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -10394,7 +10394,8 @@ async function generateAndSaveExplanation(q, model, container, triggerBtn, opts)
         trap: res.trap || '',
         keyword: res.keyword || '',
         // V15.12.75.60 — Lista curta de alternativas erradas (só MC)
-        wrong_alternatives: Array.isArray(res.wrong_alternatives) ? res.wrong_alternatives : null
+        // V15.12.75.73 — Usa normalizeWrongAlts pra aceitar formatos variados da IA
+        wrong_alternatives: normalizeWrongAlts(res.wrong_alternatives)
       };
       // Salva em background — não bloqueia UI
       saveSharedExplanation(q.enunciado, 'explicacao', model, payload).catch(()=>{});
@@ -12132,6 +12133,48 @@ function load(){
         if(c.fromErrorId&&!c.sourceErrorId)c.sourceErrorId=c.fromErrorId;
       });
     }
+    // V15.12.75.73 — Migração one-shot: DATA.cards (array órfão usado por bug
+    // antigo do botão "+ Adicionar ao deck" do flashcard sugerido) → DATA.srs.cards.
+    // O array DATA.cards não era lido por mais nada no app — os cards ficavam
+    // num limbo. Aqui movemos pro deck real e tratamos como duplicata se já
+    // estiver lá. Não-destrutivo: limpa DATA.cards depois.
+    if(Array.isArray(parsed.cards) && parsed.cards.length > 0){
+      try{
+        if(!parsed.srs) parsed.srs = {cards:[]};
+        if(!Array.isArray(parsed.srs.cards)) parsed.srs.cards = [];
+        const normTxt = (s) => String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
+        const existingKeys = new Set(
+          parsed.srs.cards.map(c => normTxt(c.front)+'|'+normTxt(c.back))
+        );
+        let migrated = 0;
+        parsed.cards.forEach(legacy => {
+          if(!legacy || !legacy.front || !legacy.back) return;
+          const key = normTxt(legacy.front)+'|'+normTxt(legacy.back);
+          if(existingKeys.has(key)) return; // já está no deck SRS
+          parsed.srs.cards.push({
+            id: legacy.id || ('card-'+Date.now()+'-'+Math.random().toString(36).slice(2,8)),
+            front: legacy.front,
+            back: legacy.back,
+            type: legacy.type || 'concept',
+            disciplineId: legacy.disciplineId || null,
+            tags: legacy.tags || (legacy.topic ? [legacy.topic] : []),
+            topic: legacy.topic || '',
+            createdAt: legacy.createdAt || Date.now(),
+            source: legacy.source || 'suggested',
+            interval: typeof legacy.interval === 'number' ? legacy.interval : 0,
+            ease: typeof legacy.easeFactor === 'number' ? legacy.easeFactor : (legacy.ease || 2.5),
+            reviews: typeof legacy.repetitions === 'number' ? legacy.repetitions : (legacy.reviews || 0),
+            nextReview: legacy.nextReview || Date.now()
+          });
+          existingKeys.add(key);
+          migrated++;
+        });
+        if(migrated > 0){
+          console.info('[migrate] '+migrated+' flashcard(s) migrados de DATA.cards → DATA.srs.cards');
+        }
+        delete parsed.cards;
+      }catch(e){ console.warn('[migrate cards] falhou:', e); }
+    }
     // Migrate sources to have contentType field
     (parsed.sources||[]).forEach(s=>{if(!s.contentType)s.contentType='misto';});
     if(parsed.pomo&&!parsed.pomo.sessions)parsed.pomo.sessions=[];
@@ -13814,10 +13857,12 @@ PARA MC (FCC, FGV, Vunesp e similares):
   • NUNCA explique todas as alternativas no campo explanation. As alternativas erradas vão em campo separado (wrong_alternatives — veja abaixo).
 
 REGRA wrong_alternatives (APENAS pra MC):
+⚠ OBRIGATÓRIO pra TODA questão MC — não omita.
 - Inclua o campo "wrong_alternatives" no JSON, com 1 frase curta (max 15 palavras) explicando por que CADA alternativa errada está errada.
-- Formato: "wrong_alternatives":[{"letter":"A","reason":"..."}, {"letter":"B","reason":"..."}, ...]
-- Inclua TODAS as alternativas erradas (todas exceto a correta).
+- Formato EXATO (array de objetos): "wrong_alternatives":[{"letter":"A","reason":"..."}, {"letter":"B","reason":"..."}, ...]
+- Inclua TODAS as alternativas erradas (todas exceto a correta). Se MC tem 5 alternativas e a correta é C, o array deve ter 4 itens (A, B, D, E).
 - Pra C/E: OMITA o campo (não tem alternativas).
+- NUNCA retorne wrong_alternatives como string ou objeto solto — SEMPRE array, mesmo com 1 item.
 
 REGRAS UNIVERSAIS:
 - Mantenha CADA seção curta (1-2 frases, máximo 30 palavras).
@@ -25936,6 +25981,40 @@ function parseExplanationStructured(rawText){
 // Estratégia: se parseExplanationStructured achou estrutura, renderiza
 // cada seção como card pequeno com label colorido. Senão, fallback pro
 // formato linha-por-linha da V15.12.65.
+
+// V15.12.75.73 — Normaliza wrong_alternatives pra array, aceitando os
+// 3 formatos que a IA pode retornar:
+//  1. Array correto: [{letter:"A", reason:"..."}, ...]
+//  2. Objeto único:  {letter:"A", reason:"..."}  (só 1 errada)
+//  3. Objeto-mapa:   {A:"razão...", B:"razão..."}  (forma compacta)
+// Bug recorrente: IA omitia campo ou usava formato 2/3, e o setter rejeitava
+// qualquer coisa que não fosse array, sumindo o painel "Por que as outras
+// estão erradas" no feedback.
+function normalizeWrongAlts(raw){
+  if(!raw) return null;
+  // Já é array — valida estrutura interna
+  if(Array.isArray(raw)){
+    const cleaned = raw.filter(x => x && x.letter && x.reason);
+    return cleaned.length > 0 ? cleaned : null;
+  }
+  // Objeto único {letter, reason}
+  if(typeof raw === 'object' && raw.letter && raw.reason){
+    return [{letter: raw.letter, reason: raw.reason}];
+  }
+  // Objeto-mapa {A: "razão", B: "razão"}
+  if(typeof raw === 'object'){
+    const out = [];
+    Object.keys(raw).forEach(k => {
+      const v = raw[k];
+      if(typeof v === 'string' && v.trim() && /^[A-E]$/i.test(k)){
+        out.push({letter: k.toUpperCase(), reason: v.trim()});
+      }
+    });
+    return out.length > 0 ? out : null;
+  }
+  return null;
+}
+
 function renderStructuredExplanation(rawText, opts){
   opts = opts || {};
   const isMC = !!opts.isMC;
@@ -26258,8 +26337,14 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
     }
     const sfFrontNorm = normalizeFlashText(sf.front);
     const sfBackNorm = normalizeFlashText(sf.back);
+    // V15.12.75.73 — BUG ANTIGO CRÍTICO: o handler usava DATA.cards (array
+    // legacy/órfão que nada mais lê) em vez de DATA.srs.cards (deck real do
+    // SRS). Resultado: clicar "+ Adicionar ao deck" no flashcard sugerido
+    // colocava o card num limbo — não aparecia em Flashcards → Todos e nem
+    // na revisão SRS. Fix: usa DATA.srs.cards em todas as operações + cria
+    // os campos SRS corretos (interval, ease, reviews).
     function findExistingCardInDeck(){
-      const cards = DATA.cards || [];
+      const cards = (DATA.srs && DATA.srs.cards) || [];
       return cards.find(c =>
         normalizeFlashText(c.front) === sfFrontNorm &&
         normalizeFlashText(c.back) === sfBackNorm
@@ -26302,9 +26387,10 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
           }
           // Confirmação dada — remove
           try{
-            const idx = (DATA.cards || []).indexOf(existing);
+            const deck = (DATA.srs && DATA.srs.cards) || [];
+            const idx = deck.indexOf(existing);
             if(idx >= 0){
-              DATA.cards.splice(idx, 1);
+              deck.splice(idx, 1);
               // Limpa flags do errCtx se apontavam pra este card
               if(errCtx && errCtx.cardId === existing.id){
                 errCtx.hasCard = false;
@@ -26332,21 +26418,31 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
             const cardTopic = errCtx ? errCtx.topic : (ST.practQ?.topic || sourceQuestion?.topic || '');
             const cardDiscId = errCtx ? errCtx.disciplineId :
               (typeof inferDiscipline === 'function' ? inferDiscipline(cardTopic) : null);
+            // V15.12.75.73 — Usa DATA.srs.cards (deck real do SRS) com os campos
+            // SRS corretos. Antes ia pra DATA.cards (órfão).
+            if(!DATA.srs) DATA.srs = {cards:[]};
+            if(!DATA.srs.cards) DATA.srs.cards = [];
             const newCard = {
               id: 'card-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),
               front: sf.front,
               back: sf.back,
+              type: sf.type || 'concept',
               disciplineId: cardDiscId,
+              tags: cardTopic ? [cardTopic] : [],
               topic: cardTopic,
               createdAt: Date.now(),
               source: 'suggested',
-              interval: 1,
-              repetitions: 0,
-              easeFactor: 2.5,
+              // Campos SRS canônicos (mesmos de addCardToDeck)
+              interval: 0,
+              ease: 2.5,
+              reviews: 0,
               nextReview: Date.now()
             };
-            DATA.cards = DATA.cards || [];
-            DATA.cards.push(newCard);
+            DATA.srs.cards.push(newCard);
+            // Registra atividade de tópico, se houver
+            if(cardTopic && cardDiscId && typeof recordTopicActivity === 'function'){
+              try{ recordTopicActivity(cardDiscId, cardTopic, 'flashcards'); }catch(e){}
+            }
             if(errCtx){
               errCtx.hasCard = true;
               errCtx.cardId = newCard.id;
@@ -38532,7 +38628,10 @@ async function practSubmit(answer){
       // outras estão erradas" mesmo quando IA retornava o campo. Era um bug de
       // propagação — Jean reportou que só importadas mostravam (renderSharedExplanationsBody
       // tinha o render, mas prática IA tinha que ler do practFb).
-      wrong_alternatives: Array.isArray(res.wrong_alternatives) ? res.wrong_alternatives : null,
+      // V15.12.75.73 — Tolerante a formatos: array (correto), objeto único
+      // {letter,reason} (IA confusa), ou objeto-mapa {A:"...",B:"..."} (forma
+      // alternativa que algumas vezes a IA usa). Normaliza tudo pra array.
+      wrong_alternatives: normalizeWrongAlts(res.wrong_alternatives),
       next:res.next,
       errCtx,
       // V15.12.74 — Passa resposta do user pro renderer mostrar
