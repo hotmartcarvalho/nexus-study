@@ -6762,7 +6762,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.76';
+window.GRALIA_VERSION = 'V15.12.75.78';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -24343,11 +24343,279 @@ function renderSourceAdd(wrap){
   return wrap;
 }
 
+// V15.12.75.78 — Detecta grupos de disciplinas que parecem variações da mesma.
+// Algoritmo:
+//  1. Normaliza cada nome cortando após " - ", " — ", ":", " / " (mesma regra
+//     do normalizeDisciplineHint da V71). "Direito Penal - Peculato" → "Direito Penal".
+//  2. Também remove parênteses no final.
+//  3. Agrupa por nome normalizado.
+//  4. Grupo com 2+ disciplinas = duplicatas candidatas a mesclar.
+//
+// Retorna: [{canonical: <Disciplina>, duplicates: [<Disciplina>, ...], suggestedName: string}]
+//  - canonical = a disciplina escolhida pra ser mantida (nome mais "limpo")
+//  - duplicates = as outras do grupo (serão absorvidas)
+//  - suggestedName = nome final sugerido pro canonical (após normalização)
+function detectDuplicateDisciplineGroups(){
+  const discs = DATA.disciplines || [];
+  if(discs.length < 2) return [];
+
+  const normalize = (raw) => {
+    if(!raw) return '';
+    let s = String(raw).trim();
+    s = s.replace(/\s*\([^)]*\)\s*$/g, '');
+    const sepRegex = /\s+[\-–—:/|]\s+/;
+    const idx = s.search(sepRegex);
+    if(idx > 0) s = s.slice(0, idx);
+    const colonIdx = s.indexOf(':');
+    if(colonIdx > 0) s = s.slice(0, colonIdx);
+    s = s.replace(/[,;]+$/g, '').replace(/\s+/g, ' ').trim();
+    return s.toLowerCase();
+  };
+
+  // Agrupa por chave normalizada
+  const groups = new Map();
+  discs.forEach(d => {
+    const key = normalize(d.name);
+    if(!key || key.length < 3) return; // ignora nomes muito curtos
+    if(!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(d);
+  });
+
+  // Filtra só grupos com 2+ e elege o canonical (nome mais curto = mais "limpo")
+  const result = [];
+  groups.forEach((groupDiscs, key) => {
+    if(groupDiscs.length < 2) return;
+    // Ordena por: 1) tem questões/flashcards (manter histórico), 2) nome mais curto, 3) active primeiro
+    const counts = new Map();
+    groupDiscs.forEach(d => {
+      const qCount = (DATA.importedQuestions||[]).filter(q => q.disciplineId === d.id).length;
+      const cCount = ((DATA.srs||{}).cards||[]).filter(c => c.disciplineId === d.id).length;
+      const sCount = (DATA.sources||[]).filter(s => s.disciplineId === d.id).length;
+      counts.set(d.id, qCount + cCount + sCount);
+    });
+    const sorted = [...groupDiscs].sort((a,b)=>{
+      // Mais material primeiro
+      const cb = counts.get(b.id) - counts.get(a.id);
+      if(cb !== 0) return cb;
+      // Nome mais curto = mais limpo
+      const la = a.name.length, lb = b.name.length;
+      if(la !== lb) return la - lb;
+      // Active primeiro
+      return (b.active?1:0) - (a.active?1:0);
+    });
+    const canonical = sorted[0];
+    const duplicates = sorted.slice(1);
+    // Nome sugerido: tira lixo do canonical
+    let suggestedName = canonical.name.replace(/\s*\([^)]*\)\s*$/g, '');
+    const sepIdx = suggestedName.search(/\s+[\-–—:/|]\s+/);
+    if(sepIdx > 0) suggestedName = suggestedName.slice(0, sepIdx);
+    const colonIdx = suggestedName.indexOf(':');
+    if(colonIdx > 0) suggestedName = suggestedName.slice(0, colonIdx);
+    suggestedName = suggestedName.replace(/[,;]+$/g, '').replace(/\s+/g, ' ').trim();
+    // Capitaliza primeira letra de cada palavra principal
+    if(suggestedName && suggestedName === suggestedName.toLowerCase()){
+      suggestedName = suggestedName.split(' ').map(w => w.length > 2 ? (w[0].toUpperCase()+w.slice(1)) : w).join(' ');
+    }
+    result.push({
+      canonical,
+      duplicates,
+      suggestedName: suggestedName || canonical.name,
+      counts: {
+        questions: groupDiscs.reduce((a,d)=>a + (DATA.importedQuestions||[]).filter(q => q.disciplineId === d.id).length, 0),
+        flashcards: groupDiscs.reduce((a,d)=>a + ((DATA.srs||{}).cards||[]).filter(c => c.disciplineId === d.id).length, 0),
+        sources: groupDiscs.reduce((a,d)=>a + (DATA.sources||[]).filter(s => s.disciplineId === d.id).length, 0)
+      }
+    });
+  });
+
+  return result;
+}
+
+// V15.12.75.78 — Modal de mescla: mostra cada grupo, deixa user escolher
+// nome final, e aplica a mescla movendo questões/flashcards/fontes pra
+// disciplina canônica. Deleta as duplicatas. Idempotente — pode rodar várias
+// vezes se aparecerem novas dups depois.
+function showMergeDisciplinesModal(groups){
+  // Estado local do modal: nome editável por grupo + flag "incluir/pular"
+  const modalState = groups.map(g => ({
+    canonicalId: g.canonical.id,
+    duplicateIds: g.duplicates.map(d => d.id),
+    finalName: g.suggestedName,
+    include: true,
+    group: g
+  }));
+
+  const m = mk('div');
+  m.style.cssText = 'max-width:640px;max-height:80vh;overflow-y:auto';
+
+  const title = mk('h3');
+  title.style.cssText = 'margin:0 0 .5rem;font-size:16px;font-weight:700';
+  title.textContent = '🔀 Mesclar disciplinas duplicadas';
+  m.appendChild(title);
+
+  const intro = mk('p');
+  intro.style.cssText = 'font-size:13px;color:var(--text2);margin:0 0 .875rem;line-height:1.5';
+  intro.innerHTML = `Detectei <b>${groups.length} grupo${groups.length>1?'s':''}</b> de disciplinas parecidas. Pra cada grupo: as disciplinas serão unidas numa só, mantendo questões, flashcards e fontes. As ações são <b style="color:var(--red-text)">irreversíveis</b>.`;
+  m.appendChild(intro);
+
+  modalState.forEach((st, idx) => {
+    const card = mk('div','card');
+    card.style.cssText = 'padding:.75rem .875rem;margin-bottom:.625rem;border:1px solid var(--border)';
+
+    const head = mk('div');
+    head.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:.625rem;flex-wrap:wrap';
+    const chk = mk('input');
+    chk.type = 'checkbox';
+    chk.checked = st.include;
+    chk.style.cssText = 'width:auto;margin:0;cursor:pointer;flex-shrink:0';
+    const lblName = mk('label');
+    lblName.style.cssText = 'font-size:11.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0';
+    lblName.textContent = 'Nome final:';
+    const inp = mk('input');
+    inp.type = 'text';
+    inp.value = st.finalName;
+    inp.style.cssText = 'flex:1;min-width:140px;padding:.4rem .55rem;font-size:13.5px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit';
+    inp.addEventListener('input', e => { st.finalName = e.target.value.trim() || st.group.suggestedName; });
+    chk.addEventListener('change',e=>{
+      st.include = e.target.checked;
+      inp.disabled = !st.include;
+      card.style.opacity = st.include ? '1' : '0.5';
+    });
+    head.appendChild(chk);
+    head.appendChild(lblName);
+    head.appendChild(inp);
+    card.appendChild(head);
+
+    const list = mk('div');
+    list.style.cssText = 'font-size:12px;color:var(--text2);line-height:1.6';
+    const allInGroup = [st.group.canonical, ...st.group.duplicates];
+    const itemsHtml = allInGroup.map(d => {
+      const qCount = (DATA.importedQuestions||[]).filter(q => q.disciplineId === d.id).length;
+      const cCount = ((DATA.srs||{}).cards||[]).filter(c => c.disciplineId === d.id).length;
+      const sCount = (DATA.sources||[]).filter(s => s.disciplineId === d.id).length;
+      const meta = [];
+      if(qCount) meta.push(qCount+' Qs');
+      if(cCount) meta.push(cCount+' flashcards');
+      if(sCount) meta.push(sCount+' fontes');
+      const metaTxt = meta.length ? ' <span style="color:var(--text3);font-size:11px">('+meta.join(', ')+')</span>' : '';
+      return `<div>• <b style="color:${d.color}">${escapeHTML(d.name)}</b>${metaTxt}</div>`;
+    }).join('');
+    list.innerHTML = itemsHtml;
+    card.appendChild(list);
+
+    const total = mk('div');
+    total.style.cssText = 'margin-top:.5rem;padding-top:.5rem;border-top:1px dashed var(--border);font-size:11.5px;color:var(--text3)';
+    const c = st.group.counts;
+    total.innerHTML = `<b>Total no grupo:</b> ${c.questions} questões, ${c.flashcards} flashcards, ${c.sources} fontes`;
+    card.appendChild(total);
+
+    m.appendChild(card);
+  });
+
+  const btnRow = mk('div','flex');
+  btnRow.style.cssText = 'gap:8px;justify-content:flex-end;margin-top:1rem;padding-top:.875rem;border-top:1px solid var(--border)';
+  const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+  cancelBtn.addEventListener('click',()=>closeModal());
+  const mergeBtn = mkBtn('Mesclar','btn btn-sm btn-danger');
+  mergeBtn.addEventListener('click',()=>{
+    const toMerge = modalState.filter(s => s.include);
+    if(toMerge.length === 0){
+      closeModal();
+      return;
+    }
+    let mergedCount = 0;
+    let questionsMoved = 0;
+    let flashcardsMoved = 0;
+    let sourcesMoved = 0;
+    toMerge.forEach(st => {
+      const canonical = DATA.disciplines.find(d => d.id === st.canonicalId);
+      if(!canonical) return;
+      canonical.name = st.finalName;
+      const anyActive = [canonical, ...st.duplicateIds.map(id => DATA.disciplines.find(d => d.id === id))]
+        .filter(Boolean)
+        .some(d => d.active !== false);
+      if(anyActive) canonical.active = true;
+      canonical.autoCreated = false;
+
+      const dupSet = new Set(st.duplicateIds);
+      (DATA.importedQuestions||[]).forEach(q => {
+        if(dupSet.has(q.disciplineId)){
+          q.disciplineId = canonical.id;
+          questionsMoved++;
+        }
+      });
+      ((DATA.srs||{}).cards||[]).forEach(c => {
+        if(dupSet.has(c.disciplineId)){
+          c.disciplineId = canonical.id;
+          flashcardsMoved++;
+        }
+      });
+      (DATA.sources||[]).forEach(s => {
+        if(dupSet.has(s.disciplineId)){
+          s.disciplineId = canonical.id;
+          sourcesMoved++;
+        }
+      });
+      if(DATA.topicActivity){
+        Object.keys(DATA.topicActivity).forEach(key => {
+          st.duplicateIds.forEach(dupId => {
+            if(key.startsWith(dupId+'::')){
+              const newKey = canonical.id + key.slice(dupId.length);
+              DATA.topicActivity[newKey] = DATA.topicActivity[key];
+              delete DATA.topicActivity[key];
+            }
+          });
+        });
+      }
+      DATA.disciplines = DATA.disciplines.filter(d => !dupSet.has(d.id));
+      mergedCount += st.duplicateIds.length;
+    });
+
+    save();
+    closeModal();
+    const parts = [];
+    if(mergedCount > 0) parts.push(mergedCount+' disciplina'+(mergedCount>1?'s':'')+' removida'+(mergedCount>1?'s':''));
+    if(questionsMoved > 0) parts.push(questionsMoved+' questões realocadas');
+    if(flashcardsMoved > 0) parts.push(flashcardsMoved+' flashcards realocados');
+    if(sourcesMoved > 0) parts.push(sourcesMoved+' fontes realocadas');
+    showToast('✓ Mescla concluída: '+parts.join(', ')+'.', 5500);
+    render();
+  });
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(mergeBtn);
+  m.appendChild(btnRow);
+
+  showModal(m);
+}
+
 function renderDisciplines(wrap){
   wrap.appendChild(sLabel('Suas disciplinas'));
   const p = mk('p','txt2');p.style.marginBottom='.875rem';
   p.textContent='Crie ou edite as disciplinas do seu edital. A caixa "Ativa" controla se a disciplina entra nos métodos de estudo.';
   wrap.appendChild(p);
+
+  // V15.12.75.78 — Detecta disciplinas que parecem duplicatas (mesmo prefixo
+  // antes de separador como " - ", ":"). Exibe banner com opção de mesclar
+  // se encontrar 2+ no mesmo grupo. Sequela do bug V70 que criava
+  // "Direito Penal - Peculato", "Direito Penal - Corrupção" etc como
+  // disciplinas distintas em vez de tópicos da mesma.
+  try{
+    const dupGroups = detectDuplicateDisciplineGroups();
+    if(dupGroups.length > 0){
+      const banner = mk('div','card');
+      banner.style.cssText = 'padding:.75rem 1rem;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.22);border-left:3px solid var(--amber);margin-bottom:.875rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap';
+      const totalDups = dupGroups.reduce((acc,g)=>acc + g.duplicates.length, 0);
+      const txt = mk('div');
+      txt.style.cssText = 'flex:1;min-width:200px;font-size:12.5px;line-height:1.5';
+      txt.innerHTML = `<b>⚠ ${totalDups} disciplina${totalDups>1?'s':''} parece${totalDups>1?'m':''} duplicada${totalDups>1?'s':''}</b><br><span style="color:var(--text2);font-size:11.5px">Detectei ${dupGroups.length} grupo${dupGroups.length>1?'s':''} com variações do mesmo nome (ex: "Direito Penal" e "Direito Penal - Peculato"). Posso mesclar pra você.</span>`;
+      const btn = mkBtn('🔀 Mesclar duplicadas','btn btn-p btn-sm');
+      btn.style.cssText = 'font-weight:600;padding:6px 14px;flex-shrink:0';
+      btn.addEventListener('click',()=>showMergeDisciplinesModal(dupGroups));
+      banner.appendChild(txt);
+      banner.appendChild(btn);
+      wrap.appendChild(banner);
+    }
+  }catch(e){ console.warn('[dedup-disc] detector falhou:', e); }
 
   DATA.disciplines.forEach((d,i)=>{
     const row = mk('div','disc-edit');
@@ -67982,6 +68250,71 @@ window.graliaTutorial = {
 // V15.12.75.63 — Helpers de debug geral. Útil pra reportar bugs.
 // Uso: graliaDebug.state() | sources() | questions() | favorites() | clearSeen()
 window.graliaDebug = {
+  // V15.12.75.77 — Diagnostica por que cache miss acontece. Consulta o
+  // ai_question_pool direto (sem RPC) com os filtros que o lookup usa e
+  // mostra quantas questões existem por status. Se tem questões draft mas
+  // 0 active, é o bug do enrich não promover (migration #32 corrige).
+  async poolStatus(disciplineId){
+    if(!supa){
+      console.warn('Supabase não inicializado');
+      return null;
+    }
+    const bank = getActiveBankProfile();
+    const discId = disciplineId || inferActiveDisciplineId();
+    if(!discId){
+      console.warn('Sem disciplina ativa. Passe um disciplineId explícito ou ative uma fonte.');
+      return null;
+    }
+    const discSlug = (typeof disciplineSlug === 'function') ? disciplineSlug(discId) : discId;
+    const filters = {
+      bank_id: bank.id,
+      discipline_id: discSlug
+    };
+    console.info('[pool-status] filtros:', filters);
+    try{
+      const {data, error} = await supa
+        .from('ai_question_pool')
+        .select('content_hash, status, kind, ai_score, explanation, created_at, created_by_user_id')
+        .match(filters)
+        .order('created_at', {ascending: false})
+        .limit(50);
+      if(error){
+        console.error('[pool-status] erro:', error.message);
+        return null;
+      }
+      const byStatus = {};
+      const withExpl = {active: 0, draft: 0, other: 0};
+      (data || []).forEach(row => {
+        const s = row.status || '(null)';
+        byStatus[s] = (byStatus[s] || 0) + 1;
+        const hasExpl = !!(row.explanation && row.explanation.length > 10);
+        const bucket = (s === 'active' || s === 'draft') ? s : 'other';
+        if(hasExpl) withExpl[bucket]++;
+      });
+      console.info('[pool-status] total no pool com estes filtros:', (data||[]).length);
+      console.info('[pool-status] por status:', byStatus);
+      console.info('[pool-status] com explicação:', withExpl);
+      console.info('[pool-status] amostra (até 10):');
+      console.table((data || []).slice(0, 10).map(r => ({
+        hash: (r.content_hash || '').slice(0, 12),
+        status: r.status,
+        kind: r.kind,
+        score: r.ai_score,
+        temExpl: !!(r.explanation && r.explanation.length > 10),
+        criada: r.created_at
+      })));
+      // Diagnóstico automático
+      if(byStatus.active === undefined && (byStatus.draft || 0) > 0){
+        console.warn('🔴 BUG: você tem '+byStatus.draft+' questões DRAFT mas 0 ACTIVE. O ai_pool_enrich não está promovendo status quando enriquece. Aplique a migration #32 (ver chat com Claude).');
+      } else if((byStatus.active || 0) > 0){
+        console.info('✓ '+byStatus.active+' questões ACTIVE — cache hit deve funcionar.');
+      }
+      return {byStatus, withExpl, sample: data};
+    }catch(e){
+      console.error('[pool-status] exception:', e.message);
+      return null;
+    }
+  },
   state(){
     const s = {
       version: (window.GRALIA_VERSION || '?'),
