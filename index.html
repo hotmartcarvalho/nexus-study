@@ -4346,6 +4346,64 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 /* V12: Sombra do modal locked agora é neutra (preta sutil) — antes era roxa, ficava com aparência de gamificação */
 .modal-bg.locked .modal{box-shadow:0 12px 40px rgba(0,0,0,.22),0 4px 12px rgba(0,0,0,.14)}
 
+/* V15.12.75.90 — Reader de fonte: elimina rolagem dupla.
+   Quando o modal contém a shell do reader (.source-reader-shell), o modal
+   container NÃO rola — só a área interna de leitura. Antes tinha 2 barras
+   verticais (uma no .modal e uma no body do reader). */
+.modal:has(> .source-reader-shell){
+  overflow:hidden;
+  padding:0;
+  max-height:90vh;
+  background:transparent;
+  box-shadow:0 24px 60px rgba(0,0,0,.30);
+}
+/* Scrollbar premium roxa pro reader (webkit + firefox). Aplicada via classe
+   .reader-scroll em áreas que rolam (corpo do conteúdo, sidebar do TOC). */
+.source-reader-shell .reader-scroll{
+  scrollbar-width:thin;
+  scrollbar-color:rgba(128,66,250,.32) transparent;
+}
+.source-reader-shell .reader-scroll::-webkit-scrollbar{
+  width:10px;
+  height:10px;
+}
+.source-reader-shell .reader-scroll::-webkit-scrollbar-track{
+  background:transparent;
+}
+.source-reader-shell .reader-scroll::-webkit-scrollbar-thumb{
+  background:rgba(128,66,250,.28);
+  border-radius:10px;
+  border:2px solid transparent;
+  background-clip:padding-box;
+  transition:background .2s;
+}
+.source-reader-shell .reader-scroll::-webkit-scrollbar-thumb:hover{
+  background:rgba(128,66,250,.55);
+  background-clip:padding-box;
+}
+.source-reader-shell .reader-scroll::-webkit-scrollbar-thumb:active{
+  background:rgba(128,66,250,.72);
+  background-clip:padding-box;
+}
+/* Modo foco: esconde elementos não essenciais da leitura */
+.source-reader-shell.focus-on .reader-header{display:none !important}
+.source-reader-shell.focus-on .reader-toc-toggle{display:none !important}
+.source-reader-shell.focus-on .reader-progress{
+  background:transparent;
+  border-bottom:none;
+  height:6px;
+  padding:0;
+}
+.source-reader-shell.focus-on .reader-progress .progress-label{display:none}
+.source-reader-shell.focus-on .reader-content{
+  padding:2rem max(2rem, calc((100% - 720px) / 2));
+  font-size:14.5px;
+}
+.source-reader-shell.focus-on .reader-sidebar{display:none !important}
+/* Botão flutuante "sair do foco" só aparece no modo foco */
+.source-reader-shell .reader-focus-exit{display:none}
+.source-reader-shell.focus-on .reader-focus-exit{display:flex}
+
 /* V12: Sticky header em modais grandes do footer (FAQ + Legal) — botão X visível em mobile */
 .footer-modal-head{position:sticky;top:-1.25rem;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:.625rem;margin:-1.25rem -1.25rem .875rem;padding-left:1.25rem;padding-right:1.25rem;padding-top:1.25rem;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 1px 0 var(--border)}
 .footer-modal-head h2{margin:0;font-size:18px;font-weight:700;flex:1}
@@ -7081,7 +7139,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.89';
+window.GRALIA_VERSION = 'V15.12.75.90';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -27825,8 +27883,21 @@ function renderBankFilters(stateKey,bank){
     },0);
   }
 
-  // Filter chips row
+  // V15.12.75.90 — Estrutura dual: filtros principais sempre visíveis +
+  // grupo "Mais filtros" collapsible com os avançados. Reduz poluição visual
+  // mantendo poder de filtragem completo.
   const chipRows = mk('div');chipRows.style.cssText='display:flex;flex-direction:column;gap:.4rem';
+  // Sub-containers
+  const primaryChips = mk('div');primaryChips.style.cssText='display:flex;flex-direction:column;gap:.4rem';
+  const advancedChips = mk('div');advancedChips.style.cssText='display:flex;flex-direction:column;gap:.4rem;margin-top:.5rem;padding-top:.625rem;border-top:1px dashed rgba(128,66,250,.16)';
+
+  // Classificação por categoria do label. PRIMARY = mais frequentes;
+  // ADVANCED = uso secundário (qualidade, banca específica, etc).
+  const PRIMARY_LABELS = new Set(['Origem','Disciplina','Tipo','Prática','Favoritas']);
+  const placeGroup = (group, label) => {
+    if(PRIMARY_LABELS.has(label)) primaryChips.appendChild(group);
+    else advancedChips.appendChild(group);
+  };
 
   const buildChipGroup = (label,key,options) => {
     const row = mk('div','filter-row');
@@ -27865,28 +27936,28 @@ function renderBankFilters(stateKey,bank){
     chip.addEventListener('click',()=>{f.source=val;render();});
     srcRow.appendChild(chip);
   });
-  chipRows.appendChild(srcRow);
+  placeGroup(srcRow, 'Origem');
 
   // Kind filter
   const ceCount = bank.filter(q=>(q.kind||'CE')==='CE').length;
   const mcCount = bank.length - ceCount;
-  chipRows.appendChild(buildChipGroup('Tipo','kind',[
+  placeGroup(buildChipGroup('Tipo','kind',[
     ['all','Todos',bank.length],
     ['CE','C/E',ceCount],
     ['MC','Múltipla',mcCount]
-  ]));
+  ]), 'Tipo');
 
   // V15.12.34 — Filtro de qualidade (suspeitas/incompletas)
   const okCount = bank.filter(q=>!q.quality || q.quality.status === 'ok').length;
   const suspCount = bank.filter(q=>q.quality && q.quality.status === 'suspicious').length;
   const incCount = bank.filter(q=>q.quality && q.quality.status === 'incomplete').length;
   if(suspCount + incCount > 0){
-    chipRows.appendChild(buildChipGroup('Qualidade','quality',[
+    placeGroup(buildChipGroup('Qualidade','quality',[
       ['all','Todas'],
       ['ok','✓ OK',okCount],
       ['suspicious','⚠ Suspeitas',suspCount],
       ['incomplete','✗ Incompletas',incCount]
-    ]));
+    ]), 'Qualidade');
   }
 
   // V15.12.34 — Filtro de prática
@@ -27894,23 +27965,23 @@ function renderBankFilters(stateKey,bank){
   const practYes = bank.filter(q=>q.attempts>0).length;
   const practRight = bank.filter(q=>q.attempts>0 && (q.correctCount||0) === q.attempts).length;
   const practWrong = bank.filter(q=>q.attempts>0 && (q.correctCount||0) < q.attempts).length;
-  chipRows.appendChild(buildChipGroup('Prática','practiced',[
+  placeGroup(buildChipGroup('Prática','practiced',[
     ['all','Todas'],
     ['no','Não praticada',practNo],
     ['yes','Praticada',practYes],
     ['right','Sempre acertei',practRight],
     ['wrong','Errei pelo menos uma vez',practWrong]
-  ]));
+  ]), 'Prática');
 
   // V15.12.38 — Filtro de favoritas
   // V15.12.75.22 — Conta também IA favoritadas (estão em DATA.aiFavoriteQuestions)
   const favYes = bank.filter(q=>q.favorite===true).length + (DATA.aiFavoriteQuestions || []).length;
   if(favYes > 0 || f.favorite !== 'all'){
-    chipRows.appendChild(buildChipGroup('Favoritas','favorite',[
+    placeGroup(buildChipGroup('Favoritas','favorite',[
       ['all','Todas'],
       ['yes','★ Favoritadas',favYes],
       ['no','Sem favoritar',bank.length - favYes]
-    ]));
+    ]), 'Favoritas');
   }
 
   // V15.12.59 — Reabilitados após confirmar a fonte real dos dados.
@@ -27968,16 +28039,16 @@ function renderBankFilters(stateKey,bank){
         }
       });
     }catch(_){}
-    chipRows.appendChild(explChipGroup);
+    placeGroup(explChipGroup, 'Explicação');
   }
 
   const fcYes = bank.filter(hasFlashcardFor).length;
   if(fcYes > 0){
-    chipRows.appendChild(buildChipGroup('Flashcard','hasFlashcard',[
+    placeGroup(buildChipGroup('Flashcard','hasFlashcard',[
       ['all','Todas'],
       ['yes','🎴 Com flashcard',fcYes],
       ['no','Sem flashcard',bank.length - fcYes]
-    ]));
+    ]), 'Flashcard');
   }
 
   // V15.12.75.86 — Grupo Método IA: filtra questões geradas pela IA pelo
@@ -28004,7 +28075,7 @@ function renderBankFilters(stateKey,bank){
     methodKeys.sort((a,b) => methodCounts[b] - methodCounts[a]).forEach(k => {
       opts.push([k, METHOD_LABELS[k] || k, methodCounts[k]]);
     });
-    chipRows.appendChild(buildChipGroup('Método IA','aiMethod', opts));
+    placeGroup(buildChipGroup('Método IA','aiMethod', opts), 'Método IA');
   }
 
   // V15.12.53 — Filtro "Em N cadernos". Útil pra ver questões "compartilhadas"
@@ -28020,12 +28091,12 @@ function renderBankFilters(stateKey,bank){
     const nbNone = bank.filter(q => !nbCounts.has(q.id)).length;
     const nbOne  = bank.filter(q => nbCounts.get(q.id) === 1).length;
     const nbMany = bank.filter(q => (nbCounts.get(q.id)||0) >= 2).length;
-    chipRows.appendChild(buildChipGroup('Cadernos','inNotebooks',[
+    placeGroup(buildChipGroup('Cadernos','inNotebooks',[
       ['all','Todas'],
       ['none','📭 Em nenhum',nbNone],
       ['1','📁 Em 1 caderno',nbOne],
       ['2plus','📚 Em 2+ cadernos',nbMany]
-    ]));
+    ]), 'Cadernos');
   }
 
   // Discipline filter
@@ -28039,19 +28110,19 @@ function renderBankFilters(stateKey,bank){
       const cnt = bank.filter(q=>q.disciplineId===d.id).length;
       return [d.id,d.name,cnt];
     }));
-    chipRows.appendChild(buildChipGroup('Disciplina','disc',opts));
+    placeGroup(buildChipGroup('Disciplina','disc',opts), 'Disciplina');
   }
 
   // Performance filter
   const neverCnt = bank.filter(q=>!q.attempts).length;
   const highCnt = bank.filter(q=>q.attempts>0&&(q.correctCount||0)/q.attempts>=0.7).length;
   const lowCnt = bank.filter(q=>q.attempts>0&&(q.correctCount||0)/q.attempts<0.5).length;
-  chipRows.appendChild(buildChipGroup('Desempenho','perf',[
+  placeGroup(buildChipGroup('Desempenho','perf',[
     ['all','Todas'],
     ['never','Nunca praticadas',neverCnt],
     ['high','Acerto ≥70%',highCnt],
     ['low','Acerto <50%',lowCnt]
-  ]));
+  ]), 'Desempenho');
 
   // V13: Filtro temporal — questões adicionadas/praticadas em janelas recentes
   // Útil pra ver "como tô esta semana" vs "como sempre fui"
@@ -28060,11 +28131,11 @@ function renderBankFilters(stateKey,bank){
   const W30D = now - 30*86400*1000;
   const recent7 = bank.filter(q => q.lastPracticedAt && q.lastPracticedAt > W7D).length;
   const recent30 = bank.filter(q => q.lastPracticedAt && q.lastPracticedAt > W30D).length;
-  chipRows.appendChild(buildChipGroup('Período','period',[
+  placeGroup(buildChipGroup('Período','period',[
     ['all','Sempre'],
     ['7d','Últimos 7 dias',recent7],
     ['30d','Últimos 30 dias',recent30]
-  ]));
+  ]), 'Período');
 
   // Banca filter (separate from cargo)
   const bancas = {};
@@ -28085,7 +28156,7 @@ function renderBankFilters(stateKey,bank){
     });
     sel.addEventListener('change',e=>{f.banca=e.target.value;render();});
     bRow.appendChild(sel);
-    chipRows.appendChild(bRow);
+    placeGroup(bRow, 'Banca');
   }
 
   // Cargo filter (separate)
@@ -28108,7 +28179,7 @@ function renderBankFilters(stateKey,bank){
     });
     sel.addEventListener('change',e=>{f.cargo=e.target.value;render();});
     cRow.appendChild(sel);
-    chipRows.appendChild(cRow);
+    placeGroup(cRow, 'Cargo');
   }
 
   // V15.12.34 — Range de ano (anoFrom / anoTo).
@@ -28138,7 +28209,7 @@ function renderBankFilters(stateKey,bank){
       clr.addEventListener('click',()=>{f.anoFrom='';f.anoTo='';render();});
       aRow.appendChild(clr);
     }
-    chipRows.appendChild(aRow);
+    placeGroup(aRow, 'Ano');
   }
 
   // Active topic filter — show as removable chip above other filters
@@ -28151,7 +28222,43 @@ function renderBankFilters(stateKey,bank){
     chip.title = 'Remover filtro de tópico';
     chip.addEventListener('click',()=>{f.topic='all';render();});
     tRow.appendChild(chip);
-    chipRows.insertBefore(tRow,chipRows.firstChild);
+    primaryChips.insertBefore(tRow, primaryChips.firstChild);
+  }
+
+  // V15.12.75.90 — Monta a estrutura final: principais + toggle "Mais filtros"
+  // que expande os avançados. Estado persistido em ST.bankAdvancedFiltersOpen.
+  chipRows.appendChild(primaryChips);
+  // Conta filtros avançados ativos pra exibir badge "Mais filtros (N ativos)"
+  let advActiveCount = 0;
+  if(f.quality && f.quality !== 'all') advActiveCount++;
+  if(f.hasExplanation && f.hasExplanation !== 'all') advActiveCount++;
+  if(f.hasFlashcard && f.hasFlashcard !== 'all') advActiveCount++;
+  if(f.inNotebooks && f.inNotebooks !== 'all') advActiveCount++;
+  if(f.aiMethod && f.aiMethod !== 'all') advActiveCount++;
+  if(f.perf !== 'all') advActiveCount++;
+  if(f.period !== 'all') advActiveCount++;
+  if(f.banca && f.banca !== 'all') advActiveCount++;
+  if(f.cargo && f.cargo !== 'all') advActiveCount++;
+  if(f.anoFrom || f.anoTo) advActiveCount++;
+
+  // Só mostra a seção avançada se tiver chips dentro
+  if(advancedChips.children.length > 0){
+    const advOpen = !!ST.bankAdvancedFiltersOpen || advActiveCount > 0;
+    const advToggle = mk('button');
+    advToggle.type = 'button';
+    advToggle.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:5px 11px;background:transparent;border:1px dashed rgba(128,66,250,.30);border-radius:8px;font-size:11.5px;font-weight:600;color:var(--text2);cursor:pointer;transition:all .15s ease;margin-top:.625rem;font-family:inherit;align-self:flex-start;width:auto';
+    const arrowAdv = advOpen ? '▼' : '▶';
+    advToggle.innerHTML = `<span style="font-size:10px;color:var(--gralia-purple)">${arrowAdv}</span><span>Mais filtros</span>` + (advActiveCount>0 ? `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;background:var(--gralia-purple);color:#fff;border-radius:9px;font-size:10.5px;font-weight:700;padding:0 5px">${advActiveCount}</span>` : '<span style="color:var(--text3);font-weight:500;font-size:10.5px">qualidade, explicação, banca, período…</span>');
+    advToggle.addEventListener('mouseenter',()=>{advToggle.style.borderColor='var(--gralia-purple)';advToggle.style.background='rgba(128,66,250,.04)';});
+    advToggle.addEventListener('mouseleave',()=>{advToggle.style.borderColor='rgba(128,66,250,.30)';advToggle.style.background='transparent';});
+    advToggle.addEventListener('click',()=>{
+      ST.bankAdvancedFiltersOpen = !advOpen;
+      render();
+    });
+    chipRows.appendChild(advToggle);
+    if(advOpen){
+      chipRows.appendChild(advancedChips);
+    }
   }
 
   wrap.appendChild(chipRows);
@@ -31644,8 +31751,9 @@ function looksLikeMarkdown(text){
 // com índice navegável (se tiver TOC), corpo principal com markdown renderizado.
 function showSourceReaderModal(src){
   if(!src){ alert('Fonte não encontrada'); return; }
-  const m = mk('div');
-  m.style.cssText = 'max-width:960px;width:100%;max-height:90vh;display:flex;flex-direction:column;background:var(--surface);border-radius:14px;overflow:hidden';
+  const m = mk('div','source-reader-shell');
+  m.style.cssText = 'max-width:960px;width:100%;height:90vh;max-height:90vh;display:flex;flex-direction:column;background:var(--surface);border-radius:14px;overflow:hidden';
+  // V15.12.75.90 — Estado do modo foco persistido em ST.readerFocusMode
 
   // V15.8: Sempre tenta renderizar como markdown se houver QUALQUER marcação.
   // Tolerante a indentação (Notion exporta com indent).
@@ -31670,8 +31778,8 @@ function showSourceReaderModal(src){
   })();
 
   // Header rico com gradiente sutil
-  const header = mk('div');
-  header.style.cssText = 'padding:1.25rem 1.5rem;background:linear-gradient(135deg,rgba(128,66,250,.06),rgba(128,66,250,.02));border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-shrink:0';
+  const header = mk('div','reader-header');
+  header.style.cssText = 'padding:1.25rem 1.5rem;background:linear-gradient(135deg,rgba(128,66,250,.10),rgba(128,66,250,.03));border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-shrink:0';
 
   const headLeft = mk('div');
   headLeft.style.cssText = 'flex:1;min-width:0';
@@ -31741,6 +31849,19 @@ function showSourceReaderModal(src){
   // Botões do header
   const headBtns = mk('div');
   headBtns.style.cssText = 'display:flex;gap:6px;flex-shrink:0';
+  // V15.12.75.90 — Botão "modo foco": esconde header, marcadores e
+  // distrações. Deixa só texto + barra fina de progresso.
+  const focusBtnH = mk('button');
+  focusBtnH.type = 'button';
+  focusBtnH.style.cssText = 'padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;gap:6px;transition:all .15s ease';
+  focusBtnH.innerHTML = '<span style="font-size:14px">🎯</span><span>Foco</span>';
+  focusBtnH.title = 'Modo foco — esconde elementos pra concentrar na leitura (Esc sai)';
+  focusBtnH.addEventListener('mouseenter',()=>{focusBtnH.style.background='rgba(128,66,250,.08)';focusBtnH.style.borderColor='rgba(128,66,250,.40)';focusBtnH.style.color='var(--gralia-purple)';});
+  focusBtnH.addEventListener('mouseleave',()=>{focusBtnH.style.background='var(--surface)';focusBtnH.style.borderColor='var(--border)';focusBtnH.style.color='var(--text2)';});
+  focusBtnH.addEventListener('click',()=>{
+    m.classList.add('focus-on');
+  });
+  headBtns.appendChild(focusBtnH);
   const editBtnH = mk('button');
   editBtnH.type = 'button';
   editBtnH.style.cssText = 'padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text2)';
@@ -31762,24 +31883,21 @@ function showSourceReaderModal(src){
 
   // V15.12.75.89 — Barra de progresso de leitura. Fica entre header e body,
   // não scrolla. Atualiza conforme o user rola o conteúdo.
-  // - Linha fina roxa que cresce conforme o scroll
-  // - Etiqueta "37% lido · ~6 min restantes" no canto direito
-  // - Se há TOC, mini-marcadores ao longo da barra indicam seções (clicáveis)
-  // - Cor: gradient roxo coerente com identidade Gralia
-  const progressBar = mk('div');
-  progressBar.style.cssText = 'position:relative;height:32px;background:rgba(128,66,250,.025);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;padding:0 1rem';
+  // V15.12.75.90 — Classes (.reader-progress, .progress-label) pra modo foco.
+  const progressBar = mk('div','reader-progress');
+  progressBar.style.cssText = 'position:relative;height:32px;background:rgba(128,66,250,.05);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;padding:0 1rem;transition:all .25s ease';
   const progressTrack = mk('div');
-  progressTrack.style.cssText = 'position:absolute;left:0;right:0;top:0;height:3px;background:rgba(128,66,250,.08)';
+  progressTrack.style.cssText = 'position:absolute;left:0;right:0;top:0;height:3px;background:rgba(128,66,250,.14)';
   progressBar.appendChild(progressTrack);
   const progressFill = mk('div');
-  progressFill.style.cssText = 'position:absolute;left:0;top:0;height:3px;width:0%;background:linear-gradient(90deg, var(--gralia-purple) 0%, rgba(128,66,250,.7) 100%);transition:width .12s ease-out;box-shadow:0 0 8px rgba(128,66,250,.4)';
+  progressFill.style.cssText = 'position:absolute;left:0;top:0;height:3px;width:0%;background:linear-gradient(90deg, var(--gralia-purple) 0%, rgba(128,66,250,.85) 100%);transition:width .12s ease-out;box-shadow:0 0 10px rgba(128,66,250,.55)';
   progressBar.appendChild(progressFill);
   // Marcadores de seção (interativos)
   const sectionMarkers = mk('div');
   sectionMarkers.style.cssText = 'position:absolute;left:0;right:0;top:0;height:3px;pointer-events:none';
   progressBar.appendChild(sectionMarkers);
   // Etiqueta de progresso
-  const progressLabel = mk('div');
+  const progressLabel = mk('div','progress-label');
   progressLabel.style.cssText = 'margin-left:auto;font-size:11px;color:var(--text3);font-weight:500;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px';
   progressLabel.innerHTML = '<span class="pct">0%</span><span style="opacity:.5">·</span><span class="rem">~'+timeText.replace('~','')+' restantes</span>';
   progressBar.appendChild(progressLabel);
@@ -31789,17 +31907,18 @@ function showSourceReaderModal(src){
   const body = mk('div');
   body.style.cssText = 'flex:1;display:flex;overflow:hidden;min-height:0';
 
-  // V15.9: Sidebar com TOC começa OCULTA. Usuário decide se quer ver índice
-  // clicando no botão "📑 Índice" no topo do conteúdo. Antes ficava sempre
-  // aberta — Jean pediu pra fechar por padrão e oferecer toggle sutil.
+  // V15.12.75.90 — Sidebar TOC agora ABERTA por padrão (antes começava
+  // oculta pra Jean preferir minimalista; nova decisão: aberta facilita
+  // navegação imediata). Usuário pode fechar com X. Estado lembrado em
+  // ST.readerTocHidden (oposto, pra default ser aberto sem null check).
   let sidebar = null;
-  let isSidebarOpen = false;
+  let isSidebarOpen = !ST.readerTocHidden;  // default: visível
   if(cleanedToc.length >= 2){
-    sidebar = mk('div');
-    sidebar.style.cssText = 'width:260px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface2);padding:.875rem .625rem;display:none';
+    sidebar = mk('div','reader-sidebar reader-scroll');
+    sidebar.style.cssText = 'width:260px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:linear-gradient(180deg, rgba(128,66,250,.04) 0%, rgba(128,66,250,.01) 100%);padding:.875rem .625rem;display:'+(isSidebarOpen?'block':'none');
     const sidebarTitle = mk('div');
-    sidebarTitle.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:0 .5rem .5rem;border-bottom:1px solid var(--border);margin-bottom:.5rem;display:flex;align-items:center;justify-content:space-between';
-    sidebarTitle.innerHTML = '<span>Índice</span>';
+    sidebarTitle.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.5px;padding:0 .5rem .5rem;border-bottom:1px solid rgba(128,66,250,.18);margin-bottom:.5rem;display:flex;align-items:center;justify-content:space-between';
+    sidebarTitle.innerHTML = '<span>📑 Índice</span>';
     const closeSb = mk('button');
     closeSb.type = 'button';
     closeSb.style.cssText = 'background:transparent;border:none;color:var(--text3);font-size:14px;cursor:pointer;line-height:1;padding:0 4px';
@@ -31812,16 +31931,16 @@ function showSourceReaderModal(src){
       const item = mk('button');
       item.type = 'button';
       const indent = (sec.level || 1) - 1;
-      item.style.cssText = `display:block;width:100%;text-align:left;padding:5px ${10 + indent * 12}px 5px ${10 + indent * 12}px;background:transparent;border:none;border-radius:5px;cursor:pointer;font-size:12px;line-height:1.35;color:var(--text2);font-family:inherit;margin:1px 0;transition:background .12s`;
+      item.style.cssText = `display:block;width:100%;text-align:left;padding:6px ${10 + indent * 12}px 6px ${10 + indent * 12}px;background:transparent;border:none;border-radius:6px;cursor:pointer;font-size:12px;line-height:1.4;color:var(--text2);font-family:inherit;margin:1px 0;transition:all .15s ease`;
       item.textContent = sec.title;
-      item.addEventListener('mouseenter', ()=>{ item.style.background = 'var(--surface)'; item.style.color = 'var(--text)'; });
+      item.addEventListener('mouseenter', ()=>{ item.style.background = 'rgba(128,66,250,.10)'; item.style.color = 'var(--gralia-purple)'; });
       item.addEventListener('mouseleave', ()=>{ item.style.background = 'transparent'; item.style.color = 'var(--text2)'; });
       item.addEventListener('click', ()=>{
         const target = body.querySelector(`[data-sec-id="${sec.id}"]`);
         if(target){
           target.scrollIntoView({behavior: 'smooth', block: 'start'});
           target.style.transition = 'background .3s';
-          target.style.background = 'rgba(128,66,250,.12)';
+          target.style.background = 'rgba(128,66,250,.16)';
           setTimeout(()=>{ target.style.background = ''; }, 1000);
         }
       });
@@ -31831,6 +31950,7 @@ function showSourceReaderModal(src){
     closeSb.addEventListener('click', ()=>{
       sidebar.style.display = 'none';
       isSidebarOpen = false;
+      ST.readerTocHidden = true;  // persiste pra próxima abertura
       if(toggleTocBtn) toggleTocBtn.style.display = 'inline-flex';
     });
 
@@ -31838,31 +31958,31 @@ function showSourceReaderModal(src){
   }
 
   // Corpo do conteúdo
-  const content = mk('div');
-  content.style.cssText = 'flex:1;overflow-y:auto;padding:1.5rem 2rem;position:relative';
+  const content = mk('div','reader-content reader-scroll');
+  content.tabIndex = 0;  // V15.12.75.90 — permite focus pra capturar setas teclado
+  content.style.cssText = 'flex:1;overflow-y:auto;padding:1.5rem 2rem;position:relative;outline:none';
 
   // V15.9: Botão sutil "📑 Mostrar índice" no canto superior do conteúdo.
-  // Aparece se há TOC e a sidebar está fechada. Texto explicativo abaixo: "navegue pelas seções".
+  // V15.12.75.90 — Só aparece se sidebar está oculta (default agora é aberta).
   let toggleTocBtn = null;
   if(cleanedToc.length >= 2){
-    toggleTocBtn = mk('button');
+    toggleTocBtn = mk('button','reader-toc-toggle');
     toggleTocBtn.type = 'button';
-    toggleTocBtn.style.cssText = 'display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:linear-gradient(135deg,rgba(128,66,250,.08),rgba(128,66,250,.02));border:1px solid rgba(128,66,250,.22);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;color:var(--text2);margin-bottom:1rem;transition:all .15s';
-    toggleTocBtn.innerHTML = `<span style="font-size:14px">📑</span><span>Mostrar índice</span><span style="font-size:11px;color:var(--text3);font-weight:500">· navegue pelas ${cleanedToc.length} seções</span>`;
+    toggleTocBtn.style.cssText = 'display:'+(isSidebarOpen?'none':'inline-flex')+';align-items:center;gap:8px;padding:8px 14px;background:linear-gradient(135deg,rgba(128,66,250,.12),rgba(128,66,250,.04));border:1px solid rgba(128,66,250,.32);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;color:var(--gralia-purple);margin-bottom:1rem;transition:all .15s;font-weight:600';
+    toggleTocBtn.innerHTML = `<span style="font-size:14px">📑</span><span>Mostrar índice</span><span style="font-size:11px;color:var(--text3);font-weight:500">· ${cleanedToc.length} seções</span>`;
     toggleTocBtn.addEventListener('mouseenter', ()=>{
       toggleTocBtn.style.borderColor = 'var(--gralia-purple)';
-      toggleTocBtn.style.background = 'linear-gradient(135deg,rgba(128,66,250,.12),rgba(128,66,250,.04))';
-      toggleTocBtn.style.color = 'var(--text)';
+      toggleTocBtn.style.background = 'linear-gradient(135deg,rgba(128,66,250,.18),rgba(128,66,250,.08))';
     });
     toggleTocBtn.addEventListener('mouseleave', ()=>{
-      toggleTocBtn.style.borderColor = 'rgba(128,66,250,.22)';
-      toggleTocBtn.style.background = 'linear-gradient(135deg,rgba(128,66,250,.08),rgba(128,66,250,.02))';
-      toggleTocBtn.style.color = 'var(--text2)';
+      toggleTocBtn.style.borderColor = 'rgba(128,66,250,.32)';
+      toggleTocBtn.style.background = 'linear-gradient(135deg,rgba(128,66,250,.12),rgba(128,66,250,.04))';
     });
     toggleTocBtn.addEventListener('click', ()=>{
       if(sidebar){
         sidebar.style.display = 'block';
         isSidebarOpen = true;
+        ST.readerTocHidden = false;
         toggleTocBtn.style.display = 'none';
       }
     });
@@ -31931,6 +32051,68 @@ function showSourceReaderModal(src){
 
   body.appendChild(content);
   m.appendChild(body);
+
+  // V15.12.75.90 — Botão flutuante "sair do foco" (só aparece com classe focus-on)
+  const focusExit = mk('button','reader-focus-exit');
+  focusExit.type = 'button';
+  focusExit.style.cssText = 'position:absolute;top:14px;right:16px;z-index:10;display:none;align-items:center;gap:6px;padding:7px 12px;background:rgba(128,66,250,.12);border:1px solid rgba(128,66,250,.35);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:var(--gralia-purple);backdrop-filter:blur(6px);transition:all .15s ease';
+  focusExit.innerHTML = '<span>✕</span><span>Sair do foco</span>';
+  focusExit.title = 'Sair do modo foco (Esc)';
+  focusExit.addEventListener('mouseenter',()=>{focusExit.style.background='rgba(128,66,250,.20)';focusExit.style.borderColor='var(--gralia-purple)';});
+  focusExit.addEventListener('mouseleave',()=>{focusExit.style.background='rgba(128,66,250,.12)';focusExit.style.borderColor='rgba(128,66,250,.35)';});
+  focusExit.addEventListener('click',()=>{
+    m.classList.remove('focus-on');
+  });
+  m.style.position = 'relative';
+  m.appendChild(focusExit);
+
+  // V15.12.75.90 — Setas ↑/↓ + PageUp/PageDown + Home/End rolam o content.
+  // Esc sai do modo foco (se ativo). Listener no document porque o conteúdo
+  // pode não ter focus inicial.
+  const keyHandler = (e) => {
+    // Só ativa se este modal é o topo do stack (não interferir em sub-modais)
+    if(ST.modal !== m) return;
+    const targetTag = (e.target && e.target.tagName) || '';
+    // Se foco está em input/textarea/select, não captura setas (deixa input usar)
+    if(targetTag === 'INPUT' || targetTag === 'TEXTAREA' || targetTag === 'SELECT') return;
+    const lineHeight = 36;  // ~2.2 line-heights em 14px
+    if(e.key === 'ArrowDown'){ e.preventDefault(); content.scrollBy({top: lineHeight, behavior: 'smooth'}); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); content.scrollBy({top: -lineHeight, behavior: 'smooth'}); }
+    else if(e.key === 'PageDown' || e.key === ' '){ e.preventDefault(); content.scrollBy({top: content.clientHeight * 0.85, behavior: 'smooth'}); }
+    else if(e.key === 'PageUp'){ e.preventDefault(); content.scrollBy({top: -content.clientHeight * 0.85, behavior: 'smooth'}); }
+    else if(e.key === 'Home'){ e.preventDefault(); content.scrollTo({top: 0, behavior: 'smooth'}); }
+    else if(e.key === 'End'){ e.preventDefault(); content.scrollTo({top: content.scrollHeight, behavior: 'smooth'}); }
+    else if(e.key === 'Escape' && m.classList.contains('focus-on')){
+      e.preventDefault();
+      e.stopPropagation();  // evita o closeModal que o Esc dispararia
+      m.classList.remove('focus-on');
+    }
+  };
+  document.addEventListener('keydown', keyHandler);
+  // Cleanup quando modal fecha
+  const cleanupKeys = () => {
+    document.removeEventListener('keydown', keyHandler);
+  };
+  // Hook no MutationObserver — quando m sair do DOM, remove o listener
+  const observer = new MutationObserver((mutations) => {
+    for(const mut of mutations){
+      for(const node of mut.removedNodes){
+        if(node === m || (node.contains && node.contains(m))){
+          cleanupKeys();
+          observer.disconnect();
+          return;
+        }
+      }
+    }
+  });
+  setTimeout(() => {
+    if(m.parentNode && m.parentNode.parentNode){
+      observer.observe(m.parentNode.parentNode, {childList: true, subtree: true});
+    }
+  }, 0);
+
+  // Foco automático no content (permite setas funcionarem de cara)
+  setTimeout(() => content.focus(), 100);
 
   // V15.12.75.89 — Wire up da barra de progresso + marcadores.
   // - Scroll do content atualiza fill % e label "X% lido · Ymin restantes"
