@@ -6819,7 +6819,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.84';
+window.GRALIA_VERSION = 'V15.12.75.85';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -29065,15 +29065,39 @@ SAÍDA — array JSON puro, SEM markdown:
 
 Se NÃO encontrar nenhuma questão neste trecho, retorne []`;
 
+  // V15.12.75.85 — Salva rascunho do progresso a cada chunk processado.
+  // Permite recuperar importação se o user fechar a aba acidentalmente ou se
+  // ocorrer erro fatal no meio. Rascunho fica em DATA._importDraft e é
+  // checado no onload da view de importação.
+  const draftId = opts.draftId || ('draft_' + Date.now());
+  const saveDraft = (phase, questions, processed) => {
+    try{
+      DATA._importDraft = {
+        id: draftId,
+        startedAt: opts.startedAt || Date.now(),
+        updatedAt: Date.now(),
+        phase: phase,
+        processed: processed,
+        total: chunks.length,
+        questions: questions.slice(),  // shallow copy é suficiente
+        sourceFileName: opts.sourceFileName || null,
+        sourceCharsLen: rawText ? rawText.length : 0,
+        creditsUsed: processed * costPerChunk
+      };
+      save();
+    }catch(e){ console.warn('[import-draft] falhou:', e); }
+  };
   for(let i = 0; i < chunks.length; i++){
     // V15.12.31 — checa cancelamento antes de cada chunk
     if(shouldCancel()){
       onProgress({phase:'cancelled', totalChunks: chunks.length, processedChunks: i, questionsFound: allQuestions.length, creditsUsed: i * costPerChunk});
+      saveDraft('cancelled', allQuestions, i);
       return allQuestions;  // retorna parcial — chamador decide o que fazer
     }
     // V15.12.31 — pára se atingiu limite de créditos definido pelo usuário
     if(maxCredits !== null && (i * costPerChunk) >= maxCredits){
       onProgress({phase:'limit-reached', totalChunks: chunks.length, processedChunks: i, questionsFound: allQuestions.length, creditsUsed: i * costPerChunk, limit: maxCredits});
+      saveDraft('limit-reached', allQuestions, i);
       return allQuestions;
     }
     onProgress({phase:'extracting', totalChunks: chunks.length, processedChunks: i, questionsFound: allQuestions.length, creditsUsed: i * costPerChunk});
@@ -29114,13 +29138,19 @@ Se NÃO encontrar nenhuma questão neste trecho, retorne []`;
       }catch(parseErr){
         console.warn('[extract] chunk '+i+' parse failed:', parseErr.message);
       }
+      // V15.12.75.85 — Persiste após cada chunk
+      saveDraft('extracting', allQuestions, i + 1);
     }catch(err){
       console.warn('[extract] chunk '+i+' failed:', err.message);
       // Continua com próximos chunks (não para tudo se 1 falha)
+      saveDraft('extracting', allQuestions, i + 1);
     }
   }
 
   onProgress({phase:'done', totalChunks: chunks.length, processedChunks: chunks.length, questionsFound: allQuestions.length, creditsUsed: chunks.length * costPerChunk});
+  // V15.12.75.85 — Marca rascunho como completed. Não deleta imediatamente
+  // pra dar chance do user "Reverter" se quiser; commit final limpa o draft.
+  saveDraft('done', allQuestions, chunks.length);
 
   return allQuestions;
 }
@@ -34189,6 +34219,79 @@ function renderPoolSearch(wrap){
   headRow.appendChild(headRight);
   wrap.appendChild(headRow);
 
+  // V15.12.75.85 — Facetas contadoras: agrega os resultados atuais por
+  // disciplina/banca/tipo/dificuldade e mostra como chips clicáveis. Clicar
+  // num chip adiciona o filtro e re-busca. Permite refinar visualmente sem
+  // mexer nos selects acima. Calculado sobre PS.results (página atual) —
+  // não é exato pra todo o pool, mas ajuda a navegar.
+  if(PS.results.length > 0){
+    const facets = {discipline: {}, bank: {}, kind: {}, difficulty: {}};
+    PS.results.forEach(p => {
+      if(p.discipline_id) facets.discipline[p.discipline_id] = (facets.discipline[p.discipline_id]||0) + 1;
+      if(p.bank_id) facets.bank[p.bank_id] = (facets.bank[p.bank_id]||0) + 1;
+      if(p.kind) facets.kind[p.kind] = (facets.kind[p.kind]||0) + 1;
+      if(p.difficulty) facets.difficulty[p.difficulty] = (facets.difficulty[p.difficulty]||0) + 1;
+    });
+    const facetSections = [];
+    const renderFacetGroup = (label, dict, currentValue, filterKey, labelMap) => {
+      const entries = Object.entries(dict).sort((a,b) => b[1] - a[1]).slice(0, 6);
+      if(entries.length === 0) return null;
+      const group = mk('div');
+      group.style.cssText = 'display:flex;align-items:center;gap:6px;flex-wrap:wrap';
+      const lbl = mk('span');
+      lbl.style.cssText = 'font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin-right:2px';
+      lbl.textContent = label;
+      group.appendChild(lbl);
+      entries.forEach(([val, count]) => {
+        const isActive = currentValue === val;
+        const chip = mk('button','btn');
+        chip.style.cssText = `font-size:11.5px;padding:3px 10px;border-radius:999px;border:1px solid ${isActive?'var(--gralia-purple)':'var(--border)'};background:${isActive?'rgba(128,66,250,.08)':'var(--surface)'};color:${isActive?'var(--gralia-purple)':'var(--text2)'};font-weight:${isActive?'600':'500'};cursor:pointer;line-height:1.4`;
+        const displayLabel = labelMap ? (labelMap[val] || val) : val;
+        chip.textContent = displayLabel + ' (' + count + ')';
+        chip.title = isActive ? 'Clique pra remover este filtro' : 'Clique pra filtrar por ' + displayLabel;
+        chip.addEventListener('click', () => {
+          PS.filters[filterKey] = isActive ? '' : val;
+          PS.page = 0;
+          PS.results = [];
+          PS.selectedIds = new Set();
+          PS.loading = true;
+          render();
+          setTimeout(async () => {
+            try{
+              const r = await searchPoolQuestions(PS.filters, 0, PS.pageSize);
+              PS.results = r.items;
+              PS.hasMore = r.hasMore;
+              PS.totalFound = r.total;
+              PS.lastQueriedAt = Date.now();
+            }catch(e){ PS.error = e.message; }
+            PS.loading = false;
+            render();
+          }, 10);
+        });
+        group.appendChild(chip);
+      });
+      return group;
+    };
+    const grpDisc = renderFacetGroup('Disciplinas',  facets.discipline, PS.filters.disciplineSlug, 'disciplineSlug');
+    const grpBank = renderFacetGroup('Bancas',       facets.bank,       PS.filters.bank,           'bank');
+    const grpKind = renderFacetGroup('Tipo',         facets.kind,       PS.filters.kind,           'kind',       {CE:'C/E', MC:'MC'});
+    const grpDiff = renderFacetGroup('Dificuldade',  facets.difficulty, PS.filters.difficulty,     'difficulty', {easy:'Fácil', medium:'Média', hard:'Difícil', very_hard:'Muito difícil'});
+    if(grpDisc) facetSections.push(grpDisc);
+    if(grpBank) facetSections.push(grpBank);
+    if(grpKind) facetSections.push(grpKind);
+    if(grpDiff) facetSections.push(grpDiff);
+    if(facetSections.length > 0){
+      const facetBar = mk('div');
+      facetBar.style.cssText = 'background:rgba(128,66,250,.03);border:1px solid rgba(128,66,250,.10);border-radius:8px;padding:.625rem .75rem;margin-bottom:.625rem;display:flex;flex-direction:column;gap:.4rem';
+      const facetHint = mk('div');
+      facetHint.style.cssText = 'font-size:11px;color:var(--text3);line-height:1.4';
+      facetHint.innerHTML = '<i>Distribuição da página atual — clique nos chips pra filtrar.</i>';
+      facetBar.appendChild(facetHint);
+      facetSections.forEach(s => facetBar.appendChild(s));
+      wrap.appendChild(facetBar);
+    }
+  }
+
   // Lista de questões
   PS.results.forEach((p, idx) => {
     const card = mk('div','card');
@@ -34442,6 +34545,77 @@ function doActionImportToBank(selected){
 }
 
 function renderImportedImport(wrap){
+  // V15.12.75.85 — Banner de rascunho: se houver _importDraft no DATA,
+  // oferece recuperar a importação anterior interrompida.
+  if(DATA._importDraft && DATA._importDraft.questions && DATA._importDraft.questions.length > 0){
+    const draft = DATA._importDraft;
+    const draftAge = Date.now() - (draft.updatedAt || draft.startedAt || 0);
+    // Mostra só se ≤ 7 dias (rascunho mais velho = provavelmente abandonado de vez)
+    if(draftAge < 7 * 24 * 60 * 60 * 1000){
+      const banner = mk('div','card');
+      banner.style.cssText = 'padding:.875rem 1rem;margin-bottom:1rem;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.22);border-left:3px solid var(--amber);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap';
+      const left = mk('div');
+      left.style.cssText = 'flex:1;min-width:240px;font-size:12.5px;line-height:1.55';
+      const ageMin = Math.round(draftAge / 60000);
+      const ageStr = ageMin < 60 ? ageMin+'min atrás'
+                   : ageMin < 1440 ? Math.round(ageMin/60)+'h atrás'
+                   : Math.round(ageMin/1440)+'d atrás';
+      const phaseStr = ({extracting:'em andamento',cancelled:'cancelada',done:'concluída','limit-reached':'limite atingido'})[draft.phase] || draft.phase;
+      const fileStr = draft.sourceFileName ? ` · ${draft.sourceFileName}` : '';
+      left.innerHTML = `<b>⏸ Importação interrompida ${ageStr}${fileStr}</b><br><span style="color:var(--text2);font-size:11.5px">${draft.questions.length} questões já extraídas (${draft.processed}/${draft.total} trechos · ${phaseStr}). Você pode continuar de onde parou.</span>`;
+      const btns = mk('div');
+      btns.style.cssText = 'display:flex;gap:6px;flex-shrink:0';
+      const recoverBtn = mkBtn('Recuperar','btn btn-p btn-sm');
+      recoverBtn.style.fontWeight = '600';
+      recoverBtn.addEventListener('click',()=>{
+        // Carrega rascunho como preview
+        ST.importInput.text = '';
+        ST.importAiExtractedCount = draft.questions.length;
+        ST.importPreview = draft.questions.map(q => ({
+          enunciado: q.enunciado,
+          kind: q.kind || 'CE',
+          alternatives: q.alternatives || [],
+          answer: q.answer || null,
+          meta: [q.banca, q.ano, q.cargo, q.disciplina, q.topico].filter(Boolean).join(' · ') || null,
+          disciplineHint: q.disciplina,
+          topicHint: q.topico,
+          quality: q.quality || null,
+          recoveredByAi: true
+        }));
+        // V15.12.75.85 — Normaliza e atribui quality
+        ST.importPreview.forEach(q => { try{ normalizeQuestionText(q); }catch(_){} if(!q.quality) q.quality = assessQuestionQuality(q); });
+        showToast('✓ '+draft.questions.length+' questões recuperadas. Revise e salve.', 4500);
+        // NÃO deleta o draft ainda — só limpa no commit final ou ao descartar
+        render();
+      });
+      const discardBtn = mkBtn('Descartar','btn btn-sm');
+      discardBtn.addEventListener('click',()=>{
+        showConfirmModal({
+          title: 'Descartar rascunho?',
+          message: 'As '+draft.questions.length+' questões já extraídas serão perdidas. Os créditos gastos não voltam.',
+          confirmText: 'Descartar',
+          dangerous: true,
+          onConfirm: () => {
+            delete DATA._importDraft;
+            save();
+            closeModal();
+            showToast('Rascunho descartado.', 3000);
+            render();
+          }
+        });
+      });
+      btns.appendChild(recoverBtn);
+      btns.appendChild(discardBtn);
+      banner.appendChild(left);
+      banner.appendChild(btns);
+      wrap.appendChild(banner);
+    } else {
+      // Rascunho velho — limpa automático
+      delete DATA._importDraft;
+      save();
+    }
+  }
+
   const card = mk('div','card');
   card.appendChild(sLabel('Importar questões'));
 
@@ -34762,6 +34936,9 @@ function renderImportedImport(wrap){
           const aiQuestions = await extractQuestionsWithAI(textForAi, {
             maxCredits,
             shouldCancel: ()=> !!ST.importCancelRequested,
+            // V15.12.75.85 — Nome do arquivo pra rastrear draft no banner de recuperação
+            sourceFileName: (ST.srcImportState && ST.srcImportState.pdfMeta && ST.srcImportState.pdfMeta.fileName) || null,
+            startedAt: Date.now(),
             onProgress: (p)=>{
               const el = document.getElementById('pdf-import-progress');
               if(!el) return;
@@ -35407,6 +35584,10 @@ function renderImportedImport(wrap){
     }
     showToast(msg);
     ST.importInput.text='';ST.importPreview=[];ST.importAiExtractedCount=0;
+    // V15.12.75.85 — Limpa rascunho após commit bem-sucedido. Banner some.
+    if(DATA._importDraft){
+      delete DATA._importDraft;
+    }
     ST.importedSubview='list';
     render();
   });
