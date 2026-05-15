@@ -2643,9 +2643,12 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
 /* V15.12.75.79 — Neural loader: animação para indicar "IA pensando".
    Usado em geração/avaliação/etc. via dynamicLoading(). 3 nós conectados
    pulsando + 1 pulso viajando entre eles. Identidade do produto sem ser
-   kitsch. SVG inline (sem dependência externa, sem flash). */
+   kitsch. SVG inline (sem dependência externa, sem flash).
+   V15.12.75.81 — Tamanhos aumentados: 18px era apertado demais pra ler o
+   desenho (3 nós + linhas + pulsos colidem visualmente). Agora 28px inline,
+   44px stand-alone. Texto ao lado fica em 14px — proporção fica boa. */
 .neural-loader{
-  display:inline-block;width:28px;height:28px;flex-shrink:0;
+  display:inline-block;width:44px;height:44px;flex-shrink:0;
   vertical-align:middle;line-height:0;
 }
 .neural-loader svg{display:block;width:100%;height:100%;overflow:visible}
@@ -2681,9 +2684,9 @@ label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-wei
   90%{opacity:1}
   100%{opacity:0;transform:translate(14px,8px)}
 }
-/* Versão pequena (inline com texto, ex: "Carregando...") */
-.neural-loader.nl-sm{width:18px;height:18px}
-.neural-loader.nl-sm .nl-node{r:1.5}
+/* Versão inline (com texto "Avaliando...", "Gerando questão..."): um pouco
+   menor que stand-alone mas ainda legível. */
+.neural-loader.nl-sm{width:28px;height:28px}
 .fade{animation:fd .2s ease}
 @keyframes fd{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 .flex{display:flex;gap:10px;align-items:center}
@@ -3694,7 +3697,16 @@ body.settings-compact .settings-page-v2{font-size:13px}
 .conf-btn.sel-c{border-color:var(--accent);background:var(--accent-light);color:var(--accent-text)}
 .conf-btn.sel-t{border-color:var(--amber);background:var(--amber-light);color:var(--amber-text)}
 .conf-btn.sel-g{border-color:var(--red);background:var(--red-light);color:var(--red-text)}
-.conf-icon{font-size:18px;display:block;margin-bottom:4px}
+.conf-icon{font-size:18px;display:block;margin-bottom:4px;line-height:0}
+/* V15.12.75.80 — SVG icons substituindo emojis semáforo. Herda cor via
+   currentColor — em estado base usa text3 (cinza claro), quando o botão é
+   selecionado herda accent-text / amber-text / red-text. */
+.conf-svg{display:inline-block;width:22px;height:16px;fill:currentColor;opacity:.7;transition:opacity .15s}
+.conf-btn:hover .conf-svg{opacity:.9}
+.conf-btn.sel-c .conf-svg,
+.conf-btn.sel-t .conf-svg,
+.conf-btn.sel-g .conf-svg{opacity:1}
+.conf-svg-dim{opacity:.25}
 
 /* V12: Cards de feedback de questão e flashcards com visual mais premium.
    Antes: padding apertado, borda fina, sem hierarquia visual clara.
@@ -6807,7 +6819,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.79';
+window.GRALIA_VERSION = 'V15.12.75.81';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -37747,9 +37759,18 @@ function renderCalibration(){
   if(!ST.calibFb){
     const cl = sLabel('Qual seu nível de certeza agora?');cl.style.marginTop='1.25rem';wrap.appendChild(cl);
     const cg = mk('div','conf-grid');
-    [['certain','🟢','Tenho certeza','sel-c'],['think','🟡','Acho que sei','sel-t'],['guess','🔴','É um chute','sel-g']].forEach(([k,icon,lbl,cls])=>{
+    // V15.12.75.80 — Substitui emojis kitsch (🟢🟡🔴 — pareciam semáforo) por
+    // SVG inline. Três barrinhas que enchem progressivamente, no estilo dos
+    // ícones de sinal/wifi. Cor segue o sel-c/sel-t/sel-g via currentColor →
+    // herda do estado do botão (acento, amber, red) quando selecionado.
+    const CONF_ICONS = {
+      certain: `<svg class="conf-svg" viewBox="0 0 22 16" aria-hidden="true"><rect x="1" y="10" width="4" height="5" rx="1"/><rect x="9" y="6" width="4" height="9" rx="1"/><rect x="17" y="1" width="4" height="14" rx="1"/></svg>`,
+      think:   `<svg class="conf-svg" viewBox="0 0 22 16" aria-hidden="true"><rect x="1" y="10" width="4" height="5" rx="1"/><rect x="9" y="6" width="4" height="9" rx="1"/><rect x="17" y="1" width="4" height="14" rx="1" class="conf-svg-dim"/></svg>`,
+      guess:   `<svg class="conf-svg" viewBox="0 0 22 16" aria-hidden="true"><rect x="1" y="10" width="4" height="5" rx="1"/><rect x="9" y="6" width="4" height="9" rx="1" class="conf-svg-dim"/><rect x="17" y="1" width="4" height="14" rx="1" class="conf-svg-dim"/></svg>`
+    };
+    [['certain','Tenho certeza','sel-c'],['think','Acho que sei','sel-t'],['guess','É um chute','sel-g']].forEach(([k,lbl,cls])=>{
       const b = mkBtn('','conf-btn'+(ST.calibConf===k?' '+cls:''));
-      b.innerHTML=`<span class="conf-icon">${icon}</span>${lbl}`;
+      b.innerHTML=`<span class="conf-icon">${CONF_ICONS[k]}</span>${lbl}`;
       b.addEventListener('click',()=>{ST.calibConf=k;render();});
       cg.appendChild(b);
     });
@@ -47139,11 +47160,15 @@ function showImportConfirmModal(item){
       let toastMsg = '';
       // V15.12.48 — Após importar, navega pra view apropriada pro user achar
       // o material que acabou de baixar. Antes ficava na descoberta sem direção.
+      // V15.12.75.80 — Caderno: vai DIRETO pro caderno recém-importado (subview
+      // 'manage'), não pra lista. Atalho real pra usar imediatamente o material.
       let nextView = null;
+      let nextNotebookId = null;
       if(item.resource_type === 'caderno'){
         const result = await importNotebookToLocal(item.id);
-        toastMsg = `✓ Caderno importado (${result.importedCount} questões) — abrindo seus cadernos`;
+        toastMsg = `✓ Caderno importado (${result.importedCount} questões) — abrindo`;
         nextView = 'notebooks';
+        nextNotebookId = result && result.notebook && result.notebook.id;
       } else if(item.resource_type === 'fonte'){
         const targetDiscId = discSelect ? discSelect.value : null;
         if(!targetDiscId) throw new Error('Selecione uma disciplina destino');
@@ -47170,6 +47195,12 @@ function showImportConfirmModal(item){
       // V15.12.48 — Navega pra view apropriada se houver
       if(nextView){
         ST.view = nextView;
+        // V15.12.75.80 — Caderno importado: já abre o caderno específico
+        if(nextNotebookId){
+          ST.notebookCurrentId = nextNotebookId;
+          ST.notebookSubview = 'manage';
+          ST.notebookSelectedIds = {};
+        }
       }
       render();
     }catch(err){
