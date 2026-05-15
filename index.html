@@ -6762,7 +6762,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.70';
+window.GRALIA_VERSION = 'V15.12.75.71';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -10183,6 +10183,19 @@ function ensureDisciplineForQuestion(q){
   // Antes essa info era ignorada — o sistema caía no mapa de topic e inferia
   // ERRADO (caso reportado: questão de Contabilidade virava Direito Proc Civil).
   let discName = (q.disciplinaName || q.disciplina || q.discipline || '').trim();
+  // V15.12.75.71 — Mesmo problema do hint: às vezes vem "Direito Penal -
+  // Peculato (art. 312)". Normaliza extraindo só a parte principal.
+  if(discName){
+    // Remove parênteses no final
+    discName = discName.replace(/\s*\([^)]*\)\s*$/g, '');
+    // Corta no primeiro separador com espaços ao redor
+    const sepIdx = discName.search(/\s+[\-–—:/|]\s+/);
+    if(sepIdx > 0) discName = discName.slice(0, sepIdx);
+    // Corta no ":" mesmo sem espaços
+    const colonIdx = discName.indexOf(':');
+    if(colonIdx > 0) discName = discName.slice(0, colonIdx);
+    discName = discName.replace(/[,;]+$/g, '').replace(/\s+/g, ' ').trim();
+  }
 
   // V15.12.75.66 — Caso de fallback: nome vazio mas tem topic — tenta inferir
   // do topic. SÓ entra aqui se NENHUM dos campos de nome estava preenchido.
@@ -24881,7 +24894,13 @@ function renderMethods(){
   head.appendChild(titleBlock);
   wrap.appendChild(head);
 
-  if(!hasContent()){
+  // V15.12.75.71 — Antes bloqueava TODA a página de Métodos quando user não
+  // tinha fonte. Bug: user com flashcards (gerados por questão importada,
+  // sem precisar de fonte) não conseguia revisar pelo SRS. Agora, se tem
+  // flashcards no deck, deixa entrar — mostra apenas um aviso sutil de que
+  // alguns métodos exigem fonte.
+  const hasFlashcards = (DATA.srs && DATA.srs.cards && DATA.srs.cards.length > 0);
+  if(!hasContent() && !hasFlashcards){
     const empty = mk('div','card methods-empty');
     empty.innerHTML = `<div class="me-icon">📚</div>
       <h3 style="margin:0 0 .375rem;font-size:16px">Adicione uma fonte primeiro</h3>
@@ -24893,6 +24912,17 @@ function renderMethods(){
       if(btn) btn.addEventListener('click',()=>{ST.view='sources';render();});
     },0);
     return wrap;
+  }
+  // Banner sutil quando entrou só pra flashcards (sem fonte ativa)
+  if(!hasContent() && hasFlashcards){
+    const banner = mk('div','card');
+    banner.style.cssText = 'padding:.75rem 1rem;background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.18);border-left:3px solid var(--gralia-purple);margin-bottom:.875rem;font-size:12.5px;line-height:1.55';
+    banner.innerHTML = '<b>📚 Modo flashcards-only</b><br>Você ainda não tem fontes ativas, mas pode revisar seus flashcards normalmente pelo método 🎴 Flashcards. Pra gerar novos materiais e questões com IA, <a href="#" id="me-go-srcs-hint" style="color:var(--gralia-purple);font-weight:600">adicione uma fonte</a>.';
+    wrap.appendChild(banner);
+    setTimeout(()=>{
+      const a = banner.querySelector('#me-go-srcs-hint');
+      if(a) a.addEventListener('click',(e)=>{e.preventDefault();ST.view='sources';render();});
+    },0);
   }
 
   // Active disciplines indicator (pílula compacta)
@@ -34154,9 +34184,35 @@ function renderImportedImport(wrap){
     // V14: Resolve disciplina por hint da IA (cria se não existir).
     // Antes só usava ST.importInput.disciplineId (manual). Agora se a IA detectou
     // "Direito Constitucional", procura disciplina existente OU cria uma nova.
+    // V15.12.75.71 — IA estava passando hints contaminados com assunto/artigo,
+    // tipo "Direito Penal - Peculato (art. 312)". Resultado: 20 questões de
+    // Direito Penal viravam 10 disciplinas distintas. Normaliza extraindo SÓ
+    // a parte antes do primeiro separador relevante (` - `, ` – `, ` — `, `:`,
+    // ` / `, ` | `). Também limpa parênteses no final ("Direito Civil (parte
+    // especial)" → "Direito Civil") e múltiplos espaços.
+    const normalizeDisciplineHint = raw => {
+      if(!raw) return '';
+      let s = String(raw).trim();
+      // Remove conteúdo entre parênteses no final ("Direito Civil (parte II)")
+      s = s.replace(/\s*\([^)]*\)\s*$/g, '');
+      // Corta no primeiro separador " - ", " – ", " — ", " : ", " / ", " | "
+      // (com espaços pra não quebrar "C/C" ou "EC-A/B" dentro do nome)
+      const sepRegex = /\s+[\-–—:/|]\s+/;
+      const idx = s.search(sepRegex);
+      if(idx > 0) s = s.slice(0, idx);
+      // Também trata "Direito Penal: tema X" sem espaços ao redor de ":"
+      const colonIdx = s.indexOf(':');
+      if(colonIdx > 0) s = s.slice(0, colonIdx);
+      // Limpa múltiplos espaços e pontuação solta
+      s = s.replace(/[,;]+$/g, '').replace(/\s+/g, ' ').trim();
+      return s;
+    };
     const resolveDisciplineFromHint = hint => {
       if(!hint) return null;
-      const hintNorm = hint.toLowerCase().trim();
+      // V15.12.75.71 — Aplica normalização ANTES de comparar/criar
+      const cleanHint = normalizeDisciplineHint(hint);
+      if(!cleanHint || cleanHint.length < 3) return null;
+      const hintNorm = cleanHint.toLowerCase().trim();
       const existing = (DATA.disciplines||[]).find(d =>
         d.name.toLowerCase().trim() === hintNorm ||
         d.name.toLowerCase().includes(hintNorm) ||
@@ -34166,11 +34222,11 @@ function renderImportedImport(wrap){
         if(!existing.active) existing.active = true;
         return existing.id;
       }
-      // Cria nova disciplina automaticamente
+      // Cria nova disciplina automaticamente — usando o nome JÁ NORMALIZADO
       const COLORS = ['#5b9bd5','#10b981','#f59e0b','#ef4444','#8042fa','#ec4899','#0ea5e9','#84cc16'];
       const newDisc = {
         id: 'disc_' + Date.now() + '_' + Math.random().toString(36).slice(2,5),
-        name: hint.trim(),
+        name: cleanHint,
         color: COLORS[(DATA.disciplines||[]).length % COLORS.length],
         active: true,
         createdAt: Date.now(),
@@ -34267,7 +34323,15 @@ function renderImportedImport(wrap){
     let msg = `${addedCount} questão(ões) adicionada(s).`;
     if(skippedCount > 0) msg += ` ${skippedCount} ${skippedCount===1?'duplicada':'duplicadas'} ${skippedCount===1?'foi ignorada':'foram ignoradas'}.`;
     if(autoDisciplinesCreated.size > 0){
-      msg += ` ${autoDisciplinesCreated.size} disciplina(s) criada(s) automaticamente: ${[...autoDisciplinesCreated].join(', ')}.`;
+      // V15.12.75.71 — Abrevia quando há muitas disciplinas (antes virava
+      // mensagem gigante de 5 linhas no rodapé com 10+ disciplinas).
+      const discList = [...autoDisciplinesCreated];
+      const N = discList.length;
+      if(N <= 3){
+        msg += ` ${N} disciplina${N>1?'s':''} criada${N>1?'s':''}: ${discList.join(', ')}.`;
+      } else {
+        msg += ` ${N} disciplinas criadas (${discList.slice(0,3).join(', ')} e +${N-3}).`;
+      }
     }
     showToast(msg);
     ST.importInput.text='';ST.importPreview=[];ST.importAiExtractedCount=0;
@@ -39268,19 +39332,29 @@ function srsRate(card,rating){
   card.nextReview=Date.now()+card.interval*24*60*60*1000;
   card.lastReview=Date.now();
 }
-function srsFiltered(type){
-  const actIds = new Set(activeDisciplines().map(d=>d.id));
-  return DATA.srs.cards.filter(c=>{
-    if(c.disciplineId&&!actIds.has(c.disciplineId))return false;
+// V15.12.75.71 — Antes filtravam por activeDisciplines() exigindo disciplina
+// ativa. Resultado: flashcard de disciplina inativa (auto-criada por questão
+// importada sem fonte) sumia da aba "Todos" e da revisão. Comportamento novo:
+// inclui TODOS os cards do deck. Os filtros por disciplina (chips no Study)
+// ainda funcionam pra restringir, mas o default é mostrar tudo.
+// Comportamento antigo preservado via parâmetro opcional `onlyActive`.
+function srsFiltered(type, onlyActive){
+  let cards = DATA.srs.cards;
+  if(onlyActive){
+    const actIds = new Set(activeDisciplines().map(d=>d.id));
+    cards = cards.filter(c => !c.disciplineId || actIds.has(c.disciplineId));
+  }
+  return cards.filter(c=>{
     if(type&&type!=='all'&&c.type!==type)return false;
     return true;
   });
 }
 function srsActiveDue(discFilter){
-  const actIds = new Set(activeDisciplines().map(d=>d.id));
+  // Para revisão: sempre mostra TODOS os cards devidos, independente da
+  // disciplina ter fonte ou estar ativa. Filtro `discFilter` ainda permite
+  // restringir a 1 disciplina específica.
   return DATA.srs.cards.filter(c=>{
     if((c.nextReview||0)>Date.now())return false;
-    if(c.disciplineId&&!actIds.has(c.disciplineId))return false;
     if(discFilter&&discFilter!=='all'&&c.disciplineId!==discFilter)return false;
     return true;
   });
@@ -39842,9 +39916,13 @@ function buildMethodFocusBar(view){
 }
 
 function renderSRSStudy(wrap,due,total){
-  // Discipline filter chips — appears if there are 2+ active disciplines with cards
-  const actDiscs = activeDisciplines();
-  const discsWithCards = actDiscs.filter(d=>DATA.srs.cards.some(c=>c.disciplineId===d.id));
+  // V15.12.75.71 — Antes só listava disciplinas ativas. Agora lista TODAS
+  // as disciplinas que têm flashcards no deck (inclusive inativas e sem
+  // fonte). User pode revisar flashcards de qualquer disciplina pelo SRS,
+  // independente de cadastrar fonte ou ativar.
+  const discsWithCards = (DATA.disciplines||[]).filter(d =>
+    DATA.srs.cards.some(c => c.disciplineId === d.id)
+  );
   if(discsWithCards.length>=2){
     const filterRow = mk('div','disc-filter');
     filterRow.style.marginBottom='.875rem';
@@ -40268,7 +40346,7 @@ function renderSRSGenerate(wrap){
 
 function renderSRSManage(wrap,allCards){
   if(allCards.length===0){
-    wrap.appendChild(infoBox('Sem cards nas disciplinas ativas.'));return wrap;
+    wrap.appendChild(infoBox('Você ainda não tem flashcards. Gere com IA ou crie manualmente.'));return wrap;
   }
 
   // V14: Campo de busca — útil quando deck é grande (50+ cards)
