@@ -6819,7 +6819,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.81';
+window.GRALIA_VERSION = 'V15.12.75.82';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -37694,12 +37694,24 @@ function renderCalibration(){
 
   const c = s.calibration;
   if(c.certain.t>0||c.think.t>0||c.guess.t>0){
+    // V15.12.75.82 — Substitui emojis semáforo (🟢🟡🔴) por SVG de barrinhas,
+    // mesmo estilo dos botões de "nível de certeza" da V80. Visual coerente
+    // entre stats e seletor.
     const sr = mk('div','flex');sr.style.gap='8px';sr.style.marginBottom='.875rem';
-    [['🟢 Sei',c.certain,'var(--accent)'],['🟡 Acho',c.think,'var(--amber)'],['🔴 Chutei',c.guess,'var(--red)']].forEach(([lbl,v,color])=>{
+    const STAT_ICONS = {
+      certain: `<svg class="conf-svg" viewBox="0 0 22 16" aria-hidden="true" style="width:18px;height:13px"><rect x="1" y="10" width="4" height="5" rx="1"/><rect x="9" y="6" width="4" height="9" rx="1"/><rect x="17" y="1" width="4" height="14" rx="1"/></svg>`,
+      think:   `<svg class="conf-svg" viewBox="0 0 22 16" aria-hidden="true" style="width:18px;height:13px"><rect x="1" y="10" width="4" height="5" rx="1"/><rect x="9" y="6" width="4" height="9" rx="1"/><rect x="17" y="1" width="4" height="14" rx="1" class="conf-svg-dim"/></svg>`,
+      guess:   `<svg class="conf-svg" viewBox="0 0 22 16" aria-hidden="true" style="width:18px;height:13px"><rect x="1" y="10" width="4" height="5" rx="1"/><rect x="9" y="6" width="4" height="9" rx="1" class="conf-svg-dim"/><rect x="17" y="1" width="4" height="14" rx="1" class="conf-svg-dim"/></svg>`
+    };
+    [['certain','Sei',c.certain,'var(--accent)','var(--accent-text)'],
+     ['think','Acho',c.think,'var(--amber)','var(--amber-text)'],
+     ['guess','Chutei',c.guess,'var(--red)','var(--red-text)']].forEach(([k,lbl,v,color,textColor])=>{
       const val = v.t>0?Math.round(v.c/v.t*100)+'%':'—';
       const sc = mk('div','scard');sc.style.flex='1';
       const sv = mk('div','scard-v');sv.style.cssText=`font-size:17px;color:${color}`;sv.textContent=val;
-      const sl = mk('div','scard-l');sl.textContent=lbl;
+      const sl = mk('div','scard-l');
+      sl.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:5px;color:'+textColor;
+      sl.innerHTML = STAT_ICONS[k] + '<span>' + lbl + '</span>';
       sc.appendChild(sv);sc.appendChild(sl);sr.appendChild(sc);
     });
     wrap.appendChild(sr);
@@ -37842,11 +37854,55 @@ async function calibSubmit(answer){
     if(!ok){const tt=res.trap_type??0;DATA.session.dna[tt]=(DATA.session.dna[tt]||0)+1;}
     recordQuestionForGoal(inferDiscipline((ST.calibQ&&ST.calibQ.topic)||''), ok);
     save();
+    // V15.12.75.82 — Salva explicação e flashcard como shared (mesma lógica
+    // da Prática IA V75). Permite que outros users vejam a explicação via
+    // cache hit + populate biblioteca de explicações.
+    try{
+      const enunciadoForShared = ST.calibQ.question || ST.calibQ.enunciado || '';
+      if(enunciadoForShared && supa && res.explanation && typeof saveSharedExplanation === 'function'){
+        const modelTag = getMethodModel('calibration').includes('sonnet') ? 'sonnet' : 'haiku';
+        saveSharedExplanation(enunciadoForShared, 'explicacao', modelTag, {
+          explanation: res.explanation,
+          trap: res.trap || '',
+          keyword: res.keyword || ''
+        }).then(saved => {
+          if(saved) console.info('[shared-expl] calibração: explicação salva');
+        }).catch(e => console.warn('[shared-expl] calib save falhou:', e.message));
+      }
+      if(enunciadoForShared && supa && res.suggested_flashcard
+         && res.suggested_flashcard.front && res.suggested_flashcard.back
+         && typeof saveSharedExplanation === 'function'){
+        const modelTag = getMethodModel('calibration').includes('sonnet') ? 'sonnet' : 'haiku';
+        saveSharedExplanation(enunciadoForShared, 'flashcard', modelTag, {
+          front: res.suggested_flashcard.front,
+          back: res.suggested_flashcard.back
+        }).then(saved => {
+          if(saved) console.info('[shared-expl] calibração: flashcard salvo (ok='+ok+')');
+        }).catch(e => console.warn('[shared-expl] calib flashcard falhou:', e.message));
+      }
+    }catch(_){}
     let errCtx=null;
     if(!ok){
       errCtx=logError({question:ST.calibQ.question,correct_answer:ST.calibQ.correct_answer,explanation:res.explanation,trap:res.trap,keyword:res.keyword,trap_type:res.trap_type,topic:ST.calibQ.topic,method:'calibration'});
     }
-    ST.calibFb={ok,explanation:res.explanation,trap:res.trap,keyword:res.keyword,confKey:ck,next:res.next,errCtx};
+    // V15.12.75.82 — practFb agora carrega wrong_alternatives + suggestedFlashcard
+    // + userChose + q (mesmo schema da prática IA). feedbackCard usa pra mostrar
+    // "Por que as outras estão erradas" em MC + flashcard sugerido sem custo.
+    ST.calibFb={
+      ok,
+      explanation:res.explanation,
+      trap:res.trap,
+      keyword:res.keyword,
+      confKey:ck,
+      next:res.next,
+      errCtx,
+      wrong_alternatives: normalizeWrongAlts(res.wrong_alternatives),
+      userChose: answer,
+      q: ST.calibQ,
+      suggestedFlashcard: (res.suggested_flashcard && res.suggested_flashcard.front && res.suggested_flashcard.back)
+        ? res.suggested_flashcard
+        : null
+    };
     // V13: Persiste no histórico recente (24h) — atalho B usa isso pra voltar
     addToRecentPractice({
       q: ST.calibQ,
@@ -38176,11 +38232,51 @@ async function drillSubmit(answer){
     if(!ok){const tt=res.trap_type??ST.drillTarget;DATA.session.dna[tt]=(DATA.session.dna[tt]||0)+1;}
     recordQuestionForGoal(inferDiscipline((ST.drillQ&&ST.drillQ.topic)||''), ok);
     save();
+    // V15.12.75.82 — Salva shared (igual prática IA V75)
+    try{
+      const enunciadoForShared = ST.drillQ.question || ST.drillQ.enunciado || '';
+      if(enunciadoForShared && supa && res.explanation && typeof saveSharedExplanation === 'function'){
+        const modelTag = getMethodModel('drill').includes('sonnet') ? 'sonnet' : 'haiku';
+        saveSharedExplanation(enunciadoForShared, 'explicacao', modelTag, {
+          explanation: res.explanation,
+          trap: res.trap || '',
+          keyword: res.keyword || ''
+        }).then(saved => {
+          if(saved) console.info('[shared-expl] drill: explicação salva');
+        }).catch(e => console.warn('[shared-expl] drill save falhou:', e.message));
+      }
+      if(enunciadoForShared && supa && res.suggested_flashcard
+         && res.suggested_flashcard.front && res.suggested_flashcard.back
+         && typeof saveSharedExplanation === 'function'){
+        const modelTag = getMethodModel('drill').includes('sonnet') ? 'sonnet' : 'haiku';
+        saveSharedExplanation(enunciadoForShared, 'flashcard', modelTag, {
+          front: res.suggested_flashcard.front,
+          back: res.suggested_flashcard.back
+        }).then(saved => {
+          if(saved) console.info('[shared-expl] drill: flashcard salvo (ok='+ok+')');
+        }).catch(e => console.warn('[shared-expl] drill flashcard falhou:', e.message));
+      }
+    }catch(_){}
     let errCtx=null;
     if(!ok){
       errCtx=logError({question:ST.drillQ.question,correct_answer:ST.drillQ.correct_answer,explanation:res.explanation,trap:res.trap,keyword:res.keyword,trap_type:res.trap_type??ST.drillTarget,topic:ST.drillQ.topic,method:'drill'});
     }
-    ST.drillFb={ok,explanation:res.explanation,trap:res.trap,keyword:res.keyword,next:res.next,errCtx};
+    // V15.12.75.82 — drillFb agora carrega wrong_alternatives + suggestedFlashcard
+    // + userChose + q (mesmo schema da prática IA)
+    ST.drillFb={
+      ok,
+      explanation:res.explanation,
+      trap:res.trap,
+      keyword:res.keyword,
+      next:res.next,
+      errCtx,
+      wrong_alternatives: normalizeWrongAlts(res.wrong_alternatives),
+      userChose: answer,
+      q: ST.drillQ,
+      suggestedFlashcard: (res.suggested_flashcard && res.suggested_flashcard.front && res.suggested_flashcard.back)
+        ? res.suggested_flashcard
+        : null
+    };
     // V13: Persiste no histórico recente (24h) — atalho B
     addToRecentPractice({
       q: ST.drillQ,
@@ -40003,11 +40099,51 @@ async function interSubmit(answer){
     if(!ok){const tt=res.trap_type??0;DATA.session.dna[tt]=(DATA.session.dna[tt]||0)+1;}
     recordQuestionForGoal(inferDiscipline((ST.interQ&&ST.interQ.topic)||''), ok);
     save();
+    // V15.12.75.82 — Salva shared (igual prática IA V75)
+    try{
+      const enunciadoForShared = ST.interQ.question || ST.interQ.enunciado || '';
+      if(enunciadoForShared && supa && res.explanation && typeof saveSharedExplanation === 'function'){
+        const modelTag = getMethodModel('interleaving').includes('sonnet') ? 'sonnet' : 'haiku';
+        saveSharedExplanation(enunciadoForShared, 'explicacao', modelTag, {
+          explanation: res.explanation,
+          trap: res.trap || '',
+          keyword: res.keyword || ''
+        }).then(saved => {
+          if(saved) console.info('[shared-expl] interleaving: explicação salva');
+        }).catch(e => console.warn('[shared-expl] inter save falhou:', e.message));
+      }
+      if(enunciadoForShared && supa && res.suggested_flashcard
+         && res.suggested_flashcard.front && res.suggested_flashcard.back
+         && typeof saveSharedExplanation === 'function'){
+        const modelTag = getMethodModel('interleaving').includes('sonnet') ? 'sonnet' : 'haiku';
+        saveSharedExplanation(enunciadoForShared, 'flashcard', modelTag, {
+          front: res.suggested_flashcard.front,
+          back: res.suggested_flashcard.back
+        }).then(saved => {
+          if(saved) console.info('[shared-expl] interleaving: flashcard salvo (ok='+ok+')');
+        }).catch(e => console.warn('[shared-expl] inter flashcard falhou:', e.message));
+      }
+    }catch(_){}
     let errCtx=null;
     if(!ok){
       errCtx=logError({question:ST.interQ.question,correct_answer:ST.interQ.correct_answer,explanation:res.explanation,trap:res.trap,keyword:res.keyword,trap_type:res.trap_type,topic:ST.interQ.topic,method:'interleaving'});
     }
-    ST.interFb={ok,explanation:res.explanation,trap:res.trap,keyword:res.keyword,next:res.next,errCtx};
+    // V15.12.75.82 — interFb agora carrega wrong_alternatives + suggestedFlashcard
+    // + userChose + q (mesmo schema da prática IA)
+    ST.interFb={
+      ok,
+      explanation:res.explanation,
+      trap:res.trap,
+      keyword:res.keyword,
+      next:res.next,
+      errCtx,
+      wrong_alternatives: normalizeWrongAlts(res.wrong_alternatives),
+      userChose: answer,
+      q: ST.interQ,
+      suggestedFlashcard: (res.suggested_flashcard && res.suggested_flashcard.front && res.suggested_flashcard.back)
+        ? res.suggested_flashcard
+        : null
+    };
     // V12: persiste a próxima como pré-carregada
     // V15.12.21: marcado com metadados pra distinguir de legados.
     if(res.next && res.next.question){
