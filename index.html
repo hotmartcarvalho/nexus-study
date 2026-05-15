@@ -5392,14 +5392,276 @@ body.pomo-float-visible .faq-floating-btn{display:none !important}
 .score-badge{padding:6px 10px;background:var(--surface2);border-radius:var(--rs);font-size:11.5px;color:var(--text2);line-height:1.5}
 
 /* Bank filters */
-.bank-filters{margin-bottom:1rem;padding:.75rem;background:var(--surface2);border-radius:var(--rs)}
-.filter-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.filter-row-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);min-width:80px;flex-shrink:0}
-.filter-chip{padding:4px 9px;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:11.5px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .12s}
-.filter-chip:hover{background:var(--surface2)}
-.filter-chip.on{background:var(--accent);color:#fff;border-color:var(--accent)}
-.filter-chip .count{font-size:10px;opacity:.75;margin-left:2px}
-.filter-chip.on .count{opacity:.85}
+/* V15.12.75.88 — Filtros premium: identidade roxa coerente com o Gralia,
+   tipografia refinada (contadores em tabular-nums), espaçamento generoso,
+   hover state suave, agrupamento visual sutil. Antes era "funcional, sem
+   personalidade"; agora tem peso de produto. */
+.bank-filters{
+  margin-bottom:1rem;
+  padding:.875rem 1rem;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  position:relative;
+}
+.bank-filters::before{
+  content:'';
+  position:absolute;
+  left:0;top:12px;bottom:12px;
+  width:2px;
+  background:linear-gradient(180deg, var(--gralia-purple) 0%, rgba(128,66,250,.3) 100%);
+  border-radius:0 2px 2px 0;
+  opacity:.55;
+}
+.filter-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+  padding:4px 0;
+}
+.filter-row + .filter-row{
+  border-top:1px dashed rgba(128,66,250,.10);
+  padding-top:.5rem;
+  margin-top:2px;
+}
+.filter-row-lbl{
+  font-size:10.5px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.6px;
+  color:var(--text3);
+  min-width:88px;
+  flex-shrink:0;
+  font-feature-settings:"ss01";
+}
+.filter-chip{
+  padding:4px 11px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:var(--surface);
+  color:var(--text2);
+  font-size:11.5px;
+  font-weight:500;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  transition:all .15s ease;
+  line-height:1.45;
+  white-space:nowrap;
+}
+.filter-chip:hover{
+  background:rgba(128,66,250,.04);
+  border-color:rgba(128,66,250,.30);
+  color:var(--text);
+}
+.filter-chip.on{
+  background:rgba(128,66,250,.10);
+  color:var(--gralia-purple);
+  border-color:rgba(128,66,250,.45);
+  font-weight:600;
+  box-shadow:inset 0 0 0 .5px rgba(128,66,250,.35);
+}
+.filter-chip .count{
+  font-size:10.5px;
+  opacity:.65;
+  margin-left:1px;
+  font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum";
+  padding-left:5px;
+  border-left:1px solid currentColor;
+  border-left-color:rgba(0,0,0,.08);
+}
+.filter-chip.on .count{
+  opacity:.85;
+  border-left-color:rgba(128,66,250,.25);
+}
+
+/* Header de filtros (toggle + chips ativos + limpar) */
+.bank-filters-header{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:.625rem;
+  flex-wrap:wrap;
+  padding-left:6px;
+}
+.bank-filters-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 11px;
+  background:rgba(128,66,250,.06);
+  border:1px solid rgba(128,66,250,.22);
+  border-radius:8px;
+  font-size:12px;
+  font-weight:600;
+  color:var(--gralia-purple);
+  cursor:pointer;
+  transition:all .15s ease;
+  font-family:inherit;
+}
+.bank-filters-toggle:hover{
+  background:rgba(128,66,250,.10);
+  border-color:rgba(128,66,250,.35);
+}
+.bank-filters-toggle .badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:18px;
+  height:18px;
+  background:var(--gralia-purple);
+  color:#fff;
+  border-radius:9px;
+  font-size:10.5px;
+  font-weight:700;
+  padding:0 5px;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Chip de filtro ativo (no header, com X) */
+.active-filter-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:3px 4px 3px 10px;
+  background:rgba(128,66,250,.08);
+  color:var(--gralia-purple);
+  border:1px solid rgba(128,66,250,.28);
+  border-radius:999px;
+  font-size:11px;
+  font-weight:600;
+  line-height:1.4;
+  transition:all .15s ease;
+}
+.active-filter-chip:hover{
+  background:rgba(128,66,250,.12);
+  border-color:rgba(128,66,250,.42);
+}
+.active-filter-chip .close{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:16px;height:16px;
+  border-radius:50%;
+  background:rgba(128,66,250,.18);
+  color:var(--gralia-purple);
+  cursor:pointer;
+  font-size:11px;
+  line-height:1;
+  border:none;
+  padding:0;
+  transition:all .12s ease;
+  font-family:inherit;
+}
+.active-filter-chip .close:hover{
+  background:var(--gralia-purple);
+  color:#fff;
+}
+
+/* Pool search — cartão de filtros */
+.pool-search-filters{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:1rem 1.125rem;
+  margin-bottom:1rem;
+  position:relative;
+}
+.pool-search-filters::before{
+  content:'';
+  position:absolute;
+  left:0;top:14px;bottom:14px;
+  width:2px;
+  background:linear-gradient(180deg, var(--gralia-purple) 0%, rgba(128,66,250,.3) 100%);
+  border-radius:0 2px 2px 0;
+  opacity:.55;
+}
+.pool-search-section-label{
+  font-size:10.5px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.6px;
+  color:var(--text3);
+  margin-bottom:.625rem;
+  padding-left:8px;
+}
+.pool-search-field-label{
+  display:block;
+  font-size:10.5px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+  color:var(--text3);
+  margin-bottom:5px;
+}
+.pool-search-input{
+  width:100%;
+  padding:.5rem .65rem;
+  font-size:13px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--surface);
+  color:var(--text);
+  font-family:inherit;
+  transition:all .15s ease;
+}
+.pool-search-input:hover{
+  border-color:rgba(128,66,250,.30);
+}
+.pool-search-input:focus{
+  outline:none;
+  border-color:var(--gralia-purple);
+  box-shadow:0 0 0 3px rgba(128,66,250,.10);
+}
+.pool-search-results-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:.75rem;
+  padding:.75rem .875rem;
+  background:rgba(128,66,250,.03);
+  border:1px solid rgba(128,66,250,.12);
+  border-radius:10px;
+  font-size:13px;
+}
+.pool-question-card{
+  padding:.875rem 1rem;
+  margin-bottom:.5rem;
+  border:1px solid var(--border);
+  background:var(--surface);
+  border-radius:10px;
+  transition:all .15s ease;
+}
+.pool-question-card:hover{
+  border-color:rgba(128,66,250,.30);
+  background:rgba(128,66,250,.02);
+}
+.pool-meta-chip{
+  font-size:10.5px;
+  padding:2px 9px;
+  border-radius:999px;
+  font-weight:600;
+  background:var(--surface2);
+  color:var(--text2);
+  border:1px solid var(--border);
+  line-height:1.5;
+  white-space:nowrap;
+}
+.pool-meta-chip.accent{
+  background:rgba(16,185,129,.10);
+  color:var(--accent-text);
+  border-color:rgba(16,185,129,.22);
+}
+.pool-meta-chip.amber{
+  background:rgba(245,158,11,.10);
+  color:var(--amber-text);
+  border-color:rgba(245,158,11,.22);
+}
 
 /* Notebook (caderno) cards */
 .notebook-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:.875rem 1rem;border-left:4px solid var(--purple,#6C5CE7)}
@@ -6819,7 +7081,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.86';
+window.GRALIA_VERSION = 'V15.12.75.89';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -27482,27 +27744,25 @@ function renderBankFilters(stateKey,bank){
     wrap.appendChild(discQuickRow);
   }
 
-  // Header da seção de filtros: botão de toggle + chips ativos + limpar
-  const filtersHead = mk('div');
-  filtersHead.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:.625rem;flex-wrap:wrap';
+  // V15.12.75.88 — Header dos filtros premium: classes dedicadas pro toggle
+  // (ícone + badge contador) e pros chips ativos (X mais elegante).
+  const filtersHead = mk('div','bank-filters-header');
 
-  const toggleBtn = mkBtn(
-    (ST.bankFiltersCollapsed ? '▶ Filtros' : '▼ Filtros') + (activeFilters.length>0 ? ` (${activeFilters.length})` : ''),
-    'btn btn-sm'
-  );
-  toggleBtn.style.cssText = 'font-size:12px;font-weight:600';
+  const toggleBtn = mk('button','bank-filters-toggle');
+  toggleBtn.type = 'button';
+  const arrowIcon = ST.bankFiltersCollapsed ? '▶' : '▼';
+  toggleBtn.innerHTML = `<span style="font-size:10px;color:var(--gralia-purple);opacity:.8">${arrowIcon}</span><span>Filtros</span>` + (activeFilters.length>0 ? `<span class="badge">${activeFilters.length}</span>` : '');
   toggleBtn.title = ST.bankFiltersCollapsed ? 'Expandir filtros' : 'Recolher filtros';
   toggleBtn.addEventListener('click', ()=>{ ST.bankFiltersCollapsed = !ST.bankFiltersCollapsed; render(); });
   filtersHead.appendChild(toggleBtn);
 
   // Chips dos filtros ativos (sempre visíveis, mesmo recolhido)
   activeFilters.forEach(af => {
-    const chip = mk('span');
-    chip.style.cssText = 'display:inline-flex;align-items:center;gap:5px;padding:3px 8px 3px 10px;background:rgba(124,92,255,.10);color:var(--gralia-purple);border:1px solid rgba(124,92,255,.30);border-radius:14px;font-size:11px;font-weight:600;line-height:1.4';
+    const chip = mk('span','active-filter-chip');
     const lbl = mk('span');lbl.textContent = af.label;
     chip.appendChild(lbl);
-    const x = mk('button');
-    x.style.cssText = 'background:none;border:none;color:var(--gralia-purple);cursor:pointer;padding:0 0 0 2px;font-size:13px;line-height:1';
+    const x = mk('button','close');
+    x.type = 'button';
     x.textContent = '×';
     x.title = 'Remover este filtro';
     x.addEventListener('click', ()=>{ af.reset(); render(); });
@@ -27512,9 +27772,13 @@ function renderBankFilters(stateKey,bank){
 
   // Botão "limpar tudo" só aparece se tem filtro ativo
   if(activeFilters.length > 0){
-    const clearAll = mkBtn('Limpar filtros','btn btn-sm');
-    clearAll.style.cssText = 'font-size:11px;color:var(--text3);margin-left:auto';
+    const clearAll = mk('button');
+    clearAll.type = 'button';
+    clearAll.style.cssText = 'font-size:11px;color:var(--text3);margin-left:auto;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:6px;font-family:inherit;font-weight:500;transition:all .15s ease';
+    clearAll.textContent = 'Limpar tudo';
     clearAll.title = 'Remover todos os filtros';
+    clearAll.addEventListener('mouseenter',()=>{clearAll.style.background='rgba(232,76,76,.06)';clearAll.style.color='var(--red-text)';});
+    clearAll.addEventListener('mouseleave',()=>{clearAll.style.background='transparent';clearAll.style.color='var(--text3)';});
     clearAll.addEventListener('click', ()=>{
       activeFilters.forEach(af => af.reset());
       render();
@@ -27530,16 +27794,20 @@ function renderBankFilters(stateKey,bank){
   }
 
   // Search box — debounced + focus preservation
-  const searchRow = mk('div');searchRow.style.marginBottom='.5rem';
-  const searchInp = mk('input');searchInp.type='text';
-  searchInp.id='bank-search-'+stateKey;  // stable id to re-find after render
-  searchInp.placeholder='🔎 Buscar no enunciado...';
+  const searchRow = mk('div');searchRow.style.cssText = 'margin-bottom:.625rem;position:relative';
+  const searchIcon = mk('span');
+  searchIcon.style.cssText = 'position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);pointer-events:none';
+  searchIcon.textContent = '🔎';
+  searchRow.appendChild(searchIcon);
+  const searchInp = mk('input','pool-search-input');searchInp.type='text';
+  searchInp.id='bank-search-'+stateKey;
+  searchInp.placeholder='Buscar no enunciado...';
   searchInp.value=f.search||'';
   searchInp.autocomplete='off';
+  searchInp.style.paddingLeft = '34px';
   searchInp.addEventListener('input',e=>{
     f.search=e.target.value;
     if(ST._bankSearchTimer)clearTimeout(ST._bankSearchTimer);
-    // Remember cursor + focus to restore after re-render
     ST._bankSearchFocus = {id:searchInp.id, selStart:e.target.selectionStart};
     ST._bankSearchTimer = setTimeout(()=>render(),500);
   });
@@ -31447,6 +31715,16 @@ function showSourceReaderModal(src){
   const charCount = (src.content||'').length;
   const sizeText = charCount > 1000 ? Math.round(charCount/1000).toLocaleString('pt-BR') + 'k chars' : charCount + ' chars';
   stats.innerHTML += `<span>📏 ${sizeText}</span>`;
+  // V15.12.75.89 — Estimativa de tempo de leitura.
+  // Base: ~200 palavras/min (leitura técnica de concurso é mais lenta que
+  // ficção). 1 palavra ≈ 5.5 chars em português (incluindo espaço/pontuação).
+  // chars / 5.5 = palavras; palavras / 200 = minutos.
+  const wordsEstimate = Math.round(charCount / 5.5);
+  const minutesEstimate = Math.max(1, Math.round(wordsEstimate / 200));
+  const timeText = minutesEstimate < 60
+    ? `~${minutesEstimate} min`
+    : `~${Math.floor(minutesEstimate/60)}h${minutesEstimate%60 ? ' '+(minutesEstimate%60)+'min' : ''}`;
+  stats.innerHTML += `<span title="Estimativa baseada em ~200 palavras/min (leitura técnica)">⏱ ${timeText} leitura</span>`;
   if(cleanedToc.length > 0){
     stats.innerHTML += `<span>📑 ${cleanedToc.length} ${cleanedToc.length===1?'seção':'seções'}</span>`;
   }
@@ -31481,6 +31759,31 @@ function showSourceReaderModal(src){
   header.appendChild(headBtns);
 
   m.appendChild(header);
+
+  // V15.12.75.89 — Barra de progresso de leitura. Fica entre header e body,
+  // não scrolla. Atualiza conforme o user rola o conteúdo.
+  // - Linha fina roxa que cresce conforme o scroll
+  // - Etiqueta "37% lido · ~6 min restantes" no canto direito
+  // - Se há TOC, mini-marcadores ao longo da barra indicam seções (clicáveis)
+  // - Cor: gradient roxo coerente com identidade Gralia
+  const progressBar = mk('div');
+  progressBar.style.cssText = 'position:relative;height:32px;background:rgba(128,66,250,.025);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;padding:0 1rem';
+  const progressTrack = mk('div');
+  progressTrack.style.cssText = 'position:absolute;left:0;right:0;top:0;height:3px;background:rgba(128,66,250,.08)';
+  progressBar.appendChild(progressTrack);
+  const progressFill = mk('div');
+  progressFill.style.cssText = 'position:absolute;left:0;top:0;height:3px;width:0%;background:linear-gradient(90deg, var(--gralia-purple) 0%, rgba(128,66,250,.7) 100%);transition:width .12s ease-out;box-shadow:0 0 8px rgba(128,66,250,.4)';
+  progressBar.appendChild(progressFill);
+  // Marcadores de seção (interativos)
+  const sectionMarkers = mk('div');
+  sectionMarkers.style.cssText = 'position:absolute;left:0;right:0;top:0;height:3px;pointer-events:none';
+  progressBar.appendChild(sectionMarkers);
+  // Etiqueta de progresso
+  const progressLabel = mk('div');
+  progressLabel.style.cssText = 'margin-left:auto;font-size:11px;color:var(--text3);font-weight:500;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px';
+  progressLabel.innerHTML = '<span class="pct">0%</span><span style="opacity:.5">·</span><span class="rem">~'+timeText.replace('~','')+' restantes</span>';
+  progressBar.appendChild(progressLabel);
+  m.appendChild(progressBar);
 
   // Body: layout 2 colunas se tem TOC, 1 coluna se não
   const body = mk('div');
@@ -31628,6 +31931,82 @@ function showSourceReaderModal(src){
 
   body.appendChild(content);
   m.appendChild(body);
+
+  // V15.12.75.89 — Wire up da barra de progresso + marcadores.
+  // - Scroll do content atualiza fill % e label "X% lido · Ymin restantes"
+  // - Marcadores de seções clicáveis (se TOC). Tooltip mostra título.
+  // - rAF usado pra throttling natural (1 update por frame max).
+  let rafPending = false;
+  function updateProgress(){
+    if(rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => {
+      rafPending = false;
+      const scrollable = content.scrollHeight - content.clientHeight;
+      const pct = scrollable > 0 ? Math.min(100, Math.max(0, (content.scrollTop / scrollable) * 100)) : 0;
+      progressFill.style.width = pct.toFixed(2) + '%';
+      const pctEl = progressLabel.querySelector('.pct');
+      if(pctEl) pctEl.textContent = Math.round(pct) + '%';
+      const remEl = progressLabel.querySelector('.rem');
+      if(remEl){
+        // Tempo restante = (1 - pct) * tempo total
+        const remaining = Math.max(0, Math.round(minutesEstimate * (1 - pct/100)));
+        if(remaining === 0){
+          remEl.textContent = '✓ leitura completa';
+          remEl.style.color = 'var(--accent-text)';
+          remEl.style.fontWeight = '600';
+        } else {
+          remEl.textContent = '~' + (remaining < 60 ? remaining + ' min' : Math.floor(remaining/60)+'h'+(remaining%60?' '+(remaining%60)+'min':'')) + ' restantes';
+          remEl.style.color = 'var(--text3)';
+          remEl.style.fontWeight = '500';
+        }
+      }
+    });
+  }
+  content.addEventListener('scroll', updateProgress, {passive: true});
+  // Update inicial (caso conteúdo seja pequeno)
+  setTimeout(updateProgress, 100);
+
+  // V15.12.75.89 — Marcadores de seção na barra de progresso.
+  // Calcula posição relativa de cada seção no scrollHeight total e cria
+  // marcadores clicáveis (tooltip com título).
+  if(cleanedToc.length >= 2){
+    setTimeout(() => {
+      try{
+        const scrollable = content.scrollHeight;
+        if(scrollable <= 0) return;
+        cleanedToc.forEach((sec, idx) => {
+          const target = content.querySelector(`[data-sec-id="${sec.id}"]`);
+          if(!target) return;
+          const relTop = target.offsetTop / scrollable;
+          if(relTop >= 0 && relTop <= 1){
+            const marker = mk('div');
+            marker.style.cssText = `position:absolute;left:${(relTop*100).toFixed(2)}%;top:-2px;width:2px;height:7px;background:rgba(128,66,250,.55);border-radius:1px;cursor:pointer;pointer-events:auto;transition:all .15s ease`;
+            marker.title = `${idx+1}. ${sec.title}`;
+            marker.addEventListener('mouseenter', () => {
+              marker.style.height = '11px';
+              marker.style.top = '-4px';
+              marker.style.background = 'var(--gralia-purple)';
+              marker.style.boxShadow = '0 0 6px rgba(128,66,250,.7)';
+            });
+            marker.addEventListener('mouseleave', () => {
+              marker.style.height = '7px';
+              marker.style.top = '-2px';
+              marker.style.background = 'rgba(128,66,250,.55)';
+              marker.style.boxShadow = 'none';
+            });
+            marker.addEventListener('click', () => {
+              target.scrollIntoView({behavior:'smooth', block:'start'});
+              target.style.transition = 'background .3s';
+              target.style.background = 'rgba(128,66,250,.12)';
+              setTimeout(() => { target.style.background = ''; }, 1000);
+            });
+            sectionMarkers.appendChild(marker);
+          }
+        });
+      }catch(_){}
+    }, 200);
+  }
 
   showModal(m);
 }
@@ -34084,38 +34463,271 @@ function importPoolQuestionsToLocal(poolItems, opts){
   return {newIds, dupCount};
 }
 
+// V15.12.75.87 — Modal de busca de tópico no estilo Cmd+K.
+// Mostra sugestões agregadas:
+//   1. Tópicos do banco do user (DATA.importedQuestions) — contagem
+//   2. Tópicos dos resultados atuais (PS.results) — contagem
+//   3. Busca remota no pool quando digitar 3+ chars (debounced)
+// Seleção via clique ou Enter. Esc fecha. Setas navegam.
+function showTopicPicker(onPick){
+  const PS = ST.poolSearch;
+  const existing = document.querySelector('.topic-picker-overlay');
+  if(existing){existing.remove();}
+
+  const overlay = mk('div','topic-picker-overlay');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.4);display:flex;align-items:flex-start;justify-content:center;padding-top:14vh;animation:fadeIn .12s ease';
+
+  const box = mk('div');
+  box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:0;width:min(560px,92vw);max-height:70vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.25);animation:slideDown .15s ease';
+
+  // Search input
+  const inpWrap = mk('div');
+  inpWrap.style.cssText = 'padding:.875rem 1.125rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px';
+  const inpIcon = mk('span');
+  inpIcon.style.cssText = 'font-size:18px;color:var(--text3)';
+  inpIcon.textContent = '📚';
+  inpWrap.appendChild(inpIcon);
+  const inp = mk('input');
+  inp.type = 'text';
+  inp.placeholder = 'Buscar tópico (ex: peculato, habeas corpus...)';
+  inp.value = PS.filters.topicQ || '';
+  inp.style.cssText = 'flex:1;background:transparent;border:none;outline:none;font-size:15px;color:var(--text);font-family:inherit';
+  inpWrap.appendChild(inp);
+  const escHint = mk('span');
+  escHint.style.cssText = 'padding:2px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;font-size:10.5px;color:var(--text3);font-family:ui-monospace,monospace';
+  escHint.textContent = 'esc';
+  inpWrap.appendChild(escHint);
+  box.appendChild(inpWrap);
+
+  // Results list
+  const list = mk('div');
+  list.style.cssText = 'overflow-y:auto;flex:1;padding:.5rem 0';
+  box.appendChild(list);
+
+  // Footer com dicas
+  const footer = mk('div');
+  footer.style.cssText = 'padding:.5rem .875rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text3)';
+  footer.innerHTML = '<span><kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:0 5px;font-family:ui-monospace,monospace;font-size:10.5px">↑↓</kbd> navegar &nbsp; <kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:0 5px;font-family:ui-monospace,monospace;font-size:10.5px">↵</kbd> selecionar</span><span class="topic-status"></span>';
+  box.appendChild(footer);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  setTimeout(()=>inp.focus(),10);
+
+  function close(){overlay.remove();document.removeEventListener('keydown', onKey);}
+
+  let selectedIdx = 0;
+  let currentItems = []; // [{topic, count, source}]
+  let lastRemoteQuery = '';
+  let remoteController = null;
+
+  // Tópicos locais (banco do user)
+  function gatherLocalTopics(){
+    const counts = new Map();
+    (DATA.importedQuestions||[]).forEach(q => {
+      if(q.topic && q.topic.trim()){
+        const t = q.topic.trim();
+        const c = counts.get(t) || {count:0, sources:new Set()};
+        c.count++;
+        c.sources.add('user');
+        counts.set(t, c);
+      }
+    });
+    (PS.results||[]).forEach(p => {
+      if(p.topic && p.topic.trim()){
+        const t = p.topic.trim();
+        const c = counts.get(t) || {count:0, sources:new Set()};
+        c.count++;
+        c.sources.add('pool');
+        counts.set(t, c);
+      }
+    });
+    const arr = [];
+    counts.forEach((v, k) => { arr.push({topic:k, count:v.count, sources:Array.from(v.sources)}); });
+    arr.sort((a,b) => b.count - a.count);
+    return arr;
+  }
+
+  // Busca remota no pool por ilike (debounced)
+  async function searchRemoteTopics(query){
+    if(!supa) return [];
+    if(remoteController) try{ remoteController.abort(); }catch(_){}
+    remoteController = new AbortController();
+    try{
+      const {data, error} = await supa
+        .from('ai_question_pool')
+        .select('topic')
+        .eq('status','active')
+        .ilike('topic', '%'+query+'%')
+        .not('topic','is',null)
+        .limit(200);
+      if(error) return [];
+      // Agrega por topic
+      const counts = new Map();
+      (data||[]).forEach(row => {
+        if(row.topic && row.topic.trim()){
+          const t = row.topic.trim();
+          counts.set(t, (counts.get(t)||0) + 1);
+        }
+      });
+      const arr = [];
+      counts.forEach((v, k) => arr.push({topic:k, count:v, sources:['pool-remote']}));
+      arr.sort((a,b) => b.count - a.count);
+      return arr.slice(0, 50);
+    }catch(e){
+      return [];
+    }
+  }
+
+  function renderItems(items, status){
+    currentItems = items;
+    list.innerHTML = '';
+    selectedIdx = 0;
+    const statusEl = footer.querySelector('.topic-status');
+    if(statusEl) statusEl.textContent = status || (items.length + ' resultado' + (items.length===1?'':'s'));
+    if(items.length === 0){
+      const empty = mk('div');
+      empty.style.cssText = 'padding:1.25rem 1rem;text-align:center;color:var(--text3);font-size:13px';
+      empty.textContent = inp.value.trim() ? 'Nenhum tópico encontrado.' : 'Digite pra buscar tópicos.';
+      list.appendChild(empty);
+      return;
+    }
+    // Opção especial: usar termo livre (digitado pelo user)
+    const typed = inp.value.trim();
+    if(typed && !items.some(it => it.topic.toLowerCase() === typed.toLowerCase())){
+      const customRow = mk('button');
+      customRow.style.cssText = 'display:flex;align-items:center;gap:12px;padding:.625rem 1.125rem;width:100%;background:transparent;border:none;cursor:pointer;text-align:left;font-family:inherit;border-left:3px solid var(--gralia-purple);font-size:13.5px';
+      customRow.innerHTML = `<span style="font-size:16px">✨</span><span style="flex:1"><b style="color:var(--gralia-purple)">Usar "${escapeHTML(typed)}" como termo livre</b><br><span style="font-size:11px;color:var(--text3)">Busca por correspondência parcial</span></span>`;
+      customRow.addEventListener('mouseenter',()=>{customRow.style.background='var(--surface2)';});
+      customRow.addEventListener('mouseleave',()=>{customRow.style.background='transparent';});
+      customRow.addEventListener('click',()=>{ onPick(typed); close(); });
+      list.appendChild(customRow);
+    }
+    items.forEach((it, idx) => {
+      const row = mk('button');
+      row.dataset.idx = String(idx);
+      row.style.cssText = 'display:flex;align-items:center;gap:12px;padding:.5rem 1.125rem;width:100%;background:transparent;border:none;cursor:pointer;text-align:left;font-family:inherit;font-size:13px';
+      let sourceLbl = '';
+      if(it.sources.includes('user')) sourceLbl = '<span style="font-size:10px;background:rgba(128,66,250,.10);color:var(--gralia-purple);padding:1px 7px;border-radius:999px;font-weight:600">seu banco</span>';
+      else if(it.sources.includes('pool')) sourceLbl = '<span style="font-size:10px;background:rgba(16,185,129,.10);color:var(--accent-text);padding:1px 7px;border-radius:999px;font-weight:600">Gralia</span>';
+      else if(it.sources.includes('pool-remote')) sourceLbl = '<span style="font-size:10px;background:rgba(16,185,129,.10);color:var(--accent-text);padding:1px 7px;border-radius:999px;font-weight:600">Gralia</span>';
+      row.innerHTML = `<span style="font-size:14px;color:var(--text3)">📚</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(it.topic)}</span><span style="font-size:11px;color:var(--text3);flex-shrink:0">${it.count}</span>${sourceLbl}`;
+      row.addEventListener('mouseenter',()=>{ updateSelected(idx, false); });
+      row.addEventListener('click',()=>{ onPick(it.topic); close(); });
+      list.appendChild(row);
+    });
+    updateSelected(0, false);
+  }
+
+  function updateSelected(idx, scroll){
+    selectedIdx = Math.max(0, Math.min(currentItems.length - 1, idx));
+    const rows = list.querySelectorAll('button[data-idx]');
+    rows.forEach((r, i) => {
+      if(i === selectedIdx){
+        r.style.background = 'rgba(128,66,250,.08)';
+        if(scroll) r.scrollIntoView({block:'nearest'});
+      } else {
+        r.style.background = 'transparent';
+      }
+    });
+  }
+
+  // Render inicial: tópicos locais
+  renderItems(gatherLocalTopics(), null);
+
+  // Debounced search remota
+  let typeTimer = null;
+  inp.addEventListener('input', () => {
+    const q = inp.value.trim();
+    if(typeTimer) clearTimeout(typeTimer);
+    // Filtro client-side imediato sobre tópicos locais
+    const local = gatherLocalTopics().filter(it => !q || it.topic.toLowerCase().includes(q.toLowerCase()));
+    renderItems(local, q ? `${local.length} local${local.length===1?'':'is'} · buscando no pool...` : null);
+    if(q.length < 3) return;
+    typeTimer = setTimeout(async () => {
+      lastRemoteQuery = q;
+      const remote = await searchRemoteTopics(q);
+      if(q !== lastRemoteQuery) return; // outra busca já entrou
+      // Mescla: local primeiro (dedup), depois remote
+      const seen = new Set(local.map(it => it.topic.toLowerCase()));
+      const merged = local.slice();
+      remote.forEach(it => {
+        if(!seen.has(it.topic.toLowerCase())){
+          merged.push(it);
+          seen.add(it.topic.toLowerCase());
+        }
+      });
+      renderItems(merged, `${local.length} local${local.length===1?'':'is'} + ${remote.length} no pool`);
+    }, 280);
+  });
+
+  // Teclado
+  function onKey(e){
+    if(e.key === 'Escape'){ e.preventDefault(); close(); }
+    else if(e.key === 'ArrowDown'){ e.preventDefault(); updateSelected(selectedIdx+1, true); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); updateSelected(selectedIdx-1, true); }
+    else if(e.key === 'Enter'){
+      e.preventDefault();
+      // Se há sugestão "Usar como termo livre", ela é a opção 0 quando typed
+      const typed = inp.value.trim();
+      const hasCustom = typed && !currentItems.some(it => it.topic.toLowerCase() === typed.toLowerCase());
+      // selectedIdx refere a currentItems (não considera o custom row)
+      // Se selectedIdx é 0 e tem custom row, escolhe custom
+      // Mais simples: pega da lista do DOM
+      const rows = list.querySelectorAll('button');
+      if(rows.length === 0){
+        if(typed){ onPick(typed); close(); }
+        return;
+      }
+      // Pega a row destacada visualmente (a com bg roxo)
+      let target = list.querySelector('button[style*="rgba(128, 66, 250"], button[style*="rgba(128,66,250"]');
+      if(!target) target = rows[0];
+      target.click();
+    }
+  }
+  document.addEventListener('keydown', onKey);
+
+  overlay.addEventListener('click', (e) => {
+    if(e.target === overlay) close();
+  });
+}
+
 function renderPoolSearch(wrap){
   const PS = ST.poolSearch;
-  // Intro card
-  const intro = mk('div','card');
-  intro.style.cssText = 'padding:.875rem 1rem;margin-bottom:1rem;background:rgba(128,66,250,.04);border:1px solid rgba(128,66,250,.18);border-left:3px solid var(--gralia-purple)';
-  intro.innerHTML = `<b>🔍 Buscar no banco completo do Gralia</b><br><span style="font-size:12.5px;color:var(--text2);line-height:1.55">Aqui você procura questões de TODOS os usuários do Gralia (não só as suas). Aplique filtros, busque, selecione as que interessam e crie cadernos, ou importe para o seu banco pessoal. <b>Sem custo de IA</b> — questões já existem no banco.</span>`;
+  // V15.12.75.88 — Intro mais clean: ícone discreto à esquerda, layout
+  // horizontal, sem moldura pesada.
+  const intro = mk('div');
+  intro.style.cssText = 'display:flex;align-items:flex-start;gap:12px;padding:.875rem 1.125rem;margin-bottom:1rem;background:linear-gradient(135deg, rgba(128,66,250,.05) 0%, rgba(128,66,250,.02) 100%);border:1px solid rgba(128,66,250,.18);border-radius:12px';
+  const introIcon = mk('div');
+  introIcon.style.cssText = 'flex-shrink:0;width:36px;height:36px;border-radius:10px;background:rgba(128,66,250,.10);color:var(--gralia-purple);display:flex;align-items:center;justify-content:center;font-size:18px';
+  introIcon.textContent = '🔍';
+  const introTxt = mk('div');
+  introTxt.style.cssText = 'flex:1;font-size:12.5px;line-height:1.6;color:var(--text2)';
+  introTxt.innerHTML = '<b style="color:var(--text);font-size:13.5px;display:block;margin-bottom:2px">Buscar no banco completo do Gralia</b>Questões de todos os usuários. Filtre, selecione e crie cadernos ou importe para o seu banco — <b style="color:var(--gralia-purple)">sem custo de IA</b>.';
+  intro.appendChild(introIcon);
+  intro.appendChild(introTxt);
   wrap.appendChild(intro);
 
   // ----- Form de filtros -----
-  const filtersCard = mk('div','card');
-  filtersCard.style.cssText = 'padding:1rem 1.125rem;margin-bottom:1rem';
-  const filtersHead = mk('div','section-label');
+  const filtersCard = mk('div','pool-search-filters');
+  const filtersHead = mk('div','pool-search-section-label');
   filtersHead.textContent = 'Filtros';
   filtersCard.appendChild(filtersHead);
 
   const grid = mk('div');
-  grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:.5rem';
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:.25rem';
 
   const mkField = (label, ctrl) => {
     const f = mk('div');
-    const l = mk('label');
-    l.style.cssText = 'display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin-bottom:4px';
+    const l = mk('label','pool-search-field-label');
     l.textContent = label;
     f.appendChild(l);
     f.appendChild(ctrl);
     return f;
   };
 
-  const baseInputCss = 'width:100%;padding:.45rem .6rem;font-size:13px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit';
-
   // Banca
-  const bankSel = mk('select');bankSel.style.cssText = baseInputCss;
+  const bankSel = mk('select','pool-search-input');
   // V15.12.75.86 — Valor 'cebraspe' simples; helper aceita 'cebraspe_default' tb.
   [['','Qualquer'],['cebraspe','Cebraspe'],['fgv','FGV'],['fcc','FCC'],['vunesp','VUNESP'],['ibfc','IBFC']].forEach(([v,lbl])=>{
     const o = mk('option');o.value=v;o.textContent=lbl;
@@ -34126,7 +34738,7 @@ function renderPoolSearch(wrap){
   grid.appendChild(mkField('Banca', bankSel));
 
   // Disciplina (do user — facilita)
-  const discSel = mk('select');discSel.style.cssText = baseInputCss;
+  const discSel = mk('select','pool-search-input');
   const optAny = mk('option');optAny.value='';optAny.textContent='Qualquer';
   discSel.appendChild(optAny);
   (DATA.disciplines||[]).forEach(d => {
@@ -34140,7 +34752,7 @@ function renderPoolSearch(wrap){
   grid.appendChild(mkField('Disciplina', discSel));
 
   // Tipo
-  const kindSel = mk('select');kindSel.style.cssText = baseInputCss;
+  const kindSel = mk('select','pool-search-input');
   [['','Qualquer'],['CE','Certo/Errado'],['MC','Múltipla escolha']].forEach(([v,lbl])=>{
     const o = mk('option');o.value=v;o.textContent=lbl;
     if(PS.filters.kind===v) o.selected=true;
@@ -34150,7 +34762,7 @@ function renderPoolSearch(wrap){
   grid.appendChild(mkField('Tipo', kindSel));
 
   // Dificuldade
-  const diffSel = mk('select');diffSel.style.cssText = baseInputCss;
+  const diffSel = mk('select','pool-search-input');
   [['','Qualquer'],['easy','Fácil'],['medium','Média'],['hard','Difícil'],['very_hard','Muito difícil']].forEach(([v,lbl])=>{
     const o = mk('option');o.value=v;o.textContent=lbl;
     if(PS.filters.difficulty===v) o.selected=true;
@@ -34159,16 +34771,30 @@ function renderPoolSearch(wrap){
   diffSel.addEventListener('change',e=>{PS.filters.difficulty = e.target.value;});
   grid.appendChild(mkField('Dificuldade', diffSel));
 
-  // Tópico (text search)
-  const topInp = mk('input');topInp.type='text';topInp.style.cssText = baseInputCss;
-  topInp.placeholder = 'Ex: peculato, hábeas corpus...';
-  topInp.value = PS.filters.topicQ || '';
-  topInp.addEventListener('input',e=>{PS.filters.topicQ = e.target.value;});
-  topInp.addEventListener('keydown',e=>{ if(e.key==='Enter') doSearch(); });
-  grid.appendChild(mkField('Tópico (busca)', topInp));
+  // Tópico (modal estilo Cmd+K — V15.12.75.87)
+  const topBtn = mk('button','pool-search-input');
+  topBtn.type = 'button';
+  topBtn.style.cssText = topBtn.style.cssText + ';text-align:left;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:6px';
+  const topTxt = mk('span');
+  topTxt.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:'+(PS.filters.topicQ ? 'var(--text)' : 'var(--text3)');
+  topTxt.textContent = PS.filters.topicQ || 'Clique pra buscar...';
+  const topIcon = mk('span');
+  topIcon.style.cssText = 'color:var(--text3);font-size:11px;flex-shrink:0';
+  topIcon.textContent = '🔍';
+  topBtn.appendChild(topTxt);
+  topBtn.appendChild(topIcon);
+  topBtn.addEventListener('click', () => showTopicPicker((selected) => {
+    PS.filters.topicQ = selected || '';
+    PS.page = 0;
+    PS.results = [];
+    PS.selectedIds = new Set();
+    render();
+    doSearch();
+  }));
+  grid.appendChild(mkField('Tópico', topBtn));
 
   // Score mínimo
-  const scoreSel = mk('select');scoreSel.style.cssText = baseInputCss;
+  const scoreSel = mk('select','pool-search-input');
   [['0','Qualquer'],['50','≥ 50 (médio)'],['70','≥ 70 (bom)'],['85','≥ 85 (excelente)']].forEach(([v,lbl])=>{
     const o = mk('option');o.value=v;o.textContent=lbl;
     if(String(PS.filters.minScore)===v) o.selected=true;
@@ -34181,12 +34807,19 @@ function renderPoolSearch(wrap){
 
   // Botões
   const actions = mk('div');
-  actions.style.cssText = 'display:flex;gap:8px;margin-top:1rem;align-items:center;flex-wrap:wrap';
-  const searchBtn = mkBtn('🔍 Buscar','btn btn-p');
-  searchBtn.style.cssText = 'font-weight:600;padding:.55rem 1.25rem';
+  actions.style.cssText = 'display:flex;gap:10px;margin-top:1.125rem;align-items:center;flex-wrap:wrap;padding-top:.875rem;border-top:1px solid var(--border)';
+  const searchBtn = mk('button','btn btn-p');
+  searchBtn.type = 'button';
+  searchBtn.style.cssText = 'font-weight:600;padding:.55rem 1.5rem;font-size:13px;display:inline-flex;align-items:center;gap:7px';
+  searchBtn.innerHTML = '<span>🔍</span><span>Buscar</span>';
   searchBtn.addEventListener('click',()=>doSearch());
   actions.appendChild(searchBtn);
-  const clearBtn = mkBtn('Limpar filtros','btn btn-sm');
+  const clearBtn = mk('button');
+  clearBtn.type = 'button';
+  clearBtn.style.cssText = 'font-size:12px;color:var(--text3);background:none;border:none;cursor:pointer;padding:6px 10px;border-radius:6px;font-family:inherit;font-weight:500;transition:all .15s ease';
+  clearBtn.textContent = 'Limpar filtros';
+  clearBtn.addEventListener('mouseenter',()=>{clearBtn.style.color='var(--text)';});
+  clearBtn.addEventListener('mouseleave',()=>{clearBtn.style.color='var(--text3)';});
   clearBtn.addEventListener('click',()=>{
     PS.filters = {bank:'',disciplineSlug:'',kind:'',difficulty:'',topicQ:'',trapType:'',minScore:50};
     PS.results = [];
@@ -34253,14 +34886,13 @@ function renderPoolSearch(wrap){
   }
 
   // Header dos resultados + ações em batch
-  const headRow = mk('div');
-  headRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:.75rem;padding:.625rem .875rem;background:var(--surface);border:1px solid var(--border);border-radius:8px';
+  const headRow = mk('div','pool-search-results-header');
 
   const headLeft = mk('div');
-  headLeft.style.cssText = 'font-size:13px;color:var(--text)';
+  headLeft.style.cssText = 'font-size:13px;color:var(--text);font-variant-numeric:tabular-nums';
   const totalStr = PS.totalFound !== null ? PS.totalFound.toLocaleString('pt-BR') : '?';
   const selCount = PS.selectedIds.size;
-  headLeft.innerHTML = `<b>${PS.results.length}</b> de <b>${totalStr}</b> questões${selCount > 0 ? ` · <span style="color:var(--accent-text);font-weight:600">${selCount} selecionada${selCount>1?'s':''}</span>` : ''}`;
+  headLeft.innerHTML = `<b>${PS.results.length}</b> de <b>${totalStr}</b> questões${selCount > 0 ? ` · <span style="color:var(--gralia-purple);font-weight:700">${selCount} selecionada${selCount>1?'s':''}</span>` : ''}`;
 
   const headRight = mk('div');
   headRight.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap';
@@ -34323,16 +34955,18 @@ function renderPoolSearch(wrap){
         chip.textContent = displayLabel + ' (' + count + ')';
         chip.title = isActive ? 'Clique pra remover este filtro' : 'Clique pra filtrar por ' + displayLabel;
         chip.addEventListener('click', () => {
+          // V15.12.75.87 — Preserva scroll de forma robusta: marca o filtro
+          // recém-clicado pra que o próximo render achar o chip equivalente
+          // e fazer scrollIntoView nele. Evita problemas com render destruindo
+          // o DOM e perdendo scrollY ao mesmo tempo.
+          PS._lastFacetClickMarker = filterKey + ':' + (isActive ? '' : val);
           PS.filters[filterKey] = isActive ? '' : val;
           PS.page = 0;
           PS.results = [];
           PS.selectedIds = new Set();
           PS.loading = true;
-          // V15.12.75.86 — Preserva scroll pra não voltar pro topo a cada click
-          const savedScrollY = window.scrollY;
           render();
-          window.scrollTo(0, savedScrollY);
-          setTimeout(async () => {
+          (async () => {
             try{
               const r = await searchPoolQuestions(PS.filters, 0, PS.pageSize);
               PS.results = r.items;
@@ -34341,10 +34975,25 @@ function renderPoolSearch(wrap){
               PS.lastQueriedAt = Date.now();
             }catch(e){ PS.error = e.message; }
             PS.loading = false;
-            const savedScrollY2 = window.scrollY;
             render();
-            window.scrollTo(0, savedScrollY2);
-          }, 10);
+            // Após o render final, busca o chip equivalente no DOM e leva ele
+            // ao centro da viewport. requestAnimationFrame duplo garante que
+            // o paint terminou antes da medição.
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              try{
+                const marker = PS._lastFacetClickMarker;
+                if(!marker) return;
+                const facetSection = document.querySelector('.pool-facets-bar');
+                if(facetSection){
+                  // scrollIntoView com block:'center' coloca a barra de
+                  // facetas no meio da tela — user vê tanto o chip recém
+                  // clicado quanto os resultados abaixo.
+                  facetSection.scrollIntoView({block:'center', behavior:'instant'});
+                }
+                PS._lastFacetClickMarker = null;
+              }catch(_){}
+            }));
+          })();
         });
         group.appendChild(chip);
       });
@@ -34359,8 +35008,8 @@ function renderPoolSearch(wrap){
     if(grpKind) facetSections.push(grpKind);
     if(grpDiff) facetSections.push(grpDiff);
     if(facetSections.length > 0){
-      const facetBar = mk('div');
-      facetBar.style.cssText = 'background:rgba(128,66,250,.03);border:1px solid rgba(128,66,250,.10);border-radius:8px;padding:.625rem .75rem;margin-bottom:.625rem;display:flex;flex-direction:column;gap:.4rem';
+      const facetBar = mk('div','pool-facets-bar');
+      facetBar.style.cssText = 'background:rgba(128,66,250,.03);border:1px solid rgba(128,66,250,.10);border-radius:8px;padding:.625rem .75rem;margin-bottom:.625rem;display:flex;flex-direction:column;gap:.4rem;scroll-margin-top:80px';
       const facetHint = mk('div');
       facetHint.style.cssText = 'font-size:11px;color:var(--text3);line-height:1.4';
       facetHint.innerHTML = '<i>Distribuição da página atual — clique nos chips pra filtrar.</i>';
@@ -34372,8 +35021,7 @@ function renderPoolSearch(wrap){
 
   // Lista de questões
   PS.results.forEach((p, idx) => {
-    const card = mk('div','card');
-    card.style.cssText = 'padding:.75rem .875rem;margin-bottom:.5rem';
+    const card = mk('div','pool-question-card');
 
     // Header da questão
     const top = mk('div');
@@ -34381,7 +35029,7 @@ function renderPoolSearch(wrap){
 
     const chk = mk('input');
     chk.type = 'checkbox';
-    chk.style.cssText = 'width:18px;height:18px;margin-top:2px;cursor:pointer;flex-shrink:0';
+    chk.style.cssText = 'width:18px;height:18px;margin-top:2px;cursor:pointer;flex-shrink:0;accent-color:var(--gralia-purple)';
     chk.checked = PS.selectedIds.has(p.content_hash);
     chk.addEventListener('change',e=>{
       if(e.target.checked) PS.selectedIds.add(p.content_hash);
@@ -34392,9 +35040,8 @@ function renderPoolSearch(wrap){
 
     const meta = mk('div');
     meta.style.cssText = 'flex:1;display:flex;gap:6px;flex-wrap:wrap;align-items:center';
-    const mkChip = (txt, color) => {
-      const c = mk('span');
-      c.style.cssText = `font-size:10.5px;padding:2px 8px;border-radius:999px;font-weight:600;background:${color||'var(--surface2)'};color:${color?'#fff':'var(--text2)'};border:1px solid var(--border)`;
+    const mkChip = (txt, variant) => {
+      const c = mk('span','pool-meta-chip' + (variant ? ' '+variant : ''));
       c.textContent = txt;
       return c;
     };
@@ -34402,7 +35049,10 @@ function renderPoolSearch(wrap){
     if(p.difficulty) meta.appendChild(mkChip(({easy:'Fácil',medium:'Média',hard:'Difícil',very_hard:'Muito difícil'})[p.difficulty] || p.difficulty));
     if(p.bank_id) meta.appendChild(mkChip(p.bank_id.replace('_default','').toUpperCase()));
     if(p.topic) meta.appendChild(mkChip('📚 '+p.topic.slice(0, 40)));
-    if(p.ai_score) meta.appendChild(mkChip(`★ ${p.ai_score}`, p.ai_score >= 80 ? 'var(--accent)' : (p.ai_score >= 60 ? 'var(--amber)' : null)));
+    if(p.ai_score){
+      const variant = p.ai_score >= 80 ? 'accent' : (p.ai_score >= 60 ? 'amber' : null);
+      meta.appendChild(mkChip(`★ ${p.ai_score}`, variant));
+    }
     top.appendChild(meta);
 
     card.appendChild(top);
@@ -34417,8 +35067,8 @@ function renderPoolSearch(wrap){
 
     // Gabarito + expandir
     const bot = mk('div');
-    bot.style.cssText = 'display:flex;align-items:center;gap:10px;margin-top:.5rem;margin-left:28px;flex-wrap:wrap;font-size:11.5px;color:var(--text3)';
-    bot.innerHTML = `<span><b style="color:var(--accent-text)">Gabarito:</b> ${p.answer || '—'}</span>`;
+    bot.style.cssText = 'display:flex;align-items:center;gap:10px;margin-top:.625rem;margin-left:28px;flex-wrap:wrap;font-size:11.5px;color:var(--text3)';
+    bot.innerHTML = `<span><b style="color:var(--accent-text);font-weight:600">Gabarito:</b> ${p.answer || '—'}</span>`;
     if(isLong){
       const expBtn = mk('a');expBtn.href='#';
       expBtn.style.cssText='color:var(--gralia-purple);text-decoration:none;font-weight:600';
