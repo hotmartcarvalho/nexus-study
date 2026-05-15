@@ -13831,7 +13831,9 @@ Questão nova (formato MC):
 {"type":"question","kind":"MC","topic":"tópico curto","question":"enunciado","alternatives":{"A":"...","B":"...","C":"...","D":"...","E":"..."},"correct_answer":"A|B|C|D|E","trap_type":"descrição curta da pegadinha principal","difficulty":"easy|medium|hard|very_hard"}
 
 Feedback+próxima:
-{"type":"feedback","is_correct":true,"trap_type":"...","explanation":"explicação seguindo o estilo do PERFIL DA BANCA injetado","trap":"qual armadilha foi usada (se errada)","keyword":"palavra-gatilho que denuncia","wrong_alternatives":[{"letter":"X","reason":"frase curta — APENAS pra MC, todas erradas"}],"next":{...mesmo formato da questão nova...},"suggested_flashcard":{"front":"pergunta curta sobre o conceito","back":"resposta concisa, 1-2 frases"}}
+{"type":"feedback","is_correct":true,"trap_type":0,"explanation":"explicação seguindo o estilo do PERFIL DA BANCA injetado","trap":"qual armadilha foi usada (se errada)","keyword":"palavra-gatilho que denuncia","wrong_alternatives":[{"letter":"X","reason":"frase curta — APENAS pra MC, todas erradas"}],"next":{...mesmo formato da questão nova...},"suggested_flashcard":{"front":"pergunta curta sobre o conceito","back":"resposta concisa, 1-2 frases"}}
+
+⚠ trap_type DEVE ser INTEIRO (0-5), nunca string. A descrição vai no campo "trap" (string).
 
 REGRA explanation (estrutura visual premium):
 A explicação será parseada e renderizada como cards visuais separados pela UI.
@@ -13858,15 +13860,15 @@ PARA MC (FCC, FGV, Vunesp e similares):
 
 REGRA wrong_alternatives (APENAS pra MC):
 ⚠ OBRIGATÓRIO pra TODA questão MC — não omita.
-- Inclua o campo "wrong_alternatives" no JSON, com 1 frase curta (max 15 palavras) explicando por que CADA alternativa errada está errada.
+- Inclua o campo "wrong_alternatives" no JSON, com 1 frase MUITO curta (máx 10 palavras) explicando por que CADA alternativa errada está errada.
 - Formato EXATO (array de objetos): "wrong_alternatives":[{"letter":"A","reason":"..."}, {"letter":"B","reason":"..."}, ...]
 - Inclua TODAS as alternativas erradas (todas exceto a correta). Se MC tem 5 alternativas e a correta é C, o array deve ter 4 itens (A, B, D, E).
 - Pra C/E: OMITA o campo (não tem alternativas).
 - NUNCA retorne wrong_alternatives como string ou objeto solto — SEMPRE array, mesmo com 1 item.
 
 REGRAS DE FORMATAÇÃO DA EXPLICAÇÃO:
-- Cada seção curta (1-2 frases, máx 30 palavras).
-- Texto total 5-10 linhas — nada de paredão.
+- Cada seção curta (1 frase, máx 20 palavras).
+- Texto total 3-5 linhas — SEM paredão.
 - Sem emojis no texto.
 - Use os rótulos EXATAMENTE como acima (case-sensitive).
 - Ordem: Gabarito → Por que está certa/errada → Por que sua resposta errou (só se errou) → Pegadinha → Regra pra lembrar.
@@ -27546,7 +27548,22 @@ function saveAIQuestion(method, q, modelId, opts){
     explanation: q.explanation||'',
     trap: q.trap||'',
     keyword: q.keyword||'',
-    trapType: q.trap_type || 0,
+    // V15.12.75.74 — trap_type DEVE ser integer (coluna no Supabase é int).
+    // Bug recorrente: IA às vezes retorna como string descritiva ("confundir
+    // norma penal...") e o INSERT no pool falha com 400. Sanitiza pra integer
+    // ou 0 (default). Se a IA quis dar descrição, isso vai pro campo `trap`
+    // (que é text e aceita qualquer coisa).
+    trapType: (function(){
+      const raw = q.trap_type;
+      if(typeof raw === 'number' && Number.isFinite(raw)) return Math.max(0, Math.min(5, Math.round(raw)));
+      if(typeof raw === 'string'){
+        const n = parseInt(raw, 10);
+        if(Number.isFinite(n) && n >= 0 && n <= 5) return n;
+        // String descritiva — sobe pra campo trap se ainda vazio, e usa 0
+        if(!q.trap && raw.length > 3) q.trap = raw.slice(0, 200);
+      }
+      return 0;
+    })(),
     createdAt: Date.now(),
     seenCount: 1,
     attempts: 0, correctCount: 0,
