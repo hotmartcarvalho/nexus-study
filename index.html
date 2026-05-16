@@ -7426,7 +7426,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.124';
+window.GRALIA_VERSION = 'V15.12.75.125';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -50326,31 +50326,29 @@ function renderPinhal(){
       zoomBtns.appendChild(expandBtn);
 
       // V15.12.75.121 — Toggle de SOM DE MATA (varia por horário: dia/dawn/noite).
-      // Aparece quando há ≥5 árvores maduras. Em vez de vento puro, agora toca
-      // ambiente completo: brisa suave + pássaros (dia/dawn) ou grilos (noite).
-      // Volume também reduzido (era 0.40, agora 0.25).
+      // V15.12.75.125 — Auto-init REMOVIDO. Antes: se o user tinha ativado uma
+      // vez, recarregava o som a cada visita à página (pesa). Agora: user
+      // precisa clicar pra ativar a cada vez (preferência intencional).
       const matureTrees = mappedTrees.filter(t => t.type === 'ancient' || t.type === 'mature').length;
       if(matureTrees >= 5){
         if(!DATA.config) DATA.config = {};
-        // Escolhe tipo de som baseado no horário atual
         const pickForestSound = () => {
           const hr = new Date().getHours();
           if(hr >= 0 && hr < 5)   return 'forest_night';
           if(hr >= 5 && hr < 8)   return 'forest_dawn';
           if(hr >= 8 && hr < 18)  return 'forest_day';
-          if(hr >= 18 && hr < 20) return 'forest_dawn';   // entardecer reusa dawn (similar)
+          if(hr >= 18 && hr < 20) return 'forest_dawn';
           return 'forest_night';
         };
-        const matSoundOn = !!DATA.config.pinhalWindEnabled;
+        // V15.12.75.125 — Sempre inicia desligado (não persiste mais)
         const matBtn = mk('button','forest-zoom-btn');
         matBtn.type = 'button';
-        matBtn.innerHTML = matSoundOn ? '🔊' : '🔈';
-        matBtn.title = matSoundOn ? 'Som de mata ATIVO — desativar' : 'Ativar som de mata (brisa + pássaros)';
-        if(matSoundOn) matBtn.style.background = 'rgba(128,66,250,.55)';
+        let soundOn = false;
+        matBtn.innerHTML = '🔈';
+        matBtn.title = 'Ativar som de mata (brisa + pássaros)';
         matBtn.addEventListener('click', () => {
-          DATA.config.pinhalWindEnabled = !DATA.config.pinhalWindEnabled;
-          try{ save(); }catch(_){}
-          if(DATA.config.pinhalWindEnabled){
+          soundOn = !soundOn;
+          if(soundOn){
             try{ AmbientSound.play(pickForestSound()); }catch(_){}
             try{ AmbientSound.setVolume(0.25); }catch(_){}
             matBtn.innerHTML = '🔊';
@@ -50364,10 +50362,6 @@ function renderPinhal(){
           }
         });
         zoomBtns.appendChild(matBtn);
-        // Auto-inicia se estava ativo na visita anterior
-        if(matSoundOn){
-          setTimeout(() => { try{ AmbientSound.play(pickForestSound()); AmbientSound.setVolume(0.25); }catch(_){} }, 500);
-        }
       }
 
       sceneWrap.appendChild(zoomBtns);
@@ -67232,6 +67226,25 @@ function buildForestScene(trees){
     else grouped.seed.push(t);
   });
 
+  // V15.12.75.125 — CAP DE VISIBILIDADE: no máx X árvores por tipo aparecem
+  // na cena visível. Antes a "Final" tinha 45 árvores numa área de 800×380px,
+  // resultando em aglomerados inevitáveis (não há espaço físico pra tantas).
+  // Agora: cap por tipo, restantes contam só pro stat textual mas não
+  // renderizam. Limite alinha com o que cabe sem sobreposição.
+  const VISIBILITY_CAPS = { ancient: 6, mature: 8, young: 10, seed: 12 };
+  const hiddenCount = {
+    ancient: Math.max(0, grouped.ancient.length - VISIBILITY_CAPS.ancient),
+    mature:  Math.max(0, grouped.mature.length  - VISIBILITY_CAPS.mature),
+    young:   Math.max(0, grouped.young.length   - VISIBILITY_CAPS.young),
+    seed:    Math.max(0, grouped.seed.length    - VISIBILITY_CAPS.seed)
+  };
+  const totalHidden = hiddenCount.ancient + hiddenCount.mature + hiddenCount.young + hiddenCount.seed;
+  // Aplica cap: pega só as N primeiras (ordem original = ordem que foram plantadas)
+  grouped.ancient = grouped.ancient.slice(0, VISIBILITY_CAPS.ancient);
+  grouped.mature  = grouped.mature.slice(0,  VISIBILITY_CAPS.mature);
+  grouped.young   = grouped.young.slice(0,   VISIBILITY_CAPS.young);
+  grouped.seed    = grouped.seed.slice(0,    VISIBILITY_CAPS.seed);
+
   // Hash determinístico de posição
   const hashPos = (id, max)=>{
     let hash = 0;
@@ -67588,11 +67601,14 @@ function buildForestScene(trees){
                      type === 'mature'  ? BRAND.araucariaAdulta :
                      type === 'young'   ? BRAND.araucariaJovem :
                                           BRAND.araucariaMuda;
+    // V15.12.75.125 — Tamanhos reduzidos ~30% pra cena ficar mais "respirável".
+    // User reportou que árvores muito grandes amplificavam aglomerados visuais.
+    // Era: ancient 109×172, mature 86×140, young 74×125, seed 52×92
     const sizeMap = {
-      ancient: { w: 109 * scale, h: 172 * scale, dy: 1.0 },
-      mature:  { w: 86 * scale,  h: 140 * scale, dy: 1.0 },
-      young:   { w: 74 * scale,  h: 125 * scale, dy: 1.0 },
-      seed:    { w: 52 * scale,  h: 92 * scale,  dy: 1.0 }
+      ancient: { w: 76 * scale,  h: 120 * scale, dy: 1.0 },
+      mature:  { w: 60 * scale,  h: 98 * scale,  dy: 1.0 },
+      young:   { w: 52 * scale,  h: 87 * scale,  dy: 1.0 },
+      seed:    { w: 36 * scale,  h: 64 * scale,  dy: 1.0 }
     };
     const size = sizeMap[type] || sizeMap.seed;
     const foX = cx - size.w / 2;
@@ -67721,20 +67737,20 @@ function buildForestScene(trees){
   // ySpacingFactor controla peso da distância Y na detecção (1.0 = igual a X,
   // 2.0 = Y conta dobro). Subi pra 2.0 porque árvores em Y próximo se
   // sobrepõem mais visualmente que árvores em X próximo.
-  const ancientLayout = distributeXY(grouped.ancient, H * 0.78, 70, 1.20, 0.40, { minSpacing: 130, avoidSun: true, ySpacingFactor: 2.0, yShiftMax: 40 });
+  // V15.12.75.125 — minSpacing reduzido (árvores menores agora). Antes: 130/90/55/32.
+  const ancientLayout = distributeXY(grouped.ancient, H * 0.78, 60, 1.10, 0.40, { minSpacing: 95, avoidSun: true, ySpacingFactor: 2.0, yShiftMax: 40 });
   ancientLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'ancient', id);
   });
-  const matureLayout = distributeXY(grouped.mature, H * 0.84, 55, 0.85, 0.30, { minSpacing: 90, ySpacingFactor: 2.0, yShiftMax: 28 });
+  const matureLayout = distributeXY(grouped.mature, H * 0.84, 45, 0.85, 0.30, { minSpacing: 70, ySpacingFactor: 2.0, yShiftMax: 28 });
   matureLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'mature', id);
   });
-  const youngLayout = distributeXY(grouped.young, H * 0.89, 40, 0.60, 0.25, { minSpacing: 55, ySpacingFactor: 2.0, yShiftMax: 18 });
+  const youngLayout = distributeXY(grouped.young, H * 0.89, 35, 0.60, 0.25, { minSpacing: 42, ySpacingFactor: 2.0, yShiftMax: 18 });
   youngLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'young', id);
   });
-  // Seeds: yShiftMax pequeno pra ficarem coladas no chão (não flutuam)
-  const seedLayout = distributeXY(grouped.seed, H * 0.94, 25, 0.40, 0.20, { minSpacing: 32, ySpacingFactor: 2.0, yShiftMax: 10 });
+  const seedLayout = distributeXY(grouped.seed, H * 0.94, 22, 0.40, 0.20, { minSpacing: 26, ySpacingFactor: 2.0, yShiftMax: 10 });
   seedLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'seed', id);
   });
@@ -67815,19 +67831,11 @@ function buildForestScene(trees){
       });
     }
 
-    // V15.12.75.121 — Scheduler sequencial pra animações das árvores.
-    // V15.12.75.122 — Adicionado guard `alive` que vira false quando o container
-    // sai do DOM, evitando acúmulo de timeouts órfãos.
-    // V15.12.75.123 — Refatorado pra performance: lazy load (vídeo só carrega
-    // quando for tocar), MAX_CONCURRENT=1 (era 2), Page Visibility API pausa
-    // tudo quando aba não-visível. Resolve "navegador trava ao voltar pra aba".
+    // V15.12.75.125 — Scheduler de animação REMOVIDO. User pediu: se animação
+    // pesa o navegador, deixa tudo estático. Mais leve, sem timers recorrentes,
+    // sem Page Visibility, sem acúmulo. Cada árvore só renderiza o primeiro frame
+    // e fica congelada — visual da animação preservado, custo de GPU zerado.
     const araucarias = container.querySelectorAll('.araucaria');
-    const allGroups = [];  // todas as árvores não-seed disponíveis
-    let alive = true;
-    let pageVisible = !document.hidden;
-    let pendingPlayTimeout = null;
-
-    // Coleta árvores elegíveis (com vídeo). NÃO carrega ainda — só lista.
     araucarias.forEach(group => {
       const v = group.querySelector('.araucaria-video');
       if(!v) return;
@@ -67838,115 +67846,17 @@ function buildForestScene(trees){
       v.addEventListener('error', markBroken);
       const src = v.querySelector('source');
       if(src) src.addEventListener('error', markBroken);
-      // V15.12.75.123 — Força 1º frame visível assim que metadata carrega.
-      // Sem isso, vídeo aparece em preto até o scheduler tocar. Setar currentTime
-      // dispara `seeked` que renderiza o frame sem custo de play().
+      // Carrega metadata + força render do 1º frame via currentTime=0.01.
+      // Não chama play() em momento algum.
       v.addEventListener('loadedmetadata', () => {
         if(!v.videoWidth || !v.videoHeight){ markBroken(); return; }
         try{ v.currentTime = 0.01; }catch(_){}
       });
-      allGroups.push({ video: v, group: group, loaded: false });
     });
-
-    // Detecta morte: observa o parent direto. Se container sair, mata scheduler.
-    const deathObs = new MutationObserver(() => {
-      if(!document.body.contains(container)){
-        alive = false;
-        // Pausa e zera src de TODOS os vídeos pra liberar memória/GPU
-        allGroups.forEach(({ video }) => {
-          try{
-            video.pause();
-            // remover src libera o decoder de vídeo nativo
-            video.removeAttribute('src');
-            const srcEl = video.querySelector('source');
-            if(srcEl) srcEl.removeAttribute('src');
-            video.load();  // força browser a soltar recursos
-          }catch(_){}
-        });
-        if(pendingPlayTimeout) clearTimeout(pendingPlayTimeout);
-        document.removeEventListener('visibilitychange', onVisibilityChange);
-        deathObs.disconnect();
-      }
-    });
-    setTimeout(() => {
-      const tgt = container.parentNode || document.body;
-      try{ deathObs.observe(tgt, {childList:true}); }catch(_){}
-    }, 0);
-
-    // V15.12.75.123 — Pausa scheduler quando aba esconde, retoma quando volta.
-    // Resolve o problema do "trava ao voltar pra aba" porque o browser pausa
-    // setTimeouts em background tabs e depois dispara tudo de uma vez no foco.
-    const onVisibilityChange = () => {
-      pageVisible = !document.hidden;
-      if(!pageVisible){
-        // Aba escondida: pausa tudo
-        allGroups.forEach(({ video }) => {
-          try{ video.pause(); }catch(_){}
-        });
-        if(pendingPlayTimeout){
-          clearTimeout(pendingPlayTimeout);
-          pendingPlayTimeout = null;
-        }
-      } else if(alive){
-        // Voltou pro foco: reinicia o ciclo com delay leve
-        pendingPlayTimeout = setTimeout(pickAndPlay, 800);
-      }
-    };
-    document.addEventListener('visibilitychange', onVisibilityChange);
-
-    // V15.12.75.123 — Lazy load: vídeo só carrega quando for tocar.
-    // Antes V122: TODOS os vídeos carregavam imediatamente (45 vídeos = pesado).
-    // Agora: 1 carrega por vez, e só quando o scheduler decidir tocar.
-    const MAX_CONCURRENT = 1;
-    const playing = new Set();
-    let lastPlayedIdx = -1;
-
-    const ensureLoadedAndPlay = (groupRec) => {
-      const { video } = groupRec;
-      playing.add(video);
-
-      const onEnded = () => {
-        video.removeEventListener('ended', onEnded);
-        playing.delete(video);
-        try{ video.pause(); video.currentTime = 0; }catch(_){}
-        if(!alive || !pageVisible) return;
-        // Próxima após delay aleatório (600-1800ms)
-        pendingPlayTimeout = setTimeout(pickAndPlay, 600 + Math.random() * 1200);
-      };
-      video.addEventListener('ended', onEnded);
-
-      try{
-        video.playbackRate = 0.4;
-        video.currentTime = 0;
-        const p = video.play();
-        if(p && p.catch) p.catch(() => {
-          playing.delete(video);
-          video.removeEventListener('ended', onEnded);
-        });
-      }catch(_){
-        playing.delete(video);
-        video.removeEventListener('ended', onEnded);
-      }
-    };
-
-    const pickAndPlay = () => {
-      if(!alive || !pageVisible) return;
-      if(playing.size >= MAX_CONCURRENT) return;
-      const eligible = allGroups.filter((g, idx) =>
-        !g.group.classList.contains('araucaria-fallback') &&
-        !playing.has(g.video) &&
-        idx !== lastPlayedIdx  // evita tocar a mesma 2× seguido
-      );
-      if(eligible.length === 0) return;
-      const pick = eligible[Math.floor(Math.random() * eligible.length)];
-      lastPlayedIdx = allGroups.indexOf(pick);
-      ensureLoadedAndPlay(pick);
-    };
-
-    // Boot: começa após 1.2s (dá tempo do DOM estabilizar)
-    pendingPlayTimeout = setTimeout(pickAndPlay, 1200);
   }, 0);
 
+  // V15.12.75.125 — Expõe contagem de árvores não-renderizadas pro caller
+  container._hiddenTreeCount = totalHidden;
   return container;
 }
 
