@@ -5056,17 +5056,22 @@ input[type="month"]::-webkit-calendar-picker-indicator{
    em vh/vw que parecia descentrado por causa da sidebar fixa. Agora o card
    fica geometricamente no centro do viewport, ignorando o layout do app. */
 body.forest-expanded{overflow:hidden}
+/* V15.12.75.117 — !important nas propriedades de layout pra sobrescrever o
+   inline `position:relative` que o JS seta no sceneWrap (style.cssText na
+   linha ~50005). Sem !important, position:relative inline vence position:fixed
+   por especificidade, e o card colava à direita em vez de centralizar. */
 .forest-scene-card.forest-expanded{
-  position:fixed;
-  top:50%;left:50%;
-  transform:translate(-50%, -50%);
-  width:min(90vw, 1600px);
-  height:min(90vh, 900px);
+  position:fixed !important;
+  top:50% !important;
+  left:50% !important;
+  transform:translate(-50%, -50%) !important;
+  width:min(90vw, 1600px) !important;
+  height:min(90vh, 900px) !important;
   max-width:none;
   z-index:9000;
   box-shadow:0 20px 80px rgba(0,0,0,.5);
   background:var(--bg);
-  margin:0;
+  margin:0 !important;
 }
 .forest-scene-card.forest-expanded .forest-svg-wrap{height:100%}
 .forest-scene-card.forest-expanded .forest-svg{max-height:none;height:100%;width:100%}
@@ -5081,7 +5086,7 @@ body.forest-expanded{overflow:hidden}
 }
 @keyframes forest-backdrop-in{from{opacity:0}to{opacity:1}}
 @media (max-width: 600px){
-  .forest-scene-card.forest-expanded{width:96vw;height:96vh}
+  .forest-scene-card.forest-expanded{width:96vw !important; height:96vh !important}
 }
 .forest-bird{transform-origin:0 0;animation:forest-bird-fly 36s ease-in-out infinite}
 /* V15.12.75.111 — Gralha muito menor (scale 0.6-0.9 era 1.7-2.1) e voando
@@ -7401,7 +7406,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.116';
+window.GRALIA_VERSION = 'V15.12.75.117';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
