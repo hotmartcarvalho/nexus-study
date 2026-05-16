@@ -7406,7 +7406,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.117';
+window.GRALIA_VERSION = 'V15.12.75.118';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -32707,10 +32707,11 @@ const Pinhal = (() => {
   }
 
   // V15.12.75.115 — Sons sintéticos do Pinhal (Web Audio).
-  // Reaproveita o AudioContext do AmbientSound se existir. Volume baixo (.20)
-  // pra ser sutil. Sons únicos por tipo de evento — user pediu macro
-  // (não cada bioma único, mas tipo "ave" diferente de "planta").
+  // V15.12.75.118 — Fix: contexto fica suspended até user gesture. Agora unlock
+  // no primeiro click/keydown da página (uma vez), e cada play tenta resume.
+  // Browsers modernos exigem isso por política de autoplay.
   let _pinhalAudioCtx = null;
+  let _pinhalAudioUnlocked = false;
   function getPinhalAudioCtx(){
     if(_pinhalAudioCtx) return _pinhalAudioCtx;
     try{
@@ -32720,10 +32721,45 @@ const Pinhal = (() => {
     }catch(_){ return null; }
     return _pinhalAudioCtx;
   }
+  // Unlock global: registra ouvintes únicos que fazem resume na 1ª interação
+  function unlockPinhalAudio(){
+    if(_pinhalAudioUnlocked) return;
+    const ctx = getPinhalAudioCtx();
+    if(!ctx) return;
+    if(ctx.state === 'suspended'){
+      ctx.resume().then(() => {
+        _pinhalAudioUnlocked = true;
+      }).catch(() => {});
+    } else {
+      _pinhalAudioUnlocked = true;
+    }
+  }
+  // Registra listeners de unlock na primeira interação real do user
+  if(typeof document !== 'undefined' && !document._pinhalUnlockBound){
+    document._pinhalUnlockBound = true;
+    const oneShot = () => {
+      unlockPinhalAudio();
+      // remove listeners assim que unlock acontece
+      document.removeEventListener('click', oneShot, true);
+      document.removeEventListener('keydown', oneShot, true);
+      document.removeEventListener('touchstart', oneShot, true);
+    };
+    document.addEventListener('click', oneShot, true);
+    document.addEventListener('keydown', oneShot, true);
+    document.addEventListener('touchstart', oneShot, true);
+  }
   function playPinhalSound(kind){
     const ctx = getPinhalAudioCtx();
     if(!ctx) return;
-    if(ctx.state === 'suspended'){ try{ ctx.resume(); }catch(_){} }
+    // Tenta resume sincronamente (funciona se chamada vier de user gesture)
+    if(ctx.state === 'suspended'){
+      try{ ctx.resume(); }catch(_){}
+    }
+    // Se ainda suspenso, agenda play pra quando unlock acontecer
+    if(ctx.state === 'suspended'){
+      console.warn('[pinhal-sound] AudioContext suspended; som ignorado:', kind);
+      return;
+    }
     const t0 = ctx.currentTime;
     // Função auxiliar: toca uma nota envelope ADSR curto
     const note = (freq, startOff, dur, gain, type) => {
@@ -33392,7 +33428,7 @@ const Pinhal = (() => {
     return newlyUnlocked;
   }
 
-  return { init, award, getLevel, getState, LEVELS, slotsForLevel, treeSvg, CARDS, checkCardUnlocks, showCardDetailModal };
+  return { init, award, getLevel, getState, LEVELS, slotsForLevel, treeSvg, CARDS, checkCardUnlocks, showCardDetailModal, _playSound: playPinhalSound };
 })();
 
 const AmbientSound = (() => {
@@ -50064,6 +50100,43 @@ function renderPinhal(){
       });
       cleanupObserver.observe(document.body, {childList:true, subtree:true});
       zoomBtns.appendChild(expandBtn);
+
+      // V15.12.75.118 — Botão de SOM DE VENTO. Aparece quando há ≥5 árvores
+      // maduras (estágios 4-5). Toggle on/off, persiste em DATA.config.
+      // Usa AmbientSound.play('wind') que já existe no módulo.
+      const matureTrees = mappedTrees.filter(t => t.type === 'ancient' || t.type === 'mature').length;
+      if(matureTrees >= 5){
+        if(!DATA.config) DATA.config = {};
+        const windOn = !!DATA.config.pinhalWindEnabled;
+        const windBtn = mk('button','forest-zoom-btn');
+        windBtn.type = 'button';
+        windBtn.innerHTML = windOn ? '🌬' : '🍃';
+        windBtn.title = windOn ? 'Vento na floresta ATIVO — desativar' : 'Ativar som de vento na floresta';
+        if(windOn) windBtn.style.background = 'rgba(128,66,250,.55)';
+        windBtn.addEventListener('click', () => {
+          DATA.config.pinhalWindEnabled = !DATA.config.pinhalWindEnabled;
+          try{ save(); }catch(_){}
+          if(DATA.config.pinhalWindEnabled){
+            try{ AmbientSound.play('wind'); }catch(_){}
+            // Volume baixo (0.4 user = ~16% real)
+            try{ AmbientSound.setVolume(0.40); }catch(_){}
+            windBtn.innerHTML = '🌬';
+            windBtn.title = 'Vento na floresta ATIVO — desativar';
+            windBtn.style.background = 'rgba(128,66,250,.55)';
+          } else {
+            try{ AmbientSound.stop(); }catch(_){}
+            windBtn.innerHTML = '🍃';
+            windBtn.title = 'Ativar som de vento na floresta';
+            windBtn.style.background = 'rgba(0,0,0,.55)';
+          }
+        });
+        zoomBtns.appendChild(windBtn);
+        // Auto-inicia se estava ativo na visita anterior
+        if(windOn){
+          setTimeout(() => { try{ AmbientSound.play('wind'); AmbientSound.setVolume(0.40); }catch(_){} }, 500);
+        }
+      }
+
       sceneWrap.appendChild(zoomBtns);
 
       // Estado vazio
@@ -50332,6 +50405,147 @@ function renderPinhal(){
     });
     btnRow.appendChild(resetBtn);
     adminCard.appendChild(btnRow);
+
+    // V15.12.75.118 — Linha extra: preview de FASES do pinhal (popula state simulado)
+    const phaseHead = mk('div');
+    phaseHead.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;color:var(--text2);margin:.875rem 0 .375rem;text-transform:uppercase;letter-spacing:.4px';
+    phaseHead.innerHTML = '<span>👁</span><span>Preview de fases</span>';
+    adminCard.appendChild(phaseHead);
+    const phaseRow = mk('div');
+    phaseRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
+
+    // Helper pra gerar N árvores em estágios variados
+    // distrib: {1:N, 2:N, 3:N, 4:N, 5:N} = quantas em cada estágio
+    const populatePhase = (xp, distrib, streak, cardsToUnlock) => {
+      if(!confirm('Sobrescrever o estado atual do Pinhal com este preview? (Não dá pra desfazer)')) return;
+      // Cria state limpo do zero
+      DATA.pinhal = {
+        level: 1,
+        xp: 0,
+        streakDays: streak || 0,
+        lastStudyDate: (new Date()).toISOString().slice(0,10),
+        trees: [],
+        cards: {},
+        maxSlots: 45,  // máximo do nível 8+
+        xpLog: [],
+        notificationsSeen: { levelUpsSeen: [] },
+        dailyXp: { date: (new Date()).toISOString().slice(0,10), total: 0 }
+      };
+      // XP direto (sem cap)
+      DATA.pinhal.xp = xp;
+      // Determina level baseado em XP (lookup tabela LEVELS)
+      let lvl = 1;
+      Pinhal.LEVELS.forEach(L => { if(xp >= L.xp) lvl = L.n; });
+      DATA.pinhal.level = lvl;
+      DATA.pinhal.maxSlots = Pinhal.slotsForLevel(lvl);
+      // Popula árvores
+      let treeIdx = 0;
+      Object.entries(distrib).forEach(([stage, count]) => {
+        const stageNum = parseInt(stage, 10);
+        for(let i = 0; i < count; i++){
+          DATA.pinhal.trees.push({
+            id: 'tree_preview_' + treeIdx + '_' + Math.random().toString(36).slice(2,7),
+            plantedAt: Date.now() - (count - i) * 86400000,  // diferentes datas
+            lastWateredAt: Date.now(),
+            cumulativeMinutes: stageNum === 5 ? 700 : stageNum === 4 ? 350 : stageNum === 3 ? 150 : stageNum === 2 ? 45 : 5,
+            stage: stageNum,
+            slotIndex: treeIdx,
+            sourceLinkedId: null,
+            ctx: 'Preview de fase'
+          });
+          treeIdx++;
+        }
+      });
+      // Unlock cards
+      if(cardsToUnlock && cardsToUnlock.length > 0){
+        cardsToUnlock.forEach(id => {
+          DATA.pinhal.cards[id] = { unlockedAt: Date.now(), source: 'admin_preview' };
+        });
+      } else {
+        // Auto-unlock baseado no nível atingido (chama checkCardUnlocks indiretamente)
+        // via simulação direta
+        Pinhal.CARDS.forEach(c => {
+          // Desbloqueia uma proporção baseada no nível (visualização rica)
+          const unlockProb = (lvl - 1) / 10;  // L10 = 90% chance
+          if(Math.random() < unlockProb){
+            DATA.pinhal.cards[c.id] = { unlockedAt: Date.now(), source: 'admin_preview' };
+          }
+        });
+      }
+      // Log simulado
+      DATA.pinhal.xpLog = [
+        {ts: Date.now() - 3600000, action: 'pomo_focus', xp: 25, ctx: 'Preview'},
+        {ts: Date.now() - 7200000, action: 'source_read', xp: 50, ctx: 'Preview'},
+        {ts: Date.now() - 10800000, action: 'mock_complete', xp: 100, ctx: 'Preview'}
+      ];
+      try{ save(); }catch(_){}
+      ST.view = 'pinhal'; render();
+    };
+
+    const mkPhaseBtn = (label, color, action) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.style.cssText = `padding:6px 12px;background:${color}1A;border:1px solid ${color}40;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;color:${color};transition:all .15s ease`;
+      b.textContent = label;
+      b.addEventListener('mouseenter', () => { b.style.background = color + '2A'; });
+      b.addEventListener('mouseleave', () => { b.style.background = color + '1A'; });
+      b.addEventListener('click', action);
+      return b;
+    };
+
+    // 🌱 Fase inicial: nível 2, poucas árvores
+    phaseRow.appendChild(mkPhaseBtn('🌱 Inicial', '#10b981', () => {
+      populatePhase(150, {1:3, 2:2}, 3);
+    }));
+    // 🌿 Fase média: nível 5, mistura
+    phaseRow.appendChild(mkPhaseBtn('🌿 Média', '#0a7e5e', () => {
+      populatePhase(1200, {1:2, 2:4, 3:5, 4:2}, 12);
+    }));
+    // 🌳 Fase madura: nível 7, muitas árvores grandes
+    phaseRow.appendChild(mkPhaseBtn('🌳 Madura', '#8042fa', () => {
+      populatePhase(3000, {2:3, 3:6, 4:8, 5:3}, 21);
+    }));
+    // 🌲 Fase lendária: nível 9, floresta cheia
+    phaseRow.appendChild(mkPhaseBtn('🌲 Lendária', '#6a30dc', () => {
+      populatePhase(7000, {3:5, 4:10, 5:15}, 45);
+    }));
+    // 🏆 Fase final: nível 10 max, slots todos preenchidos
+    phaseRow.appendChild(mkPhaseBtn('🏆 Final (max)', '#fbbf24', () => {
+      // 45 slots cheios, maioria adulta/centenária
+      populatePhase(12000, {3:5, 4:15, 5:25}, 100);
+    }));
+
+    adminCard.appendChild(phaseRow);
+
+    // V15.12.75.118 — Test de sons rápido (debug)
+    const soundHead = mk('div');
+    soundHead.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;color:var(--text2);margin:.875rem 0 .375rem;text-transform:uppercase;letter-spacing:.4px';
+    soundHead.innerHTML = '<span>🔊</span><span>Testar sons</span>';
+    adminCard.appendChild(soundHead);
+    const soundRow = mk('div');
+    soundRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px';
+    const mkSoundBtn = (label, kind) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.style.cssText = 'padding:5px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:500;color:var(--text2)';
+      b.textContent = label;
+      b.addEventListener('click', () => {
+        // playPinhalSound não está exposto na API — chama via award com action especial
+        // Mais simples: invocar via lookup direto (precisa export)
+        if(typeof Pinhal._playSound === 'function') Pinhal._playSound(kind);
+      });
+      return b;
+    };
+    soundRow.appendChild(mkSoundBtn('🌿 Planta', 'card_plant'));
+    soundRow.appendChild(mkSoundBtn('🍒 Fruto', 'card_fruit'));
+    soundRow.appendChild(mkSoundBtn('🐦 Ave', 'card_bird'));
+    soundRow.appendChild(mkSoundBtn('🐾 Mamífero', 'card_mammal'));
+    soundRow.appendChild(mkSoundBtn('★ Lendária', 'card_legendary'));
+    soundRow.appendChild(mkSoundBtn('🌱 Árvore plantada', 'tree_planted'));
+    soundRow.appendChild(mkSoundBtn('🌳 Árvore evoluiu', 'tree_evolved'));
+    soundRow.appendChild(mkSoundBtn('✨ Level up', 'level_up'));
+    adminCard.appendChild(soundRow);
+
     wrap.appendChild(adminCard);
   }
 
@@ -66688,8 +66902,96 @@ function renderForest(){
 // Constrói a cena SVG do pinhal
 function buildForestScene(trees){
   // Cena estilizada do Pinhal de Araucárias
-  // Inspiração: ilustração de livro infantil contemporâneo, paleta sóbria do Paraná ao entardecer
-  // Profundidade em 5 camadas (céu/sol/montanhas/neblina/árvores) + gralha-azul detalhada
+  // Inspiração: ilustração de livro infantil contemporâneo, paleta do Paraná
+  // V15.12.75.118 — Paleta dinâmica pelo HORÁRIO LOCAL do user (timezone implícito).
+  // 5 períodos: madrugada, manhã, tarde, entardecer, noite. A estrutura SVG é a
+  // mesma; só os stops dos gradients mudam.
+  const hour = new Date().getHours();
+  let period;
+  if(hour >= 0  && hour < 5)  period = 'madrugada';   // 00-04
+  else if(hour >= 5  && hour < 8)  period = 'amanhecer';  // 05-07
+  else if(hour >= 8  && hour < 12) period = 'manha';      // 08-11
+  else if(hour >= 12 && hour < 17) period = 'tarde';      // 12-16
+  else if(hour >= 17 && hour < 20) period = 'entardecer'; // 17-19
+  else                              period = 'noite';     // 20-23
+  // Paletas pra cada período. Mantém a feel "Mata de Araucárias do planalto sul"
+  // mas adapta cor do céu, sol/lua, montanhas e neblina.
+  const PALETTES = {
+    madrugada: {
+      skyStops: [['0%','#0a0f1f'],['35%','#16203d'],['70%','#2a3552'],['100%','#3d4670']],
+      sunCore: ['#dee8f5','#a8b8d8'],  // lua minguante baixa
+      sunGlow: ['#a8b8d8','#6e84a8','#3d4670'],
+      mtnFar:  [['0%','#1a1f3d'],['100%','#0e1230']],
+      mtnNear: [['0%','#0e1428'],['100%','#050912']],
+      ground:  [['0%','#0a1612'],['50%','#06100d'],['100%','#020806']],
+      mist:    [['0%','#3d4670'],['50%','#5a648a'],['100%','#3d4670']],
+      mistOpacityMid: 0.12,
+      sunPos: {cx:160, cy:80, r:22},
+      stars: true
+    },
+    amanhecer: {
+      skyStops: [['0%','#3d4670'],['35%','#7e6680'],['70%','#d6957a'],['100%','#ffd1a0']],
+      sunCore: ['#fff7e0','#ffd496'],
+      sunGlow: ['#ffe9b8','#ffd496','#ffb070'],
+      mtnFar:  [['0%','#4d4878'],['100%','#3a3658']],
+      mtnNear: [['0%','#2a3144'],['100%','#1a1f2c']],
+      ground:  [['0%','#2a3d2e'],['50%','#1e2f24'],['100%','#0e1c14']],
+      mist:    [['0%','#d6957a'],['50%','#e8b89a'],['100%','#d6957a']],
+      mistOpacityMid: 0.20,
+      sunPos: {cx:640, cy:200, r:38},  // sol nascendo no leste, baixo
+      stars: false
+    },
+    manha: {
+      skyStops: [['0%','#7ec0e8'],['40%','#a6d8f0'],['80%','#d4ecf7'],['100%','#fff4d0']],
+      sunCore: ['#fff8d4','#ffe48f'],
+      sunGlow: ['#fff5b8','#ffe48f','#ffd060'],
+      mtnFar:  [['0%','#6a8aa8'],['100%','#4d6a85']],
+      mtnNear: [['0%','#3d5648'],['100%','#243d2f']],
+      ground:  [['0%','#4d7048'],['50%','#3a5837'],['100%','#284028']],
+      mist:    [['0%','#d4ecf7'],['50%','#e8f3fa'],['100%','#d4ecf7']],
+      mistOpacityMid: 0.10,
+      sunPos: {cx:600, cy:90, r:42},
+      stars: false
+    },
+    tarde: {
+      skyStops: [['0%','#5da4d8'],['40%','#8cc5e8'],['80%','#c4e3f4'],['100%','#fff0c0']],
+      sunCore: ['#fffae4','#ffec80'],
+      sunGlow: ['#fff5b8','#ffe48f','#ffcc50'],
+      mtnFar:  [['0%','#7593a8'],['100%','#566f85']],
+      mtnNear: [['0%','#4a6248'],['100%','#2e442e']],
+      ground:  [['0%','#5a7a48'],['50%','#436238'],['100%','#314628']],
+      mist:    [['0%','#c4e3f4'],['50%','#dde9f0'],['100%','#c4e3f4']],
+      mistOpacityMid: 0.08,
+      sunPos: {cx:500, cy:70, r:44},  // sol no zênite-oeste
+      stars: false
+    },
+    entardecer: {
+      // Paleta original (V15.11): planalto ao entardecer
+      skyStops: [['0%','#162644'],['35%','#3d4670'],['70%','#a37777'],['100%','#e8a880']],
+      sunCore: ['#fff5dc','#ffd496'],
+      sunGlow: ['#ffe9b8','#ffd496','#ffb070'],
+      mtnFar:  [['0%','#3d3858'],['100%','#2a2640']],
+      mtnNear: [['0%','#1f3138'],['100%','#0e1a1f']],
+      ground:  [['0%','#1f3328'],['50%','#162922'],['100%','#0a1612']],
+      mist:    [['0%','#a96d6d'],['50%','#c08a7a'],['100%','#d4a08c']],
+      mistOpacityMid: 0.18,
+      sunPos: {cx:640, cy:210, r:42},  // sol baixo no oeste
+      stars: false
+    },
+    noite: {
+      skyStops: [['0%','#08102a'],['35%','#102045'],['70%','#1a2858'],['100%','#243068']],
+      sunCore: ['#f0e8d4','#d4cab0'],   // lua cheia
+      sunGlow: ['#e8e0c0','#a8a08e','#5a5260'],
+      mtnFar:  [['0%','#1a2240'],['100%','#0a0e22']],
+      mtnNear: [['0%','#0e1428'],['100%','#02040c']],
+      ground:  [['0%','#0a1612'],['50%','#04100c'],['100%','#020604']],
+      mist:    [['0%','#243068'],['50%','#3a4880'],['100%','#243068']],
+      mistOpacityMid: 0.10,
+      sunPos: {cx:580, cy:75, r:30},  // lua alta
+      stars: true
+    }
+  };
+  const PAL = PALETTES[period];
   const W = 800, H = 380;
   const grouped = {ancient:[], mature:[], young:[], seed:[]};
   trees.forEach(t=>{
@@ -66704,52 +67006,42 @@ function buildForestScene(trees){
     return Math.abs(hash) % max;
   };
 
+  // V15.12.75.118 — Helper pra construir <stop> a partir de array
+  const stops = (arr) => arr.map(([off, col]) => `<stop offset="${off}" stop-color="${col}"/>`).join('');
+
   const container = mk('div','forest-svg-wrap');
   let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" class="forest-svg">`;
 
-  // === DEFS — gradientes, filtros, padrões ===
+  // === DEFS — gradientes, filtros, padrões (paleta dinâmica pelo horário) ===
   svg += `<defs>
-    <!-- V15.11: Céu mais natural pra paisagem de Mata de Araucárias —
-         tons frescos e nítidos do entardecer no planalto sul brasileiro
-         (altitude > 900m), com ar limpo e neblina baixa. -->
     <linearGradient id="forSky" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#162644"/>
-      <stop offset="35%" stop-color="#3d4670"/>
-      <stop offset="70%" stop-color="#a37777"/>
-      <stop offset="100%" stop-color="#e8a880"/>
+      ${stops(PAL.skyStops)}
     </linearGradient>
     <!-- Sol/lua suave -->
     <radialGradient id="forSun" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#ffe9b8" stop-opacity="0.95"/>
-      <stop offset="40%" stop-color="#ffd496" stop-opacity="0.6"/>
-      <stop offset="100%" stop-color="#ffb070" stop-opacity="0"/>
+      <stop offset="0%" stop-color="${PAL.sunGlow[0]}" stop-opacity="0.95"/>
+      <stop offset="40%" stop-color="${PAL.sunGlow[1]}" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="${PAL.sunGlow[2]}" stop-opacity="0"/>
     </radialGradient>
-    <!-- Halo do sol -->
     <radialGradient id="forSunCore" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#fff5dc" stop-opacity="1"/>
-      <stop offset="100%" stop-color="#ffd496" stop-opacity="0.85"/>
+      <stop offset="0%" stop-color="${PAL.sunCore[0]}" stop-opacity="1"/>
+      <stop offset="100%" stop-color="${PAL.sunCore[1]}" stop-opacity="0.85"/>
     </radialGradient>
-    <!-- Montanhas distantes (azul-arroxeado) -->
     <linearGradient id="forMtnFar" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#3d3858" stop-opacity="0.75"/>
-      <stop offset="100%" stop-color="#2a2640" stop-opacity="0.85"/>
+      <stop offset="${PAL.mtnFar[0][0]}" stop-color="${PAL.mtnFar[0][1]}" stop-opacity="0.75"/>
+      <stop offset="${PAL.mtnFar[1][0]}" stop-color="${PAL.mtnFar[1][1]}" stop-opacity="0.85"/>
     </linearGradient>
-    <!-- Montanhas próximas (mais densas) -->
     <linearGradient id="forMtnNear" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1f3138" stop-opacity="0.92"/>
-      <stop offset="100%" stop-color="#0e1a1f" stop-opacity="1"/>
+      <stop offset="${PAL.mtnNear[0][0]}" stop-color="${PAL.mtnNear[0][1]}" stop-opacity="0.92"/>
+      <stop offset="${PAL.mtnNear[1][0]}" stop-color="${PAL.mtnNear[1][1]}" stop-opacity="1"/>
     </linearGradient>
-    <!-- Solo verde profundo -->
     <linearGradient id="forGround" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#1f3328"/>
-      <stop offset="50%" stop-color="#162922"/>
-      <stop offset="100%" stop-color="#0a1612"/>
+      ${stops(PAL.ground)}
     </linearGradient>
-    <!-- Neblina entre camadas -->
     <linearGradient id="forMist" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#a96d6d" stop-opacity="0"/>
-      <stop offset="50%" stop-color="#c08a7a" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#d4a08c" stop-opacity="0"/>
+      <stop offset="0%" stop-color="${PAL.mist[0][1]}" stop-opacity="0"/>
+      <stop offset="50%" stop-color="${PAL.mist[1][1]}" stop-opacity="${PAL.mistOpacityMid}"/>
+      <stop offset="100%" stop-color="${PAL.mist[2][1]}" stop-opacity="0"/>
     </linearGradient>
     <!-- V15.11: Cor das araucárias — verde-escuro intenso típico da Araucaria angustifolia.
          Antes os tons puxavam pro azul-acinzentado. Agora: verde-musgo profundo
@@ -66785,18 +67077,19 @@ function buildForestScene(trees){
   // === SOL/LUA — disco suave no horizonte ===
   // V15.12.57 — Dinâmico baseado no horário local do usuário:
   //   06:00-18:00 → SOL (amarelo quente, no canto direito)
-  //   18:00-06:00 → LUA (cinza-prata frio, no canto esquerdo)
-  // Permite usuário ver "passar do tempo" no pinhal conforme estuda.
-  const hour = new Date().getHours();
-  const isDay = hour >= 6 && hour < 18;
-  const sunCx = isDay ? W*0.72 : W*0.18;
-  const sunCy = H*0.42;
-  if(isDay){
-    // Sol: amarelo-laranja brilhante
-    svg += `<circle cx="${sunCx}" cy="${sunCy}" r="80" fill="url(#forSun)"/>`;
-    svg += `<circle cx="${sunCx}" cy="${sunCy}" r="22" fill="url(#forSunCore)"/>`;
+  // V15.12.75.118 — Sol/Lua dinâmico por período (madrugada/amanhecer/manhã/
+  // tarde/entardecer/noite). Posição e tamanho vêm da paleta. Madrugada e noite
+  // mostram lua + estrelas; resto mostra sol.
+  const isLunar = (period === 'madrugada' || period === 'noite');
+  const sunCx = PAL.sunPos.cx;
+  const sunCy = PAL.sunPos.cy;
+  const sunR = PAL.sunPos.r;
+  if(!isLunar){
+    // Sol: glow ao redor + core
+    svg += `<circle cx="${sunCx}" cy="${sunCy}" r="${sunR * 2}" fill="url(#forSun)"/>`;
+    svg += `<circle cx="${sunCx}" cy="${sunCy}" r="${sunR * 0.55}" fill="url(#forSunCore)"/>`;
   } else {
-    // Lua: prata-azulada com sombra crescente
+    // Lua
     svg += `<defs>
       <radialGradient id="forMoonGlow" cx="50%" cy="50%" r="50%">
         <stop offset="0%" stop-color="#e8edf5" stop-opacity="0.6"/>
@@ -66808,24 +67101,26 @@ function buildForestScene(trees){
         <stop offset="100%" stop-color="#cdd5e2"/>
       </radialGradient>
     </defs>`;
-    svg += `<circle cx="${sunCx}" cy="${sunCy}" r="65" fill="url(#forMoonGlow)"/>`;
-    svg += `<circle cx="${sunCx}" cy="${sunCy}" r="20" fill="url(#forMoonCore)"/>`;
-    // Crateras pequenas pra sensação de lua
+    svg += `<circle cx="${sunCx}" cy="${sunCy}" r="${sunR * 1.6}" fill="url(#forMoonGlow)"/>`;
+    svg += `<circle cx="${sunCx}" cy="${sunCy}" r="${sunR * 0.5}" fill="url(#forMoonCore)"/>`;
+    // Crateras
     svg += `<circle cx="${sunCx-6}" cy="${sunCy-4}" r="2.2" fill="#a8b3c5" opacity="0.4"/>`;
     svg += `<circle cx="${sunCx+5}" cy="${sunCy+3}" r="1.8" fill="#a8b3c5" opacity="0.4"/>`;
     svg += `<circle cx="${sunCx-2}" cy="${sunCy+6}" r="1.3" fill="#a8b3c5" opacity="0.35"/>`;
   }
 
-  // === ESTRELAS — pontos discretos no alto ===
-  // V15.12.57 — Mais visíveis à noite, sutis de dia
-  const starOpacity = isDay ? 0.3 : 0.85;
-  const stars = [
-    [0.08, 0.10, 1.2], [0.18, 0.06, 0.9], [0.26, 0.13, 1.0],
-    [0.42, 0.08, 1.1], [0.55, 0.05, 0.8], [0.88, 0.12, 0.9]
-  ];
-  stars.forEach(([sx, sy, r])=>{
-    svg += `<circle cx="${W*sx}" cy="${H*sy}" r="${r}" fill="#fff5dc" opacity="${starOpacity}"/>`;
-  });
+  // === ESTRELAS — só aparecem em madrugada e noite (mais densas) ===
+  if(PAL.stars){
+    const stars = [
+      [0.08, 0.10, 1.2], [0.18, 0.06, 0.9], [0.26, 0.13, 1.0],
+      [0.42, 0.08, 1.1], [0.55, 0.05, 0.8], [0.88, 0.12, 0.9],
+      [0.12, 0.22, 0.7], [0.34, 0.18, 0.9], [0.48, 0.15, 0.8],
+      [0.62, 0.10, 1.0], [0.74, 0.18, 0.7], [0.92, 0.22, 0.8]
+    ];
+    stars.forEach(([sx, sy, r])=>{
+      svg += `<circle cx="${W*sx}" cy="${H*sy}" r="${r}" fill="#fff5dc" opacity="0.85"/>`;
+    });
+  }
 
   // === MONTANHAS DISTANTES (camada única, perfil suave alto) ===
   // V15.12.57 — Antes 2 camadas com formato similar (queixa: pareciam duplicadas).
