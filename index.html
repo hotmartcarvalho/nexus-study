@@ -4500,6 +4500,38 @@ input[type="month"]::-webkit-calendar-picker-indicator{
   100%{transform:translateY(-360px) scale(0) rotate(720deg);opacity:0}
 }
 
+/* V15.12.75.106 — Animações do Pinhal */
+@keyframes pinhal-xp-toast-in{
+  0%{transform:translateY(20px) scale(.85);opacity:0}
+  60%{transform:translateY(-4px) scale(1.05);opacity:1}
+  100%{transform:translateY(0) scale(1);opacity:1}
+}
+@keyframes pinhal-xp-toast-out{
+  0%{transform:translateX(0);opacity:1}
+  100%{transform:translateX(40px);opacity:0}
+}
+@keyframes pinhal-levelup-bg-in{
+  0%{opacity:0}
+  100%{opacity:1}
+}
+@keyframes pinhal-levelup-bg-out{
+  0%{opacity:1}
+  100%{opacity:0}
+}
+@keyframes pinhal-levelup-card-in{
+  0%{transform:scale(.3) rotate(-8deg);opacity:0}
+  60%{transform:scale(1.05) rotate(2deg);opacity:1}
+  100%{transform:scale(1) rotate(0);opacity:1}
+}
+@keyframes pinhal-emoji-bounce{
+  0%,100%{transform:translateY(0) scale(1)}
+  50%{transform:translateY(-8px) scale(1.05)}
+}
+@keyframes pinhal-confetti-burst{
+  0%{transform:translate(-50%,-50%) rotate(0);opacity:1}
+  100%{transform:translate(calc(-50% + var(--burst-dx)),calc(-50% + var(--burst-dy))) rotate(var(--burst-rot));opacity:0}
+}
+
 /* Mini-badge do pomodoro no header da fonte */
 .src-pomo-badge{
   display:inline-flex;align-items:center;gap:8px;
@@ -7364,7 +7396,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.105';
+window.GRALIA_VERSION = 'V15.12.75.107';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -12221,7 +12253,7 @@ const RESERVED_USERNAMES = new Set([
   'system','staff','team','official','moderator','mod','dev','developer',
   // Páginas existentes do app (rotas internas)
   'dashboard','painel','sources','fontes','methods','metodos','imported','banco',
-  'srs','flashcards','mapa','pomodoro','settings','config','history','historico',
+  'srs','flashcards','mapa','pomodoro','pinhal','settings','config','history','historico',
   'practice','simulado','calibration','drill','examiner','elaborative','interleaving',
   'usage','review','revisao','turbo','revgen','goals','metas','profile','perfil',
   'login','signup','register','logout','signin','signout','forgot','reset',
@@ -18211,6 +18243,8 @@ function buildAppSidebar(){
         {view:'srs', icon:'🎴', label:'Flashcards', badge:dueSrs > 0 ? dueSrs : null},
         {view:'history', icon:'📜', label:'Histórico de erros', badge:errorsNoCard > 0 ? errorsNoCard : null},
         {view:'pomodoro', icon:'🌰', label:'Pomodoro', desc:'Timer de estudo com pausas'},
+        // V15.12.75.106 — Pinhal: gamificação. XP/nível/floresta/cards
+        {view:'pinhal', icon:'🌲', label:'Pinhal', desc:'Sua floresta de estudos'},
       ]
     },
     {
@@ -18458,7 +18492,7 @@ function render(){
   const pg = mk('div','page route-fade');
   const views = {
     dashboard:renderDashboard,sources:renderSources,methods:renderMethods,
-    pomodoro:renderPomodoro,settings:renderSettings,history:renderHistory,turbo:renderTurbo,eve:renderEve,imported:renderImported,review:renderReview,revgen:renderRevgen,
+    pomodoro:renderPomodoro,pinhal:renderPinhal,settings:renderSettings,history:renderHistory,turbo:renderTurbo,eve:renderEve,imported:renderImported,review:renderReview,revgen:renderRevgen,
     calibration:renderCalibration,examiner:renderExaminer,drill:renderDrill,
     elaborative:renderElaborative,practice:renderPractice,simulado:renderSimulado,
     'ai-favorites':renderAIFavorites,
@@ -20646,6 +20680,7 @@ const VIEW_META = {
   history:      {label:'Histórico de erros',    icon:'📜', group:'review'},
   review:       {label:'Revisão Turbo',         icon:'⚡', group:'review'},
   pomodoro:     {label:'Pomodoro',              icon:'🌰', group:'review'},
+  pinhal:       {label:'Pinhal',                icon:'🌲', group:'review'},
   // Planejar
   goals:        {label:'Metas',                 icon:'🎯', group:'plan'},
   schedule:     {label:'Cronograma',            icon:'📅', group:'plan'},
@@ -20793,7 +20828,8 @@ function renderTopbar(){
       {view:'srs',label:'Flashcards',icon:'🎴',desc:'Revisão espaçada (SRS)'},
       {view:'history',label:'Histórico de erros',icon:'📜',desc:'Todos os erros pra revisar e aprender'},
       {view:'review',label:'Revisão Turbo',icon:'⚡',desc:'Ciclos adaptativos e véspera de prova'},
-      {view:'pomodoro',label:'Pomodoro',icon:'🌰',desc:'Timer de foco'}
+      {view:'pomodoro',label:'Pomodoro',icon:'🌰',desc:'Timer de foco'},
+      {view:'pinhal',label:'Pinhal',icon:'🌲',desc:'Sua floresta de estudos (XP, níveis, coleção)'}
     ]},
     {type:'group',key:'plan',label:'Planejar',icon:'🗺',children:[
       {view:'goals',label:'Metas',icon:'🎯',desc:'Metas mensais/semanais com fasamento'},
@@ -22391,6 +22427,11 @@ function renderDashboard(){
   wrap.appendChild(_heroBlock);
   if(_summaryBlock) wrap.appendChild(_summaryBlock);
   if(_quickAccessBlock) wrap.appendChild(_quickAccessBlock);
+  // V15.12.75.107 — Widget Pinhal: card resumo no dashboard
+  try{
+    const pinhalWidget = buildPinhalDashboardWidget();
+    if(pinhalWidget) wrap.appendChild(pinhalWidget);
+  }catch(e){ console.warn('[pinhal-widget]', e); }
   if(_scheduleBlock) wrap.appendChild(_scheduleBlock);
   if(_tipBlock) wrap.appendChild(_tipBlock);
   if(_perfChart) wrap.appendChild(_perfChart);
@@ -32488,6 +32529,590 @@ function showSourceInfoModal(src){
 //
 // API: AmbientSound.play(type), AmbientSound.stop(), AmbientSound.setVolume(v),
 //      AmbientSound.getCurrentType()
+// V15.12.75.106 — PINHAL (Fatia 1 de 5: Fundação)
+// Sistema de gamificação. User cultiva um pinhal conforme estuda. 3 eixos:
+//   A) Floresta — árvores plantadas/crescendo no pinhal (visualização principal)
+//   B) XP e Níveis — moeda universal, níveis temáticos do bioma
+//   C) Cards de bioma — coleção de fauna/flora desbloqueável
+//
+// Toda ação relevante chama Pinhal.award({action, xp, ctx}).
+// Estado em DATA.pinhal (persiste com save normal).
+//
+// API:
+//   Pinhal.init()                  — inicializa state se faltar
+//   Pinhal.award({action,xp,ctx})  — adiciona XP, processa level-up, planta árvore
+//   Pinhal.getLevel()              — retorna {level, name, xpInLevel, xpForNext, totalXp}
+//   Pinhal.getState()              — retorna DATA.pinhal completo
+const Pinhal = (() => {
+  // Níveis: {nível, nome, XP cumulativo necessário, recompensa textual}
+  const LEVELS = [
+    {n:1, name:'Visitante',           xp:0,     reward:''},
+    {n:2, name:'Aprendiz da Mata',    xp:100,   reward:'+5 slots'},
+    {n:3, name:'Caminhante',          xp:300,   reward:'Card Pinhão'},
+    {n:4, name:'Observador',          xp:600,   reward:'+5 slots'},
+    {n:5, name:'Bicho-do-Mato',       xp:1000,  reward:'Card Imbuia'},
+    {n:6, name:'Conhecedor',          xp:1500,  reward:'+5 slots'},
+    {n:7, name:'Guardião do Pinhal',  xp:2500,  reward:'Card Gralha Adulta'},
+    {n:8, name:'Sábio das Araucárias',xp:4000,  reward:'+10 slots'},
+    {n:9, name:'Espírito do Pinhal',  xp:6000,  reward:'Card lendário'},
+    {n:10,name:'Mestre da Mata',      xp:10000, reward:'Skin especial'}
+  ];
+
+  const INITIAL_SLOTS = 20;
+  const DAILY_XP_CAP = 500;  // teto diário pra evitar farming
+
+  function init(){
+    if(!DATA.pinhal){
+      DATA.pinhal = {
+        level: 1,
+        xp: 0,
+        streakDays: 0,
+        lastStudyDate: null,
+        trees: [],
+        cards: {},
+        maxSlots: INITIAL_SLOTS,
+        xpLog: [],
+        notificationsSeen: { levelUpsSeen: [] },
+        dailyXp: { date: null, total: 0 }  // tracking diário pro cap
+      };
+    }
+    // Migração suave: se estrutura antiga faltar campos, completar
+    const p = DATA.pinhal;
+    if(!Array.isArray(p.trees)) p.trees = [];
+    if(!p.cards) p.cards = {};
+    if(typeof p.maxSlots !== 'number') p.maxSlots = INITIAL_SLOTS;
+    if(!Array.isArray(p.xpLog)) p.xpLog = [];
+    if(!p.notificationsSeen) p.notificationsSeen = { levelUpsSeen: [] };
+    if(!p.dailyXp) p.dailyXp = { date: null, total: 0 };
+    return p;
+  }
+
+  function getLevelForXp(totalXp){
+    let current = LEVELS[0];
+    for(let i = LEVELS.length - 1; i >= 0; i--){
+      if(totalXp >= LEVELS[i].xp){ current = LEVELS[i]; break; }
+    }
+    const next = LEVELS.find(l => l.n === current.n + 1) || null;
+    return {
+      level: current.n,
+      name: current.name,
+      reward: current.reward,
+      xpAtLevelStart: current.xp,
+      xpForNext: next ? next.xp : null,
+      isMaxLevel: !next
+    };
+  }
+
+  function getLevel(){
+    const p = init();
+    const info = getLevelForXp(p.xp);
+    const xpInLevel = p.xp - info.xpAtLevelStart;
+    const xpNeededInLevel = info.xpForNext ? (info.xpForNext - info.xpAtLevelStart) : 0;
+    return {
+      level: info.level,
+      name: info.name,
+      reward: info.reward,
+      xpInLevel,
+      xpNeededInLevel,
+      totalXp: p.xp,
+      isMaxLevel: info.isMaxLevel,
+      progressPct: xpNeededInLevel > 0 ? Math.min(100, (xpInLevel / xpNeededInLevel) * 100) : 100
+    };
+  }
+
+  function getState(){ return init(); }
+
+  // Calcula slots pra um dado nível (acumulativo de recompensas)
+  function slotsForLevel(level){
+    let slots = INITIAL_SLOTS;
+    if(level >= 2) slots += 5;
+    if(level >= 4) slots += 5;
+    if(level >= 6) slots += 5;
+    if(level >= 8) slots += 10;
+    return slots;
+  }
+
+  // Toast flutuante de XP ganho (canto inferior direito)
+  function showXpToast(xpAmount, action, ctx){
+    const existing = document.getElementById('pinhal-xp-toast-stack');
+    let stack = existing;
+    if(!stack){
+      stack = mk('div');
+      stack.id = 'pinhal-xp-toast-stack';
+      stack.style.cssText = 'position:fixed;bottom:80px;right:24px;z-index:99950;display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:none';
+      document.body.appendChild(stack);
+    }
+    const toast = mk('div');
+    toast.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 14px;background:linear-gradient(135deg,rgba(128,66,250,.96),rgba(106,48,220,.96));color:#fff;border-radius:999px;font-family:inherit;font-size:13px;font-weight:700;box-shadow:0 6px 20px rgba(128,66,250,.30),0 1px 4px rgba(0,0,0,.10);animation:pinhal-xp-toast-in .4s cubic-bezier(.34,1.56,.64,1) both;pointer-events:none;letter-spacing:.2px';
+    const ctxText = ctx ? ' · ' + (ctx.length > 28 ? ctx.slice(0,28)+'…' : ctx) : '';
+    toast.innerHTML = `<span style="font-size:14px">✨</span><span>+${xpAmount} XP${ctxText}</span>`;
+    stack.appendChild(toast);
+    setTimeout(() => {
+      toast.style.animation = 'pinhal-xp-toast-out .5s ease forwards';
+      setTimeout(() => {
+        if(toast.parentNode) toast.parentNode.removeChild(toast);
+        // limpa stack se vazio
+        if(stack && stack.children.length === 0 && stack.parentNode){
+          stack.parentNode.removeChild(stack);
+        }
+      }, 500);
+    }, 2400);
+  }
+
+  // Tela cheia de level-up (sobrepõe tudo)
+  function showLevelUpModal(newLevel, info){
+    const overlay = mk('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:100100;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;animation:pinhal-levelup-bg-in .4s ease both;backdrop-filter:blur(4px)';
+    const card = mk('div');
+    card.style.cssText = 'background:var(--surface);border:2px solid var(--gralia-purple);border-radius:18px;padding:2rem 2.5rem;text-align:center;max-width:420px;box-shadow:0 24px 60px rgba(128,66,250,.45),0 6px 18px rgba(0,0,0,.15);animation:pinhal-levelup-card-in .55s cubic-bezier(.34,1.56,.64,1) both;position:relative;z-index:1';
+
+    const eyebrow = mk('div');
+    eyebrow.style.cssText = 'font-size:11px;font-weight:700;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:.5rem';
+    eyebrow.textContent = '✨ Subiu de nível!';
+    card.appendChild(eyebrow);
+
+    const big = mk('div');
+    big.style.cssText = 'font-size:64px;line-height:1;margin:.5rem 0 .375rem;animation:pinhal-emoji-bounce 1.2s ease-in-out infinite';
+    big.textContent = '🌲';
+    card.appendChild(big);
+
+    const levelNum = mk('div');
+    levelNum.style.cssText = 'font-size:22px;font-weight:800;color:var(--text);margin-bottom:.25rem';
+    levelNum.textContent = `Nível ${newLevel}`;
+    card.appendChild(levelNum);
+
+    const levelName = mk('div');
+    levelName.style.cssText = 'font-size:16px;font-weight:600;color:var(--gralia-purple);margin-bottom:1rem';
+    levelName.textContent = info.name;
+    card.appendChild(levelName);
+
+    if(info.reward){
+      const reward = mk('div');
+      reward.style.cssText = 'padding:.75rem 1rem;background:rgba(128,66,250,.08);border:1px solid rgba(128,66,250,.22);border-radius:10px;font-size:13px;color:var(--text2);margin-bottom:1rem';
+      reward.innerHTML = `🎁 <b>Recompensa:</b> ${escapeHTML(info.reward)}`;
+      card.appendChild(reward);
+    }
+
+    const okBtn = mk('button');
+    okBtn.type = 'button';
+    okBtn.style.cssText = 'padding:.625rem 1.5rem;background:var(--gralia-purple);color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:inherit;font-size:13.5px;font-weight:700;letter-spacing:.2px;transition:all .15s ease;box-shadow:0 4px 12px rgba(128,66,250,.30)';
+    okBtn.textContent = 'Continuar →';
+    okBtn.addEventListener('mouseenter',()=>{okBtn.style.background='#6a30dc';okBtn.style.transform='translateY(-1px)';});
+    okBtn.addEventListener('mouseleave',()=>{okBtn.style.background='var(--gralia-purple)';okBtn.style.transform='translateY(0)';});
+    okBtn.addEventListener('click',()=>{
+      overlay.style.animation = 'pinhal-levelup-bg-out .4s ease forwards';
+      setTimeout(() => overlay.remove(), 400);
+    });
+    card.appendChild(okBtn);
+
+    overlay.appendChild(card);
+
+    // Confete sutil ao redor
+    for(let i = 0; i < 24; i++){
+      const conf = mk('div');
+      const colors = ['#fbbf24', '#8042fa', '#a78bfa', '#10b981', '#ec4899'];
+      const angle = (i / 24) * Math.PI * 2;
+      const dx = Math.cos(angle) * (200 + Math.random() * 100);
+      const dy = Math.sin(angle) * (200 + Math.random() * 100);
+      conf.style.cssText = `position:absolute;width:10px;height:10px;background:${colors[i%5]};border-radius:2px;left:50%;top:50%;animation:pinhal-confetti-burst 1.8s ease-out forwards;animation-delay:${i*0.03}s;--burst-dx:${dx}px;--burst-dy:${dy}px;--burst-rot:${(i%2?1:-1)*720}deg;z-index:0;pointer-events:none`;
+      overlay.appendChild(conf);
+    }
+
+    document.body.appendChild(overlay);
+
+    // Esc fecha
+    const onEsc = (e) => {
+      if(e.key === 'Escape'){
+        overlay.style.animation = 'pinhal-levelup-bg-out .4s ease forwards';
+        setTimeout(() => overlay.remove(), 400);
+        document.removeEventListener('keydown', onEsc);
+      }
+    };
+    document.addEventListener('keydown', onEsc);
+  }
+
+  // Calcula se hoje conta como streak (continuação ou começo novo)
+  function isoToday(){
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function isoYesterday(){
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function updateStreak(){
+    const p = init();
+    const today = isoToday();
+    if(p.lastStudyDate === today) return;  // já contou hoje
+    if(p.lastStudyDate === isoYesterday()){
+      p.streakDays = (p.streakDays || 0) + 1;
+    } else {
+      // gap maior que 1 dia — reseta streak
+      p.streakDays = 1;
+    }
+    p.lastStudyDate = today;
+  }
+
+  // Cap diário de XP — reseta no dia novo
+  function checkDailyCap(xpAmount){
+    const p = init();
+    const today = isoToday();
+    if(p.dailyXp.date !== today){
+      p.dailyXp = { date: today, total: 0 };
+    }
+    const remaining = DAILY_XP_CAP - p.dailyXp.total;
+    if(remaining <= 0) return 0;
+    return Math.min(xpAmount, remaining);
+  }
+
+  // Planta uma árvore nova no próximo slot vazio (se houver)
+  function plantTree(action, ctx){
+    const p = init();
+    if(p.trees.length >= p.maxSlots) return null;
+    const slotIndex = p.trees.length;  // próximo slot
+    const tree = {
+      id: 'tree_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      plantedAt: Date.now(),
+      lastWateredAt: Date.now(),
+      cumulativeMinutes: 0,
+      stage: 1,
+      slotIndex,
+      sourceLinkedId: null,
+      ctx: ctx || ''
+    };
+    p.trees.push(tree);
+    return tree;
+  }
+
+  // Avança o crescimento de uma árvore existente (rega + tempo)
+  function waterTree(minutesToAdd){
+    const p = init();
+    if(p.trees.length === 0) return;
+    // Rega a árvore mais recente (a que está sendo cultivada)
+    const tree = p.trees[p.trees.length - 1];
+    tree.cumulativeMinutes = (tree.cumulativeMinutes || 0) + minutesToAdd;
+    tree.lastWateredAt = Date.now();
+    // Calcula estágio com base no tempo cumulativo
+    const m = tree.cumulativeMinutes;
+    if(m >= 600) tree.stage = 5;       // 10h+
+    else if(m >= 300) tree.stage = 4;  // 5-10h
+    else if(m >= 120) tree.stage = 3;  // 2-5h
+    else if(m >= 30) tree.stage = 2;   // 30min-2h
+    else tree.stage = 1;
+  }
+
+  // API PRINCIPAL — chamada de qualquer ponto que gere XP
+  function award({action, xp, ctx}){
+    const p = init();
+    // Cap diário
+    const xpFinal = checkDailyCap(xp);
+    if(xpFinal <= 0){
+      // Atingiu o cap — registra mas não conta XP (opcional: toast informando)
+      return { capped: true, xp: 0 };
+    }
+
+    const oldLevel = getLevelForXp(p.xp).level;
+    p.xp += xpFinal;
+    p.dailyXp.total += xpFinal;
+
+    // Atualiza streak
+    updateStreak();
+
+    // Log de XP (cap 50 entradas)
+    p.xpLog.unshift({ ts: Date.now(), action, xp: xpFinal, ctx: ctx || '' });
+    if(p.xpLog.length > 50) p.xpLog = p.xpLog.slice(0, 50);
+
+    // Plantação/rega baseado no action
+    if(action === 'pomo_focus'){
+      // Cada pomo de foco planta uma árvore nova OU rega a última
+      // Lógica: se passou >30min desde última plantação, planta nova; senão rega.
+      const lastTree = p.trees[p.trees.length - 1];
+      const SHOULD_PLANT_NEW_MS = 60 * 60 * 1000;  // 1h
+      if(!lastTree || (Date.now() - lastTree.plantedAt) > SHOULD_PLANT_NEW_MS){
+        plantTree(action, ctx);
+      } else {
+        waterTree(25);  // pomo de 25min adiciona 25min na árvore
+      }
+    } else if(action === 'source_read'){
+      // Avança árvore atual em 60min (boost de "fonte concluída")
+      waterTree(60);
+    }
+
+    // Check level-up
+    const newLevel = getLevelForXp(p.xp).level;
+    const leveledUp = newLevel > oldLevel;
+    if(leveledUp){
+      // Atualiza maxSlots
+      p.maxSlots = slotsForLevel(newLevel);
+      // Marca level-ups que ainda não foram vistos
+      const seen = p.notificationsSeen.levelUpsSeen || [];
+      for(let lv = oldLevel + 1; lv <= newLevel; lv++){
+        if(!seen.includes(lv)) seen.push(lv);
+      }
+      p.notificationsSeen.levelUpsSeen = seen;
+    }
+
+    try{ save(); }catch(_){}
+
+    // Feedback visual
+    showXpToast(xpFinal, action, ctx);
+    if(leveledUp){
+      const info = getLevelForXp(p.xp);
+      setTimeout(() => showLevelUpModal(newLevel, info), 1200);
+    }
+
+    // V15.12.75.107 — Check cards desbloqueados (escalonado pra não amontoar)
+    const newCards = checkCardUnlocks();
+    if(newCards && newCards.length > 0){
+      try{ save(); }catch(_){}
+      newCards.forEach((card, i) => {
+        setTimeout(() => showCardUnlockToast(card), 2000 + i * 1500);
+      });
+    }
+
+    return { capped: false, xp: xpFinal, leveledUp, newLevel, newCards };
+  }
+
+  // V15.12.75.107 — Toast pequeno de card desbloqueado (canto inferior esquerdo).
+  // Click expande pra modal com detalhes.
+  function showCardUnlockToast(card){
+    if(!card) return;
+    const rarColors = {1:'#10b981', 2:'#8042fa', 3:'#fbbf24'};
+    const rarLabels = {1:'Comum', 2:'Rara', 3:'Lendária'};
+    const color = rarColors[card.rar] || '#8042fa';
+    const toast = mk('div');
+    toast.style.cssText = `position:fixed;bottom:80px;left:24px;z-index:99950;display:flex;align-items:center;gap:12px;padding:10px 16px 10px 12px;background:var(--surface);border:2px solid ${color};border-radius:14px;font-family:inherit;box-shadow:0 8px 24px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.10);animation:pinhal-xp-toast-in .5s cubic-bezier(.34,1.56,.64,1) both;cursor:pointer;max-width:320px;transition:transform .15s ease`;
+    toast.innerHTML = `
+      <div style="width:44px;height:44px;border-radius:10px;background:${color}1A;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${card.emoji}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.6px">🎁 Card ${rarLabels[card.rar]||'Comum'}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(card.nome)}</div>
+        <div style="font-size:11px;color:var(--text3);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(card.cientifico)}</div>
+      </div>`;
+    toast.addEventListener('mouseenter', () => { toast.style.transform = 'translateY(-2px)'; });
+    toast.addEventListener('mouseleave', () => { toast.style.transform = 'translateY(0)'; });
+    toast.addEventListener('click', () => {
+      toast.remove();
+      showCardDetailModal(card);
+    });
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.animation = 'pinhal-xp-toast-out .5s ease forwards';
+      setTimeout(() => { if(toast.parentNode) toast.remove(); }, 500);
+    }, 5500);
+  }
+
+  // V15.12.75.107 — Modal de detalhes do card (visualização completa).
+  function showCardDetailModal(card){
+    const rarColors = {1:'#10b981', 2:'#8042fa', 3:'#fbbf24'};
+    const rarLabels = {1:'Comum', 2:'Rara', 3:'Lendária'};
+    const color = rarColors[card.rar] || '#8042fa';
+    const m = mk('div');
+    m.style.cssText = 'max-width:380px;width:100%';
+    const head = mk('div');
+    head.style.cssText = `text-align:center;padding:1.25rem 1rem;background:linear-gradient(135deg,${color}15,${color}05);border-radius:12px 12px 0 0;margin:-1.25rem -1.25rem 1rem`;
+    head.innerHTML = `
+      <div style="display:inline-block;width:84px;height:84px;border-radius:18px;background:${color}1A;border:2px solid ${color}40;display:flex;align-items:center;justify-content:center;font-size:44px;margin-bottom:.625rem">${card.emoji}</div>
+      <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${rarLabels[card.rar]||'Comum'}</div>
+      <h3 style="margin:0 0 2px;font-size:20px;font-weight:800;color:var(--text)">${escapeHTML(card.nome)}</h3>
+      <div style="font-size:12.5px;color:var(--text2);font-style:italic">${escapeHTML(card.cientifico)}</div>`;
+    m.appendChild(head);
+    const desc = mk('p','txt2');
+    desc.style.cssText = 'font-size:13.5px;line-height:1.55;margin:0 0 1rem;text-align:center;padding:0 .5rem';
+    desc.textContent = card.desc;
+    m.appendChild(desc);
+    const meta = mk('div');
+    meta.style.cssText = 'display:flex;justify-content:space-between;gap:8px;padding:.625rem .875rem;background:var(--surface2);border-radius:8px;font-size:11.5px;color:var(--text3)';
+    const catLabels = {planta:'🌿 Planta', fruto:'🍒 Fruto', ave:'🐦 Ave', mamifero:'🐾 Mamífero'};
+    meta.innerHTML = `<span>${catLabels[card.cat]||card.cat}</span><span>Desbloqueio: ${escapeHTML(card.unlock)}</span>`;
+    m.appendChild(meta);
+    const closeBtn = mk('button');
+    closeBtn.type = 'button';
+    closeBtn.style.cssText = 'display:block;margin:1rem auto 0;padding:.5rem 1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--text2)';
+    closeBtn.textContent = 'Fechar';
+    closeBtn.addEventListener('click', closeModal);
+    m.appendChild(closeBtn);
+    showModal(m);
+  }
+
+  // V15.12.75.107 — SVG de árvore por estágio (1-5).
+  // Cada estágio tem visual distinto: semente, muda, jovem, pinheiro, araucária.
+  // Cores ajustadas pra dark mode via currentColor onde possível.
+  function treeSvg(stage, size){
+    size = size || 60;
+    const s = Math.max(1, Math.min(5, stage || 1));
+    if(s === 1){
+      // SEMENTE — broto pequeno saindo do solo
+      return `<svg viewBox="0 0 60 60" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="30" cy="54" rx="14" ry="3" fill="#8B6F47" opacity=".5"/>
+        <path d="M 30 54 Q 28 45 26 40 Q 28 38 30 38 Q 32 38 34 40 Q 32 45 30 54" fill="#6b8e3d"/>
+        <ellipse cx="26" cy="36" rx="5" ry="3" fill="#7eaa48" transform="rotate(-30 26 36)"/>
+        <ellipse cx="34" cy="36" rx="5" ry="3" fill="#7eaa48" transform="rotate(30 34 36)"/>
+      </svg>`;
+    } else if(s === 2){
+      // MUDA — pequena, tronco fino, copa redonda verde claro
+      return `<svg viewBox="0 0 60 60" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="30" cy="56" rx="16" ry="3" fill="#8B6F47" opacity=".5"/>
+        <rect x="28.5" y="38" width="3" height="18" fill="#6b4f2a" rx="1"/>
+        <circle cx="30" cy="32" r="14" fill="#7eaa48"/>
+        <circle cx="24" cy="28" r="6" fill="#8fbb55" opacity=".7"/>
+        <circle cx="36" cy="30" r="5" fill="#8fbb55" opacity=".7"/>
+      </svg>`;
+    } else if(s === 3){
+      // ÁRVORE JOVEM — tronco médio, copa em camadas (estilo pinheiro novo)
+      return `<svg viewBox="0 0 60 60" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="30" cy="56" rx="18" ry="3" fill="#8B6F47" opacity=".5"/>
+        <rect x="27.5" y="40" width="5" height="16" fill="#5a3f22" rx="1.5"/>
+        <polygon points="30,8 18,28 42,28" fill="#3d7a3d"/>
+        <polygon points="30,18 16,38 44,38" fill="#4a8b4a"/>
+        <polygon points="30,28 14,46 46,46" fill="#5a9b5a"/>
+      </svg>`;
+    } else if(s === 4){
+      // PINHEIRO — alto, denso, 4 camadas, tronco grosso
+      return `<svg viewBox="0 0 60 60" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="30" cy="56" rx="20" ry="3.5" fill="#8B6F47" opacity=".5"/>
+        <rect x="26" y="44" width="8" height="12" fill="#4a3318" rx="1.5"/>
+        <polygon points="30,3 19,20 41,20" fill="#2d5a2d"/>
+        <polygon points="30,12 16,30 44,30" fill="#3a6b3a"/>
+        <polygon points="30,21 13,38 47,38" fill="#477a47"/>
+        <polygon points="30,30 11,46 49,46" fill="#549055"/>
+      </svg>`;
+    } else {
+      // ARAUCÁRIA — formato icônico (taça/guarda-chuva), galhos horizontais
+      // Estilo característico da Araucária angustifolia do Sul
+      return `<svg viewBox="0 0 60 60" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="30" cy="56" rx="22" ry="3.5" fill="#8B6F47" opacity=".55"/>
+        <rect x="26" y="20" width="8" height="36" fill="#3d2a14" rx="2"/>
+        <!-- Galhos horizontais característicos -->
+        <ellipse cx="30" cy="14" rx="20" ry="5" fill="#2d5a2d"/>
+        <ellipse cx="30" cy="18" rx="22" ry="4" fill="#3a6b3a"/>
+        <ellipse cx="30" cy="22" rx="20" ry="3" fill="#477a47"/>
+        <ellipse cx="30" cy="26" rx="14" ry="2.5" fill="#549055"/>
+        <ellipse cx="30" cy="10" rx="14" ry="4" fill="#2d5a2d"/>
+        <ellipse cx="30" cy="6" rx="8" ry="3" fill="#3a6b3a"/>
+        <!-- Pequenos detalhes de pinhas -->
+        <circle cx="22" cy="16" r="1.5" fill="#8B6F47"/>
+        <circle cx="38" cy="20" r="1.5" fill="#8B6F47"/>
+      </svg>`;
+    }
+  }
+
+  // V15.12.75.107 — Catálogo de cards de bioma do pinhal (Mata de Araucária).
+  // Cada card: id, nome popular, nome científico, emoji decorativo, descrição,
+  // raridade (1=comum, 2=rara, 3=lendária), categoria, condição de unlock.
+  const CARDS = [
+    // Plantas (comuns) — desbloqueio fácil, base da coleção
+    {id:'araucaria', nome:'Araucária', cientifico:'Araucaria angustifolia', emoji:'🌲', cat:'planta', rar:1, desc:'A árvore-símbolo dos pinhais. Pode viver mais de 700 anos.', unlock:'Plante 3 árvores no pinhal'},
+    {id:'pinhao', nome:'Pinhão', cientifico:'Semente da Araucária', emoji:'🌰', cat:'fruto', rar:1, desc:'Semente nutritiva, base da culinária do Sul. Maduro de abril a junho.', unlock:'Atinja nível 3'},
+    {id:'erva_mate', nome:'Erva-mate', cientifico:'Ilex paraguariensis', emoji:'🍃', cat:'planta', rar:1, desc:'Cresce à sombra das araucárias. Base do chimarrão.', unlock:'5h estudadas em qualquer matéria'},
+    {id:'imbuia', nome:'Imbuia', cientifico:'Ocotea porosa', emoji:'🌳', cat:'planta', rar:1, desc:'Árvore nobre da Mata Atlântica de Araucária, madeira valiosa.', unlock:'Atinja nível 5'},
+    {id:'xaxim', nome:'Xaxim', cientifico:'Dicksonia sellowiana', emoji:'🌿', cat:'planta', rar:1, desc:'Samambaia gigante, ameaçada. Habitat de muitas espécies.', unlock:'Complete 10 pomodoros'},
+    {id:'bromelia', nome:'Bromélia', cientifico:'Vriesea spp.', emoji:'🌺', cat:'planta', rar:1, desc:'Cresce sobre árvores. Acumula água que vira ecossistema.', unlock:'Acerte 50 questões'},
+    {id:'pitanga', nome:'Pitanga', cientifico:'Eugenia uniflora', emoji:'🍒', cat:'fruto', rar:1, desc:'Fruta vermelha doce e ácida, nativa do Sul.', unlock:'Mantenha streak de 7 dias'},
+    {id:'guabiroba', nome:'Guabiroba', cientifico:'Campomanesia xanthocarpa', emoji:'🟡', cat:'fruto', rar:1, desc:'Fruto amarelo aromático. Alimento de aves do pinhal.', unlock:'Marque 5 fontes como lidas'},
+
+    // Aves (raras) — espinha dorsal do bioma
+    {id:'gralha_azul', nome:'Gralha-Azul', cientifico:'Cyanocorax caeruleus', emoji:'🐦', cat:'ave', rar:2, desc:'Mascote da Gralia! Enterra pinhões e espalha araucárias por todo o pinhal.', unlock:'Atinja nível 7'},
+    {id:'sabia_laranjeira', nome:'Sabiá-Laranjeira', cientifico:'Turdus rufiventris', emoji:'🐤', cat:'ave', rar:2, desc:'Ave-símbolo do Brasil. Canto matinal característico.', unlock:'Complete 25 pomodoros'},
+    {id:'tucano_verde', nome:'Tucano-de-bico-verde', cientifico:'Ramphastos dicolorus', emoji:'🦜', cat:'ave', rar:2, desc:'Bico colorido enorme. Come frutos e dispersa sementes.', unlock:'Complete 1 simulado'},
+    {id:'tiriba', nome:'Tiriba-de-testa-vermelha', cientifico:'Pyrrhura frontalis', emoji:'🦚', cat:'ave', rar:2, desc:'Pequena papagaio do Sul, voa em bandos barulhentos.', unlock:'Atinja nível 6'},
+    {id:'sanhaco', nome:'Sanhaço-do-mato', cientifico:'Stilpnia preciosa', emoji:'🐦', cat:'ave', rar:2, desc:'Plumagem azulada brilhante. Endêmica da Mata de Araucária.', unlock:'Acerte 100 questões'},
+    {id:'jacutinga', nome:'Jacutinga', cientifico:'Aburria jacutinga', emoji:'🦃', cat:'ave', rar:2, desc:'Grande ave de garganta azul. Ameaçada de extinção.', unlock:'Mantenha streak de 14 dias'},
+
+    // Mamíferos (raras)
+    {id:'cutia', nome:'Cutia', cientifico:'Dasyprocta azarae', emoji:'🐿️', cat:'mamifero', rar:2, desc:'Roedor que enterra pinhões. Dispersora natural da araucária.', unlock:'Complete 15 fontes lidas'},
+    {id:'quati', nome:'Quati', cientifico:'Nasua nasua', emoji:'🦝', cat:'mamifero', rar:2, desc:'Vive em bandos, focinho longo. Onívoro e curioso.', unlock:'30 dias usando a Gralia'},
+    {id:'bugio', nome:'Bugio-ruivo', cientifico:'Alouatta guariba', emoji:'🐒', cat:'mamifero', rar:2, desc:'Macaco com vocalização territorial alta. Ameaçado.', unlock:'Atinja nível 8'},
+    {id:'gato_mato', nome:'Gato-do-mato-pequeno', cientifico:'Leopardus guttulus', emoji:'🐈', cat:'mamifero', rar:2, desc:'Felino pequeno noturno. Endêmico da Mata Atlântica.', unlock:'Acerte 200 questões'},
+
+    // Frutos & especiais (comuns/raras)
+    {id:'araca', nome:'Araçá', cientifico:'Psidium cattleyanum', emoji:'🟢', cat:'fruto', rar:1, desc:'Goiabinha nativa, doce. Alimento de aves e mamíferos.', unlock:'Plante 5 árvores'},
+    {id:'jabuticaba', nome:'Jabuticaba', cientifico:'Plinia trunciflora', emoji:'🫐', cat:'fruto', rar:1, desc:'Fruta nascida direto no tronco. Iguaria brasileira.', unlock:'Acerte 30 questões'},
+
+    // Lendárias — muito difíceis ou raras
+    {id:'cabure', nome:'Caburé-acanelado', cientifico:'Glaucidium brasilianum', emoji:'🦉', cat:'ave', rar:3, desc:'Pequena coruja diurna. Difícil de observar. Endêmica.', unlock:'Atinja nível 9'},
+    {id:'onca_pintada', nome:'Onça-Pintada', cientifico:'Panthera onca', emoji:'🐆', cat:'mamifero', rar:3, desc:'Topo da cadeia alimentar. Praticamente extinta na região hoje.', unlock:'Atinja nível 10'},
+    {id:'macuco', nome:'Macuco', cientifico:'Tinamus solitarius', emoji:'🪶', cat:'ave', rar:3, desc:'Ave terrestre, canto noturno melancólico. Quase extinta.', unlock:'Atinja nível 9 + streak 30 dias'},
+    {id:'anta', nome:'Anta', cientifico:'Tapirus terrestris', emoji:'🦏', cat:'mamifero', rar:3, desc:'Maior mamífero terrestre do Brasil. Dispersora de grandes sementes.', unlock:'Marco especial (1000 XP num dia)'}
+  ];
+
+  // Tenta desbloquear cards com base no estado atual.
+  // Retorna array de cards recém-desbloqueados nesta chamada.
+  function checkCardUnlocks(){
+    const p = init();
+    const newlyUnlocked = [];
+    const has = (id) => p.cards[id] != null;
+    const unlock = (id, source) => {
+      if(has(id)) return;
+      p.cards[id] = { unlockedAt: Date.now(), source };
+      newlyUnlocked.push(CARDS.find(c => c.id === id));
+    };
+    const level = getLevelForXp(p.xp).level;
+    const treeCount = p.trees.length;
+    const streak = p.streakDays || 0;
+    const pomosTotal = (p.xpLog || []).filter(e => e.action === 'pomo_focus').length;
+    const correctTotal = (p.xpLog || []).filter(e => e.action === 'question_correct').length;
+    const sourcesRead = (p.xpLog || []).filter(e => e.action === 'source_read').length;
+    const simuladosDone = (p.xpLog || []).filter(e => e.action === 'mock_complete').length;
+
+    // Por nível
+    if(level >= 3) unlock('pinhao', 'level3');
+    if(level >= 5) unlock('imbuia', 'level5');
+    if(level >= 6) unlock('tiriba', 'level6');
+    if(level >= 7) unlock('gralha_azul', 'level7');
+    if(level >= 8) unlock('bugio', 'level8');
+    if(level >= 9) unlock('cabure', 'level9');
+    if(level >= 9 && streak >= 30) unlock('macuco', 'level9_streak30');
+    if(level >= 10) unlock('onca_pintada', 'level10');
+
+    // Por árvores plantadas
+    if(treeCount >= 3) unlock('araucaria', 'trees3');
+    if(treeCount >= 5) unlock('araca', 'trees5');
+
+    // Por pomodoros
+    if(pomosTotal >= 10) unlock('xaxim', 'pomos10');
+    if(pomosTotal >= 25) unlock('sabia_laranjeira', 'pomos25');
+
+    // Por questões corretas
+    if(correctTotal >= 30) unlock('jabuticaba', 'correct30');
+    if(correctTotal >= 50) unlock('bromelia', 'correct50');
+    if(correctTotal >= 100) unlock('sanhaco', 'correct100');
+    if(correctTotal >= 200) unlock('gato_mato', 'correct200');
+
+    // Por fontes lidas
+    if(sourcesRead >= 5) unlock('guabiroba', 'sourcesRead5');
+    if(sourcesRead >= 15) unlock('cutia', 'sourcesRead15');
+
+    // Por simulados
+    if(simuladosDone >= 1) unlock('tucano_verde', 'simulado1');
+
+    // Por streak
+    if(streak >= 7) unlock('pitanga', 'streak7');
+    if(streak >= 14) unlock('jacutinga', 'streak14');
+
+    // Por tempo total estudado (estimado por pomodoros + fontes)
+    const hoursEstimate = (pomosTotal * 25 + sourcesRead * 60) / 60;
+    if(hoursEstimate >= 5) unlock('erva_mate', 'hours5');
+
+    // Por marco diário — 1000 XP num único dia (anta lendária)
+    if(p.dailyXp && p.dailyXp.total >= 1000) unlock('anta', 'daily1000');
+
+    // Por 30 dias de uso (qualquer login conta)
+    // Aproximação: se streakDays já chegou a 30 ou se há 30+ dias entre primeiro xpLog e agora
+    if(streak >= 30) unlock('quati', 'days30');
+    else if(p.xpLog && p.xpLog.length > 0){
+      const oldest = p.xpLog[p.xpLog.length - 1];
+      const daysSince = (Date.now() - oldest.ts) / (1000*60*60*24);
+      if(daysSince >= 30) unlock('quati', 'days30');
+    }
+
+    return newlyUnlocked;
+  }
+
+  return { init, award, getLevel, getState, LEVELS, slotsForLevel, treeSvg, CARDS, checkCardUnlocks, showCardDetailModal };
+})();
+
 const AmbientSound = (() => {
   let ctx = null;
   let masterGain = null;
@@ -33258,6 +33883,16 @@ function celebratePomoFinish(src, justMarkedAsRead){
   try{ playPomoFinishSound(vibe); }catch(e){ console.warn('[pomo-celebrate] som falhou:', e); }
   // Animação
   try{ showPomoFinishAnimation(src, vibe, pomosDone, pomosExpected); }catch(e){ console.warn('[pomo-celebrate] anim falhou:', e); }
+  // V15.12.75.106 — PINHAL: gera XP e planta/rega árvore.
+  // Pomo completo = 25 XP. Se marcou fonte como lida agora, +50 XP extra.
+  try{
+    Pinhal.award({ action: 'pomo_focus', xp: 25, ctx: src.name });
+    if(justMarkedAsRead){
+      setTimeout(() => {
+        Pinhal.award({ action: 'source_read', xp: 50, ctx: src.name });
+      }, 800);  // delay pra não amontoar toasts
+    }
+  }catch(e){ console.warn('[pinhal] award falhou:', e); }
 }
 
 // Tocar som usando WebAudio API (sem arquivos externos)
@@ -48702,6 +49337,501 @@ function currentPhaseDuration(){
   const p = ST.pomoRun;
   return p.phase==='focus'?DATA.pomo.focusMin:p.phase==='sbreak'?DATA.pomo.shortMin:DATA.pomo.longMin;
 }
+// V15.12.75.106 — PINHAL (Fatia 1) — Página inicial simples. Mostra nível,
+// XP, streak, contagem de árvores e log recente. Fatias 2-4 trarão a
+// visualização da floresta, coleção de cards, e widget no painel.
+// V15.12.75.107 — Modal de detalhes da árvore individual
+// V15.12.75.107 — Widget compacto do Pinhal pro dashboard (Fatia 5).
+// Mostra: nível, barra XP, contagem árvores, últimos cards desbloqueados,
+// botão "Ver pinhal →". Layout compacto pra não dominar o painel.
+function buildPinhalDashboardWidget(){
+  // Só mostra se já tem alguma atividade (XP > 0) — evita poluir conta nova
+  Pinhal.init();
+  const info = Pinhal.getLevel();
+  const state = Pinhal.getState();
+  if(info.totalXp === 0 && state.trees.length === 0) return null;
+
+  const card = mk('div','card');
+  card.style.cssText = 'padding:1rem 1.25rem;background:linear-gradient(135deg,rgba(128,66,250,.06),rgba(101,138,69,.04));border:1px solid rgba(128,66,250,.18);border-radius:12px;display:grid;grid-template-columns:auto 1fr auto;gap:1rem;align-items:center;cursor:pointer;transition:all .15s ease';
+  card.title = 'Ir pro Pinhal completo';
+  card.addEventListener('mouseenter', () => {
+    card.style.transform = 'translateY(-2px)';
+    card.style.boxShadow = '0 4px 16px rgba(128,66,250,.10), 0 1px 4px rgba(0,0,0,.04)';
+  });
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = 'translateY(0)';
+    card.style.boxShadow = 'none';
+  });
+  card.addEventListener('click', () => { ST.view='pinhal'; render(); });
+
+  // ESQUERDA — emoji+nível
+  const left = mk('div');
+  left.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0';
+  const emoji = mk('div');
+  emoji.style.cssText = 'font-size:32px;line-height:1';
+  // Emoji muda conforme nível
+  emoji.textContent = info.level >= 8 ? '🌳' : info.level >= 5 ? '🌲' : info.level >= 3 ? '🌿' : '🌱';
+  left.appendChild(emoji);
+  const lvlText = mk('div');
+  lvlText.style.cssText = 'font-size:11px;font-weight:700;color:var(--gralia-purple);font-variant-numeric:tabular-nums';
+  lvlText.textContent = `Nível ${info.level}`;
+  left.appendChild(lvlText);
+  card.appendChild(left);
+
+  // CENTRO — barra de XP + info
+  const center = mk('div');
+  center.style.cssText = 'min-width:0';
+  const eyebrow = mk('div');
+  eyebrow.style.cssText = 'font-size:10px;font-weight:700;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px';
+  eyebrow.textContent = '🌲 Pinhal';
+  center.appendChild(eyebrow);
+  const lvlName = mk('div');
+  lvlName.style.cssText = 'font-size:14.5px;font-weight:700;color:var(--text);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+  lvlName.textContent = info.name;
+  center.appendChild(lvlName);
+  // Barra
+  if(!info.isMaxLevel){
+    const bar = mk('div');
+    bar.style.cssText = 'height:5px;background:rgba(128,66,250,.10);border-radius:999px;overflow:hidden;margin-bottom:3px';
+    const fill = mk('div');
+    fill.style.cssText = `height:100%;width:${info.progressPct}%;background:linear-gradient(90deg,var(--gralia-purple),rgba(128,66,250,.7));border-radius:999px;transition:width .4s ease`;
+    bar.appendChild(fill);
+    center.appendChild(bar);
+    const xpHint = mk('div');
+    xpHint.style.cssText = 'font-size:10.5px;color:var(--text3);font-variant-numeric:tabular-nums';
+    xpHint.textContent = `${info.xpInLevel}/${info.xpNeededInLevel} XP · ${state.trees.length} árvores · ${state.streakDays||0}d streak`;
+    center.appendChild(xpHint);
+  } else {
+    const maxText = mk('div');
+    maxText.style.cssText = 'font-size:10.5px;color:var(--gralia-purple);font-weight:700';
+    maxText.innerHTML = `🏆 Nível máximo · ${state.trees.length} árvores · ${state.streakDays||0}d streak`;
+    center.appendChild(maxText);
+  }
+  card.appendChild(center);
+
+  // DIREITA — últimos 3 cards desbloqueados (decoração) + seta
+  const right = mk('div');
+  right.style.cssText = 'display:flex;align-items:center;gap:8px;flex-shrink:0';
+  const unlockedIds = Object.keys(state.cards || {});
+  if(unlockedIds.length > 0){
+    const cardsRow = mk('div');
+    cardsRow.style.cssText = 'display:flex;gap:4px;align-items:center';
+    // Últimos 3 (mais recentes)
+    const recent = unlockedIds
+      .map(id => ({id, ...state.cards[id]}))
+      .sort((a,b) => b.unlockedAt - a.unlockedAt)
+      .slice(0, 3);
+    recent.forEach(entry => {
+      const card = Pinhal.CARDS.find(c => c.id === entry.id);
+      if(!card) return;
+      const mini = mk('div');
+      const rarColors = {1:'#10b981', 2:'#8042fa', 3:'#fbbf24'};
+      const color = rarColors[card.rar] || '#8042fa';
+      mini.style.cssText = `width:28px;height:28px;border-radius:6px;background:${color}1A;border:1.5px solid ${color}40;display:flex;align-items:center;justify-content:center;font-size:16px`;
+      mini.textContent = card.emoji;
+      mini.title = card.nome;
+      cardsRow.appendChild(mini);
+    });
+    right.appendChild(cardsRow);
+  }
+  const arrow = mk('div');
+  arrow.style.cssText = 'font-size:14px;color:var(--text3);font-weight:600';
+  arrow.textContent = '→';
+  right.appendChild(arrow);
+  card.appendChild(right);
+
+  return card;
+}
+
+function showTreeDetailModal(tree, idx){
+  const stageLabels = {1:'Semente', 2:'Muda', 3:'Árvore Jovem', 4:'Pinheiro', 5:'Araucária'};
+  const stageDesc = {
+    1: 'Recém-plantada. Continue regando com seus estudos.',
+    2: 'Começou a brotar. Cresce a cada novo pomodoro.',
+    3: 'Já é uma árvore jovem. Mostra firmeza.',
+    4: 'Pinheiro alto. Resistente, parte da paisagem do pinhal.',
+    5: 'Araucária madura — alcançou o estágio final, símbolo do pinhal.'
+  };
+  const m = mk('div');
+  m.style.cssText = 'max-width:340px;width:100%;text-align:center';
+  const svgWrap = mk('div');
+  svgWrap.style.cssText = 'display:flex;justify-content:center;padding:1.5rem 0;background:linear-gradient(180deg,rgba(135,191,90,.08) 0%,rgba(101,138,69,.02) 100%);border-radius:12px;margin:-1.25rem -1.25rem 1rem';
+  svgWrap.innerHTML = Pinhal.treeSvg(tree.stage, 120);
+  m.appendChild(svgWrap);
+  const title = mk('h3');
+  title.style.cssText = 'margin:0 0 .25rem;font-size:18px;font-weight:800;color:var(--text)';
+  title.textContent = `${stageLabels[tree.stage] || 'Árvore'} #${idx+1}`;
+  m.appendChild(title);
+  const stageBar = mk('div');
+  stageBar.style.cssText = 'display:flex;justify-content:center;gap:4px;margin:.5rem 0 1rem';
+  for(let i = 1; i <= 5; i++){
+    const dot = mk('div');
+    dot.style.cssText = `width:24px;height:5px;border-radius:3px;background:${i <= tree.stage ? 'var(--gralia-purple)' : 'var(--surface2)'};transition:all .2s`;
+    stageBar.appendChild(dot);
+  }
+  m.appendChild(stageBar);
+  const desc = mk('p','txt2');
+  desc.style.cssText = 'font-size:13px;line-height:1.55;margin:0 0 1rem;padding:0 .5rem';
+  desc.textContent = stageDesc[tree.stage] || '';
+  m.appendChild(desc);
+  const meta = mk('div');
+  meta.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding:.75rem;background:var(--surface2);border-radius:8px;font-size:12px;text-align:left';
+  const plantedDate = new Date(tree.plantedAt).toLocaleDateString('pt-BR');
+  const minutes = Math.round(tree.cumulativeMinutes || 0);
+  const minutesText = minutes < 60 ? `${minutes}min` : `${Math.floor(minutes/60)}h${minutes%60 ? ' '+(minutes%60)+'min' : ''}`;
+  meta.innerHTML = `
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--text3)">Plantada em</span><span style="color:var(--text);font-weight:600">${plantedDate}</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="color:var(--text3)">Tempo de cultivo</span><span style="color:var(--text);font-weight:600">${minutesText}</span></div>
+    ${tree.ctx ? `<div style="display:flex;justify-content:space-between;gap:1rem"><span style="color:var(--text3);flex-shrink:0">Origem</span><span style="color:var(--text);font-weight:600;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHTML(tree.ctx)}</span></div>` : ''}`;
+  m.appendChild(meta);
+  const closeBtn = mk('button');
+  closeBtn.type = 'button';
+  closeBtn.style.cssText = 'display:block;margin:1rem auto 0;padding:.5rem 1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--text2)';
+  closeBtn.textContent = 'Fechar';
+  closeBtn.addEventListener('click', closeModal);
+  m.appendChild(closeBtn);
+  showModal(m);
+}
+
+function renderPinhal(){
+  const wrap = mk('div','fade');
+  Pinhal.init();
+  const info = Pinhal.getLevel();
+  const state = Pinhal.getState();
+
+  // Header
+  const h = mk('h1');h.textContent='🌲 Pinhal';
+  const sub = mk('p','txt2');sub.style.marginBottom='1.25rem';
+  sub.textContent='Sua floresta de estudos. Cultive árvores, suba de nível, descubra a fauna e flora dos pinhais.';
+  wrap.appendChild(h);wrap.appendChild(sub);
+
+  // Status bar — Nível, XP, Streak, Árvores
+  const statusGrid = mk('div');
+  statusGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:.875rem;margin-bottom:1.5rem';
+
+  // Card nível atual
+  const levelCard = mk('div','card');
+  levelCard.style.cssText = 'padding:1.125rem 1.25rem;background:linear-gradient(135deg,rgba(128,66,250,.12),rgba(128,66,250,.04));border:1px solid rgba(128,66,250,.30);border-left:4px solid var(--gralia-purple);border-radius:12px';
+  const levelLabel = mk('div');
+  levelLabel.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px';
+  levelLabel.textContent = 'Nível atual';
+  levelCard.appendChild(levelLabel);
+  const levelBig = mk('div');
+  levelBig.style.cssText = 'display:flex;align-items:baseline;gap:8px;margin-bottom:8px';
+  levelBig.innerHTML = `<span style="font-size:32px;font-weight:800;color:var(--text);line-height:1">${info.level}</span><span style="font-size:13.5px;font-weight:600;color:var(--text2)">${escapeHTML(info.name)}</span>`;
+  levelCard.appendChild(levelBig);
+  // Barra de progresso XP
+  if(!info.isMaxLevel){
+    const xpBar = mk('div');
+    xpBar.style.cssText = 'height:6px;background:rgba(128,66,250,.12);border-radius:999px;overflow:hidden;margin-bottom:4px';
+    const xpFill = mk('div');
+    xpFill.style.cssText = `height:100%;width:${info.progressPct}%;background:linear-gradient(90deg,var(--gralia-purple),rgba(128,66,250,.7));border-radius:999px;transition:width .4s ease`;
+    xpBar.appendChild(xpFill);
+    levelCard.appendChild(xpBar);
+    const xpText = mk('div');
+    xpText.style.cssText = 'font-size:11px;color:var(--text3);font-variant-numeric:tabular-nums';
+    xpText.textContent = `${info.xpInLevel} / ${info.xpNeededInLevel} XP até o nível ${info.level + 1}`;
+    levelCard.appendChild(xpText);
+  } else {
+    const maxText = mk('div');
+    maxText.style.cssText = 'font-size:11px;color:var(--gralia-purple);font-weight:700';
+    maxText.textContent = '🏆 Nível máximo alcançado!';
+    levelCard.appendChild(maxText);
+  }
+  statusGrid.appendChild(levelCard);
+
+  // Card XP total
+  const xpCard = mk('div','card');
+  xpCard.style.cssText = 'padding:1.125rem 1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:12px';
+  const xpLabel = mk('div');
+  xpLabel.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px';
+  xpLabel.textContent = 'XP total';
+  xpCard.appendChild(xpLabel);
+  const xpVal = mk('div');
+  xpVal.style.cssText = 'font-size:28px;font-weight:800;color:var(--text);line-height:1;font-variant-numeric:tabular-nums';
+  xpVal.textContent = info.totalXp.toLocaleString('pt-BR');
+  xpCard.appendChild(xpVal);
+  statusGrid.appendChild(xpCard);
+
+  // Card streak
+  const streakCard = mk('div','card');
+  streakCard.style.cssText = 'padding:1.125rem 1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:12px';
+  const streakLabel = mk('div');
+  streakLabel.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px';
+  streakLabel.textContent = 'Sequência atual';
+  streakCard.appendChild(streakLabel);
+  const streakVal = mk('div');
+  streakVal.style.cssText = 'font-size:28px;font-weight:800;color:var(--text);line-height:1;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:6px';
+  streakVal.innerHTML = `${state.streakDays || 0}<span style="font-size:14px;font-weight:600;color:var(--text2)">${state.streakDays === 1 ? 'dia' : 'dias'}</span>`;
+  streakCard.appendChild(streakVal);
+  statusGrid.appendChild(streakCard);
+
+  // Card árvores
+  const treesCard = mk('div','card');
+  treesCard.style.cssText = 'padding:1.125rem 1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:12px';
+  const treesLabel = mk('div');
+  treesLabel.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px';
+  treesLabel.textContent = 'Árvores no pinhal';
+  treesCard.appendChild(treesLabel);
+  const treesVal = mk('div');
+  treesVal.style.cssText = 'font-size:28px;font-weight:800;color:var(--text);line-height:1;font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:6px';
+  treesVal.innerHTML = `${state.trees.length}<span style="font-size:14px;font-weight:600;color:var(--text2)">/ ${state.maxSlots}</span>`;
+  treesCard.appendChild(treesVal);
+  statusGrid.appendChild(treesCard);
+
+  wrap.appendChild(statusGrid);
+
+  // V15.12.75.107 — Floresta visual (Fatia 3): grid SVG com árvores nos 5
+  // estágios. Hover mostra info da árvore. Slots vazios em silhueta sutil.
+  const forestSection = mk('div');
+  forestSection.style.marginBottom = '1.5rem';
+  const forestHead = mk('div');
+  forestHead.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;gap:1rem;flex-wrap:wrap';
+  const forestTitle = mk('h2');
+  forestTitle.style.cssText = 'font-size:15px;font-weight:700;margin:0;display:flex;align-items:center;gap:6px';
+  forestTitle.innerHTML = '<span>🌳</span><span>Sua floresta</span>';
+  forestHead.appendChild(forestTitle);
+  const forestStat = mk('div');
+  forestStat.style.cssText = 'font-size:11.5px;color:var(--text3);font-variant-numeric:tabular-nums';
+  forestStat.textContent = `${state.trees.length} / ${state.maxSlots} slots`;
+  forestHead.appendChild(forestStat);
+  forestSection.appendChild(forestHead);
+
+  const forestGrid = mk('div','card');
+  forestGrid.style.cssText = 'padding:1.25rem;background:linear-gradient(180deg, rgba(135,191,90,.05) 0%, rgba(101,138,69,.03) 100%);border:1px solid rgba(101,138,69,.20);border-radius:14px;display:grid;grid-template-columns:repeat(auto-fill, minmax(80px, 1fr));gap:8px;min-height:120px';
+  if(state.trees.length === 0){
+    const emptyState = mk('div');
+    emptyState.style.cssText = 'grid-column:1/-1;text-align:center;padding:2rem 1rem;color:var(--text3);font-size:13px';
+    emptyState.innerHTML = '<div style="font-size:36px;opacity:.4;margin-bottom:.5rem">🌱</div>Seu pinhal está vazio. <b>Complete um pomodoro de foco</b> em uma fonte pra plantar sua primeira árvore.';
+    forestGrid.appendChild(emptyState);
+  } else {
+    state.trees.forEach((tree, idx) => {
+      const slot = mk('div');
+      slot.style.cssText = 'position:relative;aspect-ratio:1;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(101,138,69,.15);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s ease;overflow:hidden';
+      // SVG da árvore
+      slot.innerHTML = Pinhal.treeSvg(tree.stage, 56);
+      slot.title = `Árvore ${idx+1} · Estágio ${tree.stage}/5${tree.ctx ? '\nFonte: ' + tree.ctx : ''}\nPlantada: ${new Date(tree.plantedAt).toLocaleDateString('pt-BR')}\nTempo cumulativo: ${Math.round(tree.cumulativeMinutes)}min`;
+      slot.addEventListener('mouseenter', () => {
+        slot.style.background = 'rgba(135,191,90,.12)';
+        slot.style.borderColor = 'rgba(135,191,90,.40)';
+        slot.style.transform = 'translateY(-2px)';
+      });
+      slot.addEventListener('mouseleave', () => {
+        slot.style.background = 'rgba(255,255,255,.04)';
+        slot.style.borderColor = 'rgba(101,138,69,.15)';
+        slot.style.transform = 'translateY(0)';
+      });
+      slot.addEventListener('click', () => showTreeDetailModal(tree, idx));
+      forestGrid.appendChild(slot);
+    });
+    // Slots vazios (até maxSlots) — silhuetas tracejadas
+    const emptyCount = state.maxSlots - state.trees.length;
+    for(let i = 0; i < Math.min(emptyCount, 6); i++){  // máximo 6 slots vazios visíveis
+      const slot = mk('div');
+      slot.style.cssText = 'aspect-ratio:1;border-radius:10px;background:transparent;border:1.5px dashed rgba(101,138,69,.20);display:flex;align-items:center;justify-content:center;color:rgba(101,138,69,.30);font-size:22px;font-weight:300';
+      slot.textContent = '+';
+      slot.title = 'Slot vazio — complete um pomodoro pra plantar';
+      forestGrid.appendChild(slot);
+    }
+  }
+  forestSection.appendChild(forestGrid);
+  wrap.appendChild(forestSection);
+
+  // V15.12.75.107 — Coleção de cards (Fatia 4)
+  const cardsSection = mk('div');
+  cardsSection.style.marginBottom = '1.5rem';
+  const cardsHead = mk('div');
+  cardsHead.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;gap:1rem;flex-wrap:wrap';
+  const cardsTitle = mk('h2');
+  cardsTitle.style.cssText = 'font-size:15px;font-weight:700;margin:0;display:flex;align-items:center;gap:6px';
+  const unlockedCount = Object.keys(state.cards || {}).length;
+  const totalCards = Pinhal.CARDS.length;
+  cardsTitle.innerHTML = `<span>🎴</span><span>Coleção do bioma</span>`;
+  cardsHead.appendChild(cardsTitle);
+  const cardsStat = mk('div');
+  cardsStat.style.cssText = 'font-size:11.5px;color:var(--text3);font-variant-numeric:tabular-nums';
+  cardsStat.textContent = `${unlockedCount} / ${totalCards} descobertos`;
+  cardsHead.appendChild(cardsStat);
+  cardsSection.appendChild(cardsHead);
+
+  // Filtros por categoria
+  const cardsFilters = mk('div');
+  cardsFilters.style.cssText = 'display:flex;gap:6px;margin-bottom:.625rem;flex-wrap:wrap';
+  const filterCats = [
+    {key:'all', label:'Todos'},
+    {key:'planta', label:'🌿 Plantas'},
+    {key:'fruto', label:'🍒 Frutos'},
+    {key:'ave', label:'🐦 Aves'},
+    {key:'mamifero', label:'🐾 Mamíferos'}
+  ];
+  if(!ST._pinhalCardFilter) ST._pinhalCardFilter = 'all';
+  const filterBtns = {};
+  filterCats.forEach(cat => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    const isOn = ST._pinhalCardFilter === cat.key;
+    b.style.cssText = `padding:4px 10px;background:${isOn?'var(--gralia-purple)':'var(--surface)'};color:${isOn?'#fff':'var(--text2)'};border:1px solid ${isOn?'var(--gralia-purple)':'var(--border)'};border-radius:6px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s`;
+    b.textContent = cat.label;
+    b.addEventListener('click', () => {
+      ST._pinhalCardFilter = cat.key;
+      ST.view = 'pinhal';
+      render();
+    });
+    filterBtns[cat.key] = b;
+    cardsFilters.appendChild(b);
+  });
+  cardsSection.appendChild(cardsFilters);
+
+  // Grid de cards
+  const cardsGrid = mk('div');
+  cardsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));gap:8px';
+  const filtered = ST._pinhalCardFilter === 'all'
+    ? Pinhal.CARDS
+    : Pinhal.CARDS.filter(c => c.cat === ST._pinhalCardFilter);
+  filtered.forEach(card => {
+    const unlocked = state.cards && state.cards[card.id];
+    const rarColors = {1:'#10b981', 2:'#8042fa', 3:'#fbbf24'};
+    const color = rarColors[card.rar] || '#8042fa';
+    const cardEl = mk('div');
+    cardEl.style.cssText = `position:relative;aspect-ratio:.85;border-radius:10px;background:${unlocked?`linear-gradient(180deg,${color}14,${color}05)`:'var(--surface2)'};border:1.5px solid ${unlocked?color+'40':'var(--border)'};padding:.625rem .5rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;transition:all .15s ease;text-align:center;overflow:hidden`;
+    if(unlocked){
+      cardEl.innerHTML = `
+        <div style="font-size:28px;line-height:1">${card.emoji}</div>
+        <div style="font-size:10.5px;font-weight:700;color:var(--text);line-height:1.2;text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escapeHTML(card.nome)}</div>
+        <div style="font-size:8.5px;color:${color};font-weight:700;text-transform:uppercase;letter-spacing:.4px">${card.rar===3?'★ Lendária':card.rar===2?'Rara':'Comum'}</div>`;
+      cardEl.addEventListener('mouseenter', () => {
+        cardEl.style.transform = 'translateY(-3px)';
+        cardEl.style.boxShadow = `0 6px 16px ${color}25, 0 1px 4px rgba(0,0,0,.06)`;
+      });
+      cardEl.addEventListener('mouseleave', () => {
+        cardEl.style.transform = 'translateY(0)';
+        cardEl.style.boxShadow = 'none';
+      });
+      cardEl.addEventListener('click', () => Pinhal.showCardDetailModal(card));
+    } else {
+      // Silhueta — emoji em opacidade baixa, nome oculto, dica de unlock
+      cardEl.innerHTML = `
+        <div style="font-size:28px;line-height:1;opacity:.18;filter:grayscale(1)">${card.emoji}</div>
+        <div style="font-size:10.5px;font-weight:700;color:var(--text3);line-height:1.2">???</div>
+        <div style="font-size:8.5px;color:var(--text3);text-align:center;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding:0 2px">${escapeHTML(card.unlock)}</div>`;
+      cardEl.style.opacity = '.65';
+      cardEl.title = 'Bloqueado · ' + card.unlock;
+    }
+    cardsGrid.appendChild(cardEl);
+  });
+  cardsSection.appendChild(cardsGrid);
+  wrap.appendChild(cardsSection);
+
+  // Timeline (xpLog)
+  const logSection = mk('div');
+  logSection.style.marginBottom = '1.5rem';
+  const logHead = mk('h2');
+  logHead.style.cssText = 'font-size:15px;font-weight:700;margin:0 0 .75rem;display:flex;align-items:center;gap:6px';
+  logHead.innerHTML = '<span>📜</span><span>Atividade recente</span>';
+  logSection.appendChild(logHead);
+
+  if(state.xpLog.length === 0){
+    const empty = mk('p','txt2');
+    empty.style.cssText = 'padding:1rem;background:var(--surface);border:1px dashed var(--border);border-radius:10px;font-size:13px;color:var(--text3);text-align:center;margin:0';
+    empty.textContent = 'Nenhuma atividade ainda. Estude alguma fonte ou complete um pomodoro pra começar a ganhar XP.';
+    logSection.appendChild(empty);
+  } else {
+    const list = mk('div','card');
+    list.style.cssText = 'padding:0;border:1px solid var(--border);border-radius:10px;overflow:hidden';
+    const actionLabels = {
+      pomo_focus: '🎯 Pomodoro de foco',
+      source_read: '📖 Fonte lida',
+      question_correct: '✓ Questão correta',
+      flashcard_review: '🎴 Flashcard revisado',
+      drill_complete: '🔬 Drill completo',
+      mock_complete: '⏰ Simulado completo',
+      daily_login: '🌅 Sequência mantida'
+    };
+    state.xpLog.slice(0, 15).forEach((entry, i) => {
+      const row = mk('div');
+      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.625rem .875rem;border-bottom:1px solid var(--border);font-size:13px';
+      if(i === state.xpLog.length - 1 || i === 14) row.style.borderBottom = 'none';
+      const left = mk('div');
+      left.style.cssText = 'display:flex;flex-direction:column;gap:2px;min-width:0;flex:1';
+      const action = mk('div');
+      action.style.cssText = 'font-weight:600;color:var(--text)';
+      action.textContent = actionLabels[entry.action] || entry.action;
+      left.appendChild(action);
+      if(entry.ctx){
+        const ctx = mk('div');
+        ctx.style.cssText = 'font-size:11.5px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+        ctx.textContent = entry.ctx;
+        left.appendChild(ctx);
+      }
+      row.appendChild(left);
+      const right = mk('div');
+      right.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0';
+      const xp = mk('div');
+      xp.style.cssText = 'font-size:13px;font-weight:700;color:var(--gralia-purple);font-variant-numeric:tabular-nums';
+      xp.textContent = '+' + entry.xp + ' XP';
+      right.appendChild(xp);
+      const when = mk('div');
+      when.style.cssText = 'font-size:10.5px;color:var(--text3)';
+      const diffMs = Date.now() - entry.ts;
+      const mins = Math.floor(diffMs / 60000);
+      if(mins < 1) when.textContent = 'agora';
+      else if(mins < 60) when.textContent = mins + 'min atrás';
+      else if(mins < 1440) when.textContent = Math.floor(mins/60) + 'h atrás';
+      else when.textContent = Math.floor(mins/1440) + 'd atrás';
+      right.appendChild(when);
+      row.appendChild(right);
+      list.appendChild(row);
+    });
+    logSection.appendChild(list);
+  }
+  wrap.appendChild(logSection);
+
+  // V15.12.75.107 — Roadmap removido (Fatias 3+4 entregues nesta versão).
+
+  // Admin: botão pra testar award (só pra admin)
+  if(typeof isAdminUser === 'function' && isAdminUser()){
+    const adminCard = mk('div','card');
+    adminCard.style.cssText = 'padding:1rem 1.125rem;margin-top:1.5rem;background:linear-gradient(135deg,rgba(245,158,11,.06),rgba(245,158,11,.02));border:1px solid rgba(245,158,11,.25);border-left:4px solid var(--amber);border-radius:12px';
+    const adminHead = mk('div');
+    adminHead.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--text);margin-bottom:.625rem';
+    adminHead.innerHTML = '<span>🔧</span><span>Admin · Testar Pinhal</span>';
+    adminCard.appendChild(adminHead);
+    const btnRow = mk('div');
+    btnRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
+    const mkBtn = (label, action, xp, ctx) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.style.cssText = 'padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--text)';
+      b.textContent = label;
+      b.addEventListener('click', () => {
+        Pinhal.award({action, xp, ctx});
+        setTimeout(() => { ST.view='pinhal'; render(); }, 200);
+      });
+      return b;
+    };
+    btnRow.appendChild(mkBtn('+25 XP (pomo)', 'pomo_focus', 25, 'Fonte de teste'));
+    btnRow.appendChild(mkBtn('+50 XP (fonte)', 'source_read', 50, 'Fonte simulada'));
+    btnRow.appendChild(mkBtn('+100 XP (simulado)', 'mock_complete', 100, ''));
+    btnRow.appendChild(mkBtn('+250 XP (boost)', 'admin_boost', 250, 'Admin'));
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.style.cssText = 'padding:6px 12px;background:rgba(239,68,68,.10);border:1px solid rgba(239,68,68,.30);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;color:#dc2626';
+    resetBtn.textContent = '🗑 Resetar pinhal';
+    resetBtn.addEventListener('click', () => {
+      if(confirm('Apagar TODO o estado do Pinhal? Não pode desfazer.')){
+        DATA.pinhal = null;
+        try{ save(); }catch(_){}
+        ST.view='pinhal'; render();
+      }
+    });
+    btnRow.appendChild(resetBtn);
+    adminCard.appendChild(btnRow);
+    wrap.appendChild(adminCard);
+  }
+
+  return wrap;
+}
+
 function renderPomodoro(){
   const wrap = mk('div','fade');
   const h = mk('h1');h.textContent='⏱️ Pomodoro';
@@ -68582,6 +69712,15 @@ function recordQuestionForGoal(disciplineId, ok){
   }
   session.total += 1;
   if(ok) session.correct += 1;
+  // V15.12.75.107 — Hook Pinhal: questão correta = 5 XP. Erro não dá XP (mas
+  // logError adiciona contexto pra revisão futura). Hub central — funciona pra
+  // turbo, practice, drill, examiner, elaborative, simulado.
+  if(ok){
+    try{
+      const ctx = disc.name || '';
+      Pinhal.award({action:'question_correct', xp:5, ctx});
+    }catch(e){ /* silencioso */ }
+  }
 }
 
 // Conta pomodoros completados no período da meta
@@ -69465,6 +70604,11 @@ function finishSimulado(timeOut){
   DATA.simRunning = null;
   DATA.simCurrentIdx = 0;
   save();
+  // V15.12.75.107 — Hook Pinhal: simulado completo = 100 XP
+  try{
+    const ctx = sim.title || sim.name || `${sim.questions ? sim.questions.length : ''} questões`;
+    Pinhal.award({action:'mock_complete', xp:100, ctx});
+  }catch(_){}
   // Limpa em-andamento (memória)
   ST.simRunning = null;
   ST.simResultId = sim.id;
@@ -70768,6 +71912,7 @@ function showCommandPalette(){
       {label:'Flashcards (SRS)', icon:'🎴', kind:'Revisar', keywords:'revisar cards anki', action:()=>{ST.view='srs';render();}},
       {label:'Histórico de erros', icon:'📜', kind:'Revisar', keywords:'erros revisar', action:()=>{ST.view='history';render();}},
       {label:'Pomodoro', icon:'⏱', kind:'Revisar', keywords:'timer foco', action:()=>{ST.view='pomodoro';render();}},
+      {label:'Pinhal', icon:'🌲', kind:'Revisar', keywords:'gamificacao floresta xp nivel arvore card colecao', action:()=>{ST.view='pinhal';render();}},
       {label:'Cadernos de prática', icon:'📥', kind:'Estudar', keywords:'importadas tec banco caderno questoes historicas', action:()=>{ST.view='imported';render();}},
       // Planejar
       {label:'Metas', icon:'🎯', kind:'Planejar', keywords:'objetivos diaria semanal mensal', action:()=>{ST.view='goals';render();}},
@@ -73240,6 +74385,24 @@ document.addEventListener('error', function(ev){
 try{ restoreSimRunningIfAny(); }catch(e){ console.warn('[sim restore]', e); }
 // V15.12.65 — Recovery de operações de geração em série interrompidas (app fechou)
 try{ recoverActiveBatchOps(); }catch(e){ console.warn('[batch ops recover]', e); }
+// V15.12.75.107 — Pinhal: marca login diário (atualiza streak).
+// Roda só 1× por sessão. Award com 10 XP se for primeiro login de hoje.
+try{
+  if(typeof Pinhal !== 'undefined' && !window._pinhalDailyChecked){
+    window._pinhalDailyChecked = true;
+    const p = Pinhal.init();
+    const isoToday = (() => {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    })();
+    // Só dá XP se o login de hoje ainda não foi contado
+    const lastBonusDate = (p.dailyXp && p.dailyXp.date === isoToday) ? null : isoToday;
+    if(lastBonusDate && p.lastStudyDate !== isoToday){
+      // Marca streak (Pinhal.award já chama updateStreak internamente)
+      Pinhal.award({action:'daily_login', xp:10, ctx:''});
+    }
+  }
+}catch(e){ console.warn('[pinhal daily]', e); }
 render();
 // V15.12.65 — Reapresenta painel de ops ativas em cada render (caso usuário
 // navegue durante uma geração — mas como a função é async com await, isso só
