@@ -4491,7 +4491,15 @@ input[type="month"]::-webkit-calendar-picker-indicator{
   100%{transform:translateY(105vh) translateX(var(--fall-drift)) rotate(var(--fall-rot))}
 }
 @keyframes pomo-glow-pulse{0%{opacity:0;transform:scale(.5)}50%{opacity:1;transform:scale(1.2)}100%{opacity:.5;transform:scale(1)}}
-@keyframes pomo-star-rise{0%{transform:translateY(0) scale(0) rotate(0);opacity:0}30%{opacity:1;transform:translateY(-80px) scale(1.2) rotate(180deg)}100%{transform:translateY(-300px) scale(0) rotate(720deg);opacity:0}}
+/* V15.12.75.100 — Estrelas duram 5s (eram 2.5s, sumiam rápido). Plateau
+   visível ampliado: 25-75% do tempo elas estão visíveis em escala 1.0+. */
+@keyframes pomo-star-rise{
+  0%{transform:translateY(0) scale(0) rotate(0);opacity:0}
+  15%{opacity:1;transform:translateY(-30px) scale(1.0) rotate(90deg)}
+  35%{opacity:1;transform:translateY(-100px) scale(1.2) rotate(180deg)}
+  75%{opacity:.95;transform:translateY(-220px) scale(1.0) rotate(540deg)}
+  100%{transform:translateY(-360px) scale(0) rotate(720deg);opacity:0}
+}
 
 /* Mini-badge do pomodoro no header da fonte */
 .src-pomo-badge{
@@ -7338,7 +7346,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.99';
+window.GRALIA_VERSION = 'V15.12.75.100';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -32781,7 +32789,7 @@ function showPomoFinishAnimation(src, vibe, pomosDone, pomosExpected){
     // Estrelas grandes que sobem (z-index 1 — entre glow e card)
     for(let i = 0; i < 14; i++){
       const star = mk('div');
-      star.style.cssText = `position:absolute;font-size:${24 + (i%3)*8}px;left:${10 + i*6}%;top:60%;animation:pomo-star-rise 2.5s ease-out forwards;animation-delay:${i*0.08}s;color:#fbbf24;z-index:1;pointer-events:none`;
+      star.style.cssText = `position:absolute;font-size:${24 + (i%3)*8}px;left:${10 + i*6}%;top:60%;animation:pomo-star-rise 5s ease-out forwards;animation-delay:${i*0.10}s;color:#fbbf24;z-index:1;pointer-events:none`;
       star.textContent = '⭐';
       overlay.appendChild(star);
     }
@@ -32789,13 +32797,16 @@ function showPomoFinishAnimation(src, vibe, pomosDone, pomosExpected){
 
   document.body.appendChild(overlay);
 
-  // Auto-dismiss após 6s se user não interagir
+  // V15.12.75.100 — Auto-dismiss varia por vibe. Conquista tem estrelas que
+  // duram 5s + delays até 1.4s, então precisa de ~7.5s pra terminar tudo.
+  // Suave e empolgante terminam em ~3s.
+  const dismissDelay = vibe === 'achievement' ? 7500 : 4500;
   setTimeout(() => {
     if(overlay.parentNode){
       overlay.style.animation = 'pomo-fade-out .5s ease forwards';
       setTimeout(() => overlay.remove(), 500);
     }
-  }, 6000);
+  }, dismissDelay);
 }
 
 function showSourceReaderModal(src){
@@ -33518,13 +33529,27 @@ function showSourceReaderModal(src){
   focusExit.addEventListener('mouseleave',()=>{focusExit.style.background='var(--gralia-purple)';});
   focusExit.addEventListener('click',()=>{
     m.classList.remove('focus-on');
+    // V15.12.75.100 — User pediu: ao sair do foco, pomodoro pausa. Só volta
+    // a contar se clicar play ou voltar ao foco.
+    try{ SourcePomo.pause(src); }catch(_){}
   });
 
   // V15.12.75.96 — Sincroniza largura visual no picker quando classes mudam
   // V15.12.75.98 — Também sincroniza classe `.reader-focus-bg` no modal-bg
-  // (substitui o seletor :has que não era confiável em todos os browsers).
-  // V15.12.75.99 — Ao sair do foco, reseta inline styles que applyWidth setou.
-  const focusObs = new MutationObserver(() => {
+  // V15.12.75.100 — FIX CRÍTICO de travamento: applyWidth modifica classes
+  // fw-* do m, o que disparava o observer infinitamente. Agora o observer
+  // SÓ sincroniza estado lateral (modal-bg, picker visual, reset ao sair).
+  // applyWidth é chamado DIRETAMENTE no click do botão e na entrada do foco.
+  const focusObs = new MutationObserver((mutations) => {
+    // Filtra: só reage a mudança na classe `focus-on` (entrou/saiu do foco).
+    // Mudanças em fw-* (causadas pelo applyWidth) são ignoradas.
+    const focusToggled = mutations.some(mut => {
+      const oldHadFocus = (mut.oldValue || '').includes('focus-on');
+      const newHasFocus = m.classList.contains('focus-on');
+      return oldHadFocus !== newHasFocus;
+    });
+    if(!focusToggled) return;
+
     const inFocus = m.classList.contains('focus-on');
     // Sincroniza modal-bg
     const modalBg = m.closest('.modal-bg');
@@ -33533,17 +33558,11 @@ function showSourceReaderModal(src){
       else modalBg.classList.remove('reader-focus-bg');
     }
     if(inFocus){
+      // Reaplicar largura salva uma vez ao entrar no foco
       const current = ['wide','large','medium','small'].find(k => m.classList.contains('fw-'+k)) || 'medium';
-      Object.keys(widthBtns).forEach(k => {
-        const isOn = k === current;
-        widthBtns[k].style.background = isOn ? 'var(--gralia-purple)' : 'transparent';
-        widthBtns[k].style.color = isOn ? '#fff' : 'var(--gralia-purple)';
-        widthBtns[k].style.fontWeight = isOn ? '700' : '500';
-      });
-      // Aplica largura inline pra essa entrada (caso já tenha classe fw-* salva)
       applyWidth(current);
     } else {
-      // V15.12.75.99 — Limpa inline styles do reader-content quando sai do foco
+      // Limpa inline styles do reader-content ao sair do foco
       if(content){
         content.style.padding = '';
         content.style.fontSize = '';
@@ -33551,7 +33570,8 @@ function showSourceReaderModal(src){
       }
     }
   });
-  focusObs.observe(m, {attributes: true, attributeFilter: ['class']});
+  // V15.12.75.100 — attributeOldValue: true permite detectar QUAL classe mudou
+  focusObs.observe(m, {attributes: true, attributeFilter: ['class'], attributeOldValue: true});
   m.style.position = 'relative';
   // V15.12.75.98 — Aplica classe modal-reader no `.modal` pai (substitui :has)
   setTimeout(() => {
@@ -33584,6 +33604,8 @@ function showSourceReaderModal(src){
       e.preventDefault();
       e.stopPropagation();  // evita o closeModal que o Esc dispararia
       m.classList.remove('focus-on');
+      // V15.12.75.100 — Pausa pomodoro junto com saída do foco (mesma intenção)
+      try{ SourcePomo.pause(src); }catch(_){}
     }
   };
   document.addEventListener('keydown', keyHandler);
@@ -33591,10 +33613,13 @@ function showSourceReaderModal(src){
   const cleanupKeys = () => {
     document.removeEventListener('keydown', keyHandler);
     // V15.12.75.94 — Para o pomodoro da fonte (estado é persistido; retoma ao reabrir)
-    SourcePomo.stop(src);
+    // V15.12.75.100 — User pediu PAUSE ao fechar (não só stop). Antes stop só
+    // limpava ticker mas mantinha isRunning=true logicamente, causando catch-up
+    // de tempo "fantasma" quando reabria. Agora pausa explicitamente.
+    try{ SourcePomo.pause(src); }catch(_){}
     try{ save(); }catch(_){}
-    // V15.12.75.93 — Remove focusBar do body (era position:fixed nele)
-    if(focusBar && focusBar.parentNode) focusBar.parentNode.removeChild(focusBar);
+    // V15.12.75.100 — focusBar foi eliminado na V96 (widthPicker agora inline
+    // no header). Cleanup limpa só keyHandler + pomo agora.
   };
   // Hook no MutationObserver — quando m sair do DOM, remove o listener
   const observer = new MutationObserver((mutations) => {
