@@ -4555,34 +4555,67 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 .source-reader-shell.focus-on .reader-width-inline{display:inline-flex}
 /* V15.12.75.99 — Botão "🎯 Foco" SÓ aparece no modo normal (esconde no foco).
    Antes ficava visível redundantemente. */
+/* V15.12.75.99 — Botão "🎯 Foco" SÓ aparece no modo normal (esconde no foco).
+   V15.12.75.103 — No modo foco esconde também: estimativa de leitura, contador
+   de seções, tempo acumulado (já tem timer pomodoro), botão × fechar fonte
+   (sair do foco é o caminho), e botão 📑 (índice tem aba lateral própria). */
 .source-reader-shell.focus-on .reader-focus-btn-toggle{display:none !important}
+.source-reader-shell.focus-on .stat-reading-est{display:none !important}
+.source-reader-shell.focus-on .stat-toc-count{display:none !important}
+.source-reader-shell.focus-on .stat-time-read{display:none !important}
+.source-reader-shell.focus-on .reader-btn-close-x{display:none !important}
+.source-reader-shell.focus-on .reader-btn-toc-header{display:none !important}
+/* V15.12.75.103 — No modo foco, título compacto pra dar mais respiro
+   ao header (pomo aparece mais proeminente). */
+.source-reader-shell.focus-on .reader-header h2{
+  font-size:15px !important;
+  line-height:1.2 !important;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  margin-bottom:0 !important;
+}
+.source-reader-shell.focus-on .reader-header .reader-eyebrow{
+  margin-bottom:2px !important;
+  font-size:10px !important;
+}
+/* No modo foco, o badge pomodoro ganha destaque visual:
+   gradient mais vivo, sombra maior, escala 1.05. */
+.source-reader-shell.focus-on .src-pomo-badge-rich{
+  background:linear-gradient(135deg, rgba(128,66,250,.08), rgba(128,66,250,.02)) !important;
+  border:1px solid rgba(128,66,250,.35) !important;
+  box-shadow:0 6px 20px rgba(128,66,250,.18), 0 2px 6px rgba(0,0,0,.06) !important;
+  transform:scale(1.05);
+  transform-origin:center;
+}
 
 /* DEFAULT do modo foco (caso classe fw-* esteja ausente) — equivale a fw-medium */
 .source-reader-shell.focus-on .reader-content{
-  padding:2.5rem max(2rem, calc((100% - 720px) / 2));
+  padding:2.5rem max(1.5rem, calc((100% - 820px) / 2));
   font-size:14.5px;
   line-height:1.75;
 }
-/* Larguras do modo foco — sobrescreve o default acima */
+/* V15.12.75.103 — Larguras do modo foco — sincronizadas com applyWidth.
+   Estendido bem largo, pequeno mais legível que antes. */
 .source-reader-shell.focus-on.fw-wide .reader-content{
-  padding:2.5rem max(1.5rem, calc((100% - 1200px) / 2));
+  padding:2.5rem max(1rem, calc((100% - 1500px) / 2));
   font-size:15px;
   line-height:1.7;
 }
 .source-reader-shell.focus-on.fw-large .reader-content{
-  padding:2.5rem max(2rem, calc((100% - 960px) / 2));
+  padding:2.5rem max(1.5rem, calc((100% - 1100px) / 2));
   font-size:15px;
   line-height:1.7;
 }
 .source-reader-shell.focus-on.fw-medium .reader-content{
-  padding:2.5rem max(2rem, calc((100% - 720px) / 2));
+  padding:2.5rem max(1.5rem, calc((100% - 820px) / 2));
   font-size:14.5px;
   line-height:1.75;
 }
 .source-reader-shell.focus-on.fw-small .reader-content{
-  padding:2.5rem max(2rem, calc((100% - 560px) / 2));
-  font-size:14px;
-  line-height:1.8;
+  padding:2.5rem max(1.5rem, calc((100% - 680px) / 2));
+  font-size:14.5px;
+  line-height:1.75;
 }
 /* V15.12.75.91 — Modo foco zen: também esconde fundo escuro do modal-bg,
    modo foco zen estilo flashcards. O shell ocupa quase a tela toda com fundo
@@ -7349,7 +7382,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.102';
+window.GRALIA_VERSION = 'V15.12.75.103';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -32091,11 +32124,10 @@ function showAmbientSoundPopover(anchorBtn, onChange){
     {key: 'fire', emoji: '🔥', label: 'Lareira', desc: 'Crepitação aconchegante'},
     {key: 'wind', emoji: '💨', label: 'Vento', desc: 'Sopro em rajadas'},
     {key: 'whitenoise', emoji: '⚪', label: 'Ruído branco', desc: 'Foco intenso'},
-    {key: 'brownnoise', emoji: '🟤', label: 'Ruído marrom', desc: 'Grave, calmante'},
-    {header: 'Música procedural'},
-    {key: 'jazz', emoji: '🎷', label: 'Jazz suave', desc: 'ii-V-I em Fá, piano elétrico'},
-    {key: 'blues', emoji: '🎸', label: 'Blues lento', desc: '12-bar em Mi, guitarra'},
-    {key: 'guitar', emoji: '🪕', label: 'Violão dedilhado', desc: 'C–Am–F–G arpejado'}
+    {key: 'brownnoise', emoji: '🟤', label: 'Ruído marrom', desc: 'Grave, calmante'}
+    // V15.12.75.103 — Música procedural (jazz/blues/violão) REMOVIDA.
+    // User reportou que ficaram repetitivas e sintéticas demais.
+    // Quando quiser música real, executar a Fase 2 (FASE_2_AUDIO_REAL_PLANO.md).
   ];
 
   const list = mk('div');
@@ -32479,7 +32511,14 @@ const AmbientSound = (() => {
   let masterGain = null;
   let currentNodes = [];  // nós ativos a parar quando troca/para
   let currentType = 'none';
-  let currentVolume = 0.35;
+  // V15.12.75.103 — Volume "user" 0-1 (slider), mas mapeado via curva quadrática
+  // pra gain real. Teto absoluto reduzido drasticamente (0.20 em vez de 1.0)
+  // porque ouvido humano percebe ruídos como muito mais altos que tons puros,
+  // e 35% antes já estourava. Agora 100% = ~aceitável, 1% = quase imperceptível.
+  let currentVolume = 0.30;  // slider user (0-1)
+  const MAX_GAIN = 0.20;     // teto absoluto do masterGain
+  // Curva perceptual: v² faz baixos serem MUITO baixos, altos não estouram
+  const userVolToGain = (v) => Math.pow(Math.max(0, Math.min(1, v)), 2) * MAX_GAIN;
   let crackleInterval = null;
 
   function ensureCtx(){
@@ -32493,7 +32532,7 @@ const AmbientSound = (() => {
     }
     if(!masterGain){
       masterGain = ctx.createGain();
-      masterGain.gain.value = currentVolume;
+      masterGain.gain.value = userVolToGain(currentVolume);
       masterGain.connect(ctx.destination);
     }
     return ctx;
@@ -32575,65 +32614,102 @@ const AmbientSound = (() => {
       src.start();
       currentNodes.push(src, lp, hp);
     } else if(type === 'coffee'){
-      // Brown noise + LPF baixo (ambient cafeteria — sem ser muito específico)
-      const buf = makeNoiseBuffer(c, 2, 'brown');
+      // V15.12.75.103 — Café refeito. Antes era brown noise filtrado a 1200Hz
+      // que parecia vento. Agora: pink noise mais aberto (até 2500Hz) com
+      // modulação LFO lenta pra simular murmúrio de vozes distantes + tinidos
+      // de xícaras mais frequentes (3-7s) e variados em pitch.
+      const buf = makeNoiseBuffer(c, 3, 'pink');
       const src = c.createBufferSource();
       src.buffer = buf;
       src.loop = true;
-      const lp = c.createBiquadFilter();
-      lp.type = 'lowpass';
-      lp.frequency.value = 1200;
-      const g = c.createGain();
-      g.gain.value = 0.8;
-      src.connect(lp); lp.connect(g); g.connect(localGain);
+      // Bandpass pra simular "vozes humanas" (200-2500Hz é faixa da voz)
+      const bp = c.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 800;
+      bp.Q.value = 0.7;
+      // LFO modula amplitude pra dar "ondas de conversa"
+      const lfo = c.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = 0.25;
+      const lfoGain = c.createGain();
+      lfoGain.gain.value = 0.35;
+      const baseGain = c.createGain();
+      baseGain.gain.value = 0.55;
+      lfo.connect(lfoGain);
+      lfoGain.connect(baseGain.gain);
+      src.connect(bp); bp.connect(baseGain); baseGain.connect(localGain);
       src.start();
-      currentNodes.push(src, lp, g);
-      // Tinidos ocasionais (sino fraco) a cada 8-15s
-      const ringInterval = setInterval(() => {
+      lfo.start();
+      currentNodes.push(src, bp, lfo, lfoGain, baseGain);
+      // Tinidos de xícara/talher (mais frequentes que antes, variados)
+      const scheduleNextTinkle = () => {
         if(currentType !== 'coffee') return;
         const t = c.currentTime;
-        const osc = c.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.value = 1200 + Math.random() * 600;
-        const og = c.createGain();
-        og.gain.setValueAtTime(0, t);
-        og.gain.linearRampToValueAtTime(0.05, t + 0.05);
-        og.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
-        osc.connect(og); og.connect(localGain);
-        osc.start(t); osc.stop(t + 0.75);
-      }, 8000 + Math.random() * 7000);
-      crackleInterval = ringInterval;
+        // 2 tons rápidos (tipo "tilt-tlin")
+        const note1 = 1100 + Math.random() * 800;
+        const note2 = note1 * (1.2 + Math.random() * 0.3);
+        [[note1, 0], [note2, 0.08]].forEach(([freq, off]) => {
+          const osc = c.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          const og = c.createGain();
+          og.gain.setValueAtTime(0, t + off);
+          og.gain.linearRampToValueAtTime(0.08, t + off + 0.005);
+          og.gain.exponentialRampToValueAtTime(0.001, t + off + 0.4);
+          osc.connect(og); og.connect(localGain);
+          osc.start(t + off); osc.stop(t + off + 0.45);
+        });
+        // Próximo entre 3-7s
+        const nextDelay = 3000 + Math.random() * 4000;
+        setTimeout(scheduleNextTinkle, nextDelay);
+      };
+      setTimeout(scheduleNextTinkle, 1500);
+      // crackleInterval não usado aqui — limpeza por currentType check
     } else if(type === 'fire'){
-      // Brown noise filtrado + crackles aleatórios (lareira)
-      const buf = makeNoiseBuffer(c, 2, 'brown');
+      // V15.12.75.103 — Lareira refeita. Antes setInterval(400-1200ms) virava
+      // "tic-tic-tic" repetitivo. Agora schedule recursivo com jitter alto:
+      // 600ms-3500ms entre crackles, varia BURSTS de 1-4 estalos por vez,
+      // e o ruído de fogo base é mais grave/calmo.
+      const buf = makeNoiseBuffer(c, 3, 'brown');
       const src = c.createBufferSource();
       src.buffer = buf;
       src.loop = true;
       const lp = c.createBiquadFilter();
       lp.type = 'lowpass';
-      lp.frequency.value = 800;
+      lp.frequency.value = 600;
       const g = c.createGain();
-      g.gain.value = 1.2;
+      g.gain.value = 1.0;
       src.connect(lp); lp.connect(g); g.connect(localGain);
       src.start();
       currentNodes.push(src, lp, g);
-      // Crackles (pops curtos high-freq)
-      crackleInterval = setInterval(() => {
+      // Schedule recursivo de crackles (não setInterval — evita ritmo)
+      const scheduleNextCrackle = () => {
         if(currentType !== 'fire') return;
-        const t = c.currentTime;
-        const buf2 = makeNoiseBuffer(c, 0.08, 'white');
-        const cs = c.createBufferSource();
-        cs.buffer = buf2;
-        const cg = c.createGain();
-        cg.gain.setValueAtTime(0, t);
-        cg.gain.linearRampToValueAtTime(0.15, t + 0.005);
-        cg.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-        const cf = c.createBiquadFilter();
-        cf.type = 'highpass';
-        cf.frequency.value = 2000;
-        cs.connect(cf); cf.connect(cg); cg.connect(localGain);
-        cs.start(t); cs.stop(t + 0.1);
-      }, 400 + Math.random() * 800);
+        // Burst de 1 a 4 crackles em rajada curta
+        const burstSize = 1 + Math.floor(Math.random() * 4);
+        const baseT = c.currentTime;
+        for(let i = 0; i < burstSize; i++){
+          const t = baseT + i * (0.05 + Math.random() * 0.15);
+          const dur = 0.04 + Math.random() * 0.08;
+          const buf2 = makeNoiseBuffer(c, dur, 'white');
+          const cs = c.createBufferSource();
+          cs.buffer = buf2;
+          const cg = c.createGain();
+          const gainAmp = 0.08 + Math.random() * 0.10;
+          cg.gain.setValueAtTime(0, t);
+          cg.gain.linearRampToValueAtTime(gainAmp, t + 0.003);
+          cg.gain.exponentialRampToValueAtTime(0.001, t + dur);
+          const cf = c.createBiquadFilter();
+          cf.type = 'highpass';
+          cf.frequency.value = 1500 + Math.random() * 1500;
+          cs.connect(cf); cf.connect(cg); cg.connect(localGain);
+          cs.start(t); cs.stop(t + dur + 0.05);
+        }
+        // Próximo burst: 600ms a 3500ms (variação alta, sem ritmo)
+        const nextDelay = 600 + Math.random() * 2900;
+        setTimeout(scheduleNextCrackle, nextDelay);
+      };
+      setTimeout(scheduleNextCrackle, 800);
     } else if(type === 'wind'){
       // Pink noise modulado por LFO (sopro lento)
       const buf = makeNoiseBuffer(c, 2, 'pink');
@@ -32869,7 +32945,7 @@ const AmbientSound = (() => {
         clearCurrentNodes();
         currentType = 'none';
         if(masterGain){
-          masterGain.gain.setValueAtTime(currentVolume, ctx.currentTime);
+          masterGain.gain.setValueAtTime(userVolToGain(currentVolume), ctx.currentTime);
         }
       }, 350);
     } else {
@@ -32882,9 +32958,10 @@ const AmbientSound = (() => {
     currentVolume = Math.max(0, Math.min(1, v));
     if(masterGain && ctx){
       const now = ctx.currentTime;
+      const targetGain = userVolToGain(currentVolume);
       masterGain.gain.cancelScheduledValues(now);
       masterGain.gain.setValueAtTime(masterGain.gain.value, now);
-      masterGain.gain.linearRampToValueAtTime(currentVolume, now + 0.1);
+      masterGain.gain.linearRampToValueAtTime(targetGain, now + 0.1);
     }
   }
 
@@ -33488,7 +33565,7 @@ function showSourceReaderModal(src){
   headLeft.style.cssText = 'flex:1;min-width:0';
 
   // Eyebrow: disciplina + tipo + data
-  const eyebrow = mk('div');
+  const eyebrow = mk('div','reader-eyebrow');
   eyebrow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-bottom:6px';
   if(disc){
     const d = mk('span');
@@ -33526,16 +33603,18 @@ function showSourceReaderModal(src){
   stats.style.cssText = 'display:flex;gap:.875rem;flex-wrap:wrap;font-size:12px;color:var(--text2);margin-top:4px;align-items:center';
   const charCount = (src.content||'').length;
   // V15.12.75.96 — Header do reader: removidos chars, markdown badge e autor.
-  // Permanecem só leitura estimada e seções (úteis pra contexto de leitura).
-  // Tudo de identidade da fonte (chars, autor, markdown, datas) está no modal ℹ Info.
+  // V15.12.75.103 — Stats com classes pra esconder no modo foco:
+  //   .stat-reading-est — min de leitura (some no foco)
+  //   .stat-toc-count — número de seções (some no foco; índice já tem)
+  //   .stat-time-read — tempo acumulado (some no foco; pomodoro já mostra)
   const wordsEstimate = Math.round(charCount / 5.5);
   const minutesEstimate = Math.max(1, Math.round(wordsEstimate / 200));
   const timeText = minutesEstimate < 60
     ? `~${minutesEstimate} min`
     : `~${Math.floor(minutesEstimate/60)}h${minutesEstimate%60 ? ' '+(minutesEstimate%60)+'min' : ''}`;
-  stats.innerHTML += `<span title="Estimativa baseada em ~200 palavras/min (leitura técnica)">⏱ ${timeText} leitura</span>`;
+  stats.innerHTML += `<span class="stat-reading-est" title="Estimativa baseada em ~200 palavras/min (leitura técnica)">⏱ ${timeText} leitura</span>`;
   if(cleanedToc.length > 0){
-    stats.innerHTML += `<span>📑 ${cleanedToc.length} ${cleanedToc.length===1?'seção':'seções'}</span>`;
+    stats.innerHTML += `<span class="stat-toc-count">📑 ${cleanedToc.length} ${cleanedToc.length===1?'seção':'seções'}</span>`;
   }
   // V15.12.75.94 — Tempo total lido = soma dos pomodoros. Atualizado dinamicamente.
   const fmtTime = (sec) => {
@@ -33545,7 +33624,7 @@ function showSourceReaderModal(src){
     if(m < 60) return m + 'min' + (s > 0 ? ' '+s+'s' : '');
     return Math.floor(m/60) + 'h ' + (m%60) + 'min';
   };
-  const timeReadSpan = mk('span');
+  const timeReadSpan = mk('span','stat-time-read');
   timeReadSpan.style.cssText = 'color:var(--gralia-purple);font-weight:600';
   timeReadSpan.title = 'Tempo total acumulado em pomodoros desta fonte';
   const updateTimeDisplay = () => {
@@ -33707,8 +33786,10 @@ function showSourceReaderModal(src){
     b.addEventListener('click',onClick);
     return b;
   };
-  const toStartBtn = mkNavBtn('⏮', 'Voltar pro início (Home)', () => content.scrollTo({top: 0, behavior: 'smooth'}));
-  const toEndBtn = mkNavBtn('⏭', 'Pular pro fim (End)', () => content.scrollTo({top: content.scrollHeight, behavior: 'smooth'}));
+  // V15.12.75.103 — Ícones ⏮ ⏭ confundiam com player de música. Trocados
+  // por setas duplas pra "topo" / "fim".
+  const toStartBtn = mkNavBtn('⤒', 'Voltar pro início (Home)', () => content.scrollTo({top: 0, behavior: 'smooth'}));
+  const toEndBtn = mkNavBtn('⤓', 'Pular pro fim (End)', () => content.scrollTo({top: content.scrollHeight, behavior: 'smooth'}));
   headBtns.appendChild(toStartBtn);
   headBtns.appendChild(toEndBtn);
 
@@ -33754,13 +33835,13 @@ function showSourceReaderModal(src){
   });
   headBtns.appendChild(ambientBtn);
 
-  // V15.12.75.96 — Slots pro widthPicker e focusExit (visíveis só no foco)
+  // V15.12.75.96 — Slot pro widthPicker (só no foco)
   const widthPickerSlot = mk('span');
   widthPickerSlot.style.cssText = 'display:contents';
   headBtns.appendChild(widthPickerSlot);
-  const focusExitSlot = mk('span');
-  focusExitSlot.style.cssText = 'display:contents';
-  headBtns.appendChild(focusExitSlot);
+  // V15.12.75.103 — focusExitSlot agora vai pro FINAL (depois de tudo) pra
+  // virar o "primeiro à direita" como user pediu. Mais isolado dos outros
+  // botões pra distinção visual.
 
   // V15.12.75.90 — Botão "modo foco": esconde header, marcadores e
   // distrações. Deixa só texto + barra fina de progresso.
@@ -33839,7 +33920,7 @@ function showSourceReaderModal(src){
     setTimeout(()=>showEditSourceModal(src), 50);
   });
   headBtns.appendChild(editBtnH);
-  const closeBtnH = mk('button');
+  const closeBtnH = mk('button','reader-btn-close-x');
   closeBtnH.type = 'button';
   closeBtnH.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:18px;cursor:pointer;font-family:inherit;color:var(--text2);line-height:1;display:flex;align-items:center;justify-content:center;transition:all .15s ease';
   closeBtnH.textContent = '×';
@@ -33848,6 +33929,11 @@ function showSourceReaderModal(src){
   closeBtnH.addEventListener('mouseleave',()=>{closeBtnH.style.background='var(--surface)';closeBtnH.style.borderColor='var(--border)';closeBtnH.style.color='var(--text2)';});
   closeBtnH.addEventListener('click', closeModal);
   headBtns.appendChild(closeBtnH);
+  // V15.12.75.103 — focusExitSlot vai no FINAL pra ser "primeiro à direita"
+  // quando o × close estiver escondido no modo foco.
+  const focusExitSlot = mk('span');
+  focusExitSlot.style.cssText = 'display:contents';
+  headBtns.appendChild(focusExitSlot);
   header.appendChild(headBtns);
 
   m.appendChild(header);
@@ -33882,6 +33968,7 @@ function showSourceReaderModal(src){
   // navegação imediata). Usuário pode fechar com X. Estado lembrado em
   // ST.readerTocHidden (oposto, pra default ser aberto sem null check).
   let sidebar = null;
+  let tocTab = null;  // V15.12.75.103 — aba lateral acessível no escopo do reader
   let isSidebarOpen = !ST.readerTocHidden;  // default: visível
   if(cleanedToc.length >= 2){
     sidebar = mk('div','reader-sidebar reader-scroll');
@@ -33924,13 +34011,44 @@ function showSourceReaderModal(src){
       if(toggleTocBtn) toggleTocBtn.style.display = 'inline-flex';
       // V15.12.75.98 — Atualiza estado visual do botão TOC do header
       if(typeof updateTocBtnState === 'function') updateTocBtnState();
+      // V15.12.75.103 — Se está no modo foco, mostra a aba lateral pra reabrir
+      if(m.classList.contains('focus-on')){
+        tocTab.style.display = 'flex';
+      }
     });
 
     body.appendChild(sidebar);
 
+    // V15.12.75.103 — Aba lateral fininha pra abrir índice no MODO FOCO quando
+    // ele está fechado (botão 📑 do header some no foco). Aparece colada na
+    // esquerda do body. Click → abre sidebar. Visível só no foco + sidebar fechada.
+    tocTab = mk('div','reader-toc-tab');
+    tocTab.style.cssText = 'position:absolute;left:0;top:50%;transform:translateY(-50%);width:24px;height:120px;background:linear-gradient(135deg,rgba(128,66,250,.85),rgba(128,66,250,.65));color:#fff;border:none;border-radius:0 12px 12px 0;cursor:pointer;display:none;align-items:center;justify-content:center;writing-mode:vertical-rl;text-orientation:mixed;font-size:11px;font-weight:700;letter-spacing:1px;box-shadow:2px 0 8px rgba(128,66,250,.25);z-index:10;transition:width .15s ease,background .15s ease';
+    tocTab.innerHTML = '<span style="transform:rotate(180deg)">📑 ÍNDICE</span>';
+    tocTab.title = 'Abrir índice';
+    tocTab.addEventListener('mouseenter', () => {
+      tocTab.style.width = '30px';
+      tocTab.style.background = 'linear-gradient(135deg,var(--gralia-purple),rgba(128,66,250,.85))';
+    });
+    tocTab.addEventListener('mouseleave', () => {
+      tocTab.style.width = '24px';
+      tocTab.style.background = 'linear-gradient(135deg,rgba(128,66,250,.85),rgba(128,66,250,.65))';
+    });
+    tocTab.addEventListener('click', () => {
+      sidebar.style.display = 'block';
+      isSidebarOpen = true;
+      ST.readerTocHidden = false;
+      tocTab.style.display = 'none';
+      if(toggleTocBtn) toggleTocBtn.style.display = 'none';
+      if(typeof updateTocBtnState === 'function') updateTocBtnState();
+    });
+    // body é posicionado relativo pra tocTab funcionar
+    body.style.position = 'relative';
+    body.appendChild(tocTab);
+
     // V15.12.75.98 — Botão 📑 no header (toggle sidebar). Aparece SEMPRE no
     // header pra descoberta fácil — antes só tinha banner interno + X discreto.
-    const headerTocBtn = mk('button');
+    const headerTocBtn = mk('button','reader-btn-toc-header');
     headerTocBtn.type = 'button';
     headerTocBtn.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease;font-family:inherit';
     const updateTocBtnState = () => {
@@ -34138,7 +34256,9 @@ function showSourceReaderModal(src){
     // V15.12.75.99 — Force-aplica padding via inline (CSS por classe estava
     // sendo ignorado em alguns casos por especificidade ou ordem de cascata).
     // Inline style tem prioridade máxima sem precisar !important.
-    const widths = {wide:1200, large:960, medium:720, small:560};
+    // V15.12.75.103 — Larguras ajustadas. User pediu: estendido bem maior
+    // (mínima margem entre TOC e scroll), pequeno menos minúsculo.
+    const widths = {wide:1500, large:1100, medium:820, small:680};
     const fontSizes = {wide:'15px', large:'15px', medium:'14.5px', small:'14px'};
     const lineHeights = {wide:'1.7', large:'1.7', medium:'1.75', small:'1.8'};
     const targetW = widths[key] || 720;
@@ -34201,15 +34321,17 @@ function showSourceReaderModal(src){
       // Reaplicar largura salva uma vez ao entrar no foco
       const current = ['wide','large','medium','small'].find(k => m.classList.contains('fw-'+k)) || 'medium';
       applyWidth(current);
+      // V15.12.75.103 — Aba lateral aparece se sidebar fechada
+      if(tocTab && !isSidebarOpen) tocTab.style.display = 'flex';
     } else {
       // V15.12.75.101 — Restaura padding/font do modo normal explicitamente
-      // (era 'padding=""' que zerava porque o padding inline original veio
-      // do cssText na criação do elemento — limpar via JS apaga ele todo).
       if(content){
         content.style.padding = '1.5rem 2rem';
         content.style.fontSize = '';
         content.style.lineHeight = '';
       }
+      // V15.12.75.103 — Aba lateral fica oculta fora do modo foco
+      if(tocTab) tocTab.style.display = 'none';
     }
   });
   // V15.12.75.100 — attributeOldValue: true permite detectar QUAL classe mudou
