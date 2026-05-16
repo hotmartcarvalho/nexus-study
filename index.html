@@ -5060,18 +5060,27 @@ body.forest-expanded{overflow:hidden}
    inline `position:relative` que o JS seta no sceneWrap (style.cssText na
    linha ~50005). Sem !important, position:relative inline vence position:fixed
    por especificidade, e o card colava à direita em vez de centralizar. */
+/* V15.12.75.124 — Fullscreen SEM `transform: translate(-50%,-50%)`. Antes:
+   transform criava novo stacking context que bugava renderização de
+   `<foreignObject><video>` em alguns browsers (vídeos viravam borrões).
+   Agora: usa inset com margin:auto pra centralizar — comportamento de layout
+   normal, sem transform no parent dos vídeos. */
 .forest-scene-card.forest-expanded{
   position:fixed !important;
-  top:50% !important;
-  left:50% !important;
-  transform:translate(-50%, -50%) !important;
-  width:min(90vw, 1600px) !important;
-  height:min(90vh, 900px) !important;
-  max-width:none;
+  inset:0 !important;
+  margin:auto !important;
+  top:5vh !important;
+  bottom:5vh !important;
+  left:5vw !important;
+  right:5vw !important;
+  width:auto !important;
+  height:auto !important;
+  max-width:min(90vw, 1600px) !important;
+  max-height:min(90vh, 900px) !important;
   z-index:9000;
   box-shadow:0 20px 80px rgba(0,0,0,.5);
   background:var(--bg);
-  margin:0 !important;
+  transform:none !important;
 }
 .forest-scene-card.forest-expanded .forest-svg-wrap{height:100%}
 .forest-scene-card.forest-expanded .forest-svg{max-height:none;height:100%;width:100%}
@@ -5079,14 +5088,20 @@ body.forest-expanded{overflow:hidden}
 .forest-expanded-backdrop{
   position:fixed;inset:0;
   background:rgba(0,0,0,.65);
-  backdrop-filter:blur(2px);
+  /* V15.12.75.124 — backdrop-filter REMOVIDO. Causava interação ruim com o
+     foreignObject>video do pinhal (afetava composição GPU). Sombra escura é
+     suficiente pra dar sensação de modal. */
   z-index:8999;
   cursor:pointer;
   animation:forest-backdrop-in .2s ease;
 }
 @keyframes forest-backdrop-in{from{opacity:0}to{opacity:1}}
 @media (max-width: 600px){
-  .forest-scene-card.forest-expanded{width:96vw !important; height:96vh !important}
+  .forest-scene-card.forest-expanded{
+    top:2vh !important; bottom:2vh !important;
+    left:2vw !important; right:2vw !important;
+    max-width:96vw !important; max-height:96vh !important;
+  }
 }
 /* V15.12.75.119 — Animação da gralha agora ida-e-volta (`alternate`) em vez
    de loop com teleporte. Antes: keyframe 0% e 100% tinham mesmo ponto (esquerda),
@@ -7411,7 +7426,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.123';
+window.GRALIA_VERSION = 'V15.12.75.124';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -67617,48 +67632,61 @@ function buildForestScene(trees){
     return s;
   }
 
-  // V15.12.75.122 — Distribuição NATURAL (não mais colunas regulares).
-  // User reportou que parecia fileira/padronizada, com árvores volumosas
-  // muito juntas, pés flutuando e copas todas no mesmo nível tapando o sol.
-  // Mudanças:
-  //   1. Duas camadas de profundidade alternadas (fundo/frente) → quebra fileira
-  //   2. yJitter só pra CIMA (pés sempre no chão, baseY = chão)
-  //   3. Variação de tamanho muito maior (alguns ancients pequenos = perspectiva)
-  //   4. Espaçamento mínimo entre árvores grandes (collision avoidance simples)
-  //   5. Ancients evitam zona do sol/lua (sunCx ± 100px)
+  // V15.12.75.124 — Collision avoidance 2D ENTRE TODOS OS GRUPOS.
+  // Antes V123: cada grupo tinha seu próprio `placed` local — uma mature e uma
+  // young no mesmo X passavam, criando aglomerados visuais. Agora todas as
+  // árvores compartilham um array global, e checagem usa distância euclidiana
+  // (X + Y), não só X.
+  // User reportou: "fileira vertical de dezenas de árvores umas atrás das outras"
+  // — era exatamente isso: várias árvores empilhadas no mesmo X com Y próximo.
+  const allPlaced = [];  // todas as árvores já posicionadas (entre grupos)
+
   const distributeXY = (group, baseY, marginX, minSize, sizeJitter, opts) => {
     opts = opts || {};
-    const minSpacing = opts.minSpacing || 0;  // distância X mínima entre árvores
-    const avoidSun = opts.avoidSun || false;  // ancients evitam o sol
+    const minSpacing = opts.minSpacing || 0;
+    const avoidSun = opts.avoidSun || false;
+    const ySpacingFactor = opts.ySpacingFactor || 1.5;  // peso do Y na distância
     const N = group.length;
     if(N === 0) return [];
     const placed = [];
     group.forEach((t, i) => {
-      // V15.12.75.123 — Removido sistema de 2 camadas discretas (back/front)
-      // que causava fileiras visíveis. Agora cada árvore tem y/size individual
-      // baseado em hash contínuo (ver yShift/depthFactor abaixo).
-      // X aleatório baseado em hash (não mais coluna regular). Combinado com
-      // collision avoidance abaixo, dá espalhamento natural.
       let x = marginX + (hashPos(t.id + 'x', 100) / 100) * (W - 2 * marginX);
-      // Evita zona do sol (apenas pra ancients)
       if(avoidSun){
-        const sunX = (W * 0.625);  // ~500px (paleta entardecer/manhã)
+        const sunX = (W * 0.625);
         const sunGuardR = 90;
         if(Math.abs(x - sunX) < sunGuardR){
-          // Empurra pra um dos lados
           x = x < sunX ? sunX - sunGuardR - 10 : sunX + sunGuardR + 10;
           x = Math.max(marginX, Math.min(W - marginX, x));
         }
       }
-      // Collision avoidance: se ficar muito perto de outro já placed, empurra
+      // Y individual contínuo (mantido)
+      // V15.12.75.124 — yShift agora respeita opts.yShiftMax (se passado).
+      // Antes era fixo em 36. Youngs/seeds têm yShiftMax menor pra não
+      // "flutuarem" longe do chão (perspectiva exagerada).
+      const yShiftMax = opts.yShiftMax || 36;
+      const yShift = -(hashPos(t.id + 'yshift', yShiftMax));
+      const yJitter = -(hashPos(t.id + 'y', 8));
+      let y = baseY + yShift + yJitter;
+
+      // V15.12.75.124 — Collision 2D contra TODAS as árvores já placed (qualquer grupo)
+      // Distância euclidiana ponderada: Y conta mais (ySpacingFactor) porque
+      // perspectivamente, árvores em Y próximo se "sobrepõem" mais que em X próximo.
       if(minSpacing > 0){
         let tries = 0;
-        while(tries < 8){
-          const collision = placed.some(p => Math.abs(p.x - x) < minSpacing);
+        while(tries < 12){
+          const collision = allPlaced.some(p => {
+            const dx = p.x - x;
+            const dy = (p.y - y) * ySpacingFactor;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            // Spacing efetivo considera o tamanho das duas árvores
+            const effSpacing = minSpacing + (p.minSpacing || 0) * 0.3;
+            return dist < effSpacing;
+          });
           if(!collision) break;
-          // Tenta deslocar +/- jitter
-          const shift = ((tries % 2 === 0) ? 1 : -1) * (minSpacing * 0.7 * (tries + 1));
+          // Empurra X horizontalmente, alternando direção
+          const shift = ((tries % 2 === 0) ? 1 : -1) * (minSpacing * 0.5 * (Math.floor(tries / 2) + 1));
           x = marginX + ((x - marginX + shift + (W - 2 * marginX)) % (W - 2 * marginX));
+          // Re-evita sol
           if(avoidSun){
             const sunX = (W * 0.625);
             if(Math.abs(x - sunX) < 90){
@@ -67668,19 +67696,14 @@ function buildForestScene(trees){
           tries++;
         }
       }
-      // V15.12.75.123 — Y individual ESPECTRO CONTÍNUO em vez de 2 camadas discretas.
-      // Antes (V122): yOffset binário (-18 ou +6) criava 2 fileiras horizontais.
-      // Agora: cada árvore recebe yShift único de -35 a 0 baseado em hash —
-      // espalhamento Y é contínuo, sem fileiras perceptíveis. Combinado com
-      // sizeShift contínuo, profundidade fica natural.
-      const yShift = -(hashPos(t.id + 'yshift', 36));  // -35 a 0
-      const yJitter = -(hashPos(t.id + 'y', 8));       // -7 a 0 (ruído fino)
-      const y = baseY + yShift + yJitter;
-      // sizeShift: árvores mais ao fundo (yShift mais negativo) são menores
-      const depthFactor = 1.0 + (yShift / 35) * 0.25;  // yShift=-35 → 0.75x ; yShift=0 → 1.0x
+
+      // depthFactor / size — escala pela faixa real de yShift
+      const depthFactor = 1.0 + (yShift / yShiftMax) * 0.25;
       const baseSize = minSize + (hashPos(t.id + 's', 100) / 100) * sizeJitter;
       const size = baseSize * depthFactor;
-      placed.push({x, y, size, id: t.id});
+      const rec = {x, y, size, id: t.id, minSpacing};
+      placed.push(rec);
+      allPlaced.push(rec);
     });
     return placed;
   };
@@ -67693,20 +67716,25 @@ function buildForestScene(trees){
   // Os baseY agora são MUITO mais variados (não fileiras): ancient começa em
   // 0.62 (mais alto), mature 0.72, young 0.83, seed 0.92.
 
-  const ancientLayout = distributeXY(grouped.ancient, H * 0.78, 70, 1.20, 0.40, { minSpacing: 140, avoidSun: true });
+  // V15.12.75.124 — Ordem importa: ancients primeiro (têm minSpacing alto e
+  // ocupam o espaço), depois matures, etc. allPlaced cresce a cada chamada.
+  // ySpacingFactor controla peso da distância Y na detecção (1.0 = igual a X,
+  // 2.0 = Y conta dobro). Subi pra 2.0 porque árvores em Y próximo se
+  // sobrepõem mais visualmente que árvores em X próximo.
+  const ancientLayout = distributeXY(grouped.ancient, H * 0.78, 70, 1.20, 0.40, { minSpacing: 130, avoidSun: true, ySpacingFactor: 2.0, yShiftMax: 40 });
   ancientLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'ancient', id);
   });
-  const matureLayout = distributeXY(grouped.mature, H * 0.84, 55, 0.85, 0.30, { minSpacing: 95 });
+  const matureLayout = distributeXY(grouped.mature, H * 0.84, 55, 0.85, 0.30, { minSpacing: 90, ySpacingFactor: 2.0, yShiftMax: 28 });
   matureLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'mature', id);
   });
-  const youngLayout = distributeXY(grouped.young, H * 0.89, 40, 0.60, 0.25, { minSpacing: 50 });
+  const youngLayout = distributeXY(grouped.young, H * 0.89, 40, 0.60, 0.25, { minSpacing: 55, ySpacingFactor: 2.0, yShiftMax: 18 });
   youngLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'young', id);
   });
-  // Seeds: sempre SVG (user gosta da semente especificamente)
-  const seedLayout = distributeXY(grouped.seed, H * 0.94, 25, 0.40, 0.20, { minSpacing: 30 });
+  // Seeds: yShiftMax pequeno pra ficarem coladas no chão (não flutuam)
+  const seedLayout = distributeXY(grouped.seed, H * 0.94, 25, 0.40, 0.20, { minSpacing: 32, ySpacingFactor: 2.0, yShiftMax: 10 });
   seedLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'seed', id);
   });
