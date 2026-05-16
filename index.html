@@ -437,11 +437,9 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
 .bt-cta{margin-top:.75rem;padding-top:.625rem;border-top:1px solid var(--border);font-size:11.5px;color:var(--gralia-purple);font-weight:700;text-align:right}
 @media(max-width:640px){.brand-tooltip{display:none}}
 .brand-bird{height:44px;width:auto;display:block;flex-shrink:0;margin-right:-2px} /* V15.12.9: +10% (40→44px) */
-/* V15.12.75.105 — Logo da topbar aumentada de 31→50px (+61%). User pediu
-   100% maior mas optou por manter topbar em 56px, então o máximo que cabe
-   confortavelmente é 50px (deixa ~3px de respiro acima e abaixo).
-   Max-width acompanha proporcionalmente (140→225) pra logo+nome caberem. */
-.brand .brand-bird{height:50px;max-width:225px;object-fit:contain}
+/* V15.12.75.113 — Logo topbar reduzida em 40% (50→30px, max-width 225→135).
+   Antes V105 tinha aumentado pra 50px (+61%), mas ficou grande demais. */
+.brand .brand-bird{height:30px;max-width:135px;object-fit:contain}
 .brand .brand-name{display:none}
 .brand .brand-name.brand-fallback.show{display:inline-flex}
 .brand-bird-dark{display:none}
@@ -2279,7 +2277,7 @@ html.dark .wfb-tag-ai{color:#b08aff}
 /* V15.12.23 — Linha greeting + mascote */
 .dash-greet-row{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:0}
 .dash-greet-row .dash-greeting{margin-bottom:0;flex:1;min-width:0}
-.dash-mascot{flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;animation:route-in .55s ease both;animation-delay:.1s;position:relative}
+.dash-mascot{flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;animation:route-in .55s ease both;animation-delay:.1s;position:relative;cursor:pointer}
 
 /* V15.12.25 (V3.14) — REESCRITA da regra de exibição do mascote.
    Bug anterior: no tema escuro, vídeo e imagem fallback apareciam lado a lado
@@ -2300,27 +2298,26 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .dash-mascot-img{display:none}
 
 /* Dimensões e estilo (aplica mesmo quando display:none, pra evitar flash quando
-   troca pra display:block) */
+   troca pra display:block).
+   V15.12.75.114 — Tamanho reduzido: 96→80px (height) / 120→100px (max-width). */
 .dash-mascot-video{
-  height:96px;width:auto;max-width:120px;object-fit:contain;
+  height:80px;width:auto;max-width:100px;object-fit:contain;
   background:transparent;
   opacity:.95;transition:transform .35s ease, opacity .15s;
   user-select:none;pointer-events:none;
 }
 .dash-mascot-img{
-  height:96px;width:auto;max-width:120px;object-fit:contain;
+  height:80px;width:auto;max-width:100px;object-fit:contain;
   opacity:.95;transition:transform .35s ease, opacity .15s, height .35s ease, max-width .35s ease;
   user-select:none;-webkit-user-drag:none;cursor:default;
 }
 
-/* V15.12.75.105 — Mascote estático MESMO TAMANHO do vídeo (96px).
-   Antes V15.12.26 deixava estático 72px (menor que vídeo 96px), causando
-   reflow visível das seções abaixo quando a animação terminava — parecia bug.
-   Agora ambos 96px = sem salto. Opacidade .85 mantida pra distinguir
-   sutilmente o estado final do estado durante animação. */
+/* V15.12.75.105 — Mascote estático MESMO TAMANHO do vídeo.
+   V15.12.75.114 — Reduzido pra 80×100 (era 96×120). Hover-to-play implementado
+   no JS: estado padrão = static, hover toca animação, fim/mouseleave volta. */
 .dash-mascot.dash-mascot-static .dash-mascot-img{
-  height:96px;
-  max-width:120px;
+  height:80px;
+  max-width:100px;
   opacity:.85;
 }
 
@@ -2329,8 +2326,8 @@ html.dark .wfb-tag-ai{color:#b08aff}
    estática). Regras desativadas. Removidas em rodada futura quando o tema
    final estiver estável. */
 .dash-mascot.dash-mascot-frozen .dash-mascot-video{
-  height:96px;
-  max-width:120px;
+  height:80px;
+  max-width:100px;
   opacity:.85;
   transition:height .35s ease, max-width .35s ease, opacity .35s ease;
 }
@@ -5082,15 +5079,18 @@ body.forest-expanded{overflow:hidden}
   .forest-scene-card.forest-expanded{top:2vh;left:2vw;width:96vw;height:96vh}
 }
 .forest-bird{transform-origin:0 0;animation:forest-bird-fly 36s ease-in-out infinite}
+/* V15.12.75.111 — Gralha muito menor (scale 0.6-0.9 era 1.7-2.1) e voando
+   MAIS BAIXO (y 200-310, entre as árvores). User reportou que estava grande
+   demais e voando alto, parecia desproporcional. */
 @keyframes forest-bird-fly{
-  0%{transform:translate(80px, 130px) scale(1.7) rotate(-4deg)}
-  15%{transform:translate(180px, 100px) scale(1.8) rotate(-2deg)}
-  30%{transform:translate(320px, 130px) scale(1.9) rotate(0deg)}
-  45%{transform:translate(460px, 95px) scale(2.0) rotate(-3deg)}
-  60%{transform:translate(580px, 120px) scale(2.1) rotate(-1deg)}
-  75%{transform:translate(680px, 95px) scale(1.9) rotate(-3deg)}
-  90%{transform:translate(720px, 130px) scale(1.7) rotate(-2deg)}
-  100%{transform:translate(80px, 130px) scale(1.7) rotate(-4deg)}
+  0%{transform:translate(80px, 280px) scale(0.65) rotate(-4deg)}
+  15%{transform:translate(180px, 240px) scale(0.70) rotate(-2deg)}
+  30%{transform:translate(320px, 290px) scale(0.75) rotate(2deg)}
+  45%{transform:translate(460px, 220px) scale(0.85) rotate(-3deg)}
+  60%{transform:translate(580px, 270px) scale(0.90) rotate(-1deg)}
+  75%{transform:translate(680px, 210px) scale(0.80) rotate(-3deg)}
+  90%{transform:translate(720px, 290px) scale(0.70) rotate(-2deg)}
+  100%{transform:translate(80px, 280px) scale(0.65) rotate(-4deg)}
 }
 /* Bater de asas — sutil, em ciclo curto */
 .forest-bird-wing-l{transform-origin:-5px -2px;animation:bird-wing-l 0.45s ease-in-out infinite}
@@ -7396,7 +7396,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.110';
+window.GRALIA_VERSION = 'V15.12.75.114';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -7795,6 +7795,12 @@ async function publishSource(sourceData, opts){
   }
   const { data, error } = await supa.from('shared_resources').insert(insertObj).select().single();
   if(error) throw new Error(error.message);
+  // V15.12.75.111 — Pinhal: publicar fonte na comunidade = 30 XP
+  try{
+    if(typeof Pinhal !== 'undefined'){
+      Pinhal.award({action:'source_publish', xp:30, ctx:sourceData.name || ''});
+    }
+  }catch(_){}
   return data;
 }
 
@@ -8316,6 +8322,13 @@ async function importNotebookToLocal(resourceId){
   // Adiciona questões ao banco geral (DATA.importedQuestions é o nome canônico)
   if(!DATA.importedQuestions) DATA.importedQuestions = [];
   importedQuestions.forEach(q => DATA.importedQuestions.push(q));
+  // V15.12.75.111 — Pinhal: 1 XP por questão importada (cap 50 por evento)
+  try{
+    if(typeof Pinhal !== 'undefined' && importedQuestions.length > 0){
+      const xp = Math.min(importedQuestions.length, 50);
+      Pinhal.award({action:'questions_imported', xp, ctx:`${importedQuestions.length} questões · ${r.title || ''}`});
+    }
+  }catch(_){}
   // Cria o caderno apontando pra essas questões
   const notebook = {
     id: newId,
@@ -8398,6 +8411,12 @@ async function importSourceToLocal(resourceId, targetDisciplineId){
   };
   DATA.sources.push(newSource);
   save();
+  // V15.12.75.111 — Pinhal: importar fonte da comunidade = 15 XP
+  try{
+    if(typeof Pinhal !== 'undefined'){
+      Pinhal.award({action:'source_import', xp:15, ctx:newSource.name || ''});
+    }
+  }catch(_){}
   // Registra uso no servidor
   try{
     await supa.rpc('record_resource_import', {p_resource_id: resourceId});
@@ -18242,6 +18261,9 @@ function buildAppSidebar(){
       items:[
         {view:'srs', icon:'🎴', label:'Flashcards', badge:dueSrs > 0 ? dueSrs : null},
         {view:'history', icon:'📜', label:'Histórico de erros', badge:errorsNoCard > 0 ? errorsNoCard : null},
+        // V15.12.75.112 — Modos de Revisão (hub com Turbo/Véspera/Material).
+        // Antes estava acessível só via comando ou welcome guide — perdia no menu.
+        {view:'review', icon:'⚡', label:'Modos de Revisão', desc:'Turbo, véspera, material de revisão e roteiro NotebookLM'},
         {view:'pomodoro', icon:'🌰', label:'Pomodoro', desc:'Timer de estudo com pausas'},
         // V15.12.75.106 — Pinhal: gamificação. XP/nível/floresta/cards
         {view:'pinhal', icon:'🌲', label:'Pinhal', desc:'Sua floresta de estudos'},
@@ -18263,7 +18285,8 @@ function buildAppSidebar(){
         {view:'discover', icon:'🌐', label:'Comunidade', desc:'Materiais públicos de outros assinantes'},
         {view:'feed', icon:'📡', label:'Feed dos seguidos', desc:'Atividade de quem você segue'},
         {view:'legalUpdates', icon:'⚖️', label:'Atualizações legais', desc:'Leis e jurisprudência novas'},
-        {view:'forest', icon:'🌲', label:'Pinhal'},
+        // V15.12.75.114 — `forest` (Pinhal antigo V14) REMOVIDO. Substituído
+        // pelo `pinhal` novo (V106+) no grupo Revisar.
         {view:'groups', icon:'👥', label:'Grupos', desc:'Rankings de até 25 pessoas'},
       ]
     }
@@ -18500,7 +18523,9 @@ function render(){
     exams:renderExams,examEdit:renderExamEdit,
     editals:renderEditals,editalView:renderEditalView,
     admin:renderAdminDashboard, eyeCare:renderEyeCare,
-    forest:renderForest,
+    // V15.12.75.114 — `forest` legado redirecionado pro `pinhal` novo.
+    // Mantém compat com URLs antigos (#forest) e botões esquecidos.
+    forest: () => { ST.view='pinhal'; return renderPinhal(); },
     plans:renderPlans, cancelSubscription:renderCancelSubscription,
     legalUpdates:renderLegalUpdates,
     upgrade:renderUpgrade,
@@ -20691,7 +20716,8 @@ const VIEW_META = {
   discover:     {label:'Comunidade',            icon:'🌐', group:'community'},
   feed:         {label:'Feed dos seguidos',     icon:'📡', group:'community'},
   legalUpdates: {label:'Atualizações',          icon:'⚖️', group:'community'},
-  forest:       {label:'Pinhal',                icon:'🌲', group:'community'},
+  // V15.12.75.114 — `forest` legado: oculto do menu, redireciona pro pinhal novo.
+  forest:       {label:'Pinhal',                icon:'🌲', group:'community', hidden:true},
   groups:       {label:'Grupos',                icon:'👥', group:'community'},
   profile:      {label:'Perfil',                icon:'👤', group:'community', parent:'discover'},
   // Conta / outros
@@ -20843,7 +20869,6 @@ function renderTopbar(){
       {view:'discover',label:'Comunidade',icon:'🌐',desc:'Materiais públicos de outros assinantes'},
       {view:'feed',label:'Feed dos seguidos',icon:'📡',desc:'Atividade de quem você segue'},
       {view:'legalUpdates',label:'Atualizações',icon:'⚖️',desc:'Novas leis, súmulas e jurisprudência relevantes'},
-      {view:'forest',label:'Pinhal de Araucárias',icon:'🌲',desc:'Acompanhe seu progresso visualmente'},
       {view:'groups',label:'Grupos',icon:'👥',desc:'Rankings em grupos de até 25 pessoas'}
     ]},
     {type:'tab',view:'settings',label:'Conta',icon:'👤'}
@@ -22053,60 +22078,81 @@ function renderDashboard(){
       <img src="${BRAND.mascotLogoDark}" alt="" class="dash-mascot-img dash-mascot-dark">
     `;
   } else {
-    // Vídeo + imagens estáticas (ocultas via CSS por padrão; aparecem se vídeo
-    // terminar, falhar, ou em modo reduced-motion ativado tardiamente).
-    // V15.12.25: SEM loop — vídeo toca uma vez e o handler 'ended' troca
-    // pra estado static (imagem estática do tema atual).
-    // .dash-mascot-playing é a classe que ativa o display do vídeo (compat
-    // sem :has()). Removida no estado final.
-    mascot.classList.add('dash-mascot-playing');
+    // V15.12.75.114 — Comportamento hover-to-play (era autoplay-once).
+    // Início: ESTÁTICA. Mouse enter: vídeo toca do início. Vídeo termina ou
+    // mouse leave: volta pra estática. User reportou que autoplay era
+    // distrativo; hover dá controle e mantém o charme.
+    mascot.classList.add('dash-mascot-static');
     mascot.innerHTML = `
-      <video class="dash-mascot-video" autoplay muted playsinline preload="metadata" aria-hidden="true">
+      <video class="dash-mascot-video" muted playsinline preload="metadata" aria-hidden="true">
         <source src="${BRAND.mascotVideo}" type="video/webm">
       </video>
       <img src="${BRAND.mascotLogo}" alt="" class="dash-mascot-img dash-mascot-light">
       <img src="${BRAND.mascotLogoDark}" alt="" class="dash-mascot-img dash-mascot-dark">
     `;
-    setTimeout(()=>{
+    setTimeout(() => {
       const v = mascot.querySelector('.dash-mascot-video');
       if(!v) return;
-      // V15.12.40 — Decisão de produto:
-      // - vídeo toca uma vez automaticamente quando o Painel monta;
-      // - quando termina, troca pra IMAGEM ESTÁTICA OFICIAL com fade suave
-      //   (em vez de "freezar" no último frame, que pode não ser visualmente
-      //   idêntico ao mascote oficial da logo);
-      // - hover NÃO replaya o vídeo (era "seco" e quebrava a estética). Só
-      //   faz o lift sutil do CSS.
-      // Isso preserva identidade do mascote oficial e elimina o "pulo"
-      // brusco do hover.
-      const switchToStaticImage = ()=>{
+      let playing = false;
+      let videoOk = true;  // false se source falhar — desabilita hover
+
+      const goStatic = () => {
         try{
-          // Crossfade: opacity do vídeo cai antes de esconder.
-          v.style.transition = 'opacity .45s ease';
+          v.style.transition = 'opacity .35s ease';
           v.style.opacity = '0';
-          // Adiciona classe static depois do fade
-          setTimeout(()=>{
+          setTimeout(() => {
             mascot.classList.remove('dash-mascot-playing');
             mascot.classList.add('dash-mascot-static');
             try{ v.pause && v.pause(); }catch(_){}
-            v.style.display = 'none';
-          }, 450);
+            try{ v.currentTime = 0; }catch(_){}
+            playing = false;
+          }, 350);
         }catch(_){
-          // Fallback: troca direta
           mascot.classList.remove('dash-mascot-playing');
           mascot.classList.add('dash-mascot-static');
+          playing = false;
         }
       };
-      v.addEventListener('error', switchToStaticImage);
-      v.addEventListener('ended', switchToStaticImage);  // V15.12.40: sempre vai pra estática
+
+      const goVideo = () => {
+        if(!videoOk) return;  // se vídeo falhou, hover é inerte
+        if(playing) return;
+        playing = true;
+        try{
+          v.style.transition = 'opacity .15s ease';
+          v.style.opacity = '.95';
+          v.currentTime = 0;
+          mascot.classList.remove('dash-mascot-static');
+          mascot.classList.add('dash-mascot-playing');
+          const playPromise = v.play();
+          if(playPromise && playPromise.catch){
+            playPromise.catch(() => { goStatic(); });
+          }
+        }catch(_){ goStatic(); }
+      };
+
+      // Falha no vídeo: marca como inválido e fica em static permanente
+      const markVideoBroken = () => {
+        videoOk = false;
+        try{ v.style.display = 'none'; }catch(_){}
+        mascot.classList.remove('dash-mascot-playing');
+        mascot.classList.add('dash-mascot-static');
+      };
+      v.addEventListener('error', markVideoBroken);
+      v.addEventListener('ended', goStatic);
       const src = v.querySelector('source');
-      if(src) src.addEventListener('error', switchToStaticImage);
-      v.addEventListener('loadedmetadata', ()=>{
-        if(!v.duration || isNaN(v.duration) || v.duration === 0) switchToStaticImage();
+      if(src) src.addEventListener('error', markVideoBroken);
+      v.addEventListener('loadedmetadata', () => {
+        if(!v.duration || isNaN(v.duration) || v.duration === 0) markVideoBroken();
       });
-      // V15.12.40 — Hover NÃO replaya mais. O lift sutil já vem do CSS:
-      //   .dash-mascot:hover .dash-mascot-img { transform:translateY(-3px) rotate(-3deg) }
-      // Essa transição é controlada por CSS com .35s ease — suave e elegante.
+
+      // Hover handlers
+      mascot.addEventListener('mouseenter', goVideo);
+      mascot.addEventListener('mouseleave', () => {
+        if(playing) goStatic();
+      });
+      // Toque mobile: tap toca uma vez (sem mouseleave em touch — confia no ended)
+      mascot.addEventListener('click', goVideo);
     }, 0);
   }
   mascot.title = 'Gralha-azul — mascote da Gralia';
@@ -23447,7 +23493,8 @@ function buildAccompanyingSection(){
     body.appendChild(more);
     setTimeout(() => {
       const l = document.getElementById('dashaForestLink');
-      if(l) l.addEventListener('click', e => {e.preventDefault(); ST.view='forest'; render();});
+      // V15.12.75.114 — aponta pro Pinhal novo (V106+), não mais pro forest antigo
+      if(l) l.addEventListener('click', e => {e.preventDefault(); ST.view='pinhal'; render();});
     }, 0);
   } else if(ST.dashTabActive === 'feed' && canHaveFeed){
     body.innerHTML = '<div class="txt3" style="font-size:12px;padding:.875rem 0;text-align:center">Carregando...</div>';
@@ -25064,6 +25111,12 @@ function renderSourceAdd(wrap){
         }catch(e){}
       }
       DATA.sources.push(newSrc);
+      // V15.12.75.111 — Pinhal: importar/criar fonte = 15 XP
+      try{
+        if(typeof Pinhal !== 'undefined'){
+          Pinhal.award({action:'source_import', xp:15, ctx:newSrc.name || ''});
+        }
+      }catch(_){}
       // V12 fix: garante que a disciplina da fonte fique ATIVA (senão fonte aparece como "Total:1 Ativas:0")
       if(newSrc.disciplineId){
         const disc = DATA.disciplines.find(d=>d.id===newSrc.disciplineId);
@@ -27536,6 +27589,13 @@ function feedbackCard(fb,onNext,nextLabel='Próxima questão →',sourceQuestion
             }
             fb._suggestedAdded = true;
             save();
+            // V15.12.75.111 — Pinhal: revisar erro (= criar flashcard a partir dele) = 8 XP.
+            // Esse é o ponto de "compromisso concreto com a revisão do erro".
+            try{
+              if(typeof Pinhal !== 'undefined'){
+                Pinhal.award({action:'error_resolved', xp:8, ctx:cardTopic || 'Erro revisado'});
+              }
+            }catch(_){}
             showToast('Flashcard adicionado ao deck (sem custo)', 3000);
             renderActions(); // re-renderiza pra mostrar "Adicionado" + lixeira
           } catch(e){
@@ -34425,6 +34485,70 @@ function showSourceReaderModal(src){
   infoBtnH.addEventListener('mouseleave',()=>{infoBtnH.style.background='var(--surface)';infoBtnH.style.borderColor='var(--border)';infoBtnH.style.color='var(--text2)';});
   infoBtnH.addEventListener('click', ()=>showSourceInfoModal(src));
 
+  // V15.12.75.111 — Botão "✓ Marcar lida" manual (gate de scroll ≥80%)
+  // User pediu: precisa ter como marcar concluída, mas só se realmente viu
+  // toda a teoria. Solução: botão aparece SÓ se ainda não lida, e habilita
+  // SÓ quando scroll passou 80% do conteúdo. Antes era automático ao final
+  // do pomo, agora também manual pra dar agência ao user.
+  const markReadBtn = mk('button');
+  markReadBtn.type = 'button';
+  markReadBtn.style.cssText = 'width:auto;padding:0 12px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text3);display:none;align-items:center;gap:6px;transition:all .15s ease;font-weight:600;opacity:.6';
+  markReadBtn.innerHTML = '<span style="font-size:13px">✓</span><span>Marcar lida</span>';
+  markReadBtn.title = 'Role pelo menos 80% do conteúdo pra habilitar';
+  markReadBtn.disabled = true;
+  // Atualiza estado conforme scroll
+  const updateMarkReadBtn = () => {
+    if(src.readAt){
+      markReadBtn.style.display = 'none';
+      return;
+    }
+    markReadBtn.style.display = 'inline-flex';
+    const scrollable = content.scrollHeight - content.clientHeight;
+    const scrollPct = scrollable > 0 ? (content.scrollTop / scrollable) * 100 : 100;
+    if(scrollPct >= 80){
+      markReadBtn.disabled = false;
+      markReadBtn.style.opacity = '1';
+      markReadBtn.style.background = 'rgba(16,185,129,.10)';
+      markReadBtn.style.borderColor = 'rgba(16,185,129,.40)';
+      markReadBtn.style.color = '#0a7e5e';
+      markReadBtn.title = 'Marcar esta fonte como lida (+50 XP)';
+    } else {
+      markReadBtn.disabled = true;
+      markReadBtn.style.opacity = '.6';
+      markReadBtn.style.background = 'var(--surface)';
+      markReadBtn.style.borderColor = 'var(--border)';
+      markReadBtn.style.color = 'var(--text3)';
+      markReadBtn.title = `Role mais ${Math.max(0, Math.round(80 - scrollPct))}% pra habilitar (${Math.round(scrollPct)}% lido)`;
+    }
+  };
+  markReadBtn.addEventListener('mouseenter', () => {
+    if(!markReadBtn.disabled){
+      markReadBtn.style.background = 'rgba(16,185,129,.18)';
+      markReadBtn.style.transform = 'translateY(-1px)';
+    }
+  });
+  markReadBtn.addEventListener('mouseleave', () => {
+    markReadBtn.style.transform = 'translateY(0)';
+    updateMarkReadBtn();
+  });
+  markReadBtn.addEventListener('click', () => {
+    if(markReadBtn.disabled) return;
+    src.readAt = Date.now();
+    // Mantém compat: salva tempo lido se houver
+    const accSec = (src.pomoState && src.pomoState.accumulatedSec) || 0;
+    src.readingTimeSeconds = accSec;
+    try{ save(); }catch(_){}
+    // Pinhal: +50 XP por fonte lida
+    try{
+      if(typeof Pinhal !== 'undefined'){
+        Pinhal.award({action:'source_read', xp:50, ctx:src.name || ''});
+      }
+    }catch(_){}
+    updateMarkReadBtn();
+    if(typeof showToast === 'function') showToast('✓ Fonte marcada como lida', 4000);
+  });
+  // Sincroniza enquanto o user lê
+
   // V15.12.75.99 — Header SEM separadores verticais. User reportou aglomerado.
   // Solução: gap uniforme entre botões. Visual respira sem precisar de bars.
   // Ordem: [⏮ ⏭] [📑] [picker][sair foco] [🎯 Foco] [ℹ ✏ ×]
@@ -34562,6 +34686,8 @@ function showSourceReaderModal(src){
   headBtns.appendChild(focusBtnH);
 
   // V15.12.75.99 — Ações finais sem separador. Visual fica mais limpo.
+  // V15.12.75.111 — markReadBtn vem antes do ℹ (mais proeminente quando habilitado)
+  headBtns.appendChild(markReadBtn);
   headBtns.appendChild(infoBtnH);
   const editBtnH = mk('button');
   editBtnH.type = 'button';
@@ -35088,8 +35214,11 @@ function showSourceReaderModal(src){
   };
   content.addEventListener('scroll', updateProgress, {passive: true});
   content.addEventListener('scroll', persistScroll, {passive: true});
+  // V15.12.75.111 — Botão "Marcar lida" reage ao scroll (habilita em ≥80%)
+  content.addEventListener('scroll', updateMarkReadBtn, {passive: true});
   // Update inicial (caso conteúdo seja pequeno)
   setTimeout(updateProgress, 100);
+  setTimeout(updateMarkReadBtn, 150);
 
   // V15.12.75.95 — Restaura scroll de onde o user parou na última visita.
   // Se o conteúdo mudou (diff de scrollHeight > 10%), volta pro início pra
@@ -36648,6 +36777,18 @@ function turboStart(){
 }
 
 function turboExit(){
+  // V15.12.75.111 — Pinhal: bônus de sessão Turbo concluída (+25 XP se ≥5 itens)
+  // Volume já dá XP individual por questão/flashcard. Esse bônus reconhece a
+  // sessão completa. Cap por sessão pra não inflar (1× por turboExit).
+  try{
+    const t = ST.turbo;
+    if(typeof Pinhal !== 'undefined' && t && t.stats){
+      const total = (t.stats.srs||0) + (t.stats.errors||0) + (t.stats.questions||0);
+      if(total >= 5){
+        Pinhal.award({action:'method_session', xp:25, ctx:`Revisão Turbo · ${total} itens`});
+      }
+    }
+  }catch(_){}
   ST.turbo.active=false;
   ST.view='dashboard';render();
 }
@@ -37568,6 +37709,13 @@ function importPoolQuestionsToLocal(poolItems, opts){
     newIds.push(id);
   });
   save();
+  // V15.12.75.111 — Pinhal: import do pool = 1 XP por questão nova (cap 50)
+  try{
+    if(typeof Pinhal !== 'undefined' && newIds.length > 0){
+      const xp = Math.min(newIds.length, 50);
+      Pinhal.award({action:'questions_imported', xp, ctx:`${newIds.length} questões do pool`});
+    }
+  }catch(_){}
   return {newIds, dupCount};
 }
 
@@ -39405,6 +39553,13 @@ function renderImportedImport(wrap){
       addedCount++;
     });
     save();
+    // V15.12.75.111 — Pinhal: 1 XP por questão importada (cap 50)
+    try{
+      if(typeof Pinhal !== 'undefined' && addedCount > 0){
+        const xp = Math.min(addedCount, 50);
+        Pinhal.award({action:'questions_imported', xp, ctx:`${addedCount} questões importadas`});
+      }
+    }catch(_){}
     let msg = `${addedCount} questão(ões) adicionada(s).`;
     if(skippedCount > 0) msg += ` ${skippedCount} ${skippedCount===1?'duplicada':'duplicadas'} ${skippedCount===1?'foi ignorada':'foram ignoradas'}.`;
     if(autoDisciplinesCreated.size > 0){
@@ -40208,6 +40363,12 @@ function compileProfilesIntoCaderno(s){
   s.modeUsed = 'caderno';
   s.resultAt = Date.now();
   save();render();
+  // V15.12.75.111 — Pinhal: material de revisão (caderno) = 25 XP
+  try{
+    if(typeof Pinhal !== 'undefined'){
+      Pinhal.award({action:'revgen_created', xp:25, ctx:'Caderno de revisão'});
+    }
+  }catch(_){}
   showToast(`✓ Compilado ${collected.length} perfis sem custo de IA`);
 }
 
@@ -40348,6 +40509,16 @@ async function runRevgen(){
     s.resultAt = Date.now();
     s.loading=false;
     save();render();
+    // V15.12.75.111 — Pinhal: material de revisão gerado por IA = 25 XP (caderno) ou 20 XP (audio/NotebookLM)
+    try{
+      if(typeof Pinhal !== 'undefined'){
+        if(s.mode === 'audio'){
+          Pinhal.award({action:'notebooklm_export', xp:20, ctx:'Roteiro NotebookLM'});
+        } else {
+          Pinhal.award({action:'revgen_created', xp:25, ctx:'Caderno de revisão (IA)'});
+        }
+      }
+    }catch(_){}
   }catch(err){
     console.error('Revgen error:',err);
     s.loading=false;
@@ -41879,6 +42050,16 @@ function renderNotebookPractice(wrap){
 
   if(idx>=total){
     // End of round
+    // V15.12.75.111 — Pinhal: caderno completo = 75 XP (gate: precisa
+    // ter respondido pelo menos 1 questão). Marca no notebook pra não
+    // dar XP de novo se voltar e refizer o mesmo caderno.
+    try{
+      if(typeof Pinhal !== 'undefined' && stats.answered > 0 && !nb._pinhalAwarded){
+        nb._pinhalAwarded = Date.now();
+        try{ save(); }catch(_){}
+        Pinhal.award({action:'deck_complete', xp:75, ctx:nb.name || 'Caderno'});
+      }
+    }catch(_){}
     const card = mk('div','card');card.style.cssText='text-align:center;padding:2rem 1rem';
     const big = mk('div');big.style.cssText='font-size:48px;margin-bottom:.5rem';big.textContent='🎉';
     card.appendChild(big);
@@ -49623,8 +49804,8 @@ function renderPinhal(){
 
   // V15.12.75.109 — Cena panorâmica da floresta (vem ANTES do grid de slots).
   // V15.12.75.110 — Usa buildForestScene antiga (V15.11) que é mais polida.
-  // Precisa mapear `state.trees` (com stage 1-5) pro formato esperado
-  // (com type seed/young/mature/ancient).
+  // V15.12.75.111 — Usa CSS .forest-scene-card que tem suporte a fullscreen.
+  // Botão ⛶ expande a cena pra ocupar a tela toda (igual perfil antigo).
   try{
     const stageToType = {1:'seed', 2:'seed', 3:'young', 4:'mature', 5:'ancient'};
     const mappedTrees = (state.trees || []).map((t, idx) => ({
@@ -49634,16 +49815,67 @@ function renderPinhal(){
     }));
     const scene = buildForestScene(mappedTrees);
     if(scene){
-      // Wrapper com label "Sua floresta" e click handler nas árvores
-      const sceneWrap = mk('div');
-      sceneWrap.style.cssText = 'margin-bottom:1.25rem;border-radius:14px;overflow:hidden;border:1px solid var(--border);position:relative';
-      // Header sobreposto
+      // Usa classe forest-scene-card pra herdar CSS de fullscreen
+      const sceneWrap = mk('div','forest-scene-card');
+      sceneWrap.style.cssText = 'margin-bottom:1.25rem;position:relative;background:transparent';
+      sceneWrap.appendChild(scene);
+
+      // Header sobreposto (badge canto superior esquerdo)
       const sceneHead = mk('div');
       sceneHead.style.cssText = 'position:absolute;top:.75rem;left:.875rem;display:flex;align-items:center;gap:6px;padding:5px 12px;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);border-radius:999px;font-size:11px;font-weight:700;color:#fff;letter-spacing:.3px;z-index:5;pointer-events:none';
       const matures = mappedTrees.filter(t => t.type==='ancient' || t.type==='mature').length;
       sceneHead.innerHTML = `<span style="font-size:13px">🌲</span><span>Sua floresta · ${mappedTrees.length} árvore${mappedTrees.length===1?'':'s'}${matures>0?` · ${matures} madura${matures===1?'':'s'}`:''}</span>`;
-      sceneWrap.appendChild(scene);
       sceneWrap.appendChild(sceneHead);
+
+      // V15.12.75.111 — Botão fullscreen (canto superior direito)
+      const zoomBtns = mk('div','forest-zoom-btns');
+      const expandBtn = mk('button','forest-zoom-btn');
+      expandBtn.type = 'button';
+      expandBtn.title = 'Expandir pinhal';
+      expandBtn.setAttribute('aria-label', 'Expandir pinhal');
+      expandBtn.innerHTML = '⛶';
+      let backdrop = null;
+      const closeExpanded = () => {
+        sceneWrap.classList.remove('forest-expanded');
+        document.body.classList.remove('forest-expanded');
+        if(backdrop){ backdrop.remove(); backdrop = null; }
+        expandBtn.innerHTML = '⛶';
+        expandBtn.title = 'Expandir pinhal';
+      };
+      const openExpanded = () => {
+        sceneWrap.classList.add('forest-expanded');
+        document.body.classList.add('forest-expanded');
+        if(!backdrop){
+          backdrop = mk('div','forest-expanded-backdrop');
+          backdrop.addEventListener('click', closeExpanded);
+          document.body.appendChild(backdrop);
+        }
+        expandBtn.innerHTML = '×';
+        expandBtn.title = 'Fechar (Esc)';
+      };
+      expandBtn.addEventListener('click', () => {
+        if(sceneWrap.classList.contains('forest-expanded')) closeExpanded();
+        else openExpanded();
+      });
+      const escHandler = (e) => {
+        if(e.key === 'Escape' && sceneWrap.classList.contains('forest-expanded')){
+          closeExpanded();
+        }
+      };
+      document.addEventListener('keydown', escHandler);
+      // Cleanup quando o card sair do DOM
+      const cleanupObserver = new MutationObserver(() => {
+        if(!document.body.contains(sceneWrap)){
+          document.removeEventListener('keydown', escHandler);
+          document.body.classList.remove('forest-expanded');
+          if(backdrop){ backdrop.remove(); backdrop = null; }
+          cleanupObserver.disconnect();
+        }
+      });
+      cleanupObserver.observe(document.body, {childList:true, subtree:true});
+      zoomBtns.appendChild(expandBtn);
+      sceneWrap.appendChild(zoomBtns);
+
       // Estado vazio
       if(mappedTrees.length === 0){
         const empty = mk('div');
@@ -49815,11 +50047,21 @@ function renderPinhal(){
     const actionLabels = {
       pomo_focus: '🎯 Pomodoro de foco',
       source_read: '📖 Fonte lida',
+      source_import: '📥 Fonte importada',
+      source_publish: '📤 Fonte publicada',
       question_correct: '✓ Questão correta',
       flashcard_review: '🎴 Flashcard revisado',
       drill_complete: '🔬 Drill completo',
       mock_complete: '⏰ Simulado completo',
-      daily_login: '🌅 Sequência mantida'
+      daily_login: '🌅 Sequência mantida',
+      method_session: '🧠 Método IA praticado',
+      questions_imported: '📥 Questões importadas',
+      deck_complete: '📚 Caderno concluído',
+      error_resolved: '✓ Erro revisado',
+      edital_synthesis: '📋 Síntese de edital',
+      revgen_created: '⚡ Material de revisão',
+      notebooklm_export: '🎙 Roteiro NotebookLM',
+      admin_boost: '🔧 Admin boost'
     };
     state.xpLog.slice(0, 15).forEach((entry, i) => {
       const row = mk('div');
@@ -56610,6 +56852,12 @@ function showCreateEditalModal(){
     if(!DATA.editals) DATA.editals = [];
     DATA.editals.unshift(edital);
     save();
+    // V15.12.75.111 — Pinhal: análise de edital criada = 40 XP
+    try{
+      if(typeof Pinhal !== 'undefined'){
+        Pinhal.award({action:'edital_synthesis', xp:40, ctx:edital.examName || edital.name || 'Edital'});
+      }
+    }catch(_){}
     closeModal();
 
     // Navega pra lista (vê o card "analisando...")
@@ -71998,7 +72246,6 @@ function showCommandPalette(){
       {label:'Comunidade', icon:'🌐', kind:'Comunidade', keywords:'descobrir comunidade publico cadernos materiais', action:()=>{ST.view='discover';render();}},
       {label:'Feed dos seguidos', icon:'📡', kind:'Comunidade', keywords:'feed atividade rede pessoas seguidos', action:()=>{ST.view='feed';render();}},
       {label:'Atualizações jurídicas', icon:'⚖️', kind:'Comunidade', keywords:'leis jurisprudencia stf stj', action:()=>{ST.view='legalUpdates';render();}},
-      {label:'Pinhal de Araucárias', icon:'🌲', kind:'Comunidade', keywords:'forest gamification', action:()=>{ST.view='forest';render();}},
       {label:'Grupos de estudo', icon:'👥', kind:'Comunidade', keywords:'grupo grupos ranking competir membros amigos', action:()=>{ST.view='groups';render();}},
       // Conta
       {label:'Conta', icon:'👤', kind:'Conta', keywords:'conta perfil settings configuracao', action:()=>{ST.view='settings';render();}},
