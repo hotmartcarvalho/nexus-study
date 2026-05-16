@@ -7410,7 +7410,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.121';
+window.GRALIA_VERSION = 'V15.12.75.122';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -33688,18 +33688,19 @@ const AmbientSound = (() => {
       currentNodes.push(src, lp, lfo, lfoGain, baseGain);
     } else if(type === 'forest_day' || type === 'forest_dawn' || type === 'forest_night'){
       // V15.12.75.121 — Sons de mata ambientais, variando por horário.
-      //   forest_day: brisa suave + chirps esporádicos de pássaros
-      //   forest_dawn: brisa + chirps mais frequentes (dawn chorus)
-      //   forest_night: noise grave (brisa noturna) + grilos (chirps agudos repetitivos)
+      // V15.12.75.122 — Enriquecido com mais camadas:
+      //   - Folhas farfalhando (noise agudo modulado, sutil)
+      //   - Pássaro grave esporádico (chamado mais longo, ~600-1000Hz)
+      //   - Sapo distante (madrugada/noite, ~120Hz, raro)
+      //   - Multi-pattern de chirps (2 espécies)
 
-      // BASE: brisa de fundo (pink noise filtrado, bem suave)
+      // CAMADA 1 — Brisa de fundo (pink noise filtrado)
       const buf = makeNoiseBuffer(c, 2, 'pink');
       const src = c.createBufferSource();
       src.buffer = buf;
       src.loop = true;
       const lp = c.createBiquadFilter();
       lp.type = 'lowpass';
-      // Brisa noturna mais grave (1000Hz), diurna mais "viva" (1400Hz)
       lp.frequency.value = type === 'forest_night' ? 1000 : 1400;
       const lfo = c.createOscillator();
       lfo.type = 'sine';
@@ -33707,7 +33708,6 @@ const AmbientSound = (() => {
       const lfoGain = c.createGain();
       lfoGain.gain.value = 0.15;
       const baseGain = c.createGain();
-      // Volume base baixíssimo — é fundo, não foreground
       baseGain.gain.value = type === 'forest_night' ? 0.20 : 0.25;
       lfo.connect(lfoGain);
       lfoGain.connect(baseGain.gain);
@@ -33716,24 +33716,46 @@ const AmbientSound = (() => {
       lfo.start();
       currentNodes.push(src, lp, lfo, lfoGain, baseGain);
 
-      // CHIRPS: pássaros (dia/madrugada) ou grilos (noite)
-      // Diferenças: dia = chirps esparsos; dawn = chirps frequentes (dawn chorus);
-      // night = grilos em frequência aguda, mais ritmados
+      // CAMADA 2 — V15.12.75.122 — FOLHAS farfalhando.
+      // White noise muito alto-frequência (highpass), modulado lento.
+      // Dá a sensação de folhas se movendo com a brisa. Volume baixíssimo.
+      const leafBuf = makeNoiseBuffer(c, 2, 'white');
+      const leafSrc = c.createBufferSource();
+      leafSrc.buffer = leafBuf;
+      leafSrc.loop = true;
+      const leafHp = c.createBiquadFilter();
+      leafHp.type = 'highpass';
+      leafHp.frequency.value = 5000;  // só agudos = "shhh" sutil
+      const leafLfo = c.createOscillator();
+      leafLfo.type = 'sine';
+      leafLfo.frequency.value = 0.07;  // bem lento
+      const leafLfoGain = c.createGain();
+      leafLfoGain.gain.value = 0.04;
+      const leafGain = c.createGain();
+      leafGain.gain.value = 0.06;  // baixíssimo
+      leafLfo.connect(leafLfoGain);
+      leafLfoGain.connect(leafGain.gain);
+      leafSrc.connect(leafHp); leafHp.connect(leafGain); leafGain.connect(localGain);
+      leafSrc.start();
+      leafLfo.start();
+      currentNodes.push(leafSrc, leafHp, leafLfo, leafLfoGain, leafGain);
+
+      // CAMADA 3 — Chirps pequenos (pássaros pequenos / grilos)
       const chirpConfig = {
         forest_day:   { intervalMin: 2500, intervalMax: 7000, freqMin: 2400, freqMax: 4200, dur: 0.10, gain: 0.06 },
         forest_dawn:  { intervalMin: 800,  intervalMax: 2200, freqMin: 2200, freqMax: 4800, dur: 0.12, gain: 0.08 },
         forest_night: { intervalMin: 400,  intervalMax: 1100, freqMin: 3800, freqMax: 4400, dur: 0.06, gain: 0.04 }
       }[type];
 
-      let chirpTimeout = null;
+      let alive = true;  // guard de morte (verificado em cada agendamento)
+      const allTimeouts = [];
+
       const scheduleChirp = () => {
-        if(!currentNodes.length) return;  // foi parado
+        if(!alive) return;
         const t0 = c.currentTime;
-        // Pequena variação aleatória de timbre
         const freq = chirpConfig.freqMin + Math.random() * (chirpConfig.freqMax - chirpConfig.freqMin);
         const osc = c.createOscillator();
         osc.type = type === 'forest_night' ? 'sawtooth' : 'triangle';
-        // Slide leve pra dar naturalidade ao chirp
         osc.frequency.setValueAtTime(freq, t0);
         if(type !== 'forest_night'){
           osc.frequency.linearRampToValueAtTime(freq * 0.85, t0 + chirpConfig.dur);
@@ -33747,12 +33769,95 @@ const AmbientSound = (() => {
         osc.start(t0);
         osc.stop(t0 + chirpConfig.dur + 0.05);
         const next = chirpConfig.intervalMin + Math.random() * (chirpConfig.intervalMax - chirpConfig.intervalMin);
-        chirpTimeout = setTimeout(scheduleChirp, next);
+        allTimeouts.push(setTimeout(scheduleChirp, next));
       };
-      // Primeiro chirp após 600ms-1200ms
-      chirpTimeout = setTimeout(scheduleChirp, 600 + Math.random() * 600);
-      // Mantém timeout pra limpeza no stop
-      currentNodes.push({ disconnect: () => { if(chirpTimeout) clearTimeout(chirpTimeout); } });
+      allTimeouts.push(setTimeout(scheduleChirp, 600 + Math.random() * 600));
+
+      // CAMADA 4 — V15.12.75.122 — Pássaro grave esporádico (chamado mais longo).
+      // Tipo "rola" ou "pomba" — frequência baixa, ~600-1000Hz, 2-3 notas descendentes.
+      // Dia: ocasional. Dawn: mais frequente. Noite: raro (algum chamado noturno).
+      const bigBirdConfig = {
+        forest_day:   { intervalMin: 8000,  intervalMax: 18000, freq: 750,  gain: 0.05 },
+        forest_dawn:  { intervalMin: 4000,  intervalMax: 9000,  freq: 800,  gain: 0.06 },
+        forest_night: { intervalMin: 15000, intervalMax: 30000, freq: 620,  gain: 0.04 }
+      }[type];
+
+      const scheduleBigBird = () => {
+        if(!alive) return;
+        const t0 = c.currentTime;
+        // Chamado: 2-3 notas levemente descendentes
+        const baseFreq = bigBirdConfig.freq + (Math.random() - 0.5) * 100;
+        for(let i = 0; i < 2 + Math.floor(Math.random() * 2); i++){
+          const osc = c.createOscillator();
+          osc.type = 'sine';
+          const startOff = i * 0.32;
+          const noteFreq = baseFreq * (1 - i * 0.04);
+          osc.frequency.value = noteFreq;
+          const g = c.createGain();
+          g.gain.setValueAtTime(0, t0 + startOff);
+          g.gain.linearRampToValueAtTime(bigBirdConfig.gain, t0 + startOff + 0.04);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + startOff + 0.28);
+          osc.connect(g);
+          g.connect(localGain);
+          osc.start(t0 + startOff);
+          osc.stop(t0 + startOff + 0.35);
+        }
+        const next = bigBirdConfig.intervalMin + Math.random() * (bigBirdConfig.intervalMax - bigBirdConfig.intervalMin);
+        allTimeouts.push(setTimeout(scheduleBigBird, next));
+      };
+      allTimeouts.push(setTimeout(scheduleBigBird, 3000 + Math.random() * 5000));
+
+      // CAMADA 5 — V15.12.75.122 — Sapo distante (madrugada/noite só).
+      // Frequência grave (~120Hz), "croak" curto. Bem esporádico.
+      if(type === 'forest_night' || type === 'forest_dawn'){
+        const scheduleFrog = () => {
+          if(!alive) return;
+          const t0 = c.currentTime;
+          const osc = c.createOscillator();
+          osc.type = 'square';  // square dá timbre "vocal" do sapo
+          osc.frequency.value = 100 + Math.random() * 40;
+          const g = c.createGain();
+          g.gain.setValueAtTime(0, t0);
+          g.gain.linearRampToValueAtTime(0.045, t0 + 0.02);
+          g.gain.linearRampToValueAtTime(0.045, t0 + 0.12);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.22);
+          // Lowpass pra suavizar o square (não fica sintético)
+          const lpFrog = c.createBiquadFilter();
+          lpFrog.type = 'lowpass';
+          lpFrog.frequency.value = 400;
+          osc.connect(lpFrog);
+          lpFrog.connect(g);
+          g.connect(localGain);
+          osc.start(t0);
+          osc.stop(t0 + 0.28);
+          // Sapo às vezes coaxa 2 vezes em sequência
+          if(Math.random() < 0.45){
+            const osc2 = c.createOscillator();
+            osc2.type = 'square';
+            osc2.frequency.value = 100 + Math.random() * 40;
+            const g2 = c.createGain();
+            g2.gain.setValueAtTime(0, t0 + 0.32);
+            g2.gain.linearRampToValueAtTime(0.04, t0 + 0.34);
+            g2.gain.exponentialRampToValueAtTime(0.001, t0 + 0.52);
+            const lpFrog2 = c.createBiquadFilter();
+            lpFrog2.type = 'lowpass';
+            lpFrog2.frequency.value = 400;
+            osc2.connect(lpFrog2); lpFrog2.connect(g2); g2.connect(localGain);
+            osc2.start(t0 + 0.32);
+            osc2.stop(t0 + 0.58);
+          }
+          // Intervalo grande entre sapos (12-35s)
+          const next = 12000 + Math.random() * 23000;
+          allTimeouts.push(setTimeout(scheduleFrog, next));
+        };
+        allTimeouts.push(setTimeout(scheduleFrog, 5000 + Math.random() * 10000));
+      }
+
+      // Cleanup centralizado: quando stop() é chamado, mata todos os timeouts
+      currentNodes.push({ disconnect: () => {
+        alive = false;
+        allTimeouts.forEach(t => clearTimeout(t));
+      }});
     } else if(type === 'whitenoise'){
       const buf = makeNoiseBuffer(c, 2, 'white');
       const src = c.createBufferSource();
@@ -50184,7 +50289,11 @@ function renderPinhal(){
         }
       };
       document.addEventListener('keydown', escHandler);
-      // Cleanup quando o card sair do DOM
+      // V15.12.75.122 — Cleanup leve: observa só o PARENT do sceneWrap (não
+      // document.body subtree). Antes V121 observava o body inteiro com
+      // subtree:true, dispara em qualquer mutation = caro com muitos cards.
+      // Agora dispara só quando o parent direto muda children.
+      const cleanupTarget = sceneWrap.parentNode || document.body;
       const cleanupObserver = new MutationObserver(() => {
         if(!document.body.contains(sceneWrap)){
           document.removeEventListener('keydown', escHandler);
@@ -50193,7 +50302,11 @@ function renderPinhal(){
           cleanupObserver.disconnect();
         }
       });
-      cleanupObserver.observe(document.body, {childList:true, subtree:true});
+      // Observa só childList do parent direto, sem subtree
+      setTimeout(() => {
+        const target = sceneWrap.parentNode || document.body;
+        cleanupObserver.observe(target, {childList:true});
+      }, 0);
       zoomBtns.appendChild(expandBtn);
 
       // V15.12.75.121 — Toggle de SOM DE MATA (varia por horário: dia/dawn/noite).
@@ -67501,54 +67614,94 @@ function buildForestScene(trees){
     return s;
   }
 
-  // V15.12.75.119 — Distribuição uniforme em "colunas" baseada no índice da
-  // árvore no grupo (não só hash). Antes: hash puro fazia árvores se aglomerarem
-  // quando havia muitas (fase Lendária/Final com 15-25 do mesmo tipo). Agora:
-  // cada grupo distribui suas árvores em colunas regulares com jitter pequeno
-  // pra parecer natural. Variação vertical aumentada (jitter 28 em vez de 14).
-  //
-  // Layout: árvores grandes (ancient) ocupam o fundo/meio, médias mais à frente,
-  // jovens ainda mais à frente, sementes na borda inferior.
-  const distributeXY = (group, baseY, yJitter, marginX, minSize, sizeJitter) => {
+  // V15.12.75.122 — Distribuição NATURAL (não mais colunas regulares).
+  // User reportou que parecia fileira/padronizada, com árvores volumosas
+  // muito juntas, pés flutuando e copas todas no mesmo nível tapando o sol.
+  // Mudanças:
+  //   1. Duas camadas de profundidade alternadas (fundo/frente) → quebra fileira
+  //   2. yJitter só pra CIMA (pés sempre no chão, baseY = chão)
+  //   3. Variação de tamanho muito maior (alguns ancients pequenos = perspectiva)
+  //   4. Espaçamento mínimo entre árvores grandes (collision avoidance simples)
+  //   5. Ancients evitam zona do sol/lua (sunCx ± 100px)
+  const distributeXY = (group, baseY, marginX, minSize, sizeJitter, opts) => {
+    opts = opts || {};
+    const minSpacing = opts.minSpacing || 0;  // distância X mínima entre árvores
+    const avoidSun = opts.avoidSun || false;  // ancients evitam o sol
     const N = group.length;
     if(N === 0) return [];
-    return group.map((t, i) => {
-      // X em colunas regulares (1/(N+1), 2/(N+1), ...) + jitter por hash
-      const colCenter = ((i + 1) / (N + 1)) * (W - 2 * marginX) + marginX;
-      // Jitter horizontal: ±15% da largura de uma "coluna" pra evitar grid rígido
-      const laneWidth = (W - 2 * marginX) / Math.max(1, N);
-      const xJitterMax = laneWidth * 0.30;
-      const xJ = ((hashPos(t.id, 100) - 50) / 50) * xJitterMax;
-      const x = Math.max(marginX, Math.min(W - marginX, colCenter + xJ));
-      // Y com jitter mais amplo (parece natural)
-      const y = baseY + hashPos(t.id + 'y', yJitter);
-      // Variação leve de tamanho pra dar profundidade dentro do grupo
-      const size = minSize + (hashPos(t.id + 's', 100) / 100) * sizeJitter;
-      return {x, y, size, id: t.id};
+    const placed = [];
+    group.forEach((t, i) => {
+      // Camada de profundidade alternada: par = fundo, ímpar = frente
+      // Diferença de Y: fundo está mais alto (menor y) que frente. Profundidade
+      // simulada também via size (fundo um pouco menor).
+      const layer = (hashPos(t.id + 'layer', 10) < 5) ? 'back' : 'front';
+      const yOffset = layer === 'back' ? -18 : 6;
+      const sizeMul = layer === 'back' ? 0.85 : 1.0;
+      // X aleatório baseado em hash (não mais coluna regular). Combinado com
+      // collision avoidance abaixo, dá espalhamento natural.
+      let x = marginX + (hashPos(t.id + 'x', 100) / 100) * (W - 2 * marginX);
+      // Evita zona do sol (apenas pra ancients)
+      if(avoidSun){
+        const sunX = (W * 0.625);  // ~500px (paleta entardecer/manhã)
+        const sunGuardR = 90;
+        if(Math.abs(x - sunX) < sunGuardR){
+          // Empurra pra um dos lados
+          x = x < sunX ? sunX - sunGuardR - 10 : sunX + sunGuardR + 10;
+          x = Math.max(marginX, Math.min(W - marginX, x));
+        }
+      }
+      // Collision avoidance: se ficar muito perto de outro já placed, empurra
+      if(minSpacing > 0){
+        let tries = 0;
+        while(tries < 8){
+          const collision = placed.some(p => Math.abs(p.x - x) < minSpacing);
+          if(!collision) break;
+          // Tenta deslocar +/- jitter
+          const shift = ((tries % 2 === 0) ? 1 : -1) * (minSpacing * 0.7 * (tries + 1));
+          x = marginX + ((x - marginX + shift + (W - 2 * marginX)) % (W - 2 * marginX));
+          if(avoidSun){
+            const sunX = (W * 0.625);
+            if(Math.abs(x - sunX) < 90){
+              x = x < sunX ? sunX - 100 : sunX + 100;
+            }
+          }
+          tries++;
+        }
+      }
+      // Y: baseY (chão) é fixo, jitter só negativo (sobe acima do chão, nunca abaixo)
+      // Cada layer adiciona seu próprio offset. Pés ficam grudados no chão.
+      const yLayerJitter = -hashPos(t.id + 'y', 14);  // 0 a -14 (sempre sobe)
+      const y = baseY + yOffset + yLayerJitter;
+      // Tamanho: variação MAIOR (era 20-35%, agora até 60% de variação)
+      const baseSize = minSize + (hashPos(t.id + 's', 100) / 100) * sizeJitter;
+      const size = baseSize * sizeMul;
+      placed.push({x, y, size, id: t.id, layer});
     });
+    return placed;
   };
 
-  // V15.12.75.121 — TODAS as árvores começam pausadas no primeiro frame.
-  // O scheduler do JS pós-mount escolhe 1-2 por vez pra animar, com a animação
-  // 2.5× mais lenta. Quando uma termina, outra começa (sequencial).
-  // Seeds: sempre SVG (user gosta).
+  // V15.12.75.122 — Distribuição com regras específicas por tipo:
+  //   - Ancients: grandes mas espaçadas (minSpacing 110), evitam sol
+  //   - Matures: médias, espaçamento moderado (80)
+  //   - Youngs: pequenas, podem ficar mais próximas (50)
+  //   - Seeds: minúsculas, próximas (30)
+  // Os baseY agora são MUITO mais variados (não fileiras): ancient começa em
+  // 0.62 (mais alto), mature 0.72, young 0.83, seed 0.92.
 
-  // Ordem de desenho: ancient atrás (maior z-depth → desenha primeiro), depois
-  // mature, young, seeds (perto da câmera). Cada grupo distribuído uniformemente.
-  const ancientLayout = distributeXY(grouped.ancient, H * 0.74, 26, 60, 1.35, 0.35);
+  const ancientLayout = distributeXY(grouped.ancient, H * 0.78, 70, 1.20, 0.40, { minSpacing: 110, avoidSun: true });
   ancientLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'ancient', id);
   });
-  const matureLayout = distributeXY(grouped.mature, H * 0.81, 24, 50, 1.00, 0.30);
+  const matureLayout = distributeXY(grouped.mature, H * 0.84, 55, 0.85, 0.30, { minSpacing: 80 });
   matureLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'mature', id);
   });
-  const youngLayout = distributeXY(grouped.young, H * 0.88, 18, 35, 0.70, 0.25);
+  const youngLayout = distributeXY(grouped.young, H * 0.89, 40, 0.60, 0.25, { minSpacing: 50 });
   youngLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'young', id);
   });
   // Seeds: sempre SVG (user gosta da semente especificamente)
-  const seedLayout = distributeXY(grouped.seed, H * 0.93, 14, 22, 0.45, 0.20);
+  const seedLayout = distributeXY(grouped.seed, H * 0.94, 25, 0.40, 0.20, { minSpacing: 30 });
   seedLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'seed', id);
   });
@@ -67630,14 +67783,28 @@ function buildForestScene(trees){
     }
 
     // V15.12.75.121 — Scheduler sequencial pra animações das árvores.
-    // ALL árvores começam pausadas no primeiro frame. Scheduler escolhe 1-2
-    // aleatoriamente pra animar com playbackRate=0.4 (2.5× mais lento).
-    // Quando termina (event 'ended'), seleciona próximas. Resultado:
-    //   - Performance ótima (no máx 2 vídeos rodando)
-    //   - Efeito visual de "vento passando pelas árvores"
-    //   - Sem travamento mesmo com 45 árvores
+    // V15.12.75.122 — Adicionado guard `alive` que vira false quando o container
+    // sai do DOM. Antes: re-renderizar o pinhal várias vezes acumulava scheduler
+    // timeouts órfãos (chirps, pickAndPlay). Agora cada scheduler morre quando
+    // sua scene é removida — evita acumulação que pesava com o tempo.
     const araucarias = container.querySelectorAll('.araucaria');
     const playableVideos = [];  // vídeos que carregaram e podem tocar
+    let alive = true;
+    // Detecta morte: observa o parent direto. Se container sair, mata scheduler.
+    const deathObs = new MutationObserver(() => {
+      if(!document.body.contains(container)){
+        alive = false;
+        // Pausa todos os vídeos pra liberar GPU
+        playableVideos.forEach(({ video }) => {
+          try{ video.pause(); }catch(_){}
+        });
+        deathObs.disconnect();
+      }
+    });
+    setTimeout(() => {
+      const tgt = container.parentNode || document.body;
+      try{ deathObs.observe(tgt, {childList:true}); }catch(_){}
+    }, 0);
 
     araucarias.forEach(group => {
       const v = group.querySelector('.araucaria-video');
@@ -67656,8 +67823,6 @@ function buildForestScene(trees){
       });
 
       // Carrega + pausa no primeiro frame (visual da animação congelada)
-      // play() breve força renderização do 1º frame em browsers que não mostram
-      // nada sem play; pausamos logo depois.
       v.addEventListener('loadeddata', () => {
         try{
           v.currentTime = 0;
@@ -67670,8 +67835,8 @@ function buildForestScene(trees){
         if(p && p.then){
           p.then(() => {
             setTimeout(() => {
+              if(!alive) return;
               try{ v.pause(); v.currentTime = 0; }catch(_){}
-              // Adiciona ao pool de vídeos elegíveis pro scheduler
               if(!group.classList.contains('araucaria-fallback')){
                 playableVideos.push({ video: v, group: group });
               }
@@ -67682,16 +67847,14 @@ function buildForestScene(trees){
     });
 
     // Scheduler: escolhe 1-2 vídeos pra animar simultaneamente.
-    // Quando um termina, escolhe outro pra entrar no lugar.
     const MAX_CONCURRENT = 2;
     const playing = new Set();
 
     const pickAndPlay = () => {
+      if(!alive) return;  // guard de morte
       if(playing.size >= MAX_CONCURRENT) return;
-      // Filtra elegíveis (não tocando agora)
       const eligible = playableVideos.filter(({ video }) => !playing.has(video));
       if(eligible.length === 0) return;
-      // Pick aleatório
       const pick = eligible[Math.floor(Math.random() * eligible.length)];
       const { video } = pick;
       playing.add(video);
@@ -67705,24 +67868,21 @@ function buildForestScene(trees){
       }
     };
 
-    // Quando um vídeo termina, libera o slot e dispara o próximo
     const onAnyEnded = (e) => {
+      if(!alive) return;  // guard
       const v = e.target;
       if(!v || !v.classList || !v.classList.contains('araucaria-video')) return;
       playing.delete(v);
       try{ v.pause(); v.currentTime = 0; }catch(_){}
-      // Pequeno delay antes da próxima pra não ficar agitado demais
-      setTimeout(pickAndPlay, 600 + Math.random() * 1200);
+      setTimeout(() => { if(alive) pickAndPlay(); }, 600 + Math.random() * 1200);
     };
 
-    // Listener de ended em todos os vídeos (delegação no container)
     container.addEventListener('ended', onAnyEnded, true);
 
-    // Boot: depois que os vídeos carregarem, inicia 1-2 animações
     setTimeout(() => {
+      if(!alive) return;
       pickAndPlay();
-      // Segunda com delay pra não começarem juntas
-      setTimeout(pickAndPlay, 1500);
+      setTimeout(() => { if(alive) pickAndPlay(); }, 1500);
     }, 800);
   }, 0);
 
