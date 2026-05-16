@@ -7410,7 +7410,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.120';
+window.GRALIA_VERSION = 'V15.12.75.121';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -33249,17 +33249,16 @@ const Pinhal = (() => {
     const m = mk('div');
     m.style.cssText = 'max-width:380px;width:100%';
 
-    // V15.12.75.120 — Bloco introdutório com contexto sobre o que é um card.
-    // Aparece sempre — ajuda user novo a entender o sistema. User reportou
-    // que pop-ups do pinhal precisavam de mais contexto.
-    const intro = mk('div');
-    intro.style.cssText = 'background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.18);padding:.625rem .875rem;margin:-1.25rem -1.25rem .875rem;border-radius:12px 12px 0 0;font-size:11.5px;color:var(--text2);line-height:1.5;text-align:left';
-    intro.innerHTML = `<b style="color:var(--gralia-purple)">🎴 O que é isto?</b> Os cards do Pinhal são figurinhas digitais da fauna e flora da Mata de Araucárias. Você descobre novas espécies conforme estuda — cada ação acumula XP e desbloqueia cards da região.`;
-    m.appendChild(intro);
-
+    // V15.12.75.121 — Contexto integrado ao head em vez de caixa separada.
+    // Antes (V120): caixa roxa pesada que destoava do minimalismo do modal.
+    // Agora: linha curta acima do emoji, com tipografia leve e cor neutra que
+    // segue a paleta da raridade do card. Visual coeso.
     const head = mk('div');
-    head.style.cssText = `text-align:center;padding:1.25rem 1rem;background:linear-gradient(135deg,${color}15,${color}05);margin:0 -1.25rem 1rem`;
+    head.style.cssText = `text-align:center;padding:1.5rem 1rem 1.25rem;background:linear-gradient(135deg,${color}15,${color}05);border-radius:12px 12px 0 0;margin:-1.25rem -1.25rem 1rem`;
     head.innerHTML = `
+      <div style="font-size:10.5px;color:var(--text3);line-height:1.5;max-width:300px;margin:0 auto .875rem;font-weight:500;letter-spacing:.1px">
+        Carta colecionável da fauna e flora da Mata de Araucárias — desbloqueada conforme você estuda.
+      </div>
       <div style="display:inline-block;width:84px;height:84px;border-radius:18px;background:${color}1A;border:2px solid ${color}40;display:flex;align-items:center;justify-content:center;font-size:44px;margin-bottom:.625rem">${card.emoji}</div>
       <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${rarLabels[card.rar]||'Comum'}</div>
       <h3 style="margin:0 0 2px;font-size:20px;font-weight:800;color:var(--text)">${escapeHTML(card.nome)}</h3>
@@ -33665,28 +33664,95 @@ const AmbientSound = (() => {
       };
       setTimeout(scheduleNextCrackle, 800);
     } else if(type === 'wind'){
-      // Pink noise modulado por LFO (sopro lento)
+      // V15.12.75.121 — Vento mais suave: gain base 0.35 (era 0.6), modulação
+      // menor (0.2 em vez de 0.4) — sussurro de brisa em vez de rajada forte.
       const buf = makeNoiseBuffer(c, 2, 'pink');
       const src = c.createBufferSource();
       src.buffer = buf;
       src.loop = true;
       const lp = c.createBiquadFilter();
       lp.type = 'lowpass';
-      lp.frequency.value = 1500;
-      // LFO modula o gain pra criar "rajadas"
+      lp.frequency.value = 1200;  // mais grave (era 1500)
       const lfo = c.createOscillator();
       lfo.type = 'sine';
-      lfo.frequency.value = 0.15;
+      lfo.frequency.value = 0.12;  // ondulação mais lenta
       const lfoGain = c.createGain();
-      lfoGain.gain.value = 0.4;
+      lfoGain.gain.value = 0.20;   // modulação reduzida
       const baseGain = c.createGain();
-      baseGain.gain.value = 0.6;
+      baseGain.gain.value = 0.35;  // gain base menor (era 0.6)
       lfo.connect(lfoGain);
       lfoGain.connect(baseGain.gain);
       src.connect(lp); lp.connect(baseGain); baseGain.connect(localGain);
       src.start();
       lfo.start();
       currentNodes.push(src, lp, lfo, lfoGain, baseGain);
+    } else if(type === 'forest_day' || type === 'forest_dawn' || type === 'forest_night'){
+      // V15.12.75.121 — Sons de mata ambientais, variando por horário.
+      //   forest_day: brisa suave + chirps esporádicos de pássaros
+      //   forest_dawn: brisa + chirps mais frequentes (dawn chorus)
+      //   forest_night: noise grave (brisa noturna) + grilos (chirps agudos repetitivos)
+
+      // BASE: brisa de fundo (pink noise filtrado, bem suave)
+      const buf = makeNoiseBuffer(c, 2, 'pink');
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const lp = c.createBiquadFilter();
+      lp.type = 'lowpass';
+      // Brisa noturna mais grave (1000Hz), diurna mais "viva" (1400Hz)
+      lp.frequency.value = type === 'forest_night' ? 1000 : 1400;
+      const lfo = c.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = 0.10;
+      const lfoGain = c.createGain();
+      lfoGain.gain.value = 0.15;
+      const baseGain = c.createGain();
+      // Volume base baixíssimo — é fundo, não foreground
+      baseGain.gain.value = type === 'forest_night' ? 0.20 : 0.25;
+      lfo.connect(lfoGain);
+      lfoGain.connect(baseGain.gain);
+      src.connect(lp); lp.connect(baseGain); baseGain.connect(localGain);
+      src.start();
+      lfo.start();
+      currentNodes.push(src, lp, lfo, lfoGain, baseGain);
+
+      // CHIRPS: pássaros (dia/madrugada) ou grilos (noite)
+      // Diferenças: dia = chirps esparsos; dawn = chirps frequentes (dawn chorus);
+      // night = grilos em frequência aguda, mais ritmados
+      const chirpConfig = {
+        forest_day:   { intervalMin: 2500, intervalMax: 7000, freqMin: 2400, freqMax: 4200, dur: 0.10, gain: 0.06 },
+        forest_dawn:  { intervalMin: 800,  intervalMax: 2200, freqMin: 2200, freqMax: 4800, dur: 0.12, gain: 0.08 },
+        forest_night: { intervalMin: 400,  intervalMax: 1100, freqMin: 3800, freqMax: 4400, dur: 0.06, gain: 0.04 }
+      }[type];
+
+      let chirpTimeout = null;
+      const scheduleChirp = () => {
+        if(!currentNodes.length) return;  // foi parado
+        const t0 = c.currentTime;
+        // Pequena variação aleatória de timbre
+        const freq = chirpConfig.freqMin + Math.random() * (chirpConfig.freqMax - chirpConfig.freqMin);
+        const osc = c.createOscillator();
+        osc.type = type === 'forest_night' ? 'sawtooth' : 'triangle';
+        // Slide leve pra dar naturalidade ao chirp
+        osc.frequency.setValueAtTime(freq, t0);
+        if(type !== 'forest_night'){
+          osc.frequency.linearRampToValueAtTime(freq * 0.85, t0 + chirpConfig.dur);
+        }
+        const g = c.createGain();
+        g.gain.setValueAtTime(0, t0);
+        g.gain.linearRampToValueAtTime(chirpConfig.gain, t0 + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + chirpConfig.dur);
+        osc.connect(g);
+        g.connect(localGain);
+        osc.start(t0);
+        osc.stop(t0 + chirpConfig.dur + 0.05);
+        const next = chirpConfig.intervalMin + Math.random() * (chirpConfig.intervalMax - chirpConfig.intervalMin);
+        chirpTimeout = setTimeout(scheduleChirp, next);
+      };
+      // Primeiro chirp após 600ms-1200ms
+      chirpTimeout = setTimeout(scheduleChirp, 600 + Math.random() * 600);
+      // Mantém timeout pra limpeza no stop
+      currentNodes.push({ disconnect: () => { if(chirpTimeout) clearTimeout(chirpTimeout); } });
     } else if(type === 'whitenoise'){
       const buf = makeNoiseBuffer(c, 2, 'white');
       const src = c.createBufferSource();
@@ -50130,39 +50196,48 @@ function renderPinhal(){
       cleanupObserver.observe(document.body, {childList:true, subtree:true});
       zoomBtns.appendChild(expandBtn);
 
-      // V15.12.75.118 — Botão de SOM DE VENTO. Aparece quando há ≥5 árvores
-      // maduras (estágios 4-5). Toggle on/off, persiste em DATA.config.
-      // Usa AmbientSound.play('wind') que já existe no módulo.
+      // V15.12.75.121 — Toggle de SOM DE MATA (varia por horário: dia/dawn/noite).
+      // Aparece quando há ≥5 árvores maduras. Em vez de vento puro, agora toca
+      // ambiente completo: brisa suave + pássaros (dia/dawn) ou grilos (noite).
+      // Volume também reduzido (era 0.40, agora 0.25).
       const matureTrees = mappedTrees.filter(t => t.type === 'ancient' || t.type === 'mature').length;
       if(matureTrees >= 5){
         if(!DATA.config) DATA.config = {};
-        const windOn = !!DATA.config.pinhalWindEnabled;
-        const windBtn = mk('button','forest-zoom-btn');
-        windBtn.type = 'button';
-        windBtn.innerHTML = windOn ? '🌬' : '🍃';
-        windBtn.title = windOn ? 'Vento na floresta ATIVO — desativar' : 'Ativar som de vento na floresta';
-        if(windOn) windBtn.style.background = 'rgba(128,66,250,.55)';
-        windBtn.addEventListener('click', () => {
+        // Escolhe tipo de som baseado no horário atual
+        const pickForestSound = () => {
+          const hr = new Date().getHours();
+          if(hr >= 0 && hr < 5)   return 'forest_night';
+          if(hr >= 5 && hr < 8)   return 'forest_dawn';
+          if(hr >= 8 && hr < 18)  return 'forest_day';
+          if(hr >= 18 && hr < 20) return 'forest_dawn';   // entardecer reusa dawn (similar)
+          return 'forest_night';
+        };
+        const matSoundOn = !!DATA.config.pinhalWindEnabled;
+        const matBtn = mk('button','forest-zoom-btn');
+        matBtn.type = 'button';
+        matBtn.innerHTML = matSoundOn ? '🔊' : '🔈';
+        matBtn.title = matSoundOn ? 'Som de mata ATIVO — desativar' : 'Ativar som de mata (brisa + pássaros)';
+        if(matSoundOn) matBtn.style.background = 'rgba(128,66,250,.55)';
+        matBtn.addEventListener('click', () => {
           DATA.config.pinhalWindEnabled = !DATA.config.pinhalWindEnabled;
           try{ save(); }catch(_){}
           if(DATA.config.pinhalWindEnabled){
-            try{ AmbientSound.play('wind'); }catch(_){}
-            // Volume baixo (0.4 user = ~16% real)
-            try{ AmbientSound.setVolume(0.40); }catch(_){}
-            windBtn.innerHTML = '🌬';
-            windBtn.title = 'Vento na floresta ATIVO — desativar';
-            windBtn.style.background = 'rgba(128,66,250,.55)';
+            try{ AmbientSound.play(pickForestSound()); }catch(_){}
+            try{ AmbientSound.setVolume(0.25); }catch(_){}
+            matBtn.innerHTML = '🔊';
+            matBtn.title = 'Som de mata ATIVO — desativar';
+            matBtn.style.background = 'rgba(128,66,250,.55)';
           } else {
             try{ AmbientSound.stop(); }catch(_){}
-            windBtn.innerHTML = '🍃';
-            windBtn.title = 'Ativar som de vento na floresta';
-            windBtn.style.background = 'rgba(0,0,0,.55)';
+            matBtn.innerHTML = '🔈';
+            matBtn.title = 'Ativar som de mata (brisa + pássaros)';
+            matBtn.style.background = 'rgba(0,0,0,.55)';
           }
         });
-        zoomBtns.appendChild(windBtn);
+        zoomBtns.appendChild(matBtn);
         // Auto-inicia se estava ativo na visita anterior
-        if(windOn){
-          setTimeout(() => { try{ AmbientSound.play('wind'); AmbientSound.setVolume(0.40); }catch(_){} }, 500);
+        if(matSoundOn){
+          setTimeout(() => { try{ AmbientSound.play(pickForestSound()); AmbientSound.setVolume(0.25); }catch(_){} }, 500);
         }
       }
 
@@ -67408,15 +67483,14 @@ function buildForestScene(trees){
 
     // V15.12.75.120 — Vídeo único com loop nativo (sem crossfade que escurecia).
     // Se pauseAtStart=true, JS pós-mount pausa o vídeo no primeiro frame
-    // (visualmente: animação congelada no início).
-    const pausedClass = pauseAtStart ? ' araucaria-paused' : '';
-    let s = `<g class="araucaria araucaria-${type}${pausedClass}" data-tree-id="${groupId}"${pauseAtStart ? ' data-paused="1"' : ''}>`;
+    // V15.12.75.121 — Vídeo SEM atributo `loop` (controle manual via JS).
+    // Todas as árvores começam pausadas no primeiro frame; um scheduler global
+    // escolhe 1-2 por vez pra animar. Quando termina uma, outra começa.
+    // playbackRate=0.4 deixa a animação 2.5× mais lenta (user pediu).
+    let s = `<g class="araucaria araucaria-${type} araucaria-paused" data-tree-id="${groupId}" data-paused="1">`;
     s += `<foreignObject class="araucaria-video-fo" x="${foX}" y="${foY}" width="${size.w}" height="${size.h}">`;
     s += `<div xmlns="http://www.w3.org/1999/xhtml" class="araucaria-video-wrap">`;
-    // Atributo loop nativo — vídeo recomeça sozinho sem crossfade.
-    // preload=metadata em pausadas (só baixa o primeiro frame); auto nas tocando.
-    const preloadAttr = pauseAtStart ? 'metadata' : 'auto';
-    s += `<video class="araucaria-video" muted playsinline loop preload="${preloadAttr}" aria-hidden="true">`;
+    s += `<video class="araucaria-video" muted playsinline preload="auto" aria-hidden="true">`;
     s += `<source src="${videoSrc}" type="video/webm">`;
     s += `</video>`;
     s += `</div></foreignObject>`;
@@ -67454,30 +67528,26 @@ function buildForestScene(trees){
     });
   };
 
-  // V15.12.75.120 — Cap de árvores ANIMADAS (com vídeo tocando). Resto fica
-  // com o vídeo carregado mas PAUSADO no primeiro frame — visual preserva
-  // a animação do user (não vira SVG sintético), só não roda = sem custo de GPU.
-  // Seeds não contam (sempre SVG vetorial, user disse que gosta da semente).
-  const VIDEO_CAPS = { ancient: 4, mature: 5, young: 4 };
+  // V15.12.75.121 — TODAS as árvores começam pausadas no primeiro frame.
+  // O scheduler do JS pós-mount escolhe 1-2 por vez pra animar, com a animação
+  // 2.5× mais lenta. Quando uma termina, outra começa (sequencial).
+  // Seeds: sempre SVG (user gosta).
 
   // Ordem de desenho: ancient atrás (maior z-depth → desenha primeiro), depois
   // mature, young, seeds (perto da câmera). Cada grupo distribuído uniformemente.
   const ancientLayout = distributeXY(grouped.ancient, H * 0.74, 26, 60, 1.35, 0.35);
-  ancientLayout.forEach(({x, y, size, id}, i) => {
-    const pauseAtStart = i >= VIDEO_CAPS.ancient;
-    svg += drawAraucariaHybrid(x, y, size, 'ancient', id, pauseAtStart);
+  ancientLayout.forEach(({x, y, size, id}) => {
+    svg += drawAraucariaHybrid(x, y, size, 'ancient', id);
   });
   const matureLayout = distributeXY(grouped.mature, H * 0.81, 24, 50, 1.00, 0.30);
-  matureLayout.forEach(({x, y, size, id}, i) => {
-    const pauseAtStart = i >= VIDEO_CAPS.mature;
-    svg += drawAraucariaHybrid(x, y, size, 'mature', id, pauseAtStart);
+  matureLayout.forEach(({x, y, size, id}) => {
+    svg += drawAraucariaHybrid(x, y, size, 'mature', id);
   });
   const youngLayout = distributeXY(grouped.young, H * 0.88, 18, 35, 0.70, 0.25);
-  youngLayout.forEach(({x, y, size, id}, i) => {
-    const pauseAtStart = i >= VIDEO_CAPS.young;
-    svg += drawAraucariaHybrid(x, y, size, 'young', id, pauseAtStart);
+  youngLayout.forEach(({x, y, size, id}) => {
+    svg += drawAraucariaHybrid(x, y, size, 'young', id);
   });
-  // Seeds: sempre SVG (user gosta), sem cap
+  // Seeds: sempre SVG (user gosta da semente especificamente)
   const seedLayout = distributeXY(grouped.seed, H * 0.93, 14, 22, 0.45, 0.20);
   seedLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'seed', id);
@@ -67559,12 +67629,16 @@ function buildForestScene(trees){
       });
     }
 
-    // V15.12.58 — Mesmo hook pra cada araucária. Cada <g.araucaria> tem seu
-    // V15.12.75.120 — Reescrito SEM crossfade. Cada árvore tem 1 só vídeo
-    // com `loop` nativo. Se o grupo tem `data-paused="1"`, o vídeo carrega
-    // mas é pausado no primeiro frame (preserva visual da animação que o user
-    // fez, sem rodar = sem custo de GPU).
+    // V15.12.75.121 — Scheduler sequencial pra animações das árvores.
+    // ALL árvores começam pausadas no primeiro frame. Scheduler escolhe 1-2
+    // aleatoriamente pra animar com playbackRate=0.4 (2.5× mais lento).
+    // Quando termina (event 'ended'), seleciona próximas. Resultado:
+    //   - Performance ótima (no máx 2 vídeos rodando)
+    //   - Efeito visual de "vento passando pelas árvores"
+    //   - Sem travamento mesmo com 45 árvores
     const araucarias = container.querySelectorAll('.araucaria');
+    const playableVideos = [];  // vídeos que carregaram e podem tocar
+
     araucarias.forEach(group => {
       const v = group.querySelector('.araucaria-video');
       if(!v) return;
@@ -67581,32 +67655,75 @@ function buildForestScene(trees){
         if(!v.videoWidth || !v.videoHeight) markBroken();
       });
 
-      const isPaused = group.dataset.paused === '1';
-      if(isPaused){
-        // Modo pausado: aguarda o vídeo carregar e pausa no primeiro frame
-        // (currentTime=0). preload=metadata só baixa o necessário pra exibir
-        // o frame, sem download completo do .webm.
-        v.addEventListener('loadeddata', () => {
-          try{
-            v.currentTime = 0;
-            v.pause();
-          }catch(_){}
-        });
-        // Mesmo assim damos um play inicial (curto) pra forçar render do 1º frame
-        // em alguns browsers que não mostram nada sem play. Pausamos logo depois.
+      // Carrega + pausa no primeiro frame (visual da animação congelada)
+      // play() breve força renderização do 1º frame em browsers que não mostram
+      // nada sem play; pausamos logo depois.
+      v.addEventListener('loadeddata', () => {
         try{
-          const p = v.play();
-          if(p && p.then){
-            p.then(() => {
-              setTimeout(() => { try{ v.pause(); v.currentTime = 0; }catch(_){} }, 50);
-            }).catch(() => {});
-          }
+          v.currentTime = 0;
+          v.pause();
         }catch(_){}
-      } else {
-        // Modo normal: toca em loop (atributo loop já está no markup)
-        try{ v.play().catch(() => {}); }catch(_){}
-      }
+      });
+      v.playbackRate = 0.4;  // 2.5× mais lento (user pediu)
+      try{
+        const p = v.play();
+        if(p && p.then){
+          p.then(() => {
+            setTimeout(() => {
+              try{ v.pause(); v.currentTime = 0; }catch(_){}
+              // Adiciona ao pool de vídeos elegíveis pro scheduler
+              if(!group.classList.contains('araucaria-fallback')){
+                playableVideos.push({ video: v, group: group });
+              }
+            }, 80);
+          }).catch(() => {});
+        }
+      }catch(_){}
     });
+
+    // Scheduler: escolhe 1-2 vídeos pra animar simultaneamente.
+    // Quando um termina, escolhe outro pra entrar no lugar.
+    const MAX_CONCURRENT = 2;
+    const playing = new Set();
+
+    const pickAndPlay = () => {
+      if(playing.size >= MAX_CONCURRENT) return;
+      // Filtra elegíveis (não tocando agora)
+      const eligible = playableVideos.filter(({ video }) => !playing.has(video));
+      if(eligible.length === 0) return;
+      // Pick aleatório
+      const pick = eligible[Math.floor(Math.random() * eligible.length)];
+      const { video } = pick;
+      playing.add(video);
+      try{
+        video.currentTime = 0;
+        video.playbackRate = 0.4;
+        const p = video.play();
+        if(p && p.catch) p.catch(() => { playing.delete(video); });
+      }catch(_){
+        playing.delete(video);
+      }
+    };
+
+    // Quando um vídeo termina, libera o slot e dispara o próximo
+    const onAnyEnded = (e) => {
+      const v = e.target;
+      if(!v || !v.classList || !v.classList.contains('araucaria-video')) return;
+      playing.delete(v);
+      try{ v.pause(); v.currentTime = 0; }catch(_){}
+      // Pequeno delay antes da próxima pra não ficar agitado demais
+      setTimeout(pickAndPlay, 600 + Math.random() * 1200);
+    };
+
+    // Listener de ended em todos os vídeos (delegação no container)
+    container.addEventListener('ended', onAnyEnded, true);
+
+    // Boot: depois que os vídeos carregarem, inicia 1-2 animações
+    setTimeout(() => {
+      pickAndPlay();
+      // Segunda com delay pra não começarem juntas
+      setTimeout(pickAndPlay, 1500);
+    }, 800);
   }, 0);
 
   return container;
