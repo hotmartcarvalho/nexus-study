@@ -7396,7 +7396,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.109';
+window.GRALIA_VERSION = 'V15.12.75.110';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -49383,198 +49383,6 @@ function currentPhaseDuration(){
 // V15.12.75.107 — Widget compacto do Pinhal pro dashboard (Fatia 5).
 // Mostra: nível, barra XP, contagem árvores, últimos cards desbloqueados,
 // botão "Ver pinhal →". Layout compacto pra não dominar o painel.
-// V15.12.75.109 — Cena panorâmica da floresta. Mostra todas as árvores do
-// pinhal dispostas naturalmente como paisagem. Cada árvore tem posição
-// determinística (não muda entre renderizações) baseada num hash do tree.id.
-// Funciona em complemento ao grid de slots — a cena dá a sensação de floresta
-// crescendo, o grid permite identificar/clicar cada árvore.
-function buildForestScene(state){
-  const scene = mk('div','card');
-  scene.style.cssText = 'padding:0;border:1px solid rgba(101,138,69,.25);border-radius:14px;overflow:hidden;margin-bottom:1rem;position:relative;background:#a8d5e8';
-
-  // Hash determinístico da string (pra posição estável de cada árvore)
-  const hashStr = (s) => {
-    let h = 0;
-    for(let i = 0; i < s.length; i++){
-      h = ((h << 5) - h) + s.charCodeAt(i);
-      h |= 0;
-    }
-    return Math.abs(h);
-  };
-
-  // viewBox panorâmico 3:1
-  const W = 1200, H = 400;
-
-  // Detecta tema dark via CSS custom prop ou data-theme
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-
-  // Paleta adaptada por tema
-  const palette = isDark ? {
-    skyTop: '#1a2a3a',
-    skyBot: '#2d4a5e',
-    moonOrSun: '#fbbf24',
-    mountainFar: '#1f2f3f',
-    mountainMid: '#2a3b4d',
-    groundFar: '#1f3528',
-    groundNear: '#243b2c',
-    starsVisible: true
-  } : {
-    skyTop: '#c8e0f0',
-    skyBot: '#e8f3f9',
-    moonOrSun: '#fef3c7',
-    mountainFar: '#9ab5c4',
-    mountainMid: '#7da198',
-    groundFar: '#5a7a4a',
-    groundNear: '#6b8b58',
-    starsVisible: false
-  };
-
-  // Gera distribuição estável das árvores em 3 planos
-  const treesData = state.trees || [];
-  const layers = { back: [], mid: [], front: [] };
-  treesData.forEach((tree, idx) => {
-    const seed = hashStr(tree.id || ('t' + idx));
-    // Decide camada (40% back, 35% mid, 25% front — sensação de profundidade)
-    const layerPick = (seed % 100) / 100;
-    let layer;
-    if(layerPick < 0.40) layer = 'back';
-    else if(layerPick < 0.75) layer = 'mid';
-    else layer = 'front';
-    // Posição X (0-100% da largura), Y depende da camada
-    const xPct = ((seed * 7919) % 1000) / 1000;  // primo grande pra dispersão
-    const yJitter = ((seed * 6151) % 100) / 100;
-    layers[layer].push({ tree, idx, xPct, yJitter, seed });
-  });
-
-  // SVG da cena
-  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice" style="display:block;width:100%;height:auto;aspect-ratio:3/1;max-height:380px">`;
-
-  // Defs com gradientes
-  svg += `<defs>
-    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${palette.skyTop}"/>
-      <stop offset="100%" stop-color="${palette.skyBot}"/>
-    </linearGradient>
-    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${palette.groundFar}"/>
-      <stop offset="100%" stop-color="${palette.groundNear}"/>
-    </linearGradient>
-  </defs>`;
-
-  // Céu
-  svg += `<rect x="0" y="0" width="${W}" height="${H * 0.65}" fill="url(#sky)"/>`;
-
-  // Sol ou Lua
-  const sunX = W * 0.78, sunY = H * 0.18, sunR = 28;
-  svg += `<circle cx="${sunX}" cy="${sunY}" r="${sunR}" fill="${palette.moonOrSun}" opacity="${isDark ? '.85' : '.7'}"/>`;
-  if(isDark){
-    // Estrelas dispersas
-    for(let i = 0; i < 25; i++){
-      const sx = (hashStr('star'+i) * 7) % W;
-      const sy = ((hashStr('star'+i) * 13) % Math.floor(H * 0.55));
-      const sr = ((hashStr('star'+i) % 3) + 1) * 0.5;
-      svg += `<circle cx="${sx}" cy="${sy}" r="${sr}" fill="#fff" opacity="${.4 + (hashStr('star'+i) % 6) / 10}"/>`;
-    }
-  }
-
-  // Montanhas distantes (silhueta suave)
-  svg += `<path d="M 0,${H*0.55} Q 150,${H*0.40} 280,${H*0.50} T 560,${H*0.45} T 840,${H*0.48} T 1120,${H*0.42} L ${W},${H*0.55} L ${W},${H} L 0,${H} Z" fill="${palette.mountainFar}" opacity=".7"/>`;
-  // Montanhas médias
-  svg += `<path d="M 0,${H*0.65} Q 200,${H*0.55} 380,${H*0.60} T 680,${H*0.58} T 960,${H*0.62} T 1200,${H*0.57} L ${W},${H} L 0,${H} Z" fill="${palette.mountainMid}" opacity=".85"/>`;
-
-  // Chão (gradient verde com leve curvatura)
-  svg += `<path d="M 0,${H*0.70} Q 300,${H*0.68} 600,${H*0.71} T 1200,${H*0.69} L ${W},${H} L 0,${H} Z" fill="url(#ground)"/>`;
-
-  // Sombras sutis ao chão
-  svg += `<ellipse cx="${W*0.5}" cy="${H*0.88}" rx="${W*0.7}" ry="${H*0.04}" fill="#000" opacity="${isDark ? '.20' : '.08'}"/>`;
-
-  // Função pra renderizar árvore SVG numa posição
-  // size: tamanho da árvore na cena (já scaleada)
-  const renderTreeAt = (tree, cx, cy, size, opacity) => {
-    // Reusa o treeSvg do Pinhal, mas precisamos extrair só o conteúdo interno
-    // pra reposicionar. Estratégia simpler: criar group com transform.
-    const halfSize = size / 2;
-    return `<g transform="translate(${cx - halfSize}, ${cy - size}) scale(${size/60})" opacity="${opacity}" style="cursor:pointer" data-tree-idx="${tree.idx}">
-      ${Pinhal.treeSvg(tree.tree.stage, 60).replace(/<svg[^>]*>/, '<g>').replace(/<\/svg>/, '</g>')}
-    </g>`;
-  };
-
-  // Renderiza por camada (back primeiro pra ficar atrás)
-  // BACK: pequenas, opacas, alto na cena
-  layers.back.forEach(item => {
-    const cx = item.xPct * W;
-    const cy = H * 0.62 + item.yJitter * H * 0.03;
-    const size = 28 + (item.seed % 8);
-    svg += renderTreeAt(item, cx, cy, size, 0.55);
-  });
-  // MID: médias, opacas, meio da cena
-  layers.mid.forEach(item => {
-    const cx = item.xPct * W;
-    const cy = H * 0.72 + item.yJitter * H * 0.04;
-    const size = 45 + (item.seed % 12);
-    svg += renderTreeAt(item, cx, cy, size, 0.78);
-  });
-  // FRONT: grandes, opacas total, embaixo
-  layers.front.forEach(item => {
-    const cx = item.xPct * W;
-    const cy = H * 0.85 + item.yJitter * H * 0.05;
-    const size = 65 + (item.seed % 18);
-    svg += renderTreeAt(item, cx, cy, size, 1.0);
-  });
-
-  // Vegetação rasteira decorativa (sempre presente)
-  for(let i = 0; i < 18; i++){
-    const gx = (hashStr('grass'+i) * 11) % W;
-    const gy = H * 0.85 + ((hashStr('grass'+i) * 5) % Math.floor(H * 0.10));
-    svg += `<path d="M ${gx},${gy} Q ${gx-3},${gy-6} ${gx-5},${gy-8} M ${gx},${gy} Q ${gx},${gy-7} ${gx+1},${gy-9} M ${gx},${gy} Q ${gx+4},${gy-5} ${gx+6},${gy-7}" stroke="${isDark ? '#2a4d33' : '#4d7a3e'}" stroke-width="1" fill="none" opacity=".7"/>`;
-  }
-
-  svg += '</svg>';
-
-  scene.innerHTML = svg;
-
-  // Overlay com info + delegação de click nas árvores
-  const overlay = mk('div');
-  overlay.style.cssText = 'position:absolute;top:.75rem;left:.75rem;display:flex;flex-direction:column;gap:6px;pointer-events:none';
-
-  // Badge "Sua floresta"
-  const badge = mk('div');
-  badge.style.cssText = `display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:rgba(${isDark ? '17,25,40' : '255,255,255'},.85);backdrop-filter:blur(8px);border-radius:999px;border:1px solid rgba(${isDark ? '255,255,255' : '0,0,0'},.08);font-size:11px;font-weight:700;color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.10);width:fit-content;letter-spacing:.3px`;
-  const lvlInfo = Pinhal.getLevel();
-  badge.innerHTML = `<span style="font-size:13px">🌲</span><span>Sua floresta · Nível ${lvlInfo.level}</span>`;
-  overlay.appendChild(badge);
-
-  // Info de árvores
-  if(treesData.length > 0){
-    const stats = mk('div');
-    stats.style.cssText = `font-size:10.5px;color:rgba(${isDark ? '255,255,255' : '34,40,49'},.70);padding:4px 10px;background:rgba(${isDark ? '17,25,40' : '255,255,255'},.60);backdrop-filter:blur(8px);border-radius:8px;width:fit-content`;
-    const matures = treesData.filter(t => t.stage >= 4).length;
-    stats.textContent = `${treesData.length} árvores · ${matures} maduras`;
-    overlay.appendChild(stats);
-  }
-
-  scene.appendChild(overlay);
-
-  // Estado vazio
-  if(treesData.length === 0){
-    const emptyMsg = mk('div');
-    emptyMsg.style.cssText = `position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:1rem;text-align:center;color:rgba(${isDark ? '255,255,255' : '34,40,49'},.7);font-size:13px;font-weight:500;pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,${isDark ? '.5' : '.15'})`;
-    emptyMsg.innerHTML = '<div>🌱<br><b style="font-size:14px">Sua floresta vai começar aqui</b><br><span style="font-size:11.5px;font-weight:400">Complete um pomodoro de foco pra plantar a primeira árvore</span></div>';
-    scene.appendChild(emptyMsg);
-  }
-
-  // Delegação de click — abre modal da árvore quando clica numa árvore da cena
-  scene.addEventListener('click', (e) => {
-    const treeEl = e.target.closest('[data-tree-idx]');
-    if(!treeEl) return;
-    const idx = parseInt(treeEl.dataset.treeIdx, 10);
-    if(isNaN(idx)) return;
-    const tree = state.trees[idx];
-    if(tree) showTreeDetailModal(tree, idx);
-  });
-
-  return scene;
-}
 
 function buildPinhalDashboardWidget(){
   // Só mostra se já tem alguma atividade (XP > 0) — evita poluir conta nova
@@ -49814,11 +49622,37 @@ function renderPinhal(){
   wrap.appendChild(statusGrid);
 
   // V15.12.75.109 — Cena panorâmica da floresta (vem ANTES do grid de slots).
-  // Visualização imersiva — vê o pinhal crescendo como paisagem, não só grid.
-  // Grid continua embaixo pra navegação/identificação individual.
+  // V15.12.75.110 — Usa buildForestScene antiga (V15.11) que é mais polida.
+  // Precisa mapear `state.trees` (com stage 1-5) pro formato esperado
+  // (com type seed/young/mature/ancient).
   try{
-    const scene = buildForestScene(state);
-    if(scene) wrap.appendChild(scene);
+    const stageToType = {1:'seed', 2:'seed', 3:'young', 4:'mature', 5:'ancient'};
+    const mappedTrees = (state.trees || []).map((t, idx) => ({
+      ...t,
+      id: t.id || ('tree_'+idx),
+      type: stageToType[t.stage] || 'seed'
+    }));
+    const scene = buildForestScene(mappedTrees);
+    if(scene){
+      // Wrapper com label "Sua floresta" e click handler nas árvores
+      const sceneWrap = mk('div');
+      sceneWrap.style.cssText = 'margin-bottom:1.25rem;border-radius:14px;overflow:hidden;border:1px solid var(--border);position:relative';
+      // Header sobreposto
+      const sceneHead = mk('div');
+      sceneHead.style.cssText = 'position:absolute;top:.75rem;left:.875rem;display:flex;align-items:center;gap:6px;padding:5px 12px;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);border-radius:999px;font-size:11px;font-weight:700;color:#fff;letter-spacing:.3px;z-index:5;pointer-events:none';
+      const matures = mappedTrees.filter(t => t.type==='ancient' || t.type==='mature').length;
+      sceneHead.innerHTML = `<span style="font-size:13px">🌲</span><span>Sua floresta · ${mappedTrees.length} árvore${mappedTrees.length===1?'':'s'}${matures>0?` · ${matures} madura${matures===1?'':'s'}`:''}</span>`;
+      sceneWrap.appendChild(scene);
+      sceneWrap.appendChild(sceneHead);
+      // Estado vazio
+      if(mappedTrees.length === 0){
+        const empty = mk('div');
+        empty.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:1rem;text-align:center;color:#fff;font-size:13px;font-weight:500;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.6);z-index:4';
+        empty.innerHTML = '<div>🌱<br><b style="font-size:14px">Sua floresta vai começar aqui</b><br><span style="font-size:11.5px;font-weight:400;opacity:.9">Complete um pomodoro de foco pra plantar a primeira árvore</span></div>';
+        sceneWrap.appendChild(empty);
+      }
+      wrap.appendChild(sceneWrap);
+    }
   }catch(e){ console.warn('[forest-scene]', e); }
 
   // V15.12.75.107 — Floresta visual (Fatia 3): grid SVG com árvores nos 5
