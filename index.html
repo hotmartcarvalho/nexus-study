@@ -4540,7 +4540,10 @@ input[type="month"]::-webkit-calendar-picker-indicator{
    V15.12.75.96 — User pediu pra MANTER header com infos no modo foco
    (título, eyebrow, stats, badge pomodoro). Antes escondia tudo. Agora só
    esconde a sidebar do TOC pra ganhar largura. */
-.source-reader-shell.focus-on .reader-sidebar{display:none !important}
+/* V15.12.75.101 — Sidebar TOC PODE ficar visível no modo foco também.
+   User reportou: no foco, todo o espaço lateral fica em branco vazio, e o
+   índice não funciona. Agora respeitamos o toggle do user (📑 no header).
+   .reader-toc-toggle (banner interno antigo) continua oculto no foco. */
 .source-reader-shell.focus-on .reader-toc-toggle{display:none !important}
 /* Header continua visível, mas com padding reduzido pra dar mais espaço ao texto */
 .source-reader-shell.focus-on .reader-header{
@@ -7346,7 +7349,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.100';
+window.GRALIA_VERSION = 'V15.12.75.102';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -32055,6 +32058,158 @@ function looksLikeMarkdown(text){
 // V15.12.75.96 — Modal de configuração do pomodoro (pop-up local, sem mudar
 // de página). Usado pelo botão ⚙ do badge no header de fontes. User edita
 // e fecha — volta direto pra leitura.
+// V15.12.75.101 — Popover de seleção de som ambiente. Ancorado ao botão 🎵.
+// Lista de tipos clicáveis + slider de volume. Auto-fecha ao clicar fora.
+function showAmbientSoundPopover(anchorBtn, onChange){
+  // Remove popover existente
+  const existing = document.getElementById('gralia-ambient-popover');
+  if(existing){ existing.remove(); return; }
+
+  if(!DATA.config) DATA.config = {};
+  // Inicializa volume salvo no AmbientSound se houver
+  if(typeof DATA.config.ambientSoundVolume === 'number'){
+    AmbientSound.setVolume(DATA.config.ambientSoundVolume);
+  }
+
+  const pop = mk('div');
+  pop.id = 'gralia-ambient-popover';
+  pop.style.cssText = 'position:fixed;z-index:99999;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.06);padding:.875rem;min-width:240px;font-family:inherit';
+
+  // Header
+  const title = mk('div');
+  title.style.cssText = 'font-size:12px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.625rem;display:flex;align-items:center;gap:6px';
+  title.innerHTML = '<span style="font-size:14px">🎵</span><span>Som ambiente</span>';
+  pop.appendChild(title);
+
+  // V15.12.75.102 — Lista reorganizada em 2 grupos: Natureza e Música.
+  // Cada item da lista pode ser uma opção (key) ou um header (header).
+  const options = [
+    {key: 'none', emoji: '🔇', label: 'Sem som', desc: 'Silêncio'},
+    {header: 'Natureza & Ambiente'},
+    {key: 'rain', emoji: '🌧', label: 'Chuva', desc: 'Caindo suave'},
+    {key: 'coffee', emoji: '☕', label: 'Café', desc: 'Ambiente cafeteria'},
+    {key: 'fire', emoji: '🔥', label: 'Lareira', desc: 'Crepitação aconchegante'},
+    {key: 'wind', emoji: '💨', label: 'Vento', desc: 'Sopro em rajadas'},
+    {key: 'whitenoise', emoji: '⚪', label: 'Ruído branco', desc: 'Foco intenso'},
+    {key: 'brownnoise', emoji: '🟤', label: 'Ruído marrom', desc: 'Grave, calmante'},
+    {header: 'Música procedural'},
+    {key: 'jazz', emoji: '🎷', label: 'Jazz suave', desc: 'ii-V-I em Fá, piano elétrico'},
+    {key: 'blues', emoji: '🎸', label: 'Blues lento', desc: '12-bar em Mi, guitarra'},
+    {key: 'guitar', emoji: '🪕', label: 'Violão dedilhado', desc: 'C–Am–F–G arpejado'}
+  ];
+
+  const list = mk('div');
+  list.style.cssText = 'display:flex;flex-direction:column;gap:2px;margin-bottom:.875rem';
+  options.forEach(opt => {
+    // V15.12.75.102 — Header de seção (não clicável)
+    if(opt.header){
+      const hdr = mk('div');
+      hdr.style.cssText = 'font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;padding:8px 10px 4px;margin-top:4px';
+      hdr.textContent = opt.header;
+      list.appendChild(hdr);
+      return;
+    }
+    const item = mk('button');
+    item.type = 'button';
+    const isActive = AmbientSound.getCurrentType() === opt.key;
+    item.style.cssText = `display:flex;align-items:center;gap:10px;padding:8px 10px;background:${isActive?'rgba(128,66,250,.10)':'transparent'};border:1px solid ${isActive?'rgba(128,66,250,.30)':'transparent'};border-radius:8px;cursor:pointer;font-family:inherit;text-align:left;transition:all .12s;width:100%`;
+    item.innerHTML = `
+      <span style="font-size:18px;flex-shrink:0">${opt.emoji}</span>
+      <span style="flex:1">
+        <span style="display:block;font-size:13px;font-weight:600;color:${isActive?'var(--gralia-purple)':'var(--text)'}">${opt.label}</span>
+        <span style="display:block;font-size:10.5px;color:var(--text3);margin-top:1px">${opt.desc}</span>
+      </span>
+      ${isActive ? '<span style="color:var(--gralia-purple);font-size:14px;font-weight:700">✓</span>' : ''}`;
+    item.addEventListener('mouseenter', () => {
+      if(AmbientSound.getCurrentType() !== opt.key){
+        item.style.background = 'rgba(128,66,250,.05)';
+      }
+    });
+    item.addEventListener('mouseleave', () => {
+      if(AmbientSound.getCurrentType() !== opt.key){
+        item.style.background = 'transparent';
+      }
+    });
+    item.addEventListener('click', () => {
+      if(opt.key === 'none'){
+        AmbientSound.stop();
+      } else {
+        AmbientSound.play(opt.key);
+      }
+      DATA.config.ambientSoundType = opt.key;
+      try{ save(); }catch(_){}
+      if(typeof onChange === 'function') onChange();
+      // Re-render do popover pra atualizar checkmark
+      pop.remove();
+      showAmbientSoundPopover(anchorBtn, onChange);
+    });
+    list.appendChild(item);
+  });
+  pop.appendChild(list);
+
+  // Slider de volume (sempre visível)
+  const volWrap = mk('div');
+  volWrap.style.cssText = 'padding-top:.625rem;border-top:1px solid var(--border)';
+  const volLabel = mk('div');
+  volLabel.style.cssText = 'display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px';
+  const volPct = Math.round(AmbientSound.getCurrentVolume() * 100);
+  volLabel.innerHTML = '<span>🔊 Volume</span><span id="ambient-vol-pct" style="color:var(--gralia-purple);font-variant-numeric:tabular-nums">'+volPct+'%</span>';
+  volWrap.appendChild(volLabel);
+  const slider = mk('input');
+  slider.type = 'range';
+  slider.min = '0';
+  slider.max = '100';
+  slider.value = String(volPct);
+  slider.style.cssText = 'width:100%;accent-color:var(--gralia-purple);cursor:pointer';
+  slider.addEventListener('input', (e) => {
+    const v = parseInt(e.target.value, 10) / 100;
+    AmbientSound.setVolume(v);
+    DATA.config.ambientSoundVolume = v;
+    const pctEl = pop.querySelector('#ambient-vol-pct');
+    if(pctEl) pctEl.textContent = e.target.value + '%';
+  });
+  slider.addEventListener('change', () => {
+    try{ save(); }catch(_){}
+  });
+  volWrap.appendChild(slider);
+  pop.appendChild(volWrap);
+
+  // Posiciona popover abaixo do botão
+  document.body.appendChild(pop);
+  const rect = anchorBtn.getBoundingClientRect();
+  const popRect = pop.getBoundingClientRect();
+  let left = rect.left + rect.width/2 - popRect.width/2;
+  // Mantém dentro da viewport
+  if(left < 8) left = 8;
+  if(left + popRect.width > window.innerWidth - 8) left = window.innerWidth - popRect.width - 8;
+  let top = rect.bottom + 6;
+  // Se não couber abaixo, mostra acima
+  if(top + popRect.height > window.innerHeight - 8){
+    top = rect.top - popRect.height - 6;
+  }
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
+
+  // Auto-fecha ao clicar fora
+  const closeHandler = (e) => {
+    if(pop.contains(e.target) || anchorBtn.contains(e.target)) return;
+    pop.remove();
+    document.removeEventListener('click', closeHandler, true);
+    document.removeEventListener('keydown', escHandler, true);
+  };
+  const escHandler = (e) => {
+    if(e.key === 'Escape'){
+      pop.remove();
+      document.removeEventListener('click', closeHandler, true);
+      document.removeEventListener('keydown', escHandler, true);
+    }
+  };
+  setTimeout(() => {
+    document.addEventListener('click', closeHandler, true);
+    document.addEventListener('keydown', escHandler, true);
+  }, 0);
+}
+
 function showPomoConfigModal(onSaved){
   const m = mk('div');
   m.style.cssText = 'max-width:440px;width:100%';
@@ -32304,6 +32459,441 @@ function showSourceInfoModal(src){
 //
 // O timer roda em setInterval(1s) só quando o modal da fonte está aberto E
 // pomodoro está running. Ao pausar/fechar, salva estado e congela.
+// V15.12.75.101 — Sons ambientes sintetizados pra leitura. Web Audio API,
+// sem arquivos externos. User escolhe tipo + volume. Persistente em
+// DATA.config.ambientSoundType e ambientSoundVolume.
+//
+// Tipos disponíveis:
+//   none      — sem som (padrão)
+//   rain      — chuva (white noise filtrado)
+//   coffee    — café (brown noise + tilintar ocasional)
+//   fire      — lareira (filtered noise + crackling)
+//   wind      — vento (pink noise modulado)
+//   whitenoise— ruído branco puro (foco intenso)
+//   brownnoise— ruído marrom (mais grave, calmante)
+//
+// API: AmbientSound.play(type), AmbientSound.stop(), AmbientSound.setVolume(v),
+//      AmbientSound.getCurrentType()
+const AmbientSound = (() => {
+  let ctx = null;
+  let masterGain = null;
+  let currentNodes = [];  // nós ativos a parar quando troca/para
+  let currentType = 'none';
+  let currentVolume = 0.35;
+  let crackleInterval = null;
+
+  function ensureCtx(){
+    if(!ctx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return null;
+      ctx = new AC();
+    }
+    if(ctx.state === 'suspended'){
+      try{ ctx.resume(); }catch(_){}
+    }
+    if(!masterGain){
+      masterGain = ctx.createGain();
+      masterGain.gain.value = currentVolume;
+      masterGain.connect(ctx.destination);
+    }
+    return ctx;
+  }
+
+  // Gera buffer de white noise (~2s, looped)
+  function makeNoiseBuffer(c, durationSec, type){
+    const sampleRate = c.sampleRate;
+    const length = sampleRate * durationSec;
+    const buffer = c.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+    if(type === 'white'){
+      for(let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+    } else if(type === 'pink'){
+      // Pink noise (Voss-McCartney aproximado)
+      let b0=0, b1=0, b2=0, b3=0, b4=0, b5=0, b6=0;
+      for(let i = 0; i < length; i++){
+        const w = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + w * 0.0555179;
+        b1 = 0.99332 * b1 + w * 0.0750759;
+        b2 = 0.96900 * b2 + w * 0.1538520;
+        b3 = 0.86650 * b3 + w * 0.3104856;
+        b4 = 0.55000 * b4 + w * 0.5329522;
+        b5 = -0.7616 * b5 - w * 0.0168980;
+        data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11;
+        b6 = w * 0.115926;
+      }
+    } else if(type === 'brown'){
+      // Brown noise (random walk)
+      let last = 0;
+      for(let i = 0; i < length; i++){
+        const w = Math.random() * 2 - 1;
+        last = (last + 0.02 * w) / 1.02;
+        data[i] = last * 3.5;
+      }
+    }
+    return buffer;
+  }
+
+  function clearCurrentNodes(){
+    currentNodes.forEach(n => {
+      try{ if(n.stop) n.stop(); }catch(_){}
+      try{ if(n.disconnect) n.disconnect(); }catch(_){}
+    });
+    currentNodes = [];
+    if(crackleInterval){ clearInterval(crackleInterval); crackleInterval = null; }
+  }
+
+  function play(type){
+    const c = ensureCtx();
+    if(!c) return;
+    if(currentType === type) return;
+    clearCurrentNodes();
+    currentType = type;
+    if(type === 'none' || !type) return;
+
+    const now = c.currentTime;
+    // Fade in suave (evita pop)
+    const localGain = c.createGain();
+    localGain.gain.setValueAtTime(0, now);
+    localGain.gain.linearRampToValueAtTime(1, now + 0.6);
+    localGain.connect(masterGain);
+    currentNodes.push(localGain);
+
+    if(type === 'rain'){
+      // White noise filtrado highpass + lowpass pra simular chuva
+      const buf = makeNoiseBuffer(c, 2, 'white');
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const lp = c.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 3500;
+      lp.Q.value = 0.8;
+      const hp = c.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 400;
+      src.connect(hp); hp.connect(lp); lp.connect(localGain);
+      src.start();
+      currentNodes.push(src, lp, hp);
+    } else if(type === 'coffee'){
+      // Brown noise + LPF baixo (ambient cafeteria — sem ser muito específico)
+      const buf = makeNoiseBuffer(c, 2, 'brown');
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const lp = c.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 1200;
+      const g = c.createGain();
+      g.gain.value = 0.8;
+      src.connect(lp); lp.connect(g); g.connect(localGain);
+      src.start();
+      currentNodes.push(src, lp, g);
+      // Tinidos ocasionais (sino fraco) a cada 8-15s
+      const ringInterval = setInterval(() => {
+        if(currentType !== 'coffee') return;
+        const t = c.currentTime;
+        const osc = c.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = 1200 + Math.random() * 600;
+        const og = c.createGain();
+        og.gain.setValueAtTime(0, t);
+        og.gain.linearRampToValueAtTime(0.05, t + 0.05);
+        og.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+        osc.connect(og); og.connect(localGain);
+        osc.start(t); osc.stop(t + 0.75);
+      }, 8000 + Math.random() * 7000);
+      crackleInterval = ringInterval;
+    } else if(type === 'fire'){
+      // Brown noise filtrado + crackles aleatórios (lareira)
+      const buf = makeNoiseBuffer(c, 2, 'brown');
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const lp = c.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 800;
+      const g = c.createGain();
+      g.gain.value = 1.2;
+      src.connect(lp); lp.connect(g); g.connect(localGain);
+      src.start();
+      currentNodes.push(src, lp, g);
+      // Crackles (pops curtos high-freq)
+      crackleInterval = setInterval(() => {
+        if(currentType !== 'fire') return;
+        const t = c.currentTime;
+        const buf2 = makeNoiseBuffer(c, 0.08, 'white');
+        const cs = c.createBufferSource();
+        cs.buffer = buf2;
+        const cg = c.createGain();
+        cg.gain.setValueAtTime(0, t);
+        cg.gain.linearRampToValueAtTime(0.15, t + 0.005);
+        cg.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+        const cf = c.createBiquadFilter();
+        cf.type = 'highpass';
+        cf.frequency.value = 2000;
+        cs.connect(cf); cf.connect(cg); cg.connect(localGain);
+        cs.start(t); cs.stop(t + 0.1);
+      }, 400 + Math.random() * 800);
+    } else if(type === 'wind'){
+      // Pink noise modulado por LFO (sopro lento)
+      const buf = makeNoiseBuffer(c, 2, 'pink');
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const lp = c.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 1500;
+      // LFO modula o gain pra criar "rajadas"
+      const lfo = c.createOscillator();
+      lfo.type = 'sine';
+      lfo.frequency.value = 0.15;
+      const lfoGain = c.createGain();
+      lfoGain.gain.value = 0.4;
+      const baseGain = c.createGain();
+      baseGain.gain.value = 0.6;
+      lfo.connect(lfoGain);
+      lfoGain.connect(baseGain.gain);
+      src.connect(lp); lp.connect(baseGain); baseGain.connect(localGain);
+      src.start();
+      lfo.start();
+      currentNodes.push(src, lp, lfo, lfoGain, baseGain);
+    } else if(type === 'whitenoise'){
+      const buf = makeNoiseBuffer(c, 2, 'white');
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const g = c.createGain();
+      g.gain.value = 0.4;
+      src.connect(g); g.connect(localGain);
+      src.start();
+      currentNodes.push(src, g);
+    } else if(type === 'brownnoise'){
+      const buf = makeNoiseBuffer(c, 2, 'brown');
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      const g = c.createGain();
+      g.gain.value = 0.7;
+      src.connect(g); g.connect(localGain);
+      src.start();
+      currentNodes.push(src, g);
+    } else if(type === 'jazz' || type === 'blues' || type === 'guitar'){
+      // V15.12.75.102 — Progressões harmônicas procedurais.
+      // Cada gênero tem: progressão de acordes + timbre + walking bass.
+      // Não é música real, mas é mais musical que arpejo simples.
+      playProceduralMusic(c, localGain, type);
+    }
+  }
+
+  // V15.12.75.102 — Helper pra tocar progressões musicais procedurais.
+  // Cada acorde é uma sequência de notas com envelope ADSR e timbre específico.
+  function playProceduralMusic(c, output, genre){
+    // Definições musicais por gênero
+    // Notação: cada acorde = array de freqs Hz, dura `beatLength` segundos por compasso
+    const Notes = {
+      // C major scale + extensions
+      C2: 65.4, D2: 73.4, E2: 82.4, F2: 87.3, G2: 98.0, A2: 110.0, B2: 123.5,
+      C3: 130.8, D3: 146.8, E3: 164.8, F3: 174.6, G3: 196.0, A3: 220.0, B3: 246.9,
+      C4: 261.6, D4: 293.7, E4: 329.6, F4: 349.2, G4: 392.0, A4: 440.0, B4: 493.9,
+      C5: 523.3, D5: 587.3, E5: 659.3, F5: 698.5, G5: 784.0, A5: 880.0, B5: 987.8,
+      Db4: 277.2, Eb4: 311.1, Gb4: 370.0, Ab4: 415.3, Bb4: 466.2,
+      Db3: 138.6, Eb3: 155.6, Gb3: 185.0, Ab3: 207.7, Bb3: 233.1,
+      Bb2: 116.5, Eb2: 77.8, Ab2: 103.8
+    };
+
+    let progression, bassLine, beatLength, instrumentType, filterFreq, voiceCount;
+
+    if(genre === 'jazz'){
+      // ii-V-I em Fá: Gm7 — C7 — FΔ7 — Am7 (loop suave)
+      // Acordes com 7ªs, voicings de 4 notas, ritmo lento
+      progression = [
+        [Notes.D4, Notes.F4, Notes.A4, Notes.C5],     // Gm7 (3, b5, 7, 9 voicing)
+        [Notes.E4, Notes.G4, Notes.Bb4, Notes.D5],    // C7
+        [Notes.E4, Notes.A4, Notes.C5, Notes.F5],     // Fmaj7
+        [Notes.C4, Notes.E4, Notes.G4, Notes.B4]      // Am7
+      ];
+      bassLine = [Notes.G2, Notes.C3, Notes.F2, Notes.A2];
+      beatLength = 3.2;  // acorde lento, 3.2s por compasso
+      instrumentType = 'triangle';  // piano elétrico-like (Rhodes)
+      filterFreq = 1800;
+      voiceCount = 4;
+    } else if(genre === 'blues'){
+      // 12-bar blues em Mi (lento, mood noturno)
+      // E7 — E7 — E7 — E7 — A7 — A7 — E7 — E7 — B7 — A7 — E7 — B7
+      // Simplificado pra 4 compassos: E7 → A7 → E7 → B7
+      progression = [
+        [Notes.E3, Notes.G3, Notes.B3, Notes.D4],     // E7
+        [Notes.A3, Notes.Db4, Notes.E4, Notes.G4],    // A7
+        [Notes.E3, Notes.G3, Notes.B3, Notes.D4],     // E7
+        [Notes.B3, Notes.Eb4, Notes.Gb4, Notes.A4]    // B7
+      ];
+      bassLine = [Notes.E2, Notes.A2, Notes.E2, Notes.B2];
+      beatLength = 2.4;  // compasso médio (lento mas com groove)
+      instrumentType = 'sawtooth';  // guitarra elétrica suja
+      filterFreq = 1200;  // mais escuro
+      voiceCount = 3;
+    } else if(genre === 'guitar'){
+      // Violão dedilhado — C — Am — F — G (cordal popular brasileiro)
+      // Estilo bossa/MPB lento, sem walking bass, só arpejos dedilhados
+      progression = [
+        [Notes.C3, Notes.E3, Notes.G3, Notes.C4, Notes.E4],  // C
+        [Notes.A2, Notes.E3, Notes.A3, Notes.C4, Notes.E4],  // Am
+        [Notes.F2, Notes.A2, Notes.C3, Notes.F3, Notes.A3],  // F
+        [Notes.G2, Notes.B2, Notes.D3, Notes.G3, Notes.B3]   // G
+      ];
+      bassLine = null;  // sem bass separado — root já é a primeira nota do acorde
+      beatLength = 3.6;  // dedilhado calmo
+      instrumentType = 'triangle';  // corda nylon
+      filterFreq = 2400;
+      voiceCount = 5;
+    }
+
+    // Cria filtro lowpass pra timbre + reverb fake (delay sutil)
+    const filter = c.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = filterFreq;
+    filter.Q.value = 0.8;
+    filter.connect(output);
+    currentNodes.push(filter);
+
+    // Delay/reverb fake
+    const delay = c.createDelay(2.0);
+    delay.delayTime.value = 0.35;
+    const delayGain = c.createGain();
+    delayGain.gain.value = 0.18;  // reverb sutil
+    delay.connect(delayGain);
+    delayGain.connect(filter);
+    delay.connect(filter);  // feedback simples
+    currentNodes.push(delay, delayGain);
+
+    let chordIdx = 0;
+
+    // Helper pra disparar uma nota com envelope ADSR
+    const noteOn = (freq, startTime, dur, gain, useDelay) => {
+      const osc = c.createOscillator();
+      osc.type = instrumentType;
+      osc.frequency.value = freq;
+      const g = c.createGain();
+      // ADSR — attack curto, decay médio, sem sustain (corda pinçada)
+      const attack = 0.015;
+      const decay = dur * 0.4;
+      const release = dur * 0.6;
+      g.gain.setValueAtTime(0, startTime);
+      g.gain.linearRampToValueAtTime(gain, startTime + attack);
+      g.gain.exponentialRampToValueAtTime(gain * 0.4, startTime + attack + decay);
+      g.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+      osc.connect(g);
+      g.connect(filter);
+      if(useDelay) g.connect(delay);
+      osc.start(startTime);
+      osc.stop(startTime + dur + 0.05);
+    };
+
+    // Helper pra bass note (timbre diferente — sine grave, mais limpo)
+    const bassOn = (freq, startTime, dur) => {
+      const osc = c.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0, startTime);
+      g.gain.linearRampToValueAtTime(0.18, startTime + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.001, startTime + dur * 0.9);
+      osc.connect(g);
+      g.connect(output);  // bass direto pro output (não pelo filter)
+      osc.start(startTime);
+      osc.stop(startTime + dur);
+    };
+
+    // Scheduler — toca o próximo acorde a cada beatLength segundos.
+    // Usa lookahead pra escalar precisamente no audio clock (evita drift).
+    const playNextChord = () => {
+      if(currentType !== genre) return;  // mudou — para
+      const t = c.currentTime;
+      const chord = progression[chordIdx % progression.length];
+      const bassNote = bassLine ? bassLine[chordIdx % bassLine.length] : null;
+      const chordDur = beatLength;
+
+      if(genre === 'guitar'){
+        // Dedilhado: notas em sequência, não simultâneas
+        chord.forEach((freq, i) => {
+          const noteStart = t + i * 0.18;  // 180ms entre notas dedilhadas
+          const noteDur = chordDur - i * 0.18;
+          noteOn(freq, noteStart, noteDur, 0.12, true);
+        });
+      } else if(genre === 'jazz'){
+        // Voicing simultâneo + walking bass com 4 notas por compasso
+        chord.forEach((freq, i) => {
+          // Pequeno strum (10ms entre notas — não totalmente simultâneo)
+          noteOn(freq, t + i * 0.012, chordDur, 0.10, true);
+        });
+        // Walking bass — 4 notas por compasso (root, 3rd, 5th, approach)
+        if(bassNote){
+          const walkPattern = [bassNote, bassNote * 1.25, bassNote * 1.5, bassNote * 1.122];
+          walkPattern.forEach((bf, i) => {
+            bassOn(bf, t + (chordDur / 4) * i, chordDur / 4);
+          });
+        }
+      } else if(genre === 'blues'){
+        // Acorde com shuffle leve + bass walking simplificado
+        chord.forEach((freq, i) => {
+          noteOn(freq, t + i * 0.020, chordDur, 0.11, true);
+        });
+        // Bass: root pulsando 2x por compasso (ritmo de blues lento)
+        if(bassNote){
+          bassOn(bassNote, t, chordDur / 2);
+          bassOn(bassNote, t + chordDur / 2, chordDur / 2);
+        }
+      }
+
+      chordIdx++;
+    };
+
+    // Toca o primeiro acorde imediatamente
+    playNextChord();
+    // Schedule loop via setInterval (não ideal mas suficiente — drift de ms é OK pra ambient)
+    const intervalId = setInterval(playNextChord, beatLength * 1000);
+    crackleInterval = intervalId;  // reusa o slot pra cleanup
+  }
+
+  function stop(){
+    if(!ctx) return;
+    // Fade out + clean
+    if(masterGain){
+      const now = ctx.currentTime;
+      try{
+        masterGain.gain.cancelScheduledValues(now);
+        masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+        masterGain.gain.linearRampToValueAtTime(0, now + 0.3);
+      }catch(_){}
+      setTimeout(() => {
+        clearCurrentNodes();
+        currentType = 'none';
+        if(masterGain){
+          masterGain.gain.setValueAtTime(currentVolume, ctx.currentTime);
+        }
+      }, 350);
+    } else {
+      clearCurrentNodes();
+      currentType = 'none';
+    }
+  }
+
+  function setVolume(v){
+    currentVolume = Math.max(0, Math.min(1, v));
+    if(masterGain && ctx){
+      const now = ctx.currentTime;
+      masterGain.gain.cancelScheduledValues(now);
+      masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+      masterGain.gain.linearRampToValueAtTime(currentVolume, now + 0.1);
+    }
+  }
+
+  function getCurrentType(){ return currentType; }
+  function getCurrentVolume(){ return currentVolume; }
+
+  return { play, stop, setVolume, getCurrentType, getCurrentVolume };
+})();
+
 const SourcePomo = (() => {
   let ticker = null;
   let onTickCb = null;
@@ -32428,10 +33018,24 @@ const SourcePomo = (() => {
   }
 
   function pause(src){
-    const state = init(src);
+    // V15.12.75.101 — Não chama init() (que faz catch-up automático que pode
+    // bagunçar o estado nesse momento). Lê o estado direto.
+    if(!src.pomoState){
+      // Sem estado ainda — nada a pausar
+      if(ticker){ clearInterval(ticker); ticker = null; }
+      return;
+    }
+    const state = src.pomoState;
     if(state.isRunning){
-      // Congela o elapsed da fase atual
-      state.phaseElapsedBeforePause = elapsedInCurrentPhase(state);
+      // Calcula elapsed manualmente sem chamar init
+      if(state.phaseStartedAt){
+        const since = Math.floor((Date.now() - state.phaseStartedAt) / 1000);
+        state.phaseElapsedBeforePause = (state.phaseElapsedBeforePause || 0) + since;
+        // Se for foco, conta no acumulado
+        if(state.currentPhase === 'focus'){
+          state.accumulatedSec = (state.accumulatedSec || 0) + since;
+        }
+      }
       state.isRunning = false;
       state.phaseStartedAt = null;
       try{ save(); }catch(_){}
@@ -33114,6 +33718,42 @@ function showSourceReaderModal(src){
   tocBtnSlot.style.cssText = 'display:contents';
   headBtns.appendChild(tocBtnSlot);
 
+  // V15.12.75.101 — Botão 🎵 Sons ambientes (chuva/café/lareira/vento)
+  const ambientBtn = mk('button');
+  ambientBtn.type = 'button';
+  ambientBtn.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease;position:relative';
+  const updateAmbientBtn = () => {
+    const t = AmbientSound.getCurrentType();
+    if(t && t !== 'none'){
+      ambientBtn.style.background = 'rgba(128,66,250,.14)';
+      ambientBtn.style.borderColor = 'var(--gralia-purple)';
+      ambientBtn.style.color = 'var(--gralia-purple)';
+      const emojis = {rain:'🌧', coffee:'☕', fire:'🔥', wind:'💨', whitenoise:'⚪', brownnoise:'🟤', jazz:'🎷', blues:'🎸', guitar:'🪕'};
+      ambientBtn.innerHTML = emojis[t] || '🎵';
+      ambientBtn.title = 'Som ambiente ativo — clique pra ajustar';
+    } else {
+      ambientBtn.style.background = 'var(--surface)';
+      ambientBtn.style.borderColor = 'var(--border)';
+      ambientBtn.style.color = 'var(--text2)';
+      ambientBtn.innerHTML = '🎵';
+      ambientBtn.title = 'Sons ambientes pra leitura (chuva, café, lareira...)';
+    }
+  };
+  updateAmbientBtn();
+  ambientBtn.addEventListener('mouseenter', () => {
+    if(AmbientSound.getCurrentType() === 'none'){
+      ambientBtn.style.background = 'rgba(128,66,250,.08)';
+      ambientBtn.style.borderColor = 'rgba(128,66,250,.40)';
+      ambientBtn.style.color = 'var(--gralia-purple)';
+    }
+  });
+  ambientBtn.addEventListener('mouseleave', updateAmbientBtn);
+  ambientBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showAmbientSoundPopover(ambientBtn, updateAmbientBtn);
+  });
+  headBtns.appendChild(ambientBtn);
+
   // V15.12.75.96 — Slots pro widthPicker e focusExit (visíveis só no foco)
   const widthPickerSlot = mk('span');
   widthPickerSlot.style.cssText = 'display:contents';
@@ -33562,9 +34202,11 @@ function showSourceReaderModal(src){
       const current = ['wide','large','medium','small'].find(k => m.classList.contains('fw-'+k)) || 'medium';
       applyWidth(current);
     } else {
-      // Limpa inline styles do reader-content ao sair do foco
+      // V15.12.75.101 — Restaura padding/font do modo normal explicitamente
+      // (era 'padding=""' que zerava porque o padding inline original veio
+      // do cssText na criação do elemento — limpar via JS apaga ele todo).
       if(content){
-        content.style.padding = '';
+        content.style.padding = '1.5rem 2rem';
         content.style.fontSize = '';
         content.style.lineHeight = '';
       }
@@ -33617,27 +34259,30 @@ function showSourceReaderModal(src){
     // limpava ticker mas mantinha isRunning=true logicamente, causando catch-up
     // de tempo "fantasma" quando reabria. Agora pausa explicitamente.
     try{ SourcePomo.pause(src); }catch(_){}
+    // V15.12.75.101 — Para som ambiente ao fechar fonte. Tipo escolhido fica
+    // salvo em DATA.config.ambientSoundType pra restaurar na próxima.
+    try{ AmbientSound.stop(); }catch(_){}
     try{ save(); }catch(_){}
-    // V15.12.75.100 — focusBar foi eliminado na V96 (widthPicker agora inline
-    // no header). Cleanup limpa só keyHandler + pomo agora.
   };
   // Hook no MutationObserver — quando m sair do DOM, remove o listener
-  const observer = new MutationObserver((mutations) => {
-    for(const mut of mutations){
-      for(const node of mut.removedNodes){
-        if(node === m || (node.contains && node.contains(m))){
-          cleanupKeys();
-          observer.disconnect();
-          return;
-        }
-      }
+  // V15.12.75.101 — Observer mais robusto: escuta direto no document.body
+  // pra capturar a remoção mesmo se o modal-bg inteiro for removido junto.
+  // Bug anterior: observer no modal-bg.parentNode = body, mas se body remove
+  // o modal-bg via innerHTML='' ou similar, o callback podia não disparar
+  // antes do observer ser destruído.
+  let cleanupRan = false;
+  const safeCleanup = () => {
+    if(cleanupRan) return;
+    cleanupRan = true;
+    cleanupKeys();
+  };
+  const observer = new MutationObserver(() => {
+    if(!document.body.contains(m)){
+      safeCleanup();
+      observer.disconnect();
     }
   });
-  setTimeout(() => {
-    if(m.parentNode && m.parentNode.parentNode){
-      observer.observe(m.parentNode.parentNode, {childList: true, subtree: true});
-    }
-  }, 0);
+  observer.observe(document.body, {childList: true, subtree: true});
 
   // Foco automático no content (permite setas funcionarem de cara)
   setTimeout(() => content.focus(), 100);
