@@ -7396,7 +7396,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.107';
+window.GRALIA_VERSION = 'V15.12.75.108';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -32559,7 +32559,11 @@ const Pinhal = (() => {
   ];
 
   const INITIAL_SLOTS = 20;
-  const DAILY_XP_CAP = 500;  // teto diário pra evitar farming
+  // V15.12.75.108 — Cap diário 500→1000. Estudante real ativo facilmente
+  // chega a 500 num único dia (20 pomos = 500 XP) e o nível parava de subir.
+  // 1000 dá mais respiro. Admin actions (action === 'admin_boost') bypassam.
+  const DAILY_XP_CAP = 1000;
+  const BYPASS_CAP_ACTIONS = new Set(['admin_boost']);  // ações que ignoram cap
 
   function init(){
     if(!DATA.pinhal){
@@ -32657,6 +32661,19 @@ const Pinhal = (() => {
         }
       }, 500);
     }, 2400);
+  }
+
+  // V15.12.75.108 — Toast informativo quando o cap diário é atingido.
+  // Aparece 1x por dia (controlado por dailyXp.cappedNotifiedDate).
+  function showCapToast(){
+    const toast = mk('div');
+    toast.style.cssText = 'position:fixed;bottom:80px;right:24px;z-index:99950;display:flex;align-items:center;gap:10px;padding:10px 16px;background:linear-gradient(135deg,rgba(245,158,11,.96),rgba(217,119,6,.96));color:#fff;border-radius:12px;font-family:inherit;font-size:12.5px;font-weight:600;box-shadow:0 6px 20px rgba(245,158,11,.30),0 1px 4px rgba(0,0,0,.10);max-width:320px;animation:pinhal-xp-toast-in .4s cubic-bezier(.34,1.56,.64,1) both';
+    toast.innerHTML = `<span style="font-size:18px;flex-shrink:0">🌙</span><span>Limite diário de <b>${DAILY_XP_CAP} XP</b> atingido. Os ganhos voltam amanhã pra evitar farming.</span>`;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.animation = 'pinhal-xp-toast-out .5s ease forwards';
+      setTimeout(() => { if(toast.parentNode) toast.remove(); }, 500);
+    }, 4500);
   }
 
   // Tela cheia de level-up (sobrepõe tudo)
@@ -32805,10 +32822,25 @@ const Pinhal = (() => {
   // API PRINCIPAL — chamada de qualquer ponto que gere XP
   function award({action, xp, ctx}){
     const p = init();
-    // Cap diário
-    const xpFinal = checkDailyCap(xp);
+    // V15.12.75.108 — Ações administrativas (botões de teste) bypassam o cap.
+    // Pra usuários reais, o cap protege contra inflation.
+    let xpFinal;
+    if(BYPASS_CAP_ACTIONS.has(action)){
+      xpFinal = xp;
+      // Garante dailyXp tracking pra outras ações do mesmo dia
+      const today = isoToday();
+      if(p.dailyXp.date !== today) p.dailyXp = { date: today, total: 0 };
+    } else {
+      xpFinal = checkDailyCap(xp);
+    }
     if(xpFinal <= 0){
-      // Atingiu o cap — registra mas não conta XP (opcional: toast informando)
+      // V15.12.75.108 — Mostra toast informativo na 1ª vez que bate o cap no dia.
+      // Evita confusão tipo "porque o XP não tá subindo?".
+      if(!p.dailyXp.cappedNotifiedDate || p.dailyXp.cappedNotifiedDate !== isoToday()){
+        p.dailyXp.cappedNotifiedDate = isoToday();
+        try{ save(); }catch(_){}
+        try{ showCapToast(); }catch(_){}
+      }
       return { capped: true, xp: 0 };
     }
 
@@ -44770,6 +44802,13 @@ function srsRate(card,rating){
   else if(rating===3){card.interval=card.reviews===1?3:Math.round(card.interval*card.ease*1.3);card.ease+=0.15;}
   card.nextReview=Date.now()+card.interval*24*60*60*1000;
   card.lastReview=Date.now();
+  // V15.12.75.108 — Pinhal: flashcard revisado = 2 XP. Rating 0 (errou) também
+  // conta porque o esforço de revisar é o que importa pro engajamento.
+  try{
+    if(typeof Pinhal !== 'undefined'){
+      Pinhal.award({action:'flashcard_review', xp:2, ctx:''});
+    }
+  }catch(_){}
 }
 // V15.12.75.71 — Antes filtravam por activeDisciplines() exigindo disciplina
 // ativa. Resultado: flashcard de disciplina inativa (auto-criada por questão
