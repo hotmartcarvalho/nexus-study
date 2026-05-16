@@ -4256,7 +4256,35 @@ html.dark .method-focus-bar{background:rgba(20,20,28,.85)}
 .pomo-controls{display:flex;gap:10px;justify-content:center;margin-top:1.5rem;flex-wrap:wrap}
 
 .src-list{display:flex;flex-direction:column;gap:8px}
-.src-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:1rem 1.125rem;display:flex;align-items:flex-start;gap:14px}
+.src-item{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  padding:1rem 1.125rem;
+  display:flex;
+  align-items:flex-start;
+  gap:14px;
+  /* V15.12.75.98 — Hover destacado igual aos cards de comunidade */
+  transition:all .2s ease;
+  cursor:pointer;
+  position:relative;
+}
+.src-item:hover{
+  border-color:rgba(128,66,250,.4);
+  transform:translateY(-1px);
+  box-shadow:0 4px 14px rgba(128,66,250,.06),0 1px 3px rgba(0,0,0,.04);
+}
+.src-item::before{
+  content:'';
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:3px;
+  background:linear-gradient(180deg,var(--gralia-purple),rgba(128,66,250,.3));
+  border-radius:var(--r) 0 0 var(--r);
+  opacity:0;
+  transition:opacity .2s;
+}
+.src-item:hover::before{opacity:1}
 .src-icon{width:36px;height:36px;border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;margin-top:2px}
 .src-info{flex:1;min-width:0}
 .src-name{font-size:14px;font-weight:600;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -4406,8 +4434,9 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 /* V15.12.75.90 — Reader de fonte: elimina rolagem dupla.
    Quando o modal contém a shell do reader (.source-reader-shell), o modal
    container NÃO rola — só a área interna de leitura. Antes tinha 2 barras
-   verticais (uma no .modal e uma no body do reader). */
-.modal:has(> .source-reader-shell){
+   verticais (uma no .modal e uma no body do reader).
+   V15.12.75.98 — Classe `.modal-reader` aplicada via JS (substitui :has). */
+.modal.modal-reader{
   overflow:hidden;
   padding:0;
   max-height:90vh;
@@ -4543,12 +4572,16 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 }
 /* V15.12.75.91 — Modo foco zen: também esconde fundo escuro do modal-bg,
    modo foco zen estilo flashcards. O shell ocupa quase a tela toda com fundo
-   sólido limpo. */
-.modal-bg:has(.source-reader-shell.focus-on){
+   sólido limpo.
+   V15.12.75.98 — Troca `:has()` pela classe `.reader-focus-bg` aplicada
+   diretamente no modal-bg via JS. `:has()` ainda não é totalmente confiável
+   em todas as combinações de browser (especialmente quando classe muda
+   dinamicamente). */
+.modal-bg.reader-focus-bg{
   background:var(--surface) !important;
   padding:0 !important;
 }
-.modal-bg:has(.source-reader-shell.focus-on) .modal{
+.modal-bg.reader-focus-bg > .modal{
   max-width:100vw !important;
   max-height:100vh !important;
   border-radius:0 !important;
@@ -7302,7 +7335,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.97';
+window.GRALIA_VERSION = 'V15.12.75.98';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -32486,43 +32519,51 @@ const SourcePomo = (() => {
 // Cada fase tem timbre + harmonia próprios pra user reconhecer só pelo ouvido.
 function playPhaseStartSound(phase){
   try{
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if(!AudioCtx) return;
-    const ctx = new AudioCtx();
+    const ctx = getAudioCtx();
+    if(!ctx) return;
     const now = ctx.currentTime;
-    const playTone = (freq, startOffset, duration, gain, type) => {
+    // Master + lowpass igual ao do fim
+    const master = ctx.createGain();
+    master.gain.value = 0.22;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 3500;
+    filter.Q.value = 0.7;
+    master.connect(filter);
+    filter.connect(ctx.destination);
+    const playTone = (freq, startOffset, duration, gain, type, attackMs) => {
       const osc = ctx.createOscillator();
       const g = ctx.createGain();
       osc.type = type || 'sine';
       osc.frequency.value = freq;
       osc.connect(g);
-      g.connect(ctx.destination);
+      g.connect(master);
+      const attack = (attackMs || 60) / 1000;
+      const release = Math.max(0.08, duration * 0.3);
+      const sustainEnd = startOffset + duration - release;
       g.gain.setValueAtTime(0, now + startOffset);
-      g.gain.linearRampToValueAtTime(gain, now + startOffset + 0.02);
+      g.gain.linearRampToValueAtTime(gain, now + startOffset + attack);
+      g.gain.setValueAtTime(gain, now + sustainEnd);
       g.gain.exponentialRampToValueAtTime(0.001, now + startOffset + duration);
       osc.start(now + startOffset);
-      osc.stop(now + startOffset + duration);
+      osc.stop(now + startOffset + duration + 0.05);
     };
     if(phase === 'focus'){
-      // Pomodoro de FOCO inicia: timbre firme, ascendente, com determinação
-      // 2 notas: G4 → C5 (quarta justa, "vamos lá")
-      playTone(392, 0,    0.18, 0.18, 'triangle');  // G4
-      playTone(523, 0.16, 0.32, 0.22, 'triangle');  // C5 sustentado
+      // Pomodoro de FOCO inicia: 2 notas firmes mas suaves (G4 → C5)
+      playTone(392, 0,    0.30, 0.18, 'triangle', 50);
+      playTone(523, 0.18, 0.45, 0.20, 'triangle', 50);
     } else if(phase === 'sbreak'){
-      // Pausa CURTA: som de café/relaxamento — tons graves, sino sutil
-      // Simula chime de cafeteria + tom warm
-      playTone(330, 0,    0.45, 0.16, 'sine');     // E4 (warm low)
-      playTone(440, 0.05, 0.50, 0.12, 'sine');     // A4 (harmonia)
-      playTone(660, 0.20, 0.40, 0.10, 'sine');     // E5 (sino)
-      // "Suspiro" descendente final
-      playTone(523, 0.35, 0.30, 0.08, 'sine');     // C5
+      // Pausa CURTA: sino warm de cafeteria
+      playTone(330, 0,    0.55, 0.16, 'sine', 80);
+      playTone(440, 0.10, 0.55, 0.13, 'sine', 80);
+      playTone(660, 0.25, 0.50, 0.10, 'sine', 80);
+      playTone(523, 0.45, 0.40, 0.08, 'sine', 80);
     } else if(phase === 'lbreak'){
-      // Pausa LONGA: som de natureza/ar livre — acorde maior arpejado lento
-      // Sugere "saia, tome um ar, relaxe de verdade"
-      playTone(261, 0,    0.6, 0.14, 'sine');      // C4
-      playTone(329, 0.18, 0.6, 0.13, 'sine');      // E4
-      playTone(392, 0.36, 0.6, 0.12, 'sine');      // G4
-      playTone(523, 0.55, 0.9, 0.10, 'sine');      // C5 (longo, contemplativo)
+      // Pausa LONGA: arpejo natureza/contemplativo
+      playTone(261, 0,    0.7, 0.14, 'sine', 100);
+      playTone(329, 0.20, 0.7, 0.13, 'sine', 100);
+      playTone(392, 0.40, 0.7, 0.12, 'sine', 100);
+      playTone(523, 0.60, 1.0, 0.11, 'sine', 100);
     }
   }catch(e){ console.warn('[phase-start-sound]', e); }
 }
@@ -32546,61 +32587,95 @@ function celebratePomoFinish(src, justMarkedAsRead){
 }
 
 // Tocar som usando WebAudio API (sem arquivos externos)
+// V15.12.75.98 — Re-uso de AudioContext (criar um novo a cada som degrada
+// performance e causa cliques). Mantém único ctx ao longo da sessão.
+let _gralia_audio_ctx = null;
+function getAudioCtx(){
+  if(!_gralia_audio_ctx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return null;
+    _gralia_audio_ctx = new AC();
+  }
+  // Resume se foi suspenso (browser pode pausar em background)
+  if(_gralia_audio_ctx.state === 'suspended'){
+    try{ _gralia_audio_ctx.resume(); }catch(_){}
+  }
+  return _gralia_audio_ctx;
+}
+
 function playPomoFinishSound(vibe){
-  const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  if(!AudioCtx) return;
-  const ctx = new AudioCtx();
+  const ctx = getAudioCtx();
+  if(!ctx) return;
   const now = ctx.currentTime;
-  const playTone = (freq, startOffset, duration, gain, type) => {
+  // V15.12.75.98 — Master gain global pra não estourar / assustar.
+  // Cap geral em 0.25, com curva de attack/decay suave. Lowpass leve pra
+  // tirar ásperos de square/sawtooth.
+  const master = ctx.createGain();
+  master.gain.value = 0.25;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 4000;  // remove o sibilante agudo
+  filter.Q.value = 0.7;
+  master.connect(filter);
+  filter.connect(ctx.destination);
+
+  // V15.12.75.98 — Tone com attack/decay suaves (não mais 20ms que dá click).
+  // attack/release escaláveis por nota.
+  const playTone = (freq, startOffset, duration, gain, type, attackMs) => {
     const osc = ctx.createOscillator();
     const g = ctx.createGain();
     osc.type = type || 'sine';
     osc.frequency.value = freq;
     osc.connect(g);
-    g.connect(ctx.destination);
+    g.connect(master);
+    const attack = (attackMs || 80) / 1000;  // 80ms default (suave)
+    const release = Math.max(0.1, duration * 0.4);  // release proporcional
+    const sustainEnd = startOffset + duration - release;
     g.gain.setValueAtTime(0, now + startOffset);
-    g.gain.linearRampToValueAtTime(gain, now + startOffset + 0.02);
+    g.gain.linearRampToValueAtTime(gain, now + startOffset + attack);
+    g.gain.setValueAtTime(gain, now + sustainEnd);
     g.gain.exponentialRampToValueAtTime(0.001, now + startOffset + duration);
     osc.start(now + startOffset);
-    osc.stop(now + startOffset + duration);
+    osc.stop(now + startOffset + duration + 0.05);
   };
+
   if(vibe === 'soft'){
-    // V15.12.75.97 — SUAVE: synth pad lento, descendente, contemplativo.
-    // Sine puro grave, "respiração" sem urgência. Sem brilho agudo.
-    playTone(587, 0,    1.4, 0.16, 'sine');     // D5 sustain longo
-    playTone(440, 0.30, 1.2, 0.14, 'sine');     // A4 (terça abaixo)
-    playTone(330, 0.55, 1.0, 0.12, 'sine');     // E4 (resolução grave, sensação de descanso)
+    // SUAVE: pad ambiental contemplativo. Sine puros, descida lenta de oitava.
+    // Sem percussão, sem harmonia complexa. Sensação de "fim de momento calmo".
+    playTone(523, 0,    1.6, 0.20, 'sine', 200);  // C5, attack 200ms (entrada gentil)
+    playTone(659, 0.30, 1.4, 0.16, 'sine', 200);  // E5
+    playTone(392, 0.80, 1.2, 0.18, 'sine', 200);  // G4 (descida)
+    // Reverb fake — sine grave sustain
+    playTone(262, 0.10, 2.0, 0.10, 'sine', 400);  // C4 pad de fundo
   } else if(vibe === 'energetic'){
-    // V15.12.75.97 — EMPOLGANTE: square wave staccato (8-bit / game retro),
-    // arpejo MUITO rápido + percussão sintética. Quem ouve sabe que é "vitória".
-    // Notas curtas e rítmicas (style chiptune)
-    playTone(523, 0,    0.10, 0.18, 'square');  // C5 staccato
-    playTone(659, 0.08, 0.10, 0.18, 'square');  // E5
-    playTone(784, 0.16, 0.10, 0.18, 'square');  // G5
-    playTone(1047,0.24, 0.10, 0.18, 'square');  // C6
-    playTone(1319,0.32, 0.10, 0.18, 'square');  // E6
-    playTone(1568,0.40, 0.10, 0.18, 'square');  // G6
-    playTone(2093,0.48, 0.30, 0.20, 'square');  // C7 (climax)
-    // Bass kick sintético (sawtooth grave caindo)
-    playTone(110, 0,    0.15, 0.30, 'sawtooth'); // A2 → punch
-    playTone(82,  0.20, 0.15, 0.25, 'sawtooth'); // E2
-    playTone(110, 0.40, 0.15, 0.25, 'sawtooth'); // A2
+    // EMPOLGANTE: marcha curta de videogame retrô (chiptune). Square wave
+    // staccato, RÁPIDO, ascendente. Sem reverb — seco e ritmado.
+    // V15.12.75.98 — Filtro lowpass cuida da estridência.
+    const notes = [523, 659, 784, 1047, 1319, 1568];  // C5 → G6
+    notes.forEach((f, i) => {
+      playTone(f, i * 0.08, 0.12, 0.16, 'square', 5);  // attack 5ms = staccato real
+    });
+    // Sino final brilhante (triangle, mais doce que square)
+    playTone(2093, 0.55, 0.4, 0.18, 'triangle', 10);  // C7
+    // Bass sintético — kick punchy mas baixo
+    playTone(98, 0,    0.18, 0.22, 'sine', 5);  // G2 (sine pra evitar zumbido sawtooth)
+    playTone(98, 0.40, 0.18, 0.22, 'sine', 5);
   } else if(vibe === 'achievement'){
-    // V15.12.75.97 — CONQUISTA: fanfare cinematográfica épica.
-    // Sawtooth (brass synth) + sustain longo + harmônicos. "Final Boss vencido".
-    // Camada 1: brass principal — acorde maior amplo
-    playTone(262, 0,    1.5, 0.22, 'sawtooth'); // C4 (fundamental)
-    playTone(330, 0,    1.5, 0.18, 'sawtooth'); // E4
-    playTone(392, 0,    1.5, 0.16, 'sawtooth'); // G4
-    // Camada 2: oitava acima entra depois (suspense → resolução)
-    playTone(523, 0.40, 1.3, 0.20, 'sawtooth'); // C5
-    playTone(659, 0.40, 1.3, 0.18, 'sawtooth'); // E5
-    playTone(784, 0.40, 1.3, 0.16, 'sawtooth'); // G5
-    // Camada 3: detalhe brilhante (triangle) — pontos de luz
-    playTone(1047, 0.80, 0.6, 0.22, 'triangle'); // C6
-    playTone(1568, 1.20, 0.5, 0.20, 'triangle'); // G6 (cume épico)
-    // Trovejada grave (sub-bass sine) — peso emocional
-    playTone(65.4, 0,    1.8, 0.18, 'sine');    // C2 sub
+    // CONQUISTA: orquestral épica, longa. Triangle wave (brass-like sem ser
+    // agressivo) em acorde construído por camadas. Reverb fake com sub-bass.
+    // Total ~3.5s — diferente das outras (curtas).
+    // Camada 1: acorde maior amplo (triangle, suave)
+    playTone(262, 0,    2.5, 0.16, 'triangle', 250);  // C4
+    playTone(330, 0,    2.5, 0.14, 'triangle', 250);  // E4
+    playTone(392, 0,    2.5, 0.13, 'triangle', 250);  // G4
+    // Camada 2: oitava acima entra com delay (criar tensão)
+    playTone(523, 0.60, 2.0, 0.16, 'triangle', 200);  // C5
+    playTone(784, 0.60, 2.0, 0.13, 'triangle', 200);  // G5
+    // Camada 3: sino brilhante no climax (sine)
+    playTone(1047, 1.40, 0.8, 0.18, 'sine', 100);  // C6
+    playTone(1568, 1.80, 0.7, 0.15, 'sine', 100);  // G6
+    // Sub-bass épico
+    playTone(65.4, 0,    3.0, 0.18, 'sine', 300);  // C2
   }
 }
 
@@ -32916,25 +32991,28 @@ function showSourceReaderModal(src){
   pomoCtl.textContent = '▶';
   pomoBadge.appendChild(pomoCtl);
 
-  // Botão ⚙ pra ir pra Pomodoro config (separado do badge)
-  const pomoBadgeWrap = mk('div');
-  pomoBadgeWrap.style.cssText = 'display:flex;align-items:center;gap:4px;flex-shrink:0';
-  pomoBadgeWrap.appendChild(pomoBadge);
+  // V15.12.75.98 — ⚙ DENTRO do badge agora (era ao lado). Visualmente mais
+  // coeso. Cor mais sutil pra não competir com o play/pause.
   const pomoCfgBtn = mk('button');
   pomoCfgBtn.type = 'button';
-  pomoCfgBtn.style.cssText = 'width:30px;height:30px;background:transparent;border:1px solid transparent;border-radius:8px;cursor:pointer;font-family:inherit;color:var(--text3);font-size:15px;display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease';
+  pomoCfgBtn.style.cssText = 'width:22px;height:22px;background:transparent;border:none;border-radius:5px;cursor:pointer;font-family:inherit;color:var(--text3);font-size:12px;display:inline-flex;align-items:center;justify-content:center;transition:all .12s ease;padding:0;margin-left:2px;flex-shrink:0;opacity:.65';
   pomoCfgBtn.innerHTML = '⚙';
-  pomoCfgBtn.title = 'Ajustar durações de foco/pausa (pop-up)';
-  pomoCfgBtn.addEventListener('mouseenter',()=>{pomoCfgBtn.style.color='var(--gralia-purple)';pomoCfgBtn.style.background='rgba(128,66,250,.08)';pomoCfgBtn.style.borderColor='rgba(128,66,250,.22)';});
-  pomoCfgBtn.addEventListener('mouseleave',()=>{pomoCfgBtn.style.color='var(--text3)';pomoCfgBtn.style.background='transparent';pomoCfgBtn.style.borderColor='transparent';});
-  pomoCfgBtn.addEventListener('click',()=>{
-    // V15.12.75.96 — Pop-up local em vez de navegar pra view Pomodoro.
-    // Modal stack preserva o reader aberto por baixo.
+  pomoCfgBtn.title = 'Ajustar durações (pop-up)';
+  pomoCfgBtn.addEventListener('mouseenter',()=>{pomoCfgBtn.style.color='var(--gralia-purple)';pomoCfgBtn.style.opacity='1';pomoCfgBtn.style.background='rgba(128,66,250,.10)';});
+  pomoCfgBtn.addEventListener('mouseleave',()=>{pomoCfgBtn.style.color='var(--text3)';pomoCfgBtn.style.opacity='.65';pomoCfgBtn.style.background='transparent';});
+  pomoCfgBtn.addEventListener('click',(e)=>{
+    e.stopPropagation();  // não dispara click do badge (que pausaria/retomaria)
     showPomoConfigModal(() => {
-      refreshPomoBadge();  // atualiza display caso o foco/pausa duration mudou
+      refreshPomoBadge();
     });
   });
-  pomoBadgeWrap.appendChild(pomoCfgBtn);
+  pomoBadge.appendChild(pomoCfgBtn);
+
+  // V15.12.75.98 — Wrapper simplificado (era pra agrupar badge + ⚙ externo,
+  // agora só envolve o badge).
+  const pomoBadgeWrap = mk('div');
+  pomoBadgeWrap.style.cssText = 'display:flex;align-items:center;flex-shrink:0';
+  pomoBadgeWrap.appendChild(pomoBadge);
 
   const refreshPomoBadge = () => {
     const disp = SourcePomo.getDisplay(src);
@@ -33024,6 +33102,13 @@ function showSourceReaderModal(src){
   headBtns.appendChild(toEndBtn);
 
   headBtns.appendChild(mkSep());
+
+  // V15.12.75.98 — Slot pro botão "📑 Índice" (TOC toggle). Preenchido depois
+  // que cleanedToc e sidebar existirem. Ficar no Grupo 2 perto do foco/largura
+  // dá descoberta fácil pro user (era escondido na sidebar antes).
+  const tocBtnSlot = mk('span');
+  tocBtnSlot.style.cssText = 'display:contents';
+  headBtns.appendChild(tocBtnSlot);
 
   // V15.12.75.96 — Grupo 2: modo de leitura.
   // Placeholders pro widthPicker e focusExit (inseridos depois).
@@ -33138,10 +33223,9 @@ function showSourceReaderModal(src){
   const progressFill = mk('div');
   progressFill.style.cssText = 'position:absolute;left:0;top:0;height:3px;width:0%;background:linear-gradient(90deg, var(--gralia-purple) 0%, rgba(128,66,250,.85) 100%);transition:width .12s ease-out;box-shadow:0 0 10px rgba(128,66,250,.55)';
   progressBar.appendChild(progressFill);
-  // Marcadores de seção (interativos)
-  const sectionMarkers = mk('div');
-  sectionMarkers.style.cssText = 'position:absolute;left:0;right:0;top:0;height:3px;pointer-events:none';
-  progressBar.appendChild(sectionMarkers);
+  // V15.12.75.98 — Marcadores de seção REMOVIDOS da barra de progresso.
+  // User pediu pra deixar só a linha de preenchimento limpa. O índice
+  // continua disponível na sidebar lateral.
   // Etiqueta de progresso
   const progressLabel = mk('div','progress-label');
   progressLabel.style.cssText = 'margin-left:auto;font-size:11px;color:var(--text3);font-weight:500;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px';
@@ -33196,11 +33280,54 @@ function showSourceReaderModal(src){
     closeSb.addEventListener('click', ()=>{
       sidebar.style.display = 'none';
       isSidebarOpen = false;
-      ST.readerTocHidden = true;  // persiste pra próxima abertura
+      ST.readerTocHidden = true;
       if(toggleTocBtn) toggleTocBtn.style.display = 'inline-flex';
+      // V15.12.75.98 — Atualiza estado visual do botão TOC do header
+      if(typeof updateTocBtnState === 'function') updateTocBtnState();
     });
 
     body.appendChild(sidebar);
+
+    // V15.12.75.98 — Botão 📑 no header (toggle sidebar). Aparece SEMPRE no
+    // header pra descoberta fácil — antes só tinha banner interno + X discreto.
+    const headerTocBtn = mk('button');
+    headerTocBtn.type = 'button';
+    headerTocBtn.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease;font-family:inherit';
+    const updateTocBtnState = () => {
+      headerTocBtn.innerHTML = '📑';
+      if(isSidebarOpen){
+        headerTocBtn.style.background = 'rgba(128,66,250,.14)';
+        headerTocBtn.style.borderColor = 'var(--gralia-purple)';
+        headerTocBtn.style.color = 'var(--gralia-purple)';
+        headerTocBtn.title = `Índice (${cleanedToc.length} seções) — clique pra ocultar`;
+      } else {
+        headerTocBtn.style.background = 'var(--surface)';
+        headerTocBtn.style.borderColor = 'var(--border)';
+        headerTocBtn.style.color = 'var(--text2)';
+        headerTocBtn.title = `Mostrar índice (${cleanedToc.length} seções)`;
+      }
+    };
+    updateTocBtnState();
+    headerTocBtn.addEventListener('mouseenter', () => {
+      if(!isSidebarOpen){
+        headerTocBtn.style.background = 'rgba(128,66,250,.08)';
+        headerTocBtn.style.borderColor = 'rgba(128,66,250,.40)';
+        headerTocBtn.style.color = 'var(--gralia-purple)';
+      }
+    });
+    headerTocBtn.addEventListener('mouseleave', updateTocBtnState);
+    headerTocBtn.addEventListener('click', () => {
+      isSidebarOpen = !isSidebarOpen;
+      sidebar.style.display = isSidebarOpen ? 'block' : 'none';
+      ST.readerTocHidden = !isSidebarOpen;
+      if(toggleTocBtn) toggleTocBtn.style.display = isSidebarOpen ? 'none' : 'inline-flex';
+      updateTocBtnState();
+    });
+    tocBtnSlot.appendChild(headerTocBtn);
+    // Adiciona separador antes do widthPicker (sep visual entre TOC e larguras)
+    const sepAfterToc = mk('span');
+    sepAfterToc.style.cssText = 'width:1px;height:22px;background:var(--border);margin:0 2px;flex-shrink:0';
+    tocBtnSlot.appendChild(sepAfterToc);
   }
 
   // Corpo do conteúdo
@@ -33396,8 +33523,17 @@ function showSourceReaderModal(src){
   });
 
   // V15.12.75.96 — Sincroniza largura visual no picker quando classes mudam
+  // V15.12.75.98 — Também sincroniza classe `.reader-focus-bg` no modal-bg
+  // (substitui o seletor :has que não era confiável em todos os browsers).
   const focusObs = new MutationObserver(() => {
-    if(m.classList.contains('focus-on')){
+    const inFocus = m.classList.contains('focus-on');
+    // Sincroniza modal-bg
+    const modalBg = m.closest('.modal-bg');
+    if(modalBg){
+      if(inFocus) modalBg.classList.add('reader-focus-bg');
+      else modalBg.classList.remove('reader-focus-bg');
+    }
+    if(inFocus){
       const current = ['wide','large','medium','small'].find(k => m.classList.contains('fw-'+k)) || 'medium';
       Object.keys(widthBtns).forEach(k => {
         const isOn = k === current;
@@ -33409,6 +33545,11 @@ function showSourceReaderModal(src){
   });
   focusObs.observe(m, {attributes: true, attributeFilter: ['class']});
   m.style.position = 'relative';
+  // V15.12.75.98 — Aplica classe modal-reader no `.modal` pai (substitui :has)
+  setTimeout(() => {
+    const modalEl = m.closest('.modal');
+    if(modalEl) modalEl.classList.add('modal-reader');
+  }, 0);
 
   // V15.12.75.96 — Anexa widthPicker e focusExit aos slots do header.
   // Visibilidade controlada via CSS (.reader-width-inline aparece em .focus-on)
@@ -33539,58 +33680,9 @@ function showSourceReaderModal(src){
     }, 80);
   }
 
-  // V15.12.75.89 — Marcadores de seção na barra de progresso.
-  // Calcula posição relativa de cada seção no scrollHeight total e cria
-  // marcadores clicáveis (tooltip com título).
-  if(cleanedToc.length >= 2){
-    setTimeout(() => {
-      try{
-        const scrollable = content.scrollHeight;
-        if(scrollable <= 0) return;
-        // V15.12.75.97 — Reduz marcadores. Antes mostrava UM por seção,
-        // que pra fontes com 50+ subseções polui a barra. Agora:
-        // 1) Só nível 1-2 (top-level)
-        // 2) Se ainda > 10, amostra uniforme.
-        let candidates = cleanedToc.filter(sec => (sec.level || 1) <= 2);
-        if(candidates.length === 0) candidates = cleanedToc;  // fallback
-        if(candidates.length > 10){
-          const step = candidates.length / 10;
-          const sampled = [];
-          for(let i = 0; i < 10; i++) sampled.push(candidates[Math.floor(i * step)]);
-          candidates = sampled;
-        }
-        candidates.forEach((sec, idx) => {
-          const target = content.querySelector(`[data-sec-id="${sec.id}"]`);
-          if(!target) return;
-          const relTop = target.offsetTop / scrollable;
-          if(relTop >= 0 && relTop <= 1){
-            const marker = mk('div');
-            marker.style.cssText = `position:absolute;left:${(relTop*100).toFixed(2)}%;top:-2px;width:2px;height:7px;background:rgba(128,66,250,.55);border-radius:1px;cursor:pointer;pointer-events:auto;transition:all .15s ease`;
-            marker.title = `${idx+1}. ${sec.title}`;
-            marker.addEventListener('mouseenter', () => {
-              marker.style.height = '11px';
-              marker.style.top = '-4px';
-              marker.style.background = 'var(--gralia-purple)';
-              marker.style.boxShadow = '0 0 6px rgba(128,66,250,.7)';
-            });
-            marker.addEventListener('mouseleave', () => {
-              marker.style.height = '7px';
-              marker.style.top = '-2px';
-              marker.style.background = 'rgba(128,66,250,.55)';
-              marker.style.boxShadow = 'none';
-            });
-            marker.addEventListener('click', () => {
-              target.scrollIntoView({behavior:'smooth', block:'start'});
-              target.style.transition = 'background .3s';
-              target.style.background = 'rgba(128,66,250,.12)';
-              setTimeout(() => { target.style.background = ''; }, 1000);
-            });
-            sectionMarkers.appendChild(marker);
-          }
-        });
-      }catch(_){}
-    }, 200);
-  }
+  // V15.12.75.98 — Bloco de marcadores de seção REMOVIDO (decisão V98).
+  // Barra de progresso fica limpa com só a linha de preenchimento.
+  // Índice navegável continua na sidebar.
 
   showModal(m);
 }
