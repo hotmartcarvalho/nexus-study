@@ -4266,15 +4266,33 @@ html.dark .method-focus-bar{background:rgba(20,20,28,.85)}
 .src-del:hover{background:var(--red-light);color:var(--red-text)}
 
 /* V15.12.75.92 — Modo lista compacta de fontes. Cards encolhem pra altura
-   ~50px, meta resumida, botão "ver detalhes" abre modal. Default: lista. */
-.src-item.src-item-compact{padding:.5rem .875rem;gap:10px;align-items:center}
-.src-item.src-item-compact .src-icon{width:26px;height:26px;font-size:13px;margin-top:0}
-.src-item.src-item-compact .src-name{margin-bottom:0;font-size:13px;display:flex;align-items:center;gap:6px}
-.src-item.src-item-compact .src-meta{font-size:10.5px;margin-top:2px}
+   ~50px, meta resumida, botão "ver detalhes" abre modal. Default: lista.
+   V15.12.75.93 — Mais compacto ainda (~40px), padding apertado, meta inline */
+.src-item.src-item-compact{
+  padding:.375rem .75rem;
+  gap:8px;
+  align-items:center;
+  min-height:0;
+}
+.src-item.src-item-compact .src-icon{
+  width:22px;height:22px;font-size:11px;margin-top:0;border-radius:5px;
+}
+.src-item.src-item-compact .src-info{
+  display:flex;align-items:center;gap:10px;flex:1;min-width:0;
+}
+.src-item.src-item-compact .src-name{
+  margin-bottom:0;font-size:13px;display:flex;align-items:center;gap:6px;
+  flex:1;min-width:0;
+}
+.src-item.src-item-compact .src-meta{
+  font-size:10.5px;margin-top:0;flex-shrink:0;
+}
 .src-item.src-item-compact .src-meta .src-meta-tag,
-.src-item.src-item-compact .src-meta-tag{display:none}
+.src-item.src-item-compact .src-meta-tag,
+.src-item.src-item-compact .src-imported-badge{display:none}
 .src-item.src-item-compact .src-meta > span{margin-right:0}
-/* Ações em compact (sticky right) */
+/* Botões de ação menores no compact */
+.src-item-compact .icon-btn{width:28px;height:28px;font-size:13px}
 .src-item-compact .src-compact-actions{display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:auto}
 .src-item-compact .src-compact-btn{
   width:28px;height:28px;border-radius:6px;background:transparent;border:1px solid transparent;
@@ -4424,10 +4442,52 @@ input[type="month"]::-webkit-calendar-picker-indicator{
   background:rgba(128,66,250,.72);
   background-clip:padding-box;
 }
+/* V15.12.75.94 — Animações de fim de pomodoro contextual */
+@keyframes pomo-fade-in{from{opacity:0}to{opacity:1}}
+@keyframes pomo-fade-out{from{opacity:1}to{opacity:0}}
+@keyframes pomo-card-pop{0%{transform:scale(.5) translateY(20px);opacity:0}60%{transform:scale(1.08) translateY(-4px);opacity:1}100%{transform:scale(1) translateY(0);opacity:1}}
+@keyframes pomo-emoji-bounce{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-12px) rotate(-8deg)}50%{transform:translateY(0) rotate(0)}75%{transform:translateY(-6px) rotate(6deg)}}
+@keyframes pomo-confetti-soft{0%{transform:translate(0,0) rotate(0)}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--rot));opacity:0}}
+@keyframes pomo-firework{0%{transform:translate(0,0) scale(1);opacity:1}80%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
+@keyframes pomo-glow-pulse{0%{opacity:0;transform:scale(.5)}50%{opacity:1;transform:scale(1.2)}100%{opacity:.5;transform:scale(1)}}
+@keyframes pomo-star-rise{0%{transform:translateY(0) scale(0) rotate(0);opacity:0}30%{opacity:1;transform:translateY(-80px) scale(1.2) rotate(180deg)}100%{transform:translateY(-300px) scale(0) rotate(720deg);opacity:0}}
+
+/* Mini-badge do pomodoro no header da fonte */
+.src-pomo-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:5px 10px 5px 8px;
+  background:linear-gradient(135deg,rgba(128,66,250,.10),rgba(128,66,250,.04));
+  border:1px solid rgba(128,66,250,.28);
+  border-radius:10px;
+  font-size:12px;font-weight:600;color:var(--text);
+  font-variant-numeric:tabular-nums;
+  cursor:pointer;
+  transition:all .15s ease;
+  font-family:inherit;
+}
+.src-pomo-badge:hover{border-color:var(--gralia-purple);background:linear-gradient(135deg,rgba(128,66,250,.16),rgba(128,66,250,.08))}
+.src-pomo-badge .pomo-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--gralia-purple);
+  flex-shrink:0;
+}
+.src-pomo-badge.running .pomo-dot{animation:pomo-dot-pulse 1.4s ease-in-out infinite}
+.src-pomo-badge.paused .pomo-dot{background:var(--text3)}
+.src-pomo-badge.sbreak .pomo-dot{background:#3b82f6}
+.src-pomo-badge.lbreak .pomo-dot{background:#10b981}
+@keyframes pomo-dot-pulse{0%,100%{box-shadow:0 0 0 0 rgba(128,66,250,.5)}50%{box-shadow:0 0 0 6px rgba(128,66,250,0)}}
+.src-pomo-badge .pomo-time{font-weight:700;color:var(--gralia-purple);font-size:12.5px;letter-spacing:.3px}
+.src-pomo-badge.paused .pomo-time{color:var(--text3)}
+.src-pomo-badge.sbreak .pomo-time{color:#3b82f6}
+.src-pomo-badge.lbreak .pomo-time{color:#10b981}
+.src-pomo-badge .pomo-icon{font-size:13px}
+
 /* Modo foco: esconde elementos não essenciais da leitura.
    V15.12.75.92 — Width modal modes: estendido (sem limite), grande (960px),
    médio (720px), pequeno (560px). Default = médio. Estado em
-   DATA.config.readerFocusWidth (persistente). */
+   DATA.config.readerFocusWidth (persistente).
+   V15.12.75.93 — Fix: regra default pra .focus-on SEM classe fw-* (caso
+   estado salvo esteja indefinido, padding ficava zerado e teoria tomava
+   tela toda). Agora cai em medium por default. */
 .source-reader-shell.focus-on .reader-header{display:none !important}
 .source-reader-shell.focus-on .reader-toc-toggle{display:none !important}
 .source-reader-shell.focus-on .reader-progress{
@@ -4439,22 +4499,32 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 .source-reader-shell.focus-on .reader-progress .progress-label{display:none}
 .source-reader-shell.focus-on .reader-sidebar{display:none !important}
 
-/* Larguras do modo foco */
+/* DEFAULT do modo foco (caso classe fw-* esteja ausente) — equivale a fw-medium */
+.source-reader-shell.focus-on .reader-content{
+  padding:2.5rem max(2rem, calc((100% - 720px) / 2));
+  font-size:14.5px;
+  line-height:1.75;
+}
+/* Larguras do modo foco — sobrescreve o default acima */
 .source-reader-shell.focus-on.fw-wide .reader-content{
   padding:2.5rem max(1.5rem, calc((100% - 1200px) / 2));
   font-size:15px;
+  line-height:1.7;
 }
 .source-reader-shell.focus-on.fw-large .reader-content{
   padding:2.5rem max(2rem, calc((100% - 960px) / 2));
   font-size:15px;
+  line-height:1.7;
 }
 .source-reader-shell.focus-on.fw-medium .reader-content{
   padding:2.5rem max(2rem, calc((100% - 720px) / 2));
   font-size:14.5px;
+  line-height:1.75;
 }
 .source-reader-shell.focus-on.fw-small .reader-content{
   padding:2.5rem max(2rem, calc((100% - 560px) / 2));
   font-size:14px;
+  line-height:1.8;
 }
 /* V15.12.75.91 — Modo foco zen: também esconde fundo escuro do modal-bg,
    modo foco zen estilo flashcards. O shell ocupa quase a tela toda com fundo
@@ -7219,7 +7289,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.92';
+window.GRALIA_VERSION = 'V15.12.75.94';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -24013,12 +24083,14 @@ function renderSourceList(wrap){
     const info = mk('div','src-info');
     const name = mk('div','src-name');
     // V15.12.75.91 — Check verde se fonte foi marcada como lida (atingiu
-    // 95% scroll + 60% tempo estimado). Tooltip mostra data.
+    // 95% scroll + 60% tempo estimado).
+    // V15.12.75.94 — Tooltip agora referencia tempo via pomoState.
     if(src.readAt){
       const readBadge = mk('span');
       readBadge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(16,185,129,.18);color:var(--accent-text);font-size:11px;font-weight:700;margin-right:6px;vertical-align:middle';
       readBadge.textContent = '✓';
-      readBadge.title = 'Lida em ' + new Date(src.readAt).toLocaleDateString('pt-BR') + (src.readingTimeSeconds ? ' · '+Math.round(src.readingTimeSeconds/60)+' min de leitura' : '');
+      const accSec = (src.pomoState && src.pomoState.accumulatedSec) || src.readingTimeSeconds || 0;
+      readBadge.title = 'Lida em ' + new Date(src.readAt).toLocaleDateString('pt-BR') + (accSec ? ' · '+Math.round(accSec/60)+' min de leitura' : '');
       name.appendChild(readBadge);
     }
     const nameText = mk('span');nameText.textContent = src.name;
@@ -24028,12 +24100,15 @@ function renderSourceList(wrap){
     meta.appendChild(mt1);
     // V15.12.75.91 — Tempo total já lido (se houver). Útil pra ver fontes
     // em progresso (começou mas não terminou).
-    if(src.readingTimeSeconds && src.readingTimeSeconds >= 30 && !src.readAt){
+    // V15.12.75.94 — Usa pomoState.accumulatedSec (com fallback pra legado).
+    const accumulatedListSec = (src.pomoState && src.pomoState.accumulatedSec) || src.readingTimeSeconds || 0;
+    if(accumulatedListSec >= 30 && !src.readAt){
       const timeTag = mk('span','src-meta-tag');
       timeTag.style.cssText = 'background:rgba(128,66,250,.10);color:var(--gralia-purple);border:1px solid rgba(128,66,250,.25);font-weight:600';
-      const min = Math.round(src.readingTimeSeconds / 60);
-      timeTag.innerHTML = `📖 ${min < 1 ? '<1' : min} min lidos`;
-      timeTag.title = 'Tempo real ativo gasto lendo esta fonte';
+      const min = Math.round(accumulatedListSec / 60);
+      const pomos = (src.pomoState && src.pomoState.pomosCompleted) || 0;
+      timeTag.innerHTML = `📖 ${min < 1 ? '<1' : min} min lidos${pomos > 0 ? ` (${pomos}🍅)` : ''}`;
+      timeTag.title = 'Tempo acumulado em pomodoros desta fonte';
       meta.appendChild(timeTag);
     }
     // V14: Badge "Exemplo" pra fontes de tutorial
@@ -31916,7 +31991,9 @@ function showSourceInfoModal(src){
   m.style.cssText = 'max-width:480px;width:100%';
 
   // Header com nome + ícone
-  const cfg = SRC_TYPE_CFG[src.type] || SRC_TYPE_CFG.markdown;
+  // V15.12.75.93 — Fix: SRC_TYPE_CFG não existia (era SRC_TYPES). Modal antes
+  // dava throw silencioso e nada renderizava.
+  const cfg = (SRC_TYPES && SRC_TYPES[src.type]) || SRC_TYPES.fonte || {icon:'📚',label:'Fonte',bg:'var(--accent-light)',color:'var(--accent-text)'};
   const head = mk('div');
   head.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:1rem;padding-bottom:.875rem;border-bottom:1px solid var(--border)';
   const icon = mk('div');
@@ -32005,12 +32082,15 @@ function showSourceInfoModal(src){
     mkRow('Modificada em', new Date(src.updatedAt).toLocaleString('pt-BR'));
   }
 
-  // Leitura (V15.12.75.91)
-  if(src.readingTimeSeconds && src.readingTimeSeconds > 0){
-    const min = Math.floor(src.readingTimeSeconds / 60);
-    const sec = src.readingTimeSeconds % 60;
+  // Leitura (V15.12.75.91, atualizado V15.12.75.94 — usa pomoState.accumulatedSec)
+  const accumulatedSec = (src.pomoState && src.pomoState.accumulatedSec) || src.readingTimeSeconds || 0;
+  const pomosDone = (src.pomoState && src.pomoState.pomosCompleted) || 0;
+  if(accumulatedSec > 0){
+    const min = Math.floor(accumulatedSec / 60);
+    const sec = accumulatedSec % 60;
     const timeStr = min < 1 ? sec + 's' : (min + 'min' + (sec > 0 ? ' '+sec+'s' : ''));
-    mkRow('Tempo lido', timeStr);
+    const pomoStr = pomosDone > 0 ? ` · ${pomosDone} pomodoro${pomosDone!==1?'s':''}` : '';
+    mkRow('Tempo lido', timeStr + pomoStr);
   }
   if(src.readAt){
     const readBadge = mk('span');
@@ -32044,6 +32124,347 @@ function showSourceInfoModal(src){
   showModal(m);
 }
 
+// V15.12.75.94 — Módulo de pomodoro contextual por fonte. Cada fonte tem
+// seu próprio estado de pomodoro persistido em src.pomoState. Isolado do
+// pomodoro global do app pra não confundir contextos.
+//
+// Estado por fonte:
+//   src.pomoState = {
+//     accumulatedSec,        // total acumulado de TODOS pomodoros desta fonte
+//     pomosCompleted,        // nº de pomodoros completos (fase 'focus')
+//     currentPhase,          // 'focus' | 'sbreak' | 'lbreak'
+//     currentCycleNum,       // pra saber quando virar lbreak
+//     phaseStartedAt,        // timestamp ms quando a fase corrente começou
+//     phaseElapsedBeforePause,// segundos acumulados nas pausas dentro da fase atual
+//     isRunning,             // true se rolando agora
+//     lastTickAt             // último timestamp de tick
+//   }
+//
+// O timer roda em setInterval(1s) só quando o modal da fonte está aberto E
+// pomodoro está running. Ao pausar/fechar, salva estado e congela.
+const SourcePomo = (() => {
+  let ticker = null;
+  let onTickCb = null;
+  let onPhaseEndCb = null;
+  let currentSrc = null;
+
+  function init(src){
+    if(!src.pomoState){
+      src.pomoState = {
+        accumulatedSec: 0,
+        pomosCompleted: 0,
+        currentPhase: 'focus',
+        currentCycleNum: 0,
+        phaseStartedAt: null,
+        phaseElapsedBeforePause: 0,
+        isRunning: false,
+        lastTickAt: null
+      };
+    }
+    // Migração: se a fonte tinha readingTimeSeconds antigo (V91), traz pro accumulated
+    if(src.readingTimeSeconds && !src._pomoMigrated){
+      src.pomoState.accumulatedSec = Math.max(src.pomoState.accumulatedSec, src.readingTimeSeconds);
+      src._pomoMigrated = true;
+    }
+    return src.pomoState;
+  }
+
+  function phaseDurationSec(phase){
+    const cfg = DATA.pomo || {focusMin: 25, sbreakMin: 5, lbreakMin: 15, cyclesToLong: 4};
+    if(phase === 'focus') return (cfg.focusMin || 25) * 60;
+    if(phase === 'sbreak') return (cfg.sbreakMin || 5) * 60;
+    if(phase === 'lbreak') return (cfg.lbreakMin || 15) * 60;
+    return 25 * 60;
+  }
+
+  function elapsedInCurrentPhase(state){
+    if(!state.phaseStartedAt) return state.phaseElapsedBeforePause || 0;
+    if(state.isRunning){
+      const now = Date.now();
+      const since = Math.floor((now - state.phaseStartedAt) / 1000);
+      return (state.phaseElapsedBeforePause || 0) + since;
+    }
+    return state.phaseElapsedBeforePause || 0;
+  }
+
+  function secondsLeftInPhase(state){
+    const dur = phaseDurationSec(state.currentPhase);
+    return Math.max(0, dur - elapsedInCurrentPhase(state));
+  }
+
+  // Inicia/retoma. Idempotente.
+  function start(src, callbacks){
+    const state = init(src);
+    currentSrc = src;
+    onTickCb = callbacks && callbacks.onTick;
+    onPhaseEndCb = callbacks && callbacks.onPhaseEnd;
+    if(!state.isRunning){
+      state.phaseStartedAt = Date.now();
+      state.isRunning = true;
+      state.lastTickAt = Date.now();
+      try{ save(); }catch(_){}
+    }
+    if(ticker) clearInterval(ticker);
+    ticker = setInterval(() => tick(src), 1000);
+    if(onTickCb) onTickCb(state);
+  }
+
+  function pause(src){
+    const state = init(src);
+    if(state.isRunning){
+      // Congela o elapsed da fase atual
+      state.phaseElapsedBeforePause = elapsedInCurrentPhase(state);
+      state.isRunning = false;
+      state.phaseStartedAt = null;
+      try{ save(); }catch(_){}
+    }
+    if(ticker){ clearInterval(ticker); ticker = null; }
+    if(onTickCb) onTickCb(state);
+  }
+
+  function tick(src){
+    const state = init(src);
+    if(!state.isRunning) return;
+    // Atualiza accumulatedSec só nas fases de FOCO (não conta pausa como tempo lido)
+    if(state.currentPhase === 'focus'){
+      const sinceLastTick = state.lastTickAt ? Math.round((Date.now() - state.lastTickAt) / 1000) : 1;
+      state.accumulatedSec += Math.max(1, Math.min(5, sinceLastTick));  // clamp pra evitar saltos quando aba foi minimizada
+    }
+    state.lastTickAt = Date.now();
+    // Persiste a cada 15s
+    if(state.accumulatedSec % 15 === 0){
+      try{ save(); }catch(_){}
+    }
+    // Checa fim da fase
+    const left = secondsLeftInPhase(state);
+    if(left <= 0){
+      advancePhase(src);
+    }
+    if(onTickCb) onTickCb(state);
+  }
+
+  function advancePhase(src){
+    const state = init(src);
+    const cyclesToLong = (DATA.pomo && DATA.pomo.cyclesToLong) || 4;
+    const finishedPhase = state.currentPhase;
+    if(finishedPhase === 'focus'){
+      state.pomosCompleted = (state.pomosCompleted || 0) + 1;
+      state.currentCycleNum = (state.currentCycleNum || 0) + 1;
+      // Próxima fase: lbreak se completou cycle, senão sbreak
+      state.currentPhase = (state.currentCycleNum % cyclesToLong === 0) ? 'lbreak' : 'sbreak';
+    } else {
+      state.currentPhase = 'focus';
+    }
+    state.phaseElapsedBeforePause = 0;
+    state.phaseStartedAt = Date.now();
+    state.lastTickAt = Date.now();
+    try{ save(); }catch(_){}
+    if(onPhaseEndCb) onPhaseEndCb(finishedPhase, state);
+  }
+
+  function stop(src){
+    pause(src);
+    currentSrc = null;
+    onTickCb = null;
+    onPhaseEndCb = null;
+  }
+
+  function getDisplay(src){
+    const state = init(src);
+    const left = secondsLeftInPhase(state);
+    const mins = Math.floor(left / 60);
+    const secs = left % 60;
+    return {
+      timeStr: String(mins).padStart(2,'0') + ':' + String(secs).padStart(2,'0'),
+      isRunning: state.isRunning,
+      phase: state.currentPhase,
+      pomosCompleted: state.pomosCompleted || 0,
+      accumulatedSec: state.accumulatedSec || 0
+    };
+  }
+
+  // Estima quantos pomodoros são "esperados" pra ler a fonte completa.
+  // Usado pra escolher vibe da animação de fim.
+  function estimatedPomosForSource(src){
+    const charCount = (src.content || '').length;
+    const wordsEstimate = Math.round(charCount / 5.5);
+    const minutesEstimate = Math.max(1, Math.round(wordsEstimate / 200));
+    const focusMin = (DATA.pomo && DATA.pomo.focusMin) || 25;
+    return Math.max(1, Math.ceil(minutesEstimate / focusMin));
+  }
+
+  return {
+    init, start, pause, stop, tick: () => currentSrc && tick(currentSrc),
+    getDisplay, estimatedPomosForSource,
+    phaseDurationSec, secondsLeftInPhase, elapsedInCurrentPhase
+  };
+})();
+
+// V15.12.75.94 — Animação + som contextual no fim de pomodoro da fonte.
+// Vibe escolhida com base no progresso:
+//   < 33% dos pomos esperados → suave
+//   33-80% → empolgante
+//   >= 80% OU acabou de marcar como lida → conquista
+function celebratePomoFinish(src, justMarkedAsRead){
+  const pomosDone = (src.pomoState && src.pomoState.pomosCompleted) || 0;
+  const pomosExpected = SourcePomo.estimatedPomosForSource(src);
+  const pct = pomosExpected > 0 ? (pomosDone / pomosExpected) : 0;
+  let vibe = 'soft';
+  if(justMarkedAsRead || pct >= 0.8) vibe = 'achievement';
+  else if(pct >= 0.33) vibe = 'energetic';
+  // Som
+  try{ playPomoFinishSound(vibe); }catch(e){ console.warn('[pomo-celebrate] som falhou:', e); }
+  // Animação
+  try{ showPomoFinishAnimation(src, vibe, pomosDone, pomosExpected); }catch(e){ console.warn('[pomo-celebrate] anim falhou:', e); }
+}
+
+// Tocar som usando WebAudio API (sem arquivos externos)
+function playPomoFinishSound(vibe){
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if(!AudioCtx) return;
+  const ctx = new AudioCtx();
+  const now = ctx.currentTime;
+  const playTone = (freq, startOffset, duration, gain, type) => {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    osc.connect(g);
+    g.connect(ctx.destination);
+    g.gain.setValueAtTime(0, now + startOffset);
+    g.gain.linearRampToValueAtTime(gain, now + startOffset + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, now + startOffset + duration);
+    osc.start(now + startOffset);
+    osc.stop(now + startOffset + duration);
+  };
+  if(vibe === 'soft'){
+    // Chime sutil: 2 tons suaves
+    playTone(880, 0,    0.7, 0.18, 'sine');
+    playTone(1108, 0.18, 0.7, 0.14, 'sine');
+  } else if(vibe === 'energetic'){
+    // Fanfare: arpejo ascendente
+    playTone(523, 0,    0.25, 0.22, 'triangle');  // C5
+    playTone(659, 0.10, 0.25, 0.22, 'triangle');  // E5
+    playTone(784, 0.20, 0.25, 0.22, 'triangle');  // G5
+    playTone(1047, 0.30, 0.6,  0.28, 'triangle'); // C6 (sustentado)
+    // Segundo "batuque" pra dar energia
+    playTone(1568, 0.55, 0.4,  0.20, 'triangle'); // G6
+  } else if(vibe === 'achievement'){
+    // Conquista: acorde + sino de campainha
+    playTone(523, 0,    0.6, 0.24, 'sine');     // C5
+    playTone(659, 0,    0.6, 0.20, 'sine');     // E5
+    playTone(784, 0,    0.6, 0.18, 'sine');     // G5
+    playTone(1047, 0.20, 0.9, 0.26, 'triangle'); // C6 brilhante
+    playTone(1319, 0.40, 0.7, 0.22, 'triangle'); // E6
+    playTone(1568, 0.55, 0.9, 0.20, 'triangle'); // G6 (final glorioso)
+  }
+}
+
+// Mostrar animação overlay (varia conforme vibe)
+function showPomoFinishAnimation(src, vibe, pomosDone, pomosExpected){
+  const existing = document.querySelector('.pomo-celebrate-overlay');
+  if(existing) existing.remove();
+  const overlay = mk('div','pomo-celebrate-overlay vibe-'+vibe);
+  // Estilos base via inline (CSS no head abaixo cuidará do resto)
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;background:radial-gradient(circle at center, rgba(128,66,250,0.10), transparent 70%);animation:pomo-fade-in .4s ease-out';
+
+  // Card central
+  const card = mk('div','pomo-celebrate-card');
+  card.style.cssText = 'background:var(--surface);border:1px solid rgba(128,66,250,.30);border-radius:18px;padding:1.5rem 2.5rem;box-shadow:0 24px 60px rgba(128,66,250,.30), 0 6px 18px rgba(0,0,0,.12);text-align:center;animation:pomo-card-pop .55s cubic-bezier(.34,1.56,.64,1);max-width:420px;pointer-events:auto';
+
+  const emoji = mk('div');
+  emoji.style.cssText = 'font-size:64px;line-height:1;margin-bottom:.625rem;animation:pomo-emoji-bounce 1.2s ease-in-out';
+  if(vibe === 'soft') emoji.textContent = '✨';
+  else if(vibe === 'energetic') emoji.textContent = '🎉';
+  else emoji.textContent = '🏆';
+
+  const title = mk('h2');
+  title.style.cssText = 'margin:0 0 .375rem;font-size:22px;font-weight:800;letter-spacing:-.4px;color:var(--text)';
+  if(vibe === 'soft') title.textContent = 'Pomodoro concluído!';
+  else if(vibe === 'energetic') title.textContent = 'Mais um pomodoro completo!';
+  else title.textContent = 'Conquista desbloqueada!';
+
+  const subtitle = mk('p');
+  subtitle.style.cssText = 'margin:0 0 .875rem;font-size:13.5px;color:var(--text2);line-height:1.5';
+  const srcName = escapeHTML(src.name || 'esta fonte');
+  if(vibe === 'soft'){
+    subtitle.innerHTML = `Bom começo lendo <b>${srcName}</b>. <br><span style="color:var(--gralia-purple);font-weight:600">${pomosDone}/${pomosExpected}</span> pomodoros — continue!`;
+  } else if(vibe === 'energetic'){
+    subtitle.innerHTML = `Você já está perto de terminar <b>${srcName}</b>! <br><span style="color:var(--gralia-purple);font-weight:700">${pomosDone}/${pomosExpected}</span> pomodoros — não pare agora!`;
+  } else {
+    subtitle.innerHTML = `Você dominou <b>${srcName}</b>! <br><span style="color:var(--gralia-purple);font-weight:700">${pomosDone} pomodoros</span> · Excelente disciplina!`;
+  }
+
+  card.appendChild(emoji);
+  card.appendChild(title);
+  card.appendChild(subtitle);
+
+  // Botões: descansar + continuar
+  const btnRow = mk('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;justify-content:center;margin-top:.625rem';
+  const restBtn = mk('button');
+  restBtn.type = 'button';
+  restBtn.style.cssText = 'padding:8px 16px;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:all .15s';
+  restBtn.textContent = '☕ Pausar';
+  restBtn.addEventListener('click', () => { overlay.remove(); SourcePomo.pause(src); });
+  const continueBtn = mk('button');
+  continueBtn.type = 'button';
+  continueBtn.style.cssText = 'padding:8px 16px;background:var(--gralia-purple);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;transition:all .15s';
+  continueBtn.textContent = 'Continuar →';
+  continueBtn.addEventListener('click', () => { overlay.remove(); });
+  btnRow.appendChild(restBtn);
+  btnRow.appendChild(continueBtn);
+  card.appendChild(btnRow);
+
+  overlay.appendChild(card);
+
+  // Confete / fogos / brilho dependendo da vibe
+  if(vibe === 'soft'){
+    // Confete sutil — 8 partículas amarelas/roxas
+    for(let i = 0; i < 8; i++){
+      const conf = mk('div');
+      const colors = ['#fbbf24', '#8042fa', '#a78bfa', '#fde68a'];
+      conf.style.cssText = `position:absolute;width:8px;height:8px;background:${colors[i%4]};border-radius:2px;left:50%;top:50%;animation:pomo-confetti-soft 1.8s ease-out forwards;animation-delay:${i*0.05}s;--dx:${(i-4)*40}px;--dy:${-100 - (i%3)*30}px;--rot:${(i%2?1:-1)*360}deg`;
+      overlay.appendChild(conf);
+    }
+  } else if(vibe === 'energetic'){
+    // Fogos: 5 explosões com burst de 12 partículas cada
+    for(let burst = 0; burst < 5; burst++){
+      for(let i = 0; i < 12; i++){
+        const fw = mk('div');
+        const colors = ['#fbbf24', '#8042fa', '#10b981', '#ef4444', '#3b82f6'];
+        const angle = (i / 12) * Math.PI * 2;
+        const dx = Math.cos(angle) * 180;
+        const dy = Math.sin(angle) * 180 - 50;
+        fw.style.cssText = `position:absolute;width:10px;height:10px;background:${colors[burst%5]};border-radius:50%;left:${30+burst*10}%;top:${30+(burst%2)*20}%;animation:pomo-firework 1.4s ease-out forwards;animation-delay:${burst*0.18}s;--dx:${dx}px;--dy:${dy}px`;
+        overlay.appendChild(fw);
+      }
+    }
+  } else if(vibe === 'achievement'){
+    // Brilho radial fullscreen + estrelas grandes
+    const glow = mk('div');
+    glow.style.cssText = 'position:absolute;inset:0;background:radial-gradient(circle at center, rgba(255,215,0,.30) 0%, rgba(128,66,250,.20) 30%, transparent 70%);animation:pomo-glow-pulse 1.6s ease-out';
+    overlay.appendChild(glow);
+    // Estrelas grandes que sobem
+    for(let i = 0; i < 14; i++){
+      const star = mk('div');
+      star.style.cssText = `position:absolute;font-size:${24 + (i%3)*8}px;left:${10 + i*6}%;top:60%;animation:pomo-star-rise 2.5s ease-out forwards;animation-delay:${i*0.08}s;color:#fbbf24`;
+      star.textContent = '⭐';
+      overlay.appendChild(star);
+    }
+  }
+
+  document.body.appendChild(overlay);
+
+  // Auto-dismiss após 6s se user não interagir
+  setTimeout(() => {
+    if(overlay.parentNode){
+      overlay.style.animation = 'pomo-fade-out .5s ease forwards';
+      setTimeout(() => overlay.remove(), 500);
+    }
+  }, 6000);
+}
+
 function showSourceReaderModal(src){
   if(!src){ alert('Fonte não encontrada'); return; }
   const m = mk('div','source-reader-shell');
@@ -32072,78 +32493,91 @@ function showSourceReaderModal(src){
     });
   })();
 
-  // Header rico com gradiente sutil
+  // V15.12.75.94 — Header MINIMALISTA: só título + badge pomodoro + botões.
+  // Todos os metadados (chars, autor, markdown, seções, data, disciplina,
+  // tempo lido) movidos pro modal ℹ Info pra leitura ficar limpa.
   const header = mk('div','reader-header');
-  header.style.cssText = 'padding:1.25rem 1.5rem;background:linear-gradient(135deg,rgba(128,66,250,.10),rgba(128,66,250,.03));border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-shrink:0';
+  header.style.cssText = 'padding:.875rem 1.25rem;background:linear-gradient(135deg,rgba(128,66,250,.06),rgba(128,66,250,.01));border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-shrink:0';
 
   const headLeft = mk('div');
-  headLeft.style.cssText = 'flex:1;min-width:0';
+  headLeft.style.cssText = 'flex:1;min-width:0;display:flex;align-items:center;gap:12px';
 
-  // Eyebrow: disciplina + tipo + data
-  const eyebrow = mk('div');
-  eyebrow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-bottom:6px';
-  if(disc){
-    const d = mk('span');
-    d.style.color = 'var(--gralia-purple)';
-    d.textContent = disc.name;
-    eyebrow.appendChild(d);
-  }
-  if(src.contentType && CONTENT_TYPES[src.contentType]){
-    const sep = mk('span'); sep.textContent = '·'; sep.style.opacity = '.5';
-    eyebrow.appendChild(sep);
-    const t = mk('span');
-    t.textContent = CONTENT_TYPES[src.contentType].label;
-    eyebrow.appendChild(t);
-  }
-  if(src.createdAt){
-    const sep = mk('span'); sep.textContent = '·'; sep.style.opacity = '.5';
-    eyebrow.appendChild(sep);
-    const dt = new Date(src.createdAt);
-    const pad = n => String(n).padStart(2,'0');
-    const d = mk('span');
-    d.textContent = `${pad(dt.getDate())}/${pad(dt.getMonth()+1)}/${dt.getFullYear()}`;
-    eyebrow.appendChild(d);
-  }
-  headLeft.appendChild(eyebrow);
-
-  // Title
+  // Title compacto
   const title = mk('h1');
-  title.style.cssText = 'margin:0 0 .375rem;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.25;color:var(--text)';
+  title.style.cssText = 'margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em;line-height:1.3;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0';
+  title.title = src.name || 'Fonte sem nome';
   title.textContent = src.name || 'Fonte sem nome';
   headLeft.appendChild(title);
 
-  // Stats: tamanho + seções + import origem
+  // V15.12.75.94 — Badge do pomodoro contextual. Sempre visível (clicável pra
+  // pausar/retomar). Atualizado em tempo real pelo ticker do SourcePomo.
+  const pomoBadge = mk('button','src-pomo-badge');
+  pomoBadge.type = 'button';
+  const pomoState = SourcePomo.init(src);
+  const refreshPomoBadge = () => {
+    const disp = SourcePomo.getDisplay(src);
+    pomoBadge.classList.remove('running','paused','sbreak','lbreak');
+    if(disp.isRunning) pomoBadge.classList.add('running');
+    else pomoBadge.classList.add('paused');
+    if(disp.phase === 'sbreak') pomoBadge.classList.add('sbreak');
+    if(disp.phase === 'lbreak') pomoBadge.classList.add('lbreak');
+    const phaseEmoji = disp.phase === 'focus' ? '🎯' : (disp.phase === 'sbreak' ? '☕' : '🌿');
+    const playPauseIcon = disp.isRunning ? '⏸' : '▶';
+    pomoBadge.innerHTML = `<span class="pomo-dot"></span><span class="pomo-icon">${phaseEmoji}</span><span class="pomo-time">${disp.timeStr}</span><span style="opacity:.6;font-size:11px">${playPauseIcon}</span>`;
+    pomoBadge.title = disp.isRunning
+      ? `Pomodoro rolando · ${disp.pomosCompleted} completo${disp.pomosCompleted!==1?'s':''} · clique pra pausar`
+      : `Pomodoro pausado · ${disp.pomosCompleted} completo${disp.pomosCompleted!==1?'s':''} · clique pra retomar`;
+  };
+  pomoBadge.addEventListener('click',()=>{
+    const disp = SourcePomo.getDisplay(src);
+    if(disp.isRunning) SourcePomo.pause(src);
+    else SourcePomo.start(src, { onTick: refreshPomoBadge, onPhaseEnd: handlePomoPhaseEnd });
+    refreshPomoBadge();
+    updateTimeDisplay();
+  });
+  headLeft.appendChild(pomoBadge);
+
+  // V15.12.75.94 — Botão ⚙ pra ajustar durações (vai pra view Pomodoro)
+  const pomoCfgBtn = mk('button');
+  pomoCfgBtn.type = 'button';
+  pomoCfgBtn.style.cssText = 'width:28px;height:28px;background:transparent;border:1px solid transparent;border-radius:7px;cursor:pointer;font-family:inherit;color:var(--text3);font-size:14px;display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease;margin-left:-4px';
+  pomoCfgBtn.innerHTML = '⚙';
+  pomoCfgBtn.title = 'Ajustar durações de foco/pausa (vai para a página Pomodoro)';
+  pomoCfgBtn.addEventListener('mouseenter',()=>{pomoCfgBtn.style.color='var(--gralia-purple)';pomoCfgBtn.style.background='rgba(128,66,250,.08)';pomoCfgBtn.style.borderColor='rgba(128,66,250,.22)';});
+  pomoCfgBtn.addEventListener('mouseleave',()=>{pomoCfgBtn.style.color='var(--text3)';pomoCfgBtn.style.background='transparent';pomoCfgBtn.style.borderColor='transparent';});
+  pomoCfgBtn.addEventListener('click',()=>{
+    closeModal();
+    setTimeout(()=>{ ST.view='pomodoro'; render(); }, 100);
+  });
+  headLeft.appendChild(pomoCfgBtn);
+
+  header.appendChild(headLeft);
+
+  // Stats placeholder (usado por updateTimeDisplay; vazio aqui — info real fica no modal)
+  // V15.12.75.94 — Mantido como ref pra updateTimeDisplay não quebrar; oculto visualmente.
   const stats = mk('div');
-  stats.style.cssText = 'display:flex;gap:.875rem;flex-wrap:wrap;font-size:12px;color:var(--text2);margin-top:6px';
+  stats.style.display = 'none';
   const charCount = (src.content||'').length;
-  const sizeText = charCount > 1000 ? Math.round(charCount/1000).toLocaleString('pt-BR') + 'k chars' : charCount + ' chars';
-  stats.innerHTML += `<span>📏 ${sizeText}</span>`;
-  // V15.12.75.89 — Estimativa de tempo de leitura.
-  // Base: ~200 palavras/min (leitura técnica de concurso é mais lenta que
-  // ficção). 1 palavra ≈ 5.5 chars em português (incluindo espaço/pontuação).
-  // chars / 5.5 = palavras; palavras / 200 = minutos.
   const wordsEstimate = Math.round(charCount / 5.5);
   const minutesEstimate = Math.max(1, Math.round(wordsEstimate / 200));
   const timeText = minutesEstimate < 60
     ? `~${minutesEstimate} min`
     : `~${Math.floor(minutesEstimate/60)}h${minutesEstimate%60 ? ' '+(minutesEstimate%60)+'min' : ''}`;
-  stats.innerHTML += `<span title="Estimativa baseada em ~200 palavras/min (leitura técnica)">⏱ ${timeText} leitura</span>`;
-  if(cleanedToc.length > 0){
-    stats.innerHTML += `<span>📑 ${cleanedToc.length} ${cleanedToc.length===1?'seção':'seções'}</span>`;
-  }
-  if(isMarkdown){
-    stats.innerHTML += `<span style="color:var(--gralia-purple);font-weight:600">📝 Markdown</span>`;
-  }
-  if(src.importedFromUser){
-    stats.innerHTML += `<span>📥 De @${escapeHTML(src.importedFromUser)}</span>`;
-  }
-  headLeft.appendChild(stats);
-
-  header.appendChild(headLeft);
 
   // Botões do header
   const headBtns = mk('div');
   headBtns.style.cssText = 'display:flex;gap:6px;flex-shrink:0;align-items:center';
+
+  // V15.12.75.94 — Botão ℹ no header (substitui todos os metadados)
+  const infoBtnH = mk('button');
+  infoBtnH.type = 'button';
+  infoBtnH.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease;font-weight:700';
+  infoBtnH.innerHTML = 'ℹ';
+  infoBtnH.title = 'Detalhes da fonte (chars, autor, markdown, tempo lido, etc)';
+  infoBtnH.addEventListener('mouseenter',()=>{infoBtnH.style.background='rgba(128,66,250,.10)';infoBtnH.style.borderColor='rgba(128,66,250,.40)';infoBtnH.style.color='var(--gralia-purple)';});
+  infoBtnH.addEventListener('mouseleave',()=>{infoBtnH.style.background='var(--surface)';infoBtnH.style.borderColor='var(--border)';infoBtnH.style.color='var(--text2)';});
+  infoBtnH.addEventListener('click', ()=>showSourceInfoModal(src));
+  headBtns.appendChild(infoBtnH);
 
   // V15.12.75.91 — Botões "início" e "fim" pra pular pra começo/fim do texto.
   // Atalhos teclado Home/End já fazem isso; estes botões dão affordance visual.
@@ -32175,10 +32609,53 @@ function showSourceReaderModal(src){
   focusBtnH.addEventListener('mouseleave',()=>{focusBtnH.style.background='var(--surface)';focusBtnH.style.borderColor='var(--border)';focusBtnH.style.color='var(--text2)';});
   focusBtnH.addEventListener('click',()=>{
     if(!DATA.config) DATA.config = {};
-    const savedWidth = DATA.config.readerFocusWidth || 'medium';
-    m.classList.remove('fw-wide','fw-large','fw-medium','fw-small');
-    m.classList.add('fw-' + savedWidth);
-    m.classList.add('focus-on');
+    // V15.12.75.94 — Aviso primeira vez sobre auto-start do pomodoro
+    const hasSeenWarning = !!DATA.config.readerFocusPomoWarningShown;
+    const doEnterFocus = () => {
+      const savedWidth = DATA.config.readerFocusWidth || 'medium';
+      m.classList.remove('fw-wide','fw-large','fw-medium','fw-small');
+      m.classList.add('fw-' + savedWidth);
+      m.classList.add('focus-on');
+      // V15.12.75.94 — Auto-inicia pomodoro contextual da fonte
+      SourcePomo.start(src, { onTick: refreshPomoBadge, onPhaseEnd: handlePomoPhaseEnd });
+      refreshPomoBadge();
+    };
+    if(!hasSeenWarning){
+      const discName = disc ? ` de <b>${escapeHTML(disc.name)}</b>` : '';
+      const focusMin = (DATA.pomo && DATA.pomo.focusMin) || 25;
+      const warn = mk('div');
+      warn.style.cssText = 'max-width:440px;width:100%';
+      warn.innerHTML = `
+        <h3 style="margin:0 0 .75rem;font-size:17px;font-weight:700">🎯 Entrando no modo foco</h3>
+        <p style="margin:0 0 .75rem;font-size:13.5px;line-height:1.6;color:var(--text2)">Ao entrar no modo foco, vamos iniciar um pomodoro automático pra <b>"${escapeHTML(src.name)}"</b>${discName}.</p>
+        <div style="padding:.75rem 1rem;background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.22);border-left:4px solid var(--gralia-purple);border-radius:8px;font-size:12.5px;line-height:1.55;color:var(--text2);margin-bottom:1rem">
+          <b style="color:var(--text)">⏱ Pomodoro de ${focusMin} minutos</b><br>
+          O tempo acumulado fica salvo nesta fonte. Você pode pausar clicando no badge do timer no topo, e voltar a estudar essa mesma fonte depois — o relógio retoma de onde parou.<br><br>
+          Pra ajustar durações: <b>Pomodoro → Configurações</b>.
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2);cursor:pointer;margin-bottom:.75rem">
+          <input type="checkbox" id="pomo-warn-dont-show" style="cursor:pointer">
+          <span>Não mostrar este aviso novamente</span>
+        </label>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button type="button" id="pomo-warn-cancel" style="padding:.55rem 1rem;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500">Cancelar</button>
+          <button type="button" id="pomo-warn-ok" style="padding:.55rem 1.25rem;background:var(--gralia-purple);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700">Iniciar foco + pomodoro</button>
+        </div>`;
+      showModal(warn);
+      setTimeout(() => {
+        const ok = warn.querySelector('#pomo-warn-ok');
+        const cancel = warn.querySelector('#pomo-warn-cancel');
+        const dont = warn.querySelector('#pomo-warn-dont-show');
+        if(ok) ok.addEventListener('click', () => {
+          if(dont && dont.checked){ DATA.config.readerFocusPomoWarningShown = true; try{ save(); }catch(_){} }
+          closeModal();
+          doEnterFocus();
+        });
+        if(cancel) cancel.addEventListener('click', closeModal);
+      }, 0);
+    } else {
+      doEnterFocus();
+    }
   });
   headBtns.appendChild(focusBtnH);
   const editBtnH = mk('button');
@@ -32371,26 +32848,12 @@ function showSourceReaderModal(src){
   body.appendChild(content);
   m.appendChild(body);
 
-  // V15.12.75.91 — Tempo real de leitura + check "fonte lida".
-  // Tracking INTELIGENTE (não estimativa cega):
-  //   - Só conta tempo se a aba está VISÍVEL (document.hidden = false)
-  //   - Só conta se houve INTERAÇÃO recente (scroll/mousemove/keypress < 30s atrás)
-  //   - A cada 5s ativos, incrementa src.readingTimeSeconds e persiste
-  //
-  // Fonte "lida": marca quando atingir scroll >= 95% E tempo lido >= 60% do
-  // estimado. Combinação evita: (a) marcar por rolar rápido o documento,
-  // (b) marcar só por deixar aberto sem ler.
-  if(!src.readingTimeSeconds) src.readingTimeSeconds = 0;
-  let lastInteractionTs = Date.now();
-  const noteInteraction = () => { lastInteractionTs = Date.now(); };
-  content.addEventListener('scroll', noteInteraction, {passive: true});
-  content.addEventListener('mousemove', noteInteraction, {passive: true});
-  content.addEventListener('keydown', noteInteraction);
-
-  // Cria mini-display de tempo no header (entre stats)
-  const timeDisplay = mk('span');
-  timeDisplay.style.cssText = 'color:var(--gralia-purple);font-weight:600;font-variant-numeric:tabular-nums';
-  timeDisplay.title = 'Tempo real de leitura ativa (só conta com aba visível + interação recente)';
+  // V15.12.75.94 — Tempo lido agora vem do SourcePomo (substitui tracker antigo
+  // que usava idle+visibility). Tempo acumulado = soma de TODOS pomodoros já
+  // feitos nesta fonte específica. Mais honesto que estimar atividade.
+  // (Se a fonte tinha readingTimeSeconds antigo, foi migrado pro accumulatedSec
+  // no SourcePomo.init.)
+  SourcePomo.init(src);
   const fmtTime = (sec) => {
     if(sec < 60) return Math.round(sec) + 's';
     const m = Math.floor(sec / 60);
@@ -32398,48 +32861,41 @@ function showSourceReaderModal(src){
     if(m < 60) return m + 'min' + (s > 0 ? ' '+s+'s' : '');
     return Math.floor(m/60) + 'h ' + (m%60) + 'min';
   };
-  const updateTimeDisplay = () => {
-    timeDisplay.textContent = `📖 ${fmtTime(src.readingTimeSeconds)} lido`;
-    if(src.readAt){
-      timeDisplay.innerHTML += ` <span style="color:var(--accent-text);font-weight:700" title="Marcado como lido em ${new Date(src.readAt).toLocaleDateString('pt-BR')}">✓</span>`;
-    }
-  };
-  // Adiciona na linha de stats
-  stats.appendChild(timeDisplay);
-  updateTimeDisplay();
+  // V15.12.75.94 — updateTimeDisplay agora NO-OP (tempo lido é mostrado no
+  // modal ℹ Info; header não exibe mais). Mantido só pra não quebrar refs.
+  const updateTimeDisplay = () => {};
 
-  // Tick a cada 5s pra incrementar tempo se ativo
-  let lastSavedTime = src.readingTimeSeconds;
-  const timeTicker = setInterval(() => {
-    const idle = (Date.now() - lastInteractionTs) > 30000;
-    if(document.hidden || idle){
-      // Inativo — não conta
-      return;
-    }
-    src.readingTimeSeconds = (src.readingTimeSeconds || 0) + 5;
-    updateTimeDisplay();
-    // Salva no localStorage a cada 30s (não a cada tick pra reduzir IO)
-    if(src.readingTimeSeconds - lastSavedTime >= 30){
-      try{ save(); lastSavedTime = src.readingTimeSeconds; }catch(_){}
-    }
-    // Tenta marcar como lida (check + tempo combinados)
+  // V15.12.75.94 — Handler de fim de fase do pomodoro: dispara comemoração
+  // e checa se a fonte deve virar "lida".
+  function handlePomoPhaseEnd(finishedPhase, state){
+    if(finishedPhase !== 'focus') return;  // só foca em pomos de FOCO completos
+    // Verifica se acabou de marcar como lida
+    let justRead = false;
     if(!src.readAt){
+      const pomosExpected = SourcePomo.estimatedPomosForSource(src);
       const scrollable = content.scrollHeight - content.clientHeight;
       const scrollPct = scrollable > 0 ? (content.scrollTop / scrollable) * 100 : 100;
-      const requiredSec = minutesEstimate * 60 * 0.6;  // 60% do estimado
-      if(scrollPct >= 95 && src.readingTimeSeconds >= requiredSec){
+      // Marca como lida se: completou ≥ N pomos esperados E rolou >= 80% do texto
+      if(state.pomosCompleted >= pomosExpected && scrollPct >= 80){
         src.readAt = Date.now();
+        src.readingTimeSeconds = state.accumulatedSec;  // mantém compat antigo
         try{ save(); }catch(_){}
-        updateTimeDisplay();
-        showToast('✓ "'+src.name+'" marcada como lida!', 6000);
+        justRead = true;
       }
     }
-  }, 5000);
+    celebratePomoFinish(src, justRead);
+    refreshPomoBadge();
+  }
+
+  // Atualiza badge inicial (caso já tenha estado anterior)
+  refreshPomoBadge();
 
   // V15.12.75.90 — Botão flutuante "sair do foco" (só aparece com classe focus-on)
   // V15.12.75.92 — Junto, um seletor compacto de largura (Estendido/Grande/Médio/Pequeno)
+  // V15.12.75.93 — Movido pro canto INFERIOR direito (bottom:20px right:20px)
+  // pra não conflitar com nada no topo da página de leitura.
   const focusBar = mk('div');
-  focusBar.style.cssText = 'position:absolute;top:14px;right:16px;z-index:10;display:none;align-items:center;gap:8px';
+  focusBar.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:99001;display:none;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:8px 10px;box-shadow:0 8px 24px rgba(0,0,0,.12),0 2px 6px rgba(0,0,0,.06);backdrop-filter:blur(8px)';
   // Width picker (chips horizontais)
   const widthPicker = mk('div','reader-width-picker');
   widthPicker.style.cssText = 'display:none;align-items:center;gap:2px;padding:3px;background:rgba(128,66,250,.08);border:1px solid rgba(128,66,250,.22);border-radius:10px;backdrop-filter:blur(8px)';
@@ -32506,7 +32962,7 @@ function showSourceReaderModal(src){
   });
   focusObs.observe(m, {attributes: true, attributeFilter: ['class']});
   m.style.position = 'relative';
-  m.appendChild(focusBar);
+  document.body.appendChild(focusBar);  // V15.12.75.93 — fixed posicionado vs body, não dentro do modal
 
   // V15.12.75.90 — Setas ↑/↓ + PageUp/PageDown + Home/End rolam o content.
   // Esc sai do modo foco (se ativo). Listener no document porque o conteúdo
@@ -32534,9 +32990,11 @@ function showSourceReaderModal(src){
   // Cleanup quando modal fecha
   const cleanupKeys = () => {
     document.removeEventListener('keydown', keyHandler);
-    // V15.12.75.91 — Limpa também o tracker de tempo + salva último estado
-    if(timeTicker) clearInterval(timeTicker);
+    // V15.12.75.94 — Para o pomodoro da fonte (estado é persistido; retoma ao reabrir)
+    SourcePomo.stop(src);
     try{ save(); }catch(_){}
+    // V15.12.75.93 — Remove focusBar do body (era position:fixed nele)
+    if(focusBar && focusBar.parentNode) focusBar.parentNode.removeChild(focusBar);
   };
   // Hook no MutationObserver — quando m sair do DOM, remove o listener
   const observer = new MutationObserver((mutations) => {
