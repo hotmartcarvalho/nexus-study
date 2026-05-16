@@ -4449,6 +4449,18 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 @keyframes pomo-emoji-bounce{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-12px) rotate(-8deg)}50%{transform:translateY(0) rotate(0)}75%{transform:translateY(-6px) rotate(6deg)}}
 @keyframes pomo-confetti-soft{0%{transform:translate(0,0) rotate(0)}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--rot));opacity:0}}
 @keyframes pomo-firework{0%{transform:translate(0,0) scale(1);opacity:1}80%{opacity:1}100%{transform:translate(var(--dx),var(--dy)) scale(0);opacity:0}}
+/* V15.12.75.97 — Petal float: bolha pastel sobe lentamente com sopro lateral (vibe SUAVE) */
+@keyframes pomo-petal-float{
+  0%{transform:translate(0,0) rotate(0);opacity:0}
+  10%{opacity:.7}
+  50%{transform:translate(calc(var(--drift-x) * .5), -45vh) rotate(180deg);opacity:.6}
+  100%{transform:translate(var(--drift-x), -95vh) rotate(360deg);opacity:0}
+}
+/* Confetti cascade: papel picado caindo do topo (vibe EMPOLGANTE) */
+@keyframes pomo-confetti-fall{
+  0%{transform:translateY(-30px) translateX(0) rotate(0)}
+  100%{transform:translateY(105vh) translateX(var(--fall-drift)) rotate(var(--fall-rot))}
+}
 @keyframes pomo-glow-pulse{0%{opacity:0;transform:scale(.5)}50%{opacity:1;transform:scale(1.2)}100%{opacity:.5;transform:scale(1)}}
 @keyframes pomo-star-rise{0%{transform:translateY(0) scale(0) rotate(0);opacity:0}30%{opacity:1;transform:translateY(-80px) scale(1.2) rotate(180deg)}100%{transform:translateY(-300px) scale(0) rotate(720deg);opacity:0}}
 
@@ -4487,17 +4499,20 @@ input[type="month"]::-webkit-calendar-picker-indicator{
    DATA.config.readerFocusWidth (persistente).
    V15.12.75.93 — Fix: regra default pra .focus-on SEM classe fw-* (caso
    estado salvo esteja indefinido, padding ficava zerado e teoria tomava
-   tela toda). Agora cai em medium por default. */
-.source-reader-shell.focus-on .reader-header{display:none !important}
-.source-reader-shell.focus-on .reader-toc-toggle{display:none !important}
-.source-reader-shell.focus-on .reader-progress{
-  background:transparent;
-  border-bottom:none;
-  height:6px;
-  padding:0;
-}
-.source-reader-shell.focus-on .reader-progress .progress-label{display:none}
+   tela toda). Agora cai em medium por default.
+   V15.12.75.96 — User pediu pra MANTER header com infos no modo foco
+   (título, eyebrow, stats, badge pomodoro). Antes escondia tudo. Agora só
+   esconde a sidebar do TOC pra ganhar largura. */
 .source-reader-shell.focus-on .reader-sidebar{display:none !important}
+.source-reader-shell.focus-on .reader-toc-toggle{display:none !important}
+/* Header continua visível, mas com padding reduzido pra dar mais espaço ao texto */
+.source-reader-shell.focus-on .reader-header{
+  padding-top:.625rem !important;
+  padding-bottom:.625rem !important;
+}
+/* Width picker dentro do header — só visível no modo foco */
+.source-reader-shell .reader-width-inline{display:none}
+.source-reader-shell.focus-on .reader-width-inline{display:inline-flex}
 
 /* DEFAULT do modo foco (caso classe fw-* esteja ausente) — equivale a fw-medium */
 .source-reader-shell.focus-on .reader-content{
@@ -7287,7 +7302,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.95';
+window.GRALIA_VERSION = 'V15.12.75.97';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -7659,7 +7674,12 @@ async function publishSource(sourceData, opts){
     source_type: sourceData.type || 'relatorio',
     content_type: sourceData.contentType || 'misto',
     content,
-    summary: sanitizeContentForSharing(sourceData.summary || '') || null
+    summary: sanitizeContentForSharing(sourceData.summary || '') || null,
+    // V15.12.75.97 — Inclui TOC, pdfMeta e sourceFormat pra quem importar
+    // herdar o índice estruturado. Antes o import perdia esses campos.
+    toc: Array.isArray(sourceData.toc) ? sourceData.toc : null,
+    pdfMeta: sourceData.pdfMeta || null,
+    sourceFormat: sourceData.sourceFormat || null
   };
   const tags = normalizeTagsList(opts.tags);
   // V14: content_fingerprint permite dedup do catálogo (busca por hash do texto bruto).
@@ -8273,7 +8293,14 @@ async function importSourceToLocal(resourceId, targetDisciplineId){
     addedAt: Date.now(),
     importedFromResource: resourceId,
     importedFromUser: r.owner_username,
-    importedFromDisplayName: r.owner_display_name
+    importedFromDisplayName: r.owner_display_name,
+    // V15.12.75.97 — Copia TOC, pdfMeta e tags do payload do publisher.
+    // Antes essas chaves eram perdidas → conta de teste não tinha índice
+    // mesmo importando fonte que tinha TOC no admin.
+    toc: Array.isArray(r.payload.toc) ? r.payload.toc : null,
+    pdfMeta: r.payload.pdfMeta || null,
+    tags: Array.isArray(r.payload.tags) ? r.payload.tags : null,
+    sourceFormat: r.payload.sourceFormat || null
   };
   DATA.sources.push(newSource);
   save();
@@ -24094,7 +24121,9 @@ function renderSourceList(wrap){
     const nameText = mk('span');nameText.textContent = src.name;
     name.appendChild(nameText);
     const meta = mk('div','src-meta');
-    const mt1 = mk('span');mt1.textContent=`${cfg.label} · ${(src.content.length/1000).toFixed(1)}k chars`;
+    // V15.12.75.96 — Tira "chars" da lista. User pode ver no modal ℹ se quiser.
+    // Mantém só rótulo do tipo (Markdown, PDF, etc).
+    const mt1 = mk('span');mt1.textContent=cfg.label;
     meta.appendChild(mt1);
     // V15.12.75.91 — Tempo total já lido (se houver). Útil pra ver fontes
     // em progresso (começou mas não terminou).
@@ -24211,12 +24240,8 @@ function renderSourceList(wrap){
       actions.appendChild(pubSlot);
       renderSmartPublishButtonForSource(pubSlot, src);
     }
-    // Indicador de fonte importada (mostra origem)
-    if(src.importedFromUser){
-      const origin = mk('div','src-imported-badge');
-      origin.innerHTML = `📥 Importado de <button class="link-btn" onclick="navigateToProfile('${escapeHTML(src.importedFromUser)}')">@${escapeHTML(src.importedFromUser)}</button>`;
-      info.appendChild(origin);
-    }
+    // V15.12.75.96 — Badge "Importado de @user" REMOVIDO da lista.
+    // User pode ver no modal ℹ Info. Mantém o card limpo.
     // V15.7+: Botão "📖 Ver" abre visualização rica da fonte (markdown renderizado, etc).
     const viewSrc = mkBtn('📖','icon-btn');
     viewSrc.title = 'Ver fonte completa';
@@ -31983,6 +32008,101 @@ function looksLikeMarkdown(text){
 // com índice navegável (se tiver TOC), corpo principal com markdown renderizado.
 // V15.12.75.92 — Modal de informações detalhadas da fonte. Usado a partir
 // do modo lista compacta (que oculta metadados por padrão).
+// V15.12.75.96 — Modal de configuração do pomodoro (pop-up local, sem mudar
+// de página). Usado pelo botão ⚙ do badge no header de fontes. User edita
+// e fecha — volta direto pra leitura.
+function showPomoConfigModal(onSaved){
+  const m = mk('div');
+  m.style.cssText = 'max-width:440px;width:100%';
+
+  // Header
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)';
+  const headIcon = mk('div');
+  headIcon.style.cssText = 'width:40px;height:40px;border-radius:10px;background:rgba(128,66,250,.12);color:var(--gralia-purple);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0';
+  headIcon.textContent = '⏱';
+  head.appendChild(headIcon);
+  const headTitle = mk('div');headTitle.style.flex = '1';
+  const h = mk('h3');h.style.cssText = 'margin:0;font-size:16px;font-weight:700';
+  h.textContent = 'Configurar pomodoro';
+  const sub = mk('p','txt2');sub.style.cssText = 'margin:2px 0 0;font-size:11.5px';
+  sub.textContent = 'Durações aplicam à fonte atual e ao Pomodoro global';
+  headTitle.appendChild(h);headTitle.appendChild(sub);
+  head.appendChild(headTitle);
+  m.appendChild(head);
+
+  // Garante defaults
+  if(!DATA.pomo) DATA.pomo = {};
+  if(typeof DATA.pomo.focusMin !== 'number') DATA.pomo.focusMin = 25;
+  if(typeof DATA.pomo.shortMin !== 'number') DATA.pomo.shortMin = 5;
+  if(typeof DATA.pomo.longMin !== 'number') DATA.pomo.longMin = 15;
+  if(typeof DATA.pomo.cyclesToLong !== 'number') DATA.pomo.cyclesToLong = 4;
+
+  // Grid de campos
+  const grid = mk('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.875rem';
+  const mkField = (key, label, icon, color, min, max) => {
+    const wrap = mk('div');
+    wrap.style.cssText = `padding:.625rem .75rem;background:${color}0F;border:1px solid ${color}33;border-radius:10px`;
+    const lbl = mk('label');
+    lbl.style.cssText = `display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px`;
+    lbl.innerHTML = `<span style="font-size:13px">${icon}</span><span>${label}</span>`;
+    wrap.appendChild(lbl);
+    const input = mk('input');
+    input.type = 'number';
+    input.min = min;
+    input.max = max;
+    input.value = DATA.pomo[key];
+    input.style.cssText = `width:100%;padding:6px 8px;font-size:14px;font-weight:700;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit`;
+    input.dataset.key = key;
+    wrap.appendChild(input);
+    const hint = mk('div');
+    hint.style.cssText = 'font-size:10px;color:var(--text3);margin-top:3px';
+    hint.textContent = `${min}–${max} minutos`;
+    wrap.appendChild(hint);
+    return wrap;
+  };
+  grid.appendChild(mkField('focusMin', 'Foco', '🎯', '#8042fa', 1, 120));
+  grid.appendChild(mkField('shortMin', 'Pausa curta', '☕', '#3b82f6', 1, 30));
+  grid.appendChild(mkField('longMin', 'Pausa longa', '🌿', '#10b981', 5, 60));
+  grid.appendChild(mkField('cyclesToLong', 'Ciclos até longa', '🔁', '#f59e0b', 2, 8));
+  m.appendChild(grid);
+
+  // Hint
+  const hint = mk('p','txt2');
+  hint.style.cssText = 'margin:0 0 1rem;padding:.5rem .75rem;font-size:11.5px;line-height:1.5;background:rgba(245,158,11,.06);border-left:3px solid #f59e0b;border-radius:6px';
+  hint.innerHTML = '💡 <b>Pomodoros em andamento</b> seguem usando as durações antigas até a fase atual terminar. As novas valem da próxima fase em diante.';
+  m.appendChild(hint);
+
+  // Botões
+  const btnRow = mk('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:.5rem';
+  const cancelBtn = mkBtn('Cancelar','btn btn-sm');
+  cancelBtn.addEventListener('click', closeModal);
+  const saveBtn = mkBtn('Salvar','btn btn-p btn-sm');
+  saveBtn.style.fontWeight = '700';
+  saveBtn.addEventListener('click', ()=>{
+    grid.querySelectorAll('input[data-key]').forEach(inp => {
+      const k = inp.dataset.key;
+      const v = parseInt(inp.value, 10);
+      if(!isNaN(v) && v > 0){
+        const min = parseInt(inp.min, 10) || 1;
+        const max = parseInt(inp.max, 10) || 120;
+        DATA.pomo[k] = Math.max(min, Math.min(max, v));
+      }
+    });
+    try{ save(); }catch(_){}
+    showToast('✓ Configurações do pomodoro salvas', 5500);
+    closeModal();
+    if(typeof onSaved === 'function') onSaved();
+  });
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(saveBtn);
+  m.appendChild(btnRow);
+
+  showModal(m);
+}
+
 function showSourceInfoModal(src){
   if(!src) return;
   const m = mk('div');
@@ -32165,14 +32285,58 @@ const SourcePomo = (() => {
       src.pomoState.accumulatedSec = Math.max(src.pomoState.accumulatedSec, src.readingTimeSeconds);
       src._pomoMigrated = true;
     }
+    // V15.12.75.96 — Catch-up: se modal foi fechado com pomodoro rolando,
+    // simula o tempo decorrido. Avança fase(s) se necessário e adiciona
+    // tempo de foco no accumulatedSec. Resolve bug do play/pause stale.
+    if(src.pomoState.isRunning && src.pomoState.phaseStartedAt){
+      const elapsed = Math.floor((Date.now() - src.pomoState.phaseStartedAt) / 1000);
+      let remaining = elapsed;
+      let safety = 0;
+      while(remaining > 0 && safety < 30){
+        safety++;
+        const phaseDur = (src.pomoState.currentPhase === 'focus' ? (DATA.pomo.focusMin || 25)
+                       : src.pomoState.currentPhase === 'sbreak' ? (DATA.pomo.shortMin || DATA.pomo.sbreakMin || 5)
+                       : (DATA.pomo.longMin || DATA.pomo.lbreakMin || 15)) * 60;
+        const currentElapsed = (src.pomoState.phaseElapsedBeforePause || 0);
+        const timeToFillPhase = phaseDur - currentElapsed;
+        if(remaining < timeToFillPhase){
+          // Continua na mesma fase
+          src.pomoState.phaseElapsedBeforePause = currentElapsed + remaining;
+          src.pomoState.phaseStartedAt = Date.now();
+          // Se for foco, conta no acumulado
+          if(src.pomoState.currentPhase === 'focus'){
+            src.pomoState.accumulatedSec = (src.pomoState.accumulatedSec || 0) + remaining;
+          }
+          remaining = 0;
+        } else {
+          // Fase completa — avança
+          remaining -= timeToFillPhase;
+          if(src.pomoState.currentPhase === 'focus'){
+            src.pomoState.accumulatedSec = (src.pomoState.accumulatedSec || 0) + timeToFillPhase;
+            src.pomoState.pomosCompleted = (src.pomoState.pomosCompleted || 0) + 1;
+            src.pomoState.currentCycleNum = (src.pomoState.currentCycleNum || 0) + 1;
+            const cyclesToLong = (DATA.pomo && DATA.pomo.cyclesToLong) || 4;
+            src.pomoState.currentPhase = (src.pomoState.currentCycleNum % cyclesToLong === 0) ? 'lbreak' : 'sbreak';
+          } else {
+            src.pomoState.currentPhase = 'focus';
+          }
+          src.pomoState.phaseElapsedBeforePause = 0;
+          src.pomoState.phaseStartedAt = Date.now();
+        }
+      }
+      src.pomoState.lastTickAt = Date.now();
+      try{ save(); }catch(_){}
+    }
     return src.pomoState;
   }
 
   function phaseDurationSec(phase){
-    const cfg = DATA.pomo || {focusMin: 25, sbreakMin: 5, lbreakMin: 15, cyclesToLong: 4};
+    // V15.12.75.96 — Campos reais do DATA.pomo são focusMin/shortMin/longMin
+    // (não sbreakMin/lbreakMin como tinha por engano antes).
+    const cfg = DATA.pomo || {};
     if(phase === 'focus') return (cfg.focusMin || 25) * 60;
-    if(phase === 'sbreak') return (cfg.sbreakMin || 5) * 60;
-    if(phase === 'lbreak') return (cfg.lbreakMin || 15) * 60;
+    if(phase === 'sbreak') return (cfg.shortMin || cfg.sbreakMin || 5) * 60;
+    if(phase === 'lbreak') return (cfg.longMin || cfg.lbreakMin || 15) * 60;
     return 25 * 60;
   }
 
@@ -32192,6 +32356,8 @@ const SourcePomo = (() => {
   }
 
   // Inicia/retoma. Idempotente.
+  // V15.12.75.96 — Se já está running mas ticker morreu (cenário pós-reabrir
+  // modal), apenas religa o ticker sem mudar phaseStartedAt.
   function start(src, callbacks){
     const state = init(src);
     currentSrc = src;
@@ -32204,13 +32370,15 @@ const SourcePomo = (() => {
       state.isRunning = true;
       state.lastTickAt = Date.now();
       try{ save(); }catch(_){}
+    } else {
+      // V15.12.75.96 — Reativando estado já running. Ajusta lastTickAt pra
+      // não contar tempo de fora do modal como "lido" no tick imediato.
+      state.lastTickAt = Date.now();
     }
     if(ticker) clearInterval(ticker);
     ticker = setInterval(() => tick(src), 1000);
     if(onTickCb) onTickCb(state);
-    // V15.12.75.95 — Dispara onPhaseStart ao retomar (fase atual)
     if(wasNotRunning && onPhaseStartCb && state.phaseElapsedBeforePause === 0){
-      // Só dispara start se a fase está começando do zero, não numa retomada do meio
       onPhaseStartCb(state.currentPhase, state);
     }
   }
@@ -32270,12 +32438,17 @@ const SourcePomo = (() => {
     if(onPhaseStartCb) onPhaseStartCb(state.currentPhase, state);
   }
 
+  // V15.12.75.96 — stop limpa só o ticker do JS e callbacks. NÃO pausa o
+  // estado lógico — usuário pode fechar modal sem querer pausar pomodoro.
+  // Tempo virtual continua "passando" até a próxima abertura, que recalcula
+  // baseado em phaseStartedAt.
   function stop(src){
-    pause(src);
+    if(ticker){ clearInterval(ticker); ticker = null; }
     currentSrc = null;
     onTickCb = null;
     onPhaseEndCb = null;
     onPhaseStartCb = null;
+    try{ save(); }catch(_){}
   }
 
   function getDisplay(src){
@@ -32392,25 +32565,42 @@ function playPomoFinishSound(vibe){
     osc.stop(now + startOffset + duration);
   };
   if(vibe === 'soft'){
-    // Chime sutil: 2 tons suaves
-    playTone(880, 0,    0.7, 0.18, 'sine');
-    playTone(1108, 0.18, 0.7, 0.14, 'sine');
+    // V15.12.75.97 — SUAVE: synth pad lento, descendente, contemplativo.
+    // Sine puro grave, "respiração" sem urgência. Sem brilho agudo.
+    playTone(587, 0,    1.4, 0.16, 'sine');     // D5 sustain longo
+    playTone(440, 0.30, 1.2, 0.14, 'sine');     // A4 (terça abaixo)
+    playTone(330, 0.55, 1.0, 0.12, 'sine');     // E4 (resolução grave, sensação de descanso)
   } else if(vibe === 'energetic'){
-    // Fanfare: arpejo ascendente
-    playTone(523, 0,    0.25, 0.22, 'triangle');  // C5
-    playTone(659, 0.10, 0.25, 0.22, 'triangle');  // E5
-    playTone(784, 0.20, 0.25, 0.22, 'triangle');  // G5
-    playTone(1047, 0.30, 0.6,  0.28, 'triangle'); // C6 (sustentado)
-    // Segundo "batuque" pra dar energia
-    playTone(1568, 0.55, 0.4,  0.20, 'triangle'); // G6
+    // V15.12.75.97 — EMPOLGANTE: square wave staccato (8-bit / game retro),
+    // arpejo MUITO rápido + percussão sintética. Quem ouve sabe que é "vitória".
+    // Notas curtas e rítmicas (style chiptune)
+    playTone(523, 0,    0.10, 0.18, 'square');  // C5 staccato
+    playTone(659, 0.08, 0.10, 0.18, 'square');  // E5
+    playTone(784, 0.16, 0.10, 0.18, 'square');  // G5
+    playTone(1047,0.24, 0.10, 0.18, 'square');  // C6
+    playTone(1319,0.32, 0.10, 0.18, 'square');  // E6
+    playTone(1568,0.40, 0.10, 0.18, 'square');  // G6
+    playTone(2093,0.48, 0.30, 0.20, 'square');  // C7 (climax)
+    // Bass kick sintético (sawtooth grave caindo)
+    playTone(110, 0,    0.15, 0.30, 'sawtooth'); // A2 → punch
+    playTone(82,  0.20, 0.15, 0.25, 'sawtooth'); // E2
+    playTone(110, 0.40, 0.15, 0.25, 'sawtooth'); // A2
   } else if(vibe === 'achievement'){
-    // Conquista: acorde + sino de campainha
-    playTone(523, 0,    0.6, 0.24, 'sine');     // C5
-    playTone(659, 0,    0.6, 0.20, 'sine');     // E5
-    playTone(784, 0,    0.6, 0.18, 'sine');     // G5
-    playTone(1047, 0.20, 0.9, 0.26, 'triangle'); // C6 brilhante
-    playTone(1319, 0.40, 0.7, 0.22, 'triangle'); // E6
-    playTone(1568, 0.55, 0.9, 0.20, 'triangle'); // G6 (final glorioso)
+    // V15.12.75.97 — CONQUISTA: fanfare cinematográfica épica.
+    // Sawtooth (brass synth) + sustain longo + harmônicos. "Final Boss vencido".
+    // Camada 1: brass principal — acorde maior amplo
+    playTone(262, 0,    1.5, 0.22, 'sawtooth'); // C4 (fundamental)
+    playTone(330, 0,    1.5, 0.18, 'sawtooth'); // E4
+    playTone(392, 0,    1.5, 0.16, 'sawtooth'); // G4
+    // Camada 2: oitava acima entra depois (suspense → resolução)
+    playTone(523, 0.40, 1.3, 0.20, 'sawtooth'); // C5
+    playTone(659, 0.40, 1.3, 0.18, 'sawtooth'); // E5
+    playTone(784, 0.40, 1.3, 0.16, 'sawtooth'); // G5
+    // Camada 3: detalhe brilhante (triangle) — pontos de luz
+    playTone(1047, 0.80, 0.6, 0.22, 'triangle'); // C6
+    playTone(1568, 1.20, 0.5, 0.20, 'triangle'); // G6 (cume épico)
+    // Trovejada grave (sub-bass sine) — peso emocional
+    playTone(65.4, 0,    1.8, 0.18, 'sine');    // C2 sub
   }
 }
 
@@ -32419,12 +32609,15 @@ function showPomoFinishAnimation(src, vibe, pomosDone, pomosExpected){
   const existing = document.querySelector('.pomo-celebrate-overlay');
   if(existing) existing.remove();
   const overlay = mk('div','pomo-celebrate-overlay vibe-'+vibe);
-  // Estilos base via inline (CSS no head abaixo cuidará do resto)
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;background:radial-gradient(circle at center, rgba(128,66,250,0.10), transparent 70%);animation:pomo-fade-in .4s ease-out';
+  // V15.12.75.97 — Overlay agora TRANSPARENTE. Antes tinha radial-gradient
+  // roxo que dava impressão de "preenchendo o card". Cor de destaque agora
+  // vem dos efeitos (confete/fogos/glow) que ficam ATRÁS do card via z-index.
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;background:transparent;animation:pomo-fade-in .4s ease-out';
 
   // Card central
+  // V15.12.75.97 — z-index alto pra ficar SEMPRE acima de glow/partículas.
   const card = mk('div','pomo-celebrate-card');
-  card.style.cssText = 'background:var(--surface);border:1px solid rgba(128,66,250,.30);border-radius:18px;padding:1.5rem 2.5rem;box-shadow:0 24px 60px rgba(128,66,250,.30), 0 6px 18px rgba(0,0,0,.12);text-align:center;animation:pomo-card-pop .55s cubic-bezier(.34,1.56,.64,1);max-width:420px;pointer-events:auto';
+  card.style.cssText = 'background:var(--surface);border:1px solid rgba(128,66,250,.30);border-radius:18px;padding:1.5rem 2.5rem;box-shadow:0 24px 60px rgba(128,66,250,.30), 0 6px 18px rgba(0,0,0,.12);text-align:center;animation:pomo-card-pop .55s cubic-bezier(.34,1.56,.64,1);max-width:420px;pointer-events:auto;position:relative;z-index:10';
 
   const emoji = mk('div');
   emoji.style.cssText = 'font-size:64px;line-height:1;margin-bottom:.625rem;animation:pomo-emoji-bounce 1.2s ease-in-out';
@@ -32472,37 +32665,45 @@ function showPomoFinishAnimation(src, vibe, pomosDone, pomosExpected){
 
   overlay.appendChild(card);
 
-  // Confete / fogos / brilho dependendo da vibe
+  // V15.12.75.97 — Confete / fogos / brilho atrás do card via z-index:0.
+  // Card tem z-index:10 (ver acima). Cada vibe agora com personalidade visual
+  // bem distinta — antes pareciam variações da mesma animação.
   if(vibe === 'soft'){
-    // Confete sutil — 8 partículas amarelas/roxas
-    for(let i = 0; i < 8; i++){
-      const conf = mk('div');
-      const colors = ['#fbbf24', '#8042fa', '#a78bfa', '#fde68a'];
-      conf.style.cssText = `position:absolute;width:8px;height:8px;background:${colors[i%4]};border-radius:2px;left:50%;top:50%;animation:pomo-confetti-soft 1.8s ease-out forwards;animation-delay:${i*0.05}s;--dx:${(i-4)*40}px;--dy:${-100 - (i%3)*30}px;--rot:${(i%2?1:-1)*360}deg`;
-      overlay.appendChild(conf);
+    // SUAVE: pétalas/bolhas flutuantes subindo SEM explosão.
+    // Movimento ondulante calmo, paleta pastel (tons rosados/lavanda).
+    const pastel = ['#f9a8d4', '#c4b5fd', '#fde68a', '#a7f3d0', '#fbcfe8'];
+    for(let i = 0; i < 14; i++){
+      const petal = mk('div');
+      const size = 10 + (i % 4) * 4;
+      const startX = 15 + (i * 5) + (Math.random() * 10 - 5);
+      const driftX = (Math.random() * 60 - 30);  // sopro lateral aleatório
+      petal.style.cssText = `position:absolute;width:${size}px;height:${size}px;background:${pastel[i%5]};border-radius:50% 50% 40% 60% / 60% 40% 50% 50%;left:${startX}%;bottom:-${size}px;opacity:.7;animation:pomo-petal-float 4s ease-out forwards;animation-delay:${i*0.12}s;--drift-x:${driftX}px;z-index:0;pointer-events:none;filter:blur(.5px)`;
+      overlay.appendChild(petal);
     }
   } else if(vibe === 'energetic'){
-    // Fogos: 5 explosões com burst de 12 partículas cada
-    for(let burst = 0; burst < 5; burst++){
-      for(let i = 0; i < 12; i++){
-        const fw = mk('div');
-        const colors = ['#fbbf24', '#8042fa', '#10b981', '#ef4444', '#3b82f6'];
-        const angle = (i / 12) * Math.PI * 2;
-        const dx = Math.cos(angle) * 180;
-        const dy = Math.sin(angle) * 180 - 50;
-        fw.style.cssText = `position:absolute;width:10px;height:10px;background:${colors[burst%5]};border-radius:50%;left:${30+burst*10}%;top:${30+(burst%2)*20}%;animation:pomo-firework 1.4s ease-out forwards;animation-delay:${burst*0.18}s;--dx:${dx}px;--dy:${dy}px`;
-        overlay.appendChild(fw);
-      }
+    // EMPOLGANTE: confete cascade do TOPO da tela, denso, rápido, vibrante.
+    // Tipo papel picado caindo num desfile. Cores fortes saturadas.
+    const vivid = ['#fbbf24', '#8042fa', '#10b981', '#ef4444', '#3b82f6', '#ec4899', '#06b6d4'];
+    for(let i = 0; i < 50; i++){
+      const piece = mk('div');
+      const startX = Math.random() * 100;
+      const driftX = (Math.random() * 120 - 60);
+      const rot = (Math.random() * 720 - 360);
+      const w = 8 + Math.random() * 6;
+      const h = 12 + Math.random() * 8;
+      piece.style.cssText = `position:absolute;width:${w}px;height:${h}px;background:${vivid[i%7]};left:${startX}%;top:-30px;animation:pomo-confetti-fall ${1.5 + Math.random()*1}s linear forwards;animation-delay:${i*0.04}s;--fall-drift:${driftX}px;--fall-rot:${rot}deg;z-index:0;pointer-events:none`;
+      overlay.appendChild(piece);
     }
   } else if(vibe === 'achievement'){
-    // Brilho radial fullscreen + estrelas grandes
+    // V15.12.75.97 — Brilho radial fullscreen + estrelas. PRE-pendado pra
+    // ficar ATRÁS do card (no DOM antes). Antes ficava por cima cobrindo.
     const glow = mk('div');
-    glow.style.cssText = 'position:absolute;inset:0;background:radial-gradient(circle at center, rgba(255,215,0,.30) 0%, rgba(128,66,250,.20) 30%, transparent 70%);animation:pomo-glow-pulse 1.6s ease-out';
-    overlay.appendChild(glow);
-    // Estrelas grandes que sobem
+    glow.style.cssText = 'position:absolute;inset:0;background:radial-gradient(circle at center, rgba(255,215,0,.30) 0%, rgba(128,66,250,.20) 30%, transparent 70%);animation:pomo-glow-pulse 1.6s ease-out;z-index:0;pointer-events:none';
+    overlay.insertBefore(glow, overlay.firstChild);  // bg atrás de tudo
+    // Estrelas grandes que sobem (z-index 1 — entre glow e card)
     for(let i = 0; i < 14; i++){
       const star = mk('div');
-      star.style.cssText = `position:absolute;font-size:${24 + (i%3)*8}px;left:${10 + i*6}%;top:60%;animation:pomo-star-rise 2.5s ease-out forwards;animation-delay:${i*0.08}s;color:#fbbf24`;
+      star.style.cssText = `position:absolute;font-size:${24 + (i%3)*8}px;left:${10 + i*6}%;top:60%;animation:pomo-star-rise 2.5s ease-out forwards;animation-delay:${i*0.08}s;color:#fbbf24;z-index:1;pointer-events:none`;
       star.textContent = '⭐';
       overlay.appendChild(star);
     }
@@ -32534,26 +32735,51 @@ function showSourceReaderModal(src){
                          /^[ \t]*>\s+\S/m.test(srcText);
   const isMarkdown = hasAnyMarkdown || looksLikeMarkdown(srcText);
   const disc = getDiscipline(src.disciplineId);
+  // V15.12.75.96 — Auto-detect TOC se src.toc não existe OU é array vazio
+  // (fonte antiga, foi salva antes da feature, ou detecção anterior falhou).
+  // Roda heurística e persiste. NÃO sobrescreve se já tem itens válidos.
+  const needsTocDetect = !Array.isArray(src.toc) || src.toc.length === 0;
+  if(needsTocDetect && src.content && src.content.length > 1000){
+    if(typeof detectTOCHeuristic === 'function'){
+      try{
+        const detected = detectTOCHeuristic(src.content);
+        if(Array.isArray(detected) && detected.length >= 2){
+          src.toc = detected;
+          try{ save(); }catch(_){}
+          console.info('[toc] "'+src.name+'": auto-detectado '+detected.length+' seções');
+        } else {
+          console.info('[toc] "'+src.name+'": auto-detect achou '+(detected ? detected.length : 0)+' seções (<2, ignorado)');
+        }
+      }catch(e){
+        console.warn('[toc] auto-detect falhou:', e.message);
+      }
+    }
+  }
+
   const cleanedToc = (function(){
     if(!Array.isArray(src.toc)) {
-      console.info('[toc] src.toc não é array:', typeof src.toc, src.toc);
+      console.info('[toc] "'+src.name+'": src.toc não é array. Tipo:', typeof src.toc);
+      return [];
+    }
+    if(src.toc.length === 0){
+      console.info('[toc] "'+src.name+'": src.toc é array vazio');
       return [];
     }
     const original = src.toc.length;
     const filtered = src.toc.filter(sec => {
       if(!sec || !sec.title) return false;
-      // V15.12.75.95 — Relaxado: 2 chars pra qualquer tipo (não só markdown)
       if(sec.title.length < 2) return false;
       if(typeof isLikelyMetadataLine === 'function' && isLikelyMetadataLine(sec.title)) return false;
+      // V15.12.75.96 — Min len por seção bem leniente. Antes filtrava demais.
+      // Aceita qualquer seção com pelo menos 20 chars de conteúdo.
       const len = (sec.endChar || (src.content||'').length) - (sec.startChar || 0);
-      // V15.12.75.95 — Relaxado: 30 chars (era 200 pra texto puro, muito restritivo)
-      const minLen = sec.isMarkdown ? 30 : 80;
-      return len >= minLen;
+      if(len < 20) return false;
+      return true;
     });
     if(original > 0 && filtered.length === 0){
-      console.info(`[toc] cleanedToc filtrou TODAS as ${original} seções de "${src.name}". Veja src.toc no console.`);
+      console.info('[toc] "'+src.name+'": filtrou TODAS as '+original+' seções. src.toc[0]=', src.toc[0]);
     } else if(original !== filtered.length){
-      console.info(`[toc] "${src.name}": ${filtered.length}/${original} seções aprovadas após filtro`);
+      console.info('[toc] "'+src.name+'": '+filtered.length+'/'+original+' seções aprovadas');
     }
     return filtered;
   })();
@@ -32606,9 +32832,9 @@ function showSourceReaderModal(src){
   const stats = mk('div');
   stats.style.cssText = 'display:flex;gap:.875rem;flex-wrap:wrap;font-size:12px;color:var(--text2);margin-top:4px;align-items:center';
   const charCount = (src.content||'').length;
-  const sizeText = charCount > 1000 ? Math.round(charCount/1000).toLocaleString('pt-BR') + 'k chars' : charCount + ' chars';
-  stats.innerHTML += `<span>📏 ${sizeText}</span>`;
-  // V15.12.75.89 — Estimativa de tempo de leitura.
+  // V15.12.75.96 — Header do reader: removidos chars, markdown badge e autor.
+  // Permanecem só leitura estimada e seções (úteis pra contexto de leitura).
+  // Tudo de identidade da fonte (chars, autor, markdown, datas) está no modal ℹ Info.
   const wordsEstimate = Math.round(charCount / 5.5);
   const minutesEstimate = Math.max(1, Math.round(wordsEstimate / 200));
   const timeText = minutesEstimate < 60
@@ -32617,12 +32843,6 @@ function showSourceReaderModal(src){
   stats.innerHTML += `<span title="Estimativa baseada em ~200 palavras/min (leitura técnica)">⏱ ${timeText} leitura</span>`;
   if(cleanedToc.length > 0){
     stats.innerHTML += `<span>📑 ${cleanedToc.length} ${cleanedToc.length===1?'seção':'seções'}</span>`;
-  }
-  if(isMarkdown){
-    stats.innerHTML += `<span style="color:var(--gralia-purple);font-weight:600">📝 Markdown</span>`;
-  }
-  if(src.importedFromUser){
-    stats.innerHTML += `<span>📥 De @${escapeHTML(src.importedFromUser)}</span>`;
   }
   // V15.12.75.94 — Tempo total lido = soma dos pomodoros. Atualizado dinamicamente.
   const fmtTime = (sec) => {
@@ -32704,12 +32924,15 @@ function showSourceReaderModal(src){
   pomoCfgBtn.type = 'button';
   pomoCfgBtn.style.cssText = 'width:30px;height:30px;background:transparent;border:1px solid transparent;border-radius:8px;cursor:pointer;font-family:inherit;color:var(--text3);font-size:15px;display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease';
   pomoCfgBtn.innerHTML = '⚙';
-  pomoCfgBtn.title = 'Ajustar durações de foco/pausa (vai pra página Pomodoro)';
+  pomoCfgBtn.title = 'Ajustar durações de foco/pausa (pop-up)';
   pomoCfgBtn.addEventListener('mouseenter',()=>{pomoCfgBtn.style.color='var(--gralia-purple)';pomoCfgBtn.style.background='rgba(128,66,250,.08)';pomoCfgBtn.style.borderColor='rgba(128,66,250,.22)';});
   pomoCfgBtn.addEventListener('mouseleave',()=>{pomoCfgBtn.style.color='var(--text3)';pomoCfgBtn.style.background='transparent';pomoCfgBtn.style.borderColor='transparent';});
   pomoCfgBtn.addEventListener('click',()=>{
-    closeModal();
-    setTimeout(()=>{ ST.view='pomodoro'; render(); }, 100);
+    // V15.12.75.96 — Pop-up local em vez de navegar pra view Pomodoro.
+    // Modal stack preserva o reader aberto por baixo.
+    showPomoConfigModal(() => {
+      refreshPomoBadge();  // atualiza display caso o foco/pausa duration mudou
+    });
   });
   pomoBadgeWrap.appendChild(pomoCfgBtn);
 
@@ -32760,7 +32983,8 @@ function showSourceReaderModal(src){
   headBtns.style.cssText = 'display:flex;gap:6px;flex-shrink:0;align-items:center';
   headBtns.appendChild(pomoBadgeWrap);
 
-  // V15.12.75.94 — Botão ℹ no header
+  // V15.12.75.94 — Botão ℹ no header — declarado aqui mas anexado ao final
+  // (no Grupo 3 de ações, depois do botão Foco)
   const infoBtnH = mk('button');
   infoBtnH.type = 'button';
   infoBtnH.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease;font-weight:700';
@@ -32769,9 +32993,20 @@ function showSourceReaderModal(src){
   infoBtnH.addEventListener('mouseenter',()=>{infoBtnH.style.background='rgba(128,66,250,.10)';infoBtnH.style.borderColor='rgba(128,66,250,.40)';infoBtnH.style.color='var(--gralia-purple)';});
   infoBtnH.addEventListener('mouseleave',()=>{infoBtnH.style.background='var(--surface)';infoBtnH.style.borderColor='var(--border)';infoBtnH.style.color='var(--text2)';});
   infoBtnH.addEventListener('click', ()=>showSourceInfoModal(src));
-  headBtns.appendChild(infoBtnH);
 
-  // V15.12.75.91 — Botões "início" e "fim" pra pular pra começo/fim do texto.
+  // V15.12.75.96 — Reorganização: 3 grupos visuais separados.
+  // Grupo 1 (Navegação): ⏮ ⏭
+  // Grupo 2 (Modo de leitura): widthPicker[só foco] · sair foco[só foco] · 🎯 Foco
+  // Grupo 3 (Ações): ℹ ✏️ ×
+  // Separadores verticais entre grupos pra clareza visual.
+
+  const mkSep = () => {
+    const s = mk('span');
+    s.style.cssText = 'width:1px;height:22px;background:var(--border);margin:0 2px;flex-shrink:0';
+    return s;
+  };
+
+  // V15.12.75.91 — Botões "início" e "fim" (Grupo 1: Navegação)
   const mkNavBtn = (icon, title, onClick) => {
     const b = mk('button');
     b.type = 'button';
@@ -32787,6 +33022,17 @@ function showSourceReaderModal(src){
   const toEndBtn = mkNavBtn('⏭', 'Pular pro fim (End)', () => content.scrollTo({top: content.scrollHeight, behavior: 'smooth'}));
   headBtns.appendChild(toStartBtn);
   headBtns.appendChild(toEndBtn);
+
+  headBtns.appendChild(mkSep());
+
+  // V15.12.75.96 — Grupo 2: modo de leitura.
+  // Placeholders pro widthPicker e focusExit (inseridos depois).
+  const widthPickerSlot = mk('span');
+  widthPickerSlot.style.cssText = 'display:contents';
+  headBtns.appendChild(widthPickerSlot);
+  const focusExitSlot = mk('span');
+  focusExitSlot.style.cssText = 'display:contents';
+  headBtns.appendChild(focusExitSlot);
 
   // V15.12.75.90 — Botão "modo foco": esconde header, marcadores e
   // distrações. Deixa só texto + barra fina de progresso.
@@ -32850,10 +33096,19 @@ function showSourceReaderModal(src){
     }
   });
   headBtns.appendChild(focusBtnH);
+
+  // V15.12.75.96 — Separador antes do Grupo 3 (Ações)
+  headBtns.appendChild(mkSep());
+
+  // Grupo 3 (Ações): ℹ ✏️ ×
+  headBtns.appendChild(infoBtnH);
   const editBtnH = mk('button');
   editBtnH.type = 'button';
-  editBtnH.style.cssText = 'padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text2)';
-  editBtnH.textContent = '✏️ Editar';
+  editBtnH.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease';
+  editBtnH.innerHTML = '✏️';
+  editBtnH.title = 'Editar fonte';
+  editBtnH.addEventListener('mouseenter',()=>{editBtnH.style.background='rgba(128,66,250,.10)';editBtnH.style.borderColor='rgba(128,66,250,.40)';});
+  editBtnH.addEventListener('mouseleave',()=>{editBtnH.style.background='var(--surface)';editBtnH.style.borderColor='var(--border)';});
   editBtnH.addEventListener('click', ()=>{
     closeModal();
     setTimeout(()=>showEditSourceModal(src), 50);
@@ -32861,8 +33116,11 @@ function showSourceReaderModal(src){
   headBtns.appendChild(editBtnH);
   const closeBtnH = mk('button');
   closeBtnH.type = 'button';
-  closeBtnH.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:18px;cursor:pointer;font-family:inherit;color:var(--text2);line-height:1;display:flex;align-items:center;justify-content:center';
+  closeBtnH.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:18px;cursor:pointer;font-family:inherit;color:var(--text2);line-height:1;display:flex;align-items:center;justify-content:center;transition:all .15s ease';
   closeBtnH.textContent = '×';
+  closeBtnH.title = 'Fechar (Esc)';
+  closeBtnH.addEventListener('mouseenter',()=>{closeBtnH.style.background='rgba(232,76,76,.08)';closeBtnH.style.borderColor='rgba(232,76,76,.30)';closeBtnH.style.color='var(--red-text)';});
+  closeBtnH.addEventListener('mouseleave',()=>{closeBtnH.style.background='var(--surface)';closeBtnH.style.borderColor='var(--border)';closeBtnH.style.color='var(--text2)';});
   closeBtnH.addEventListener('click', closeModal);
   headBtns.appendChild(closeBtnH);
   header.appendChild(headBtns);
@@ -33044,8 +33302,17 @@ function showSourceReaderModal(src){
   // que usava idle+visibility). Tempo acumulado = soma de TODOS pomodoros já
   // feitos nesta fonte específica. Mais honesto que estimar atividade.
   // (Se a fonte tinha readingTimeSeconds antigo, foi migrado pro accumulatedSec
-  // no SourcePomo.init.)
+  // V15.12.75.96 — Tempo lido agora vem do SourcePomo. Se modal foi fechado
+  // com pomo rolando, init faz catch-up de tempo. Aqui religamos o ticker
+  // automaticamente pra badge atualizar em tempo real sem precisar do user
+  // clicar em "play".
   SourcePomo.init(src);
+  if(src.pomoState && src.pomoState.isRunning){
+    // Reativa ticker preservando estado isRunning (não muda phaseStartedAt)
+    setTimeout(() => {
+      SourcePomo.start(src, { onTick: refreshPomoBadge, onPhaseEnd: handlePomoPhaseEnd, onPhaseStart: handlePomoPhaseStart });
+    }, 50);  // espera elementos do header existirem
+  }
   // V15.12.75.95 — fmtTime e updateTimeDisplay já foram declarados no header
   // (V94/V95 layout). Removidas as decls duplicadas que causavam erro de parse.
 
@@ -33081,20 +33348,16 @@ function showSourceReaderModal(src){
   // V15.12.75.90 — Botão flutuante "sair do foco" (só aparece com classe focus-on)
   // V15.12.75.92 — Junto, um seletor compacto de largura (Estendido/Grande/Médio/Pequeno)
   // V15.12.75.95 — Barra flutuante do modo foco (sair + larguras). Movida
-  // pro canto inferior ESQUERDO pra não conflitar com nada do conteúdo.
-  // Aparece só com .focus-on (controle via JS direto, sem CSS :has).
-  const focusBar = mk('div','reader-focus-bar');
-  focusBar.style.cssText = 'position:fixed;bottom:24px;left:24px;z-index:99001;display:none;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:6px 8px;box-shadow:0 8px 24px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.06);font-family:inherit';
-
-  // Width picker (4 botões compactos)
+  // V15.12.75.96 — Width picker INLINE no header (não mais flutuante).
+  // Aparece com classe .reader-width-inline (CSS controla display via .focus-on).
   const widthOptions = [
     {key:'wide',   label:'Estendido', title:'Sem limite (até 1200px)'},
     {key:'large',  label:'Grande',    title:'960px'},
     {key:'medium', label:'Médio',     title:'720px'},
     {key:'small',  label:'Pequeno',   title:'560px'}
   ];
-  const widthPicker = mk('div');
-  widthPicker.style.cssText = 'display:inline-flex;align-items:center;gap:2px;padding:2px;background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.18);border-radius:9px';
+  const widthPicker = mk('div','reader-width-inline');
+  widthPicker.style.cssText = 'align-items:center;gap:2px;padding:2px;background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.18);border-radius:9px';
   const widthBtns = {};
   const applyWidth = (key) => {
     m.classList.remove('fw-wide','fw-large','fw-medium','fw-small');
@@ -33112,33 +33375,29 @@ function showSourceReaderModal(src){
   widthOptions.forEach(opt => {
     const b = mk('button');
     b.type = 'button';
-    b.style.cssText = 'padding:4px 10px;background:transparent;color:var(--gralia-purple);border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .12s';
+    b.style.cssText = 'padding:4px 9px;background:transparent;color:var(--gralia-purple);border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .12s';
     b.textContent = opt.label;
     b.title = opt.title;
     b.addEventListener('click', () => applyWidth(opt.key));
     widthBtns[opt.key] = b;
     widthPicker.appendChild(b);
   });
-  focusBar.appendChild(widthPicker);
 
-  // Botão sair do foco (separado, mais destacado)
-  const focusExit = mk('button');
+  // Botão "Sair do foco" inline também — só visível no modo foco
+  const focusExit = mk('button','reader-width-inline');
   focusExit.type = 'button';
-  focusExit.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:5px 11px;background:var(--gralia-purple);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:700;transition:all .15s ease';
-  focusExit.innerHTML = '<span style="font-size:13px">✕</span><span>Sair do foco</span>';
+  focusExit.style.cssText = 'align-items:center;gap:5px;padding:5px 10px;background:var(--gralia-purple);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:700;transition:all .15s ease';
+  focusExit.innerHTML = '<span style="font-size:12px">✕</span><span>Sair do foco</span>';
   focusExit.title = 'Sair do modo foco (Esc)';
   focusExit.addEventListener('mouseenter',()=>{focusExit.style.background='#6a30dc';});
   focusExit.addEventListener('mouseleave',()=>{focusExit.style.background='var(--gralia-purple)';});
   focusExit.addEventListener('click',()=>{
     m.classList.remove('focus-on');
   });
-  focusBar.appendChild(focusExit);
 
-  // V15.12.75.95 — Mostra/esconde focusBar baseado em focus-on
-  // Aplica largura visual também (selected chip).
+  // V15.12.75.96 — Sincroniza largura visual no picker quando classes mudam
   const focusObs = new MutationObserver(() => {
     if(m.classList.contains('focus-on')){
-      focusBar.style.display = 'flex';
       const current = ['wide','large','medium','small'].find(k => m.classList.contains('fw-'+k)) || 'medium';
       Object.keys(widthBtns).forEach(k => {
         const isOn = k === current;
@@ -33146,13 +33405,15 @@ function showSourceReaderModal(src){
         widthBtns[k].style.color = isOn ? '#fff' : 'var(--gralia-purple)';
         widthBtns[k].style.fontWeight = isOn ? '700' : '500';
       });
-    } else {
-      focusBar.style.display = 'none';
     }
   });
   focusObs.observe(m, {attributes: true, attributeFilter: ['class']});
   m.style.position = 'relative';
-  document.body.appendChild(focusBar);  // V15.12.75.93 — fixed posicionado vs body, não dentro do modal
+
+  // V15.12.75.96 — Anexa widthPicker e focusExit aos slots do header.
+  // Visibilidade controlada via CSS (.reader-width-inline aparece em .focus-on)
+  widthPickerSlot.appendChild(widthPicker);
+  focusExitSlot.appendChild(focusExit);
 
   // V15.12.75.90 — Setas ↑/↓ + PageUp/PageDown + Home/End rolam o content.
   // Esc sai do modo foco (se ativo). Listener no document porque o conteúdo
@@ -33286,7 +33547,19 @@ function showSourceReaderModal(src){
       try{
         const scrollable = content.scrollHeight;
         if(scrollable <= 0) return;
-        cleanedToc.forEach((sec, idx) => {
+        // V15.12.75.97 — Reduz marcadores. Antes mostrava UM por seção,
+        // que pra fontes com 50+ subseções polui a barra. Agora:
+        // 1) Só nível 1-2 (top-level)
+        // 2) Se ainda > 10, amostra uniforme.
+        let candidates = cleanedToc.filter(sec => (sec.level || 1) <= 2);
+        if(candidates.length === 0) candidates = cleanedToc;  // fallback
+        if(candidates.length > 10){
+          const step = candidates.length / 10;
+          const sampled = [];
+          for(let i = 0; i < 10; i++) sampled.push(candidates[Math.floor(i * step)]);
+          candidates = sampled;
+        }
+        candidates.forEach((sec, idx) => {
           const target = content.querySelector(`[data-sec-id="${sec.id}"]`);
           if(!target) return;
           const relTop = target.offsetTop / scrollable;
