@@ -5051,12 +5051,17 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 .forest-zoom-btn:hover{background:rgba(0,0,0,.75);transform:scale(1.05)}
 .forest-zoom-btn:active{transform:scale(.97)}
 
-/* Modo expandido: pinhal cobre quase toda a tela */
+/* Modo expandido: pinhal cobre quase toda a tela.
+   V15.12.75.116 — Centralização robusta via flex no body, em vez de top/left
+   em vh/vw que parecia descentrado por causa da sidebar fixa. Agora o card
+   fica geometricamente no centro do viewport, ignorando o layout do app. */
 body.forest-expanded{overflow:hidden}
 .forest-scene-card.forest-expanded{
   position:fixed;
-  top:5vh;left:5vw;
-  width:90vw;height:90vh;
+  top:50%;left:50%;
+  transform:translate(-50%, -50%);
+  width:min(90vw, 1600px);
+  height:min(90vh, 900px);
   max-width:none;
   z-index:9000;
   box-shadow:0 20px 80px rgba(0,0,0,.5);
@@ -5076,7 +5081,7 @@ body.forest-expanded{overflow:hidden}
 }
 @keyframes forest-backdrop-in{from{opacity:0}to{opacity:1}}
 @media (max-width: 600px){
-  .forest-scene-card.forest-expanded{top:2vh;left:2vw;width:96vw;height:96vh}
+  .forest-scene-card.forest-expanded{width:96vw;height:96vh}
 }
 .forest-bird{transform-origin:0 0;animation:forest-bird-fly 36s ease-in-out infinite}
 /* V15.12.75.111 — Gralha muito menor (scale 0.6-0.9 era 1.7-2.1) e voando
@@ -7396,7 +7401,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.114';
+window.GRALIA_VERSION = 'V15.12.75.116';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -32696,6 +32701,86 @@ const Pinhal = (() => {
     return slots;
   }
 
+  // V15.12.75.115 — Sons sintéticos do Pinhal (Web Audio).
+  // Reaproveita o AudioContext do AmbientSound se existir. Volume baixo (.20)
+  // pra ser sutil. Sons únicos por tipo de evento — user pediu macro
+  // (não cada bioma único, mas tipo "ave" diferente de "planta").
+  let _pinhalAudioCtx = null;
+  function getPinhalAudioCtx(){
+    if(_pinhalAudioCtx) return _pinhalAudioCtx;
+    try{
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return null;
+      _pinhalAudioCtx = new AC();
+    }catch(_){ return null; }
+    return _pinhalAudioCtx;
+  }
+  function playPinhalSound(kind){
+    const ctx = getPinhalAudioCtx();
+    if(!ctx) return;
+    if(ctx.state === 'suspended'){ try{ ctx.resume(); }catch(_){} }
+    const t0 = ctx.currentTime;
+    // Função auxiliar: toca uma nota envelope ADSR curto
+    const note = (freq, startOff, dur, gain, type) => {
+      const osc = ctx.createOscillator();
+      osc.type = type || 'sine';
+      osc.frequency.value = freq;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t0 + startOff);
+      g.gain.linearRampToValueAtTime(gain, t0 + startOff + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + startOff + dur);
+      osc.connect(g);
+      g.connect(ctx.destination);
+      osc.start(t0 + startOff);
+      osc.stop(t0 + startOff + dur + 0.05);
+    };
+    if(kind === 'card_plant' || kind === 'card_fruit'){
+      // Planta/Fruto: 2 notas agudas (E5 → A5)
+      note(659.25, 0,    0.18, 0.10, 'sine');
+      note(880.00, 0.10, 0.22, 0.10, 'sine');
+    } else if(kind === 'card_bird'){
+      // Ave: 3 chirps rápidos descendentes (Bb5 → A5 → F5) com triangular pra timbre brilhante
+      note(932.33, 0,    0.10, 0.10, 'triangle');
+      note(880.00, 0.08, 0.10, 0.10, 'triangle');
+      note(698.46, 0.16, 0.14, 0.10, 'triangle');
+    } else if(kind === 'card_mammal'){
+      // Mamífero: nota grave + harmônico (C3 + C4)
+      note(130.81, 0, 0.30, 0.14, 'sine');
+      note(261.63, 0, 0.28, 0.06, 'sine');
+    } else if(kind === 'card_legendary'){
+      // Lendária: arpejo 4 notas (C5-E5-G5-C6) + brilho extra
+      note(523.25, 0,    0.16, 0.10, 'triangle');
+      note(659.25, 0.10, 0.16, 0.10, 'triangle');
+      note(783.99, 0.20, 0.16, 0.10, 'triangle');
+      note(1046.50, 0.30, 0.45, 0.13, 'triangle');
+      // Brilho final (harmônico alto)
+      note(2093.00, 0.30, 0.40, 0.04, 'sine');
+    } else if(kind === 'tree_planted'){
+      // Árvore plantada: "ding" suave (D5) com toque de natureza
+      note(587.33, 0, 0.35, 0.10, 'sine');
+      note(880.00, 0.04, 0.25, 0.04, 'sine');
+    } else if(kind === 'tree_evolved'){
+      // Árvore evoluiu: tom ascendente (D5 → G5)
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, t0);
+      osc.frequency.linearRampToValueAtTime(783.99, t0 + 0.25);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(0.10, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.45);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(t0); osc.stop(t0 + 0.50);
+    } else if(kind === 'level_up'){
+      // Level-up: fanfare 3 notas ascendentes (C5-E5-G5)
+      note(523.25, 0,    0.18, 0.12, 'triangle');
+      note(659.25, 0.13, 0.18, 0.12, 'triangle');
+      note(783.99, 0.26, 0.50, 0.14, 'triangle');
+      // Quinta acima reforçando o "G" final pra impacto
+      note(1046.50, 0.26, 0.45, 0.06, 'sine');
+    }
+  }
+
   // Toast flutuante de XP ganho (canto inferior direito)
   function showXpToast(xpAmount, action, ctx){
     const existing = document.getElementById('pinhal-xp-toast-stack');
@@ -32738,6 +32823,8 @@ const Pinhal = (() => {
 
   // Tela cheia de level-up (sobrepõe tudo)
   function showLevelUpModal(newLevel, info){
+    // V15.12.75.115 — Fanfare de level-up (3 notas ascendentes)
+    try{ playPinhalSound('level_up'); }catch(_){}
     const overlay = mk('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:100100;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;animation:pinhal-levelup-bg-in .4s ease both;backdrop-filter:blur(4px)';
     const card = mk('div');
@@ -32859,6 +32946,8 @@ const Pinhal = (() => {
       ctx: ctx || ''
     };
     p.trees.push(tree);
+    // V15.12.75.115 — Som ao plantar árvore nova
+    try{ playPinhalSound('tree_planted'); }catch(_){}
     return tree;
   }
 
@@ -32868,6 +32957,7 @@ const Pinhal = (() => {
     if(p.trees.length === 0) return;
     // Rega a árvore mais recente (a que está sendo cultivada)
     const tree = p.trees[p.trees.length - 1];
+    const oldStage = tree.stage;
     tree.cumulativeMinutes = (tree.cumulativeMinutes || 0) + minutesToAdd;
     tree.lastWateredAt = Date.now();
     // Calcula estágio com base no tempo cumulativo
@@ -32877,6 +32967,10 @@ const Pinhal = (() => {
     else if(m >= 120) tree.stage = 3;  // 2-5h
     else if(m >= 30) tree.stage = 2;   // 30min-2h
     else tree.stage = 1;
+    // V15.12.75.115 — Som de evolução se árvore subiu de estágio
+    if(tree.stage > oldStage){
+      try{ playPinhalSound('tree_evolved'); }catch(_){}
+    }
   }
 
   // API PRINCIPAL — chamada de qualquer ponto que gere XP
@@ -32968,31 +33062,122 @@ const Pinhal = (() => {
 
   // V15.12.75.107 — Toast pequeno de card desbloqueado (canto inferior esquerdo).
   // Click expande pra modal com detalhes.
+  // V15.12.75.107 — Toast pequeno de card desbloqueado (canto inferior esquerdo).
+  // V15.12.75.115 — Duração 10s + anel de countdown visível + som por categoria
+  // + animações de entrada/saída mais fluidas + pausa no hover.
   function showCardUnlockToast(card){
     if(!card) return;
     const rarColors = {1:'#10b981', 2:'#8042fa', 3:'#fbbf24'};
     const rarLabels = {1:'Comum', 2:'Rara', 3:'Lendária'};
     const color = rarColors[card.rar] || '#8042fa';
+
+    // Som por categoria (lendária ganha som especial mesmo sendo de outra cat)
+    try{
+      if(card.rar === 3) playPinhalSound('card_legendary');
+      else if(card.cat === 'ave') playPinhalSound('card_bird');
+      else if(card.cat === 'mamifero') playPinhalSound('card_mammal');
+      else if(card.cat === 'fruto') playPinhalSound('card_fruit');
+      else playPinhalSound('card_plant');
+    }catch(_){}
+
+    const TOTAL_MS = 10000;  // 10 segundos
     const toast = mk('div');
-    toast.style.cssText = `position:fixed;bottom:80px;left:24px;z-index:99950;display:flex;align-items:center;gap:12px;padding:10px 16px 10px 12px;background:var(--surface);border:2px solid ${color};border-radius:14px;font-family:inherit;box-shadow:0 8px 24px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.10);animation:pinhal-xp-toast-in .5s cubic-bezier(.34,1.56,.64,1) both;cursor:pointer;max-width:320px;transition:transform .15s ease`;
+    toast.style.cssText = `position:fixed;bottom:80px;left:24px;z-index:99950;display:flex;align-items:center;gap:12px;padding:10px 16px 10px 12px;background:var(--surface);border:2px solid ${color};border-radius:14px;font-family:inherit;box-shadow:0 8px 24px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.10);cursor:pointer;max-width:340px;transition:transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease;opacity:0;transform:translateX(-30px) translateY(8px) scale(.92)`;
+
+    // Anel de countdown: SVG circular ao redor do emoji
+    // circunferência = 2πr; com r=22, c ≈ 138
+    const CIRC = 2 * Math.PI * 22;
     toast.innerHTML = `
-      <div style="width:44px;height:44px;border-radius:10px;background:${color}1A;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${card.emoji}</div>
+      <div style="position:relative;width:48px;height:48px;flex-shrink:0">
+        <svg width="48" height="48" viewBox="0 0 48 48" style="position:absolute;top:0;left:0;transform:rotate(-90deg)">
+          <circle cx="24" cy="24" r="22" fill="none" stroke="${color}22" stroke-width="2"/>
+          <circle class="pinhal-card-countdown-ring" cx="24" cy="24" r="22" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="${CIRC.toFixed(2)}" stroke-dashoffset="0" style="transition:stroke-dashoffset linear"/>
+        </svg>
+        <div style="position:absolute;inset:4px;border-radius:50%;background:${color}1A;display:flex;align-items:center;justify-content:center;font-size:22px">${card.emoji}</div>
+      </div>
       <div style="flex:1;min-width:0">
         <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.6px">🎁 Card ${rarLabels[card.rar]||'Comum'}</div>
         <div style="font-size:14px;font-weight:700;color:var(--text);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(card.nome)}</div>
         <div style="font-size:11px;color:var(--text3);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(card.cientifico)}</div>
       </div>`;
-    toast.addEventListener('mouseenter', () => { toast.style.transform = 'translateY(-2px)'; });
-    toast.addEventListener('mouseleave', () => { toast.style.transform = 'translateY(0)'; });
-    toast.addEventListener('click', () => {
-      toast.remove();
-      showCardDetailModal(card);
-    });
     document.body.appendChild(toast);
-    setTimeout(() => {
-      toast.style.animation = 'pinhal-xp-toast-out .5s ease forwards';
+
+    // Animação de ENTRADA fluida (slide-up + scale + fade)
+    requestAnimationFrame(() => {
+      toast.style.transition = 'transform .55s cubic-bezier(.34,1.56,.64,1), opacity .35s ease, box-shadow .2s ease';
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateX(0) translateY(0) scale(1)';
+    });
+
+    // Anel de countdown: drena de 0 → CIRC (full) durante TOTAL_MS
+    let removed = false;
+    let paused = false;
+    let elapsed = 0;
+    let lastTickTs = Date.now();
+    const ring = toast.querySelector('.pinhal-card-countdown-ring');
+    if(ring){
+      // Inicia animação do anel
+      setTimeout(() => {
+        if(ring && !removed && !paused){
+          ring.style.transitionDuration = (TOTAL_MS/1000) + 's';
+          ring.style.strokeDashoffset = CIRC.toFixed(2);
+        }
+      }, 80);
+    }
+
+    // Função pra dismissar fluido (saída)
+    const dismiss = () => {
+      if(removed) return;
+      removed = true;
+      toast.style.transition = 'transform .45s cubic-bezier(.55,.06,.68,.19), opacity .35s ease';
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(-40px) translateY(8px) scale(.92)';
       setTimeout(() => { if(toast.parentNode) toast.remove(); }, 500);
-    }, 5500);
+    };
+
+    // Hover pausa countdown (e o anel)
+    toast.addEventListener('mouseenter', () => {
+      paused = true;
+      toast.style.transform = 'translateY(-3px)';
+      toast.style.boxShadow = `0 12px 32px ${color}30, 0 4px 12px rgba(0,0,0,.12)`;
+      if(ring){
+        // Congela o anel no estado atual capturando o computed style
+        const computed = window.getComputedStyle(ring).strokeDashoffset;
+        ring.style.transition = 'none';
+        ring.style.strokeDashoffset = computed;
+      }
+    });
+    toast.addEventListener('mouseleave', () => {
+      paused = false;
+      toast.style.transform = 'translateY(0)';
+      toast.style.boxShadow = '0 8px 24px rgba(0,0,0,.18), 0 2px 6px rgba(0,0,0,.10)';
+      if(ring && !removed){
+        // Retoma com tempo restante
+        const remainingMs = Math.max(500, TOTAL_MS - elapsed);
+        ring.style.transition = `stroke-dashoffset ${(remainingMs/1000).toFixed(2)}s linear`;
+        ring.style.strokeDashoffset = CIRC.toFixed(2);
+      }
+    });
+
+    // Click → abre modal de detalhe (e dispensa o toast)
+    toast.addEventListener('click', () => {
+      dismiss();
+      setTimeout(() => showCardDetailModal(card), 200);
+    });
+
+    // Tick de tempo (só conta quando não está pausado)
+    const tickInterval = setInterval(() => {
+      const now = Date.now();
+      const dt = now - lastTickTs;
+      lastTickTs = now;
+      if(!paused) elapsed += dt;
+      if(elapsed >= TOTAL_MS){
+        clearInterval(tickInterval);
+        dismiss();
+      } else if(removed){
+        clearInterval(tickInterval);
+      }
+    }, 100);
   }
 
   // V15.12.75.107 — Modal de detalhes do card (visualização completa).
