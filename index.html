@@ -695,6 +695,17 @@ html.dark .countdown-pill.countdown-near{color:#e8c068}
 
 /* Highlighted card — shown after navigating to it from another place */
 .card-highlighted,.history-card-highlighted{animation:highlight-pulse 2.5s ease-out 1;border-color:var(--accent) !important;box-shadow:0 0 0 2px var(--accent-light),0 4px 16px rgba(0,0,0,.06) !important}
+/* V15.12.75.92 — Destaque "recém-importada" mais forte (roxo) + dura mais */
+.card-highlighted.card-just-imported,.src-item.card-just-imported{
+  animation:highlight-pulse-purple 4s ease-out 1 !important;
+  border-color:var(--gralia-purple) !important;
+  box-shadow:0 0 0 3px rgba(128,66,250,.22),0 6px 20px rgba(128,66,250,.12) !important;
+}
+@keyframes highlight-pulse-purple{
+  0%{box-shadow:0 0 0 4px rgba(128,66,250,.45),0 8px 32px rgba(128,66,250,.30)}
+  60%{box-shadow:0 0 0 3px rgba(128,66,250,.30),0 6px 20px rgba(128,66,250,.18)}
+  100%{box-shadow:0 0 0 3px rgba(128,66,250,.22),0 6px 20px rgba(128,66,250,.12)}
+}
 @keyframes highlight-pulse{0%{box-shadow:0 0 0 8px var(--accent-light)}100%{box-shadow:0 0 0 2px var(--accent-light),0 4px 16px rgba(0,0,0,.06)}}
 
 /* ===== TIMELINE V2 — Linha do tempo premium ===== */
@@ -4254,6 +4265,34 @@ html.dark .method-focus-bar{background:rgba(20,20,28,.85)}
 .src-del{background:transparent;border:none;padding:6px;border-radius:var(--rs);color:var(--text3);font-size:16px}
 .src-del:hover{background:var(--red-light);color:var(--red-text)}
 
+/* V15.12.75.92 — Modo lista compacta de fontes. Cards encolhem pra altura
+   ~50px, meta resumida, botão "ver detalhes" abre modal. Default: lista. */
+.src-item.src-item-compact{padding:.5rem .875rem;gap:10px;align-items:center}
+.src-item.src-item-compact .src-icon{width:26px;height:26px;font-size:13px;margin-top:0}
+.src-item.src-item-compact .src-name{margin-bottom:0;font-size:13px;display:flex;align-items:center;gap:6px}
+.src-item.src-item-compact .src-meta{font-size:10.5px;margin-top:2px}
+.src-item.src-item-compact .src-meta .src-meta-tag,
+.src-item.src-item-compact .src-meta-tag{display:none}
+.src-item.src-item-compact .src-meta > span{margin-right:0}
+/* Ações em compact (sticky right) */
+.src-item-compact .src-compact-actions{display:flex;align-items:center;gap:4px;flex-shrink:0;margin-left:auto}
+.src-item-compact .src-compact-btn{
+  width:28px;height:28px;border-radius:6px;background:transparent;border:1px solid transparent;
+  cursor:pointer;color:var(--text3);font-size:13px;display:inline-flex;align-items:center;justify-content:center;
+  font-family:inherit;transition:all .12s ease
+}
+.src-item-compact .src-compact-btn:hover{background:rgba(128,66,250,.08);border-color:rgba(128,66,250,.25);color:var(--gralia-purple)}
+/* Toggle entre modos */
+.src-view-toggle{
+  display:inline-flex;align-items:center;gap:2px;padding:2px;background:var(--surface2);border:1px solid var(--border);border-radius:8px
+}
+.src-view-toggle button{
+  padding:4px 9px;background:transparent;border:none;border-radius:6px;font-size:11px;color:var(--text3);cursor:pointer;
+  font-family:inherit;font-weight:500;transition:all .12s ease;display:inline-flex;align-items:center;gap:5px
+}
+.src-view-toggle button.on{background:var(--surface);color:var(--gralia-purple);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.src-view-toggle button:not(.on):hover{color:var(--text2)}
+
 /* Date picker (input type="month") padronizado */
 input[type="month"]{
   font-family:inherit;
@@ -4385,7 +4424,10 @@ input[type="month"]::-webkit-calendar-picker-indicator{
   background:rgba(128,66,250,.72);
   background-clip:padding-box;
 }
-/* Modo foco: esconde elementos não essenciais da leitura */
+/* Modo foco: esconde elementos não essenciais da leitura.
+   V15.12.75.92 — Width modal modes: estendido (sem limite), grande (960px),
+   médio (720px), pequeno (560px). Default = médio. Estado em
+   DATA.config.readerFocusWidth (persistente). */
 .source-reader-shell.focus-on .reader-header{display:none !important}
 .source-reader-shell.focus-on .reader-toc-toggle{display:none !important}
 .source-reader-shell.focus-on .reader-progress{
@@ -4395,11 +4437,25 @@ input[type="month"]::-webkit-calendar-picker-indicator{
   padding:0;
 }
 .source-reader-shell.focus-on .reader-progress .progress-label{display:none}
-.source-reader-shell.focus-on .reader-content{
-  padding:2rem max(2rem, calc((100% - 720px) / 2));
+.source-reader-shell.focus-on .reader-sidebar{display:none !important}
+
+/* Larguras do modo foco */
+.source-reader-shell.focus-on.fw-wide .reader-content{
+  padding:2.5rem max(1.5rem, calc((100% - 1200px) / 2));
+  font-size:15px;
+}
+.source-reader-shell.focus-on.fw-large .reader-content{
+  padding:2.5rem max(2rem, calc((100% - 960px) / 2));
+  font-size:15px;
+}
+.source-reader-shell.focus-on.fw-medium .reader-content{
+  padding:2.5rem max(2rem, calc((100% - 720px) / 2));
   font-size:14.5px;
 }
-.source-reader-shell.focus-on .reader-sidebar{display:none !important}
+.source-reader-shell.focus-on.fw-small .reader-content{
+  padding:2.5rem max(2rem, calc((100% - 560px) / 2));
+  font-size:14px;
+}
 /* V15.12.75.91 — Modo foco zen: também esconde fundo escuro do modal-bg,
    modo foco zen estilo flashcards. O shell ocupa quase a tela toda com fundo
    sólido limpo. */
@@ -4422,6 +4478,9 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 /* Botão flutuante "sair do foco" só aparece no modo foco */
 .source-reader-shell .reader-focus-exit{display:none}
 .source-reader-shell.focus-on .reader-focus-exit{display:flex}
+/* Seletor de largura — só aparece no modo foco */
+.source-reader-shell .reader-width-picker{display:none}
+.source-reader-shell.focus-on .reader-width-picker{display:flex}
 
 /* V12: Sticky header em modais grandes do footer (FAQ + Legal) — botão X visível em mobile */
 .footer-modal-head{position:sticky;top:-1.25rem;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:.625rem;margin:-1.25rem -1.25rem .875rem;padding-left:1.25rem;padding-right:1.25rem;padding-top:1.25rem;background:var(--surface);border-bottom:1px solid var(--border);box-shadow:0 1px 0 var(--border)}
@@ -7160,7 +7219,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.91';
+window.GRALIA_VERSION = 'V15.12.75.92';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -23798,6 +23857,28 @@ function renderSourceList(wrap){
       filterRow.appendChild(selOrigin);
     }
 
+    // V15.12.75.92 — Toggle entre lista compacta e cards expandidos.
+    // Default: compacta. Persistido em DATA.config.srcViewMode.
+    if(!DATA.config) DATA.config = {};
+    const currentView = DATA.config.srcViewMode || 'compact';
+    const viewToggle = mk('div','src-view-toggle');
+    const mkViewBtn = (key, label, icon, title) => {
+      const b = mk('button');
+      b.type = 'button';
+      b.className = (currentView === key) ? 'on' : '';
+      b.title = title;
+      b.innerHTML = `<span style="font-size:12px">${icon}</span><span>${label}</span>`;
+      b.addEventListener('click',()=>{
+        DATA.config.srcViewMode = key;
+        save();
+        render();
+      });
+      return b;
+    };
+    viewToggle.appendChild(mkViewBtn('compact', 'Lista', '☰', 'Lista compacta (mais fontes visíveis)'));
+    viewToggle.appendChild(mkViewBtn('expanded', 'Cards', '▦', 'Cards expandidos (mais detalhes visíveis)'));
+    filterRow.appendChild(viewToggle);
+
     // V15.9: Toggle agrupar por disciplina
     // V15.12.75.91 — Migrado de ST (volátil) pra DATA.config (persistente).
     // Estado escolhido sobrevive a reload/login.
@@ -23904,7 +23985,10 @@ function renderSourceList(wrap){
     const ctCfg = CONTENT_TYPES[src.contentType||'misto']||CONTENT_TYPES.misto;
     const disc = getDiscipline(src.disciplineId);
     const isActive = !disc||disc.active;
-    const item = mk('div','src-item');
+    // V15.12.75.92 — Modo lista compacta vs cards expandidos. Default: compact.
+    const viewMode = (DATA.config && DATA.config.srcViewMode) || 'compact';
+    const isCompact = viewMode === 'compact';
+    const item = mk('div','src-item' + (isCompact ? ' src-item-compact' : ''));
     if(!isActive)item.style.opacity='.45';
     // V15.8: card inteiro clicável abre o leitor rico (markdown renderizado).
     // Click em botões dentro tem stopPropagation pra não duplicar.
@@ -23919,6 +24003,10 @@ function renderSourceList(wrap){
     const isHighlighted = scrollTo && scrollTo.sourceId===src.id;
     if(isHighlighted){
       item.classList.add('card-highlighted');
+      // V15.12.75.92 — Destaque ainda mais forte se for de import recente
+      if(scrollTo.justImported){
+        item.classList.add('card-just-imported');
+      }
       setTimeout(()=>{item.scrollIntoView({behavior:'smooth',block:'center'});},60);
     }
     const ic = mk('div','src-icon');ic.style.background=cfg.bg;ic.style.color=cfg.color;ic.textContent=cfg.icon;
@@ -24060,6 +24148,15 @@ function renderSourceList(wrap){
     const viewSrc = mkBtn('📖','icon-btn');
     viewSrc.title = 'Ver fonte completa';
     viewSrc.addEventListener('click', ()=>showSourceReaderModal(src));
+    // V15.12.75.92 — Em modo compact, botão extra "ℹ" abre modal com todos os
+    // metadados (origem, autor, contagem, tamanho, etc) que ficaram ocultos
+    // pela compactação.
+    const infoBtn = isCompact ? (() => {
+      const b = mkBtn('ℹ','icon-btn');
+      b.title = 'Detalhes da fonte (autor, tamanho, datas, etc)';
+      b.addEventListener('click', ()=>showSourceInfoModal(src));
+      return b;
+    })() : null;
     const edit = mkBtn('✏️','icon-btn');
     edit.addEventListener('click',()=>showEditSourceModal(src));
     const del = mkBtn('×','icon-btn del');
@@ -24085,6 +24182,7 @@ function renderSourceList(wrap){
       save();
       render();
     });
+    if(infoBtn) actions.appendChild(infoBtn);
     actions.appendChild(viewSrc);actions.appendChild(edit);actions.appendChild(del);
     item.appendChild(ic);item.appendChild(info);item.appendChild(actions);
     list.appendChild(item);
@@ -24776,6 +24874,11 @@ function renderSourceAdd(wrap){
       // V14 fix: muda automaticamente pra aba "Minhas fontes" pra mostrar a fonte recém-criada (item 41)
       // Antes: ficava na aba "Adicionar" e usuário pensava que não tinha sido salva.
       ST.srcSubview = 'list';
+      // V15.12.75.92 — Scroll + destaque da fonte recém-importada.
+      // Reusa a infra ST.sourceScrollTo (já existe pra Mapa→Fonte).
+      // O item da fonte vai ganhar a classe 'card-highlighted' e scrollIntoView
+      // automaticamente, conforme lógica em renderSourceList.
+      ST.sourceScrollTo = {sourceId: newSrc.id, position: 0, justImported: true};
       // V15.12.20: prefetch automático após salvar fonte REMOVIDO.
       // Antes cobrava 2 créditos de practice_question sem clique do user.
       // Agora a primeira questão é gerada quando o user clicar em "Praticar".
@@ -31805,6 +31908,142 @@ function looksLikeMarkdown(text){
 // V15.7+: Modal de leitura rica da fonte. Substitui o "ver trecho" simples
 // por uma experiência tipo "resumo aprofundado": header com metadados, sidebar
 // com índice navegável (se tiver TOC), corpo principal com markdown renderizado.
+// V15.12.75.92 — Modal de informações detalhadas da fonte. Usado a partir
+// do modo lista compacta (que oculta metadados por padrão).
+function showSourceInfoModal(src){
+  if(!src) return;
+  const m = mk('div');
+  m.style.cssText = 'max-width:480px;width:100%';
+
+  // Header com nome + ícone
+  const cfg = SRC_TYPE_CFG[src.type] || SRC_TYPE_CFG.markdown;
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:1rem;padding-bottom:.875rem;border-bottom:1px solid var(--border)';
+  const icon = mk('div');
+  icon.style.cssText = `width:42px;height:42px;border-radius:10px;background:${cfg.bg};color:${cfg.color};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0`;
+  icon.textContent = cfg.icon;
+  head.appendChild(icon);
+  const titleWrap = mk('div');titleWrap.style.flex = '1';
+  const title = mk('h3');title.style.cssText = 'margin:0 0 3px;font-size:16px;font-weight:700;line-height:1.3';
+  title.textContent = src.name;
+  titleWrap.appendChild(title);
+  const subtitle = mk('div','txt2');subtitle.style.cssText = 'font-size:12px';
+  subtitle.textContent = cfg.label;
+  titleWrap.appendChild(subtitle);
+  head.appendChild(titleWrap);
+  m.appendChild(head);
+
+  // Detalhes — grid de pares label/value
+  const grid = mk('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:auto 1fr;gap:.625rem 1rem;font-size:13px';
+  const mkRow = (lbl, val) => {
+    const l = mk('div');
+    l.style.cssText = 'color:var(--text3);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px';
+    l.textContent = lbl;
+    const v = mk('div');
+    v.style.cssText = 'color:var(--text);line-height:1.5';
+    if(typeof val === 'string') v.textContent = val;
+    else if(val instanceof Node) v.appendChild(val);
+    else v.innerHTML = val;
+    grid.appendChild(l);
+    grid.appendChild(v);
+  };
+
+  // Disciplina
+  const disc = getDiscipline(src.disciplineId);
+  if(disc){
+    const discEl = mk('span');
+    discEl.style.cssText = `display:inline-flex;align-items:center;gap:6px;padding:2px 9px;background:${disc.color}1A;color:${disc.color};border-radius:999px;font-size:12px;font-weight:600`;
+    const dot = mk('span');
+    dot.style.cssText = `width:8px;height:8px;border-radius:50%;background:${disc.color}`;
+    discEl.appendChild(dot);
+    const dn = mk('span');dn.textContent = disc.name;
+    discEl.appendChild(dn);
+    mkRow('Disciplina', discEl);
+  }
+
+  // Tamanho
+  const charCount = (src.content||'').length;
+  const sizeText = charCount > 1000 ? Math.round(charCount/1000).toLocaleString('pt-BR') + 'k chars' : charCount + ' chars';
+  const wordsEstimate = Math.round(charCount / 5.5);
+  const minutesEstimate = Math.max(1, Math.round(wordsEstimate / 200));
+  const timeReadEst = minutesEstimate < 60 ? `~${minutesEstimate} min` : `~${Math.floor(minutesEstimate/60)}h ${minutesEstimate%60}min`;
+  mkRow('Tamanho', `${sizeText} · estimativa de leitura ${timeReadEst}`);
+
+  // Seções
+  if(Array.isArray(src.toc) && src.toc.length > 0){
+    mkRow('Estrutura', `${src.toc.length} seçõe${src.toc.length===1?'':'s'} (índice navegável)`);
+  }
+
+  // PDF metadata
+  if(src.sourceFormat === 'pdf' && src.pdfMeta){
+    mkRow('Origem', `📄 PDF · ${src.pdfMeta.pageCount} pág${src.pdfMeta.pageCount===1?'':'s'}`);
+    if(src.pdfMeta.fileName){
+      mkRow('Arquivo', src.pdfMeta.fileName);
+    }
+    if(src.pdfMeta.author){
+      mkRow('Autor', src.pdfMeta.author);
+    }
+  }
+
+  // Importado da comunidade
+  if(src.importedFromUser){
+    const imp = mk('span');
+    imp.innerHTML = `📥 De <button class="link-btn" style="font-weight:600">@${escapeHTML(src.importedFromUser)}</button>`;
+    imp.querySelector('button').addEventListener('click', () => {
+      closeModal();
+      navigateToProfile(src.importedFromUser);
+    });
+    mkRow('Importado', imp);
+  }
+
+  // Datas
+  if(src.createdAt){
+    mkRow('Criada em', new Date(src.createdAt).toLocaleString('pt-BR'));
+  }
+  if(src.updatedAt && src.updatedAt !== src.createdAt){
+    mkRow('Modificada em', new Date(src.updatedAt).toLocaleString('pt-BR'));
+  }
+
+  // Leitura (V15.12.75.91)
+  if(src.readingTimeSeconds && src.readingTimeSeconds > 0){
+    const min = Math.floor(src.readingTimeSeconds / 60);
+    const sec = src.readingTimeSeconds % 60;
+    const timeStr = min < 1 ? sec + 's' : (min + 'min' + (sec > 0 ? ' '+sec+'s' : ''));
+    mkRow('Tempo lido', timeStr);
+  }
+  if(src.readAt){
+    const readBadge = mk('span');
+    readBadge.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:2px 9px;background:rgba(16,185,129,.12);color:var(--accent-text);border-radius:999px;font-size:12px;font-weight:600';
+    readBadge.innerHTML = `✓ Lida em ${new Date(src.readAt).toLocaleDateString('pt-BR')}`;
+    mkRow('Status', readBadge);
+  }
+
+  // Tags
+  if(Array.isArray(src.tags) && src.tags.length > 0){
+    mkRow('Tags', src.tags.join(' · '));
+  }
+
+  m.appendChild(grid);
+
+  // Botões
+  const btnRow = mk('div','flex');
+  btnRow.style.cssText = 'gap:8px;justify-content:flex-end;margin-top:1.25rem;padding-top:.875rem;border-top:1px solid var(--border)';
+  const readBtn = mkBtn('📖 Ler agora','btn btn-p btn-sm');
+  readBtn.style.fontWeight = '600';
+  readBtn.addEventListener('click',()=>{
+    closeModal();
+    setTimeout(()=>showSourceReaderModal(src), 50);
+  });
+  const closeBtn = mkBtn('Fechar','btn btn-sm');
+  closeBtn.addEventListener('click', closeModal);
+  btnRow.appendChild(closeBtn);
+  btnRow.appendChild(readBtn);
+  m.appendChild(btnRow);
+
+  showModal(m);
+}
+
 function showSourceReaderModal(src){
   if(!src){ alert('Fonte não encontrada'); return; }
   const m = mk('div','source-reader-shell');
@@ -31926,6 +32165,7 @@ function showSourceReaderModal(src){
 
   // V15.12.75.90 — Botão "modo foco": esconde header, marcadores e
   // distrações. Deixa só texto + barra fina de progresso.
+  // V15.12.75.92 — Aplica classe de largura salva em DATA.config.readerFocusWidth.
   const focusBtnH = mk('button');
   focusBtnH.type = 'button';
   focusBtnH.style.cssText = 'padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;gap:6px;transition:all .15s ease';
@@ -31934,6 +32174,10 @@ function showSourceReaderModal(src){
   focusBtnH.addEventListener('mouseenter',()=>{focusBtnH.style.background='rgba(128,66,250,.08)';focusBtnH.style.borderColor='rgba(128,66,250,.40)';focusBtnH.style.color='var(--gralia-purple)';});
   focusBtnH.addEventListener('mouseleave',()=>{focusBtnH.style.background='var(--surface)';focusBtnH.style.borderColor='var(--border)';focusBtnH.style.color='var(--text2)';});
   focusBtnH.addEventListener('click',()=>{
+    if(!DATA.config) DATA.config = {};
+    const savedWidth = DATA.config.readerFocusWidth || 'medium';
+    m.classList.remove('fw-wide','fw-large','fw-medium','fw-small');
+    m.classList.add('fw-' + savedWidth);
     m.classList.add('focus-on');
   });
   headBtns.appendChild(focusBtnH);
@@ -32193,9 +32437,47 @@ function showSourceReaderModal(src){
   }, 5000);
 
   // V15.12.75.90 — Botão flutuante "sair do foco" (só aparece com classe focus-on)
+  // V15.12.75.92 — Junto, um seletor compacto de largura (Estendido/Grande/Médio/Pequeno)
+  const focusBar = mk('div');
+  focusBar.style.cssText = 'position:absolute;top:14px;right:16px;z-index:10;display:none;align-items:center;gap:8px';
+  // Width picker (chips horizontais)
+  const widthPicker = mk('div','reader-width-picker');
+  widthPicker.style.cssText = 'display:none;align-items:center;gap:2px;padding:3px;background:rgba(128,66,250,.08);border:1px solid rgba(128,66,250,.22);border-radius:10px;backdrop-filter:blur(8px)';
+  const widthOptions = [
+    {key:'wide',   label:'Estendido', title:'Sem limite de largura (até 1200px)'},
+    {key:'large',  label:'Grande',    title:'960px'},
+    {key:'medium', label:'Médio',     title:'720px (recomendado)'},
+    {key:'small',  label:'Pequeno',   title:'560px'}
+  ];
+  const applyWidth = (key) => {
+    m.classList.remove('fw-wide','fw-large','fw-medium','fw-small');
+    m.classList.add('fw-' + key);
+    if(!DATA.config) DATA.config = {};
+    DATA.config.readerFocusWidth = key;
+    try{ save(); }catch(_){}
+    // Atualiza estado visual dos chips
+    widthPicker.querySelectorAll('button[data-width-key]').forEach(b => {
+      const isOn = b.dataset.widthKey === key;
+      b.style.background = isOn ? 'var(--gralia-purple)' : 'transparent';
+      b.style.color = isOn ? '#fff' : 'var(--gralia-purple)';
+      b.style.fontWeight = isOn ? '700' : '500';
+    });
+  };
+  widthOptions.forEach(opt => {
+    const b = mk('button');
+    b.type = 'button';
+    b.dataset.widthKey = opt.key;
+    b.style.cssText = 'padding:5px 11px;background:transparent;color:var(--gralia-purple);border:none;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .12s';
+    b.textContent = opt.label;
+    b.title = opt.title;
+    b.addEventListener('click', () => applyWidth(opt.key));
+    widthPicker.appendChild(b);
+  });
+  focusBar.appendChild(widthPicker);
+
   const focusExit = mk('button','reader-focus-exit');
   focusExit.type = 'button';
-  focusExit.style.cssText = 'position:absolute;top:14px;right:16px;z-index:10;display:none;align-items:center;gap:6px;padding:7px 12px;background:rgba(128,66,250,.12);border:1px solid rgba(128,66,250,.35);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:var(--gralia-purple);backdrop-filter:blur(6px);transition:all .15s ease';
+  focusExit.style.cssText = 'display:none;align-items:center;gap:6px;padding:7px 12px;background:rgba(128,66,250,.12);border:1px solid rgba(128,66,250,.35);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:var(--gralia-purple);backdrop-filter:blur(6px);transition:all .15s ease';
   focusExit.innerHTML = '<span>✕</span><span>Sair do foco</span>';
   focusExit.title = 'Sair do modo foco (Esc)';
   focusExit.addEventListener('mouseenter',()=>{focusExit.style.background='rgba(128,66,250,.20)';focusExit.style.borderColor='var(--gralia-purple)';});
@@ -32203,8 +32485,28 @@ function showSourceReaderModal(src){
   focusExit.addEventListener('click',()=>{
     m.classList.remove('focus-on');
   });
+  focusBar.appendChild(focusExit);
+  // Quando entrar em focus-on, mostra a barra inteira
+  const focusObs = new MutationObserver(() => {
+    if(m.classList.contains('focus-on')){
+      focusBar.style.display = 'flex';
+      widthPicker.style.display = 'inline-flex';
+      // Aplica seleção visual baseada na largura atual
+      const current = ['wide','large','medium','small'].find(k => m.classList.contains('fw-'+k)) || 'medium';
+      widthPicker.querySelectorAll('button[data-width-key]').forEach(b => {
+        const isOn = b.dataset.widthKey === current;
+        b.style.background = isOn ? 'var(--gralia-purple)' : 'transparent';
+        b.style.color = isOn ? '#fff' : 'var(--gralia-purple)';
+        b.style.fontWeight = isOn ? '700' : '500';
+      });
+    } else {
+      focusBar.style.display = 'none';
+      widthPicker.style.display = 'none';
+    }
+  });
+  focusObs.observe(m, {attributes: true, attributeFilter: ['class']});
   m.style.position = 'relative';
-  m.appendChild(focusExit);
+  m.appendChild(focusBar);
 
   // V15.12.75.90 — Setas ↑/↓ + PageUp/PageDown + Home/End rolam o content.
   // Esc sai do modo foco (se ativo). Listener no document porque o conteúdo
@@ -42706,6 +43008,40 @@ function renderSRSStudy(wrap,due,total){
       info.textContent=total===0?'Nenhum card ainda. Gere com IA ou crie manualmente.':'Todos os cards foram revisados. Volte depois.';
     }
     wrap.appendChild(info);
+    // V15.12.75.92 — Se user entrou filtrando por disciplina e terminou,
+    // sugere voltar pra lista de matérias (pra escolher próxima disciplina
+    // que ainda tem cards pendentes).
+    if(ST.srsStudyDisc !== 'all'){
+      const totalDueAll = srsActiveDue('all').length;
+      const otherDiscsWithDue = discsWithCards.filter(d => {
+        if(d.id === ST.srsStudyDisc) return false;
+        return srsActiveDue(d.id).length > 0;
+      });
+      if(otherDiscsWithDue.length > 0){
+        const continueCard = mk('div','card');
+        continueCard.style.cssText = 'padding:1rem 1.125rem;margin-top:.75rem;background:linear-gradient(135deg,rgba(128,66,250,.08),rgba(128,66,250,.03));border:1px solid rgba(128,66,250,.22);border-left:4px solid var(--gralia-purple);border-radius:10px';
+        const continueTitle = mk('div');
+        continueTitle.style.cssText = 'font-size:13.5px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px';
+        continueTitle.innerHTML = `<span style="font-size:18px">🎯</span><span>Continue revisando — ${totalDueAll} pendente${totalDueAll!==1?'s':''} no total</span>`;
+        continueCard.appendChild(continueTitle);
+        const continueDesc = mk('div','txt2');
+        continueDesc.style.cssText = 'font-size:12px;line-height:1.5;margin-bottom:.625rem';
+        continueDesc.textContent = `Outras matérias com flashcards a revisar: ${otherDiscsWithDue.slice(0, 4).map(d => `${d.name} (${srsActiveDue(d.id).length})`).join(' · ')}${otherDiscsWithDue.length > 4 ? '…' : ''}`;
+        continueCard.appendChild(continueDesc);
+        const btnRow = mk('div','flex');btnRow.style.cssText = 'gap:8px;flex-wrap:wrap';
+        const backBtn = mkBtn('← Voltar pra lista de matérias','btn btn-p btn-sm');
+        backBtn.style.cssText = 'font-weight:600;padding:.55rem 1.125rem;background:var(--gralia-purple);color:#fff';
+        backBtn.addEventListener('click',()=>{
+          ST.srsStudyDisc='all';
+          ST.srsCurrent=null;
+          ST.srsShowBack=false;
+          render();
+        });
+        btnRow.appendChild(backBtn);
+        continueCard.appendChild(btnRow);
+        wrap.appendChild(continueCard);
+      }
+    }
     // V15.12.75.72 — Quando user terminava o ÚLTIMO card no Modo Foco, o
     // overlay anterior ficava preso no DOM com os botões de rating do card
     // já avaliado. Visualmente parecia que os botões "bugavam" — clicar
@@ -53386,6 +53722,154 @@ function showEditalSharedView(item){
 // Esta camada de UI é apenas pra esconder, não pra segurança definitiva.
 // ============================================================================
 
+// V15.12.75.92 — Admin tooling: detecta fontes duplicadas em shared_resources
+// (catálogo público) e permite remover. Não mexe em quem já importou.
+async function scanDuplicateSources(container, btn){
+  if(!supa){ container.innerHTML = '<div class="warn-box">⚠ Supabase não disponível</div>'; return; }
+  if(btn){ btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Escaneando...';
+    setTimeout(()=>{ btn.textContent = orig; btn.disabled = false; }, 30000); }
+  container.innerHTML = '<div class="loading-row"><span class="spinner"></span> Buscando fontes públicas...</div>';
+  try{
+    // Pega TODAS fontes públicas (admin tem RLS bypass via service role? Sem, vamos via RPC)
+    const {data, error} = await supa
+      .from('shared_resources')
+      .select('id, name, type, owner_id, content, created_at, import_count')
+      .eq('type', 'source')
+      .order('created_at', {ascending: true})
+      .limit(2000);
+    if(error) throw error;
+    const items = data || [];
+    // Agrupa por chave de similaridade
+    // Chave 1: nome normalizado (lowercase, trim, sem multi-espaço)
+    // Chave 2: primeiros 2000 chars do content (assinatura textual)
+    const groupsByName = new Map();
+    const groupsByContent = new Map();
+    items.forEach(r => {
+      const nameKey = (r.name || '').toLowerCase().replace(/\s+/g,' ').trim();
+      if(nameKey){
+        if(!groupsByName.has(nameKey)) groupsByName.set(nameKey, []);
+        groupsByName.get(nameKey).push(r);
+      }
+      // Assinatura de conteúdo: primeiros 2000 chars normalizados
+      const contentSig = (r.content || '').slice(0, 2000).replace(/\s+/g,' ').trim().toLowerCase();
+      if(contentSig.length >= 500){  // ignora muito curto
+        if(!groupsByContent.has(contentSig)) groupsByContent.set(contentSig, []);
+        groupsByContent.get(contentSig).push(r);
+      }
+    });
+    // Achata grupos com 2+ items (duplicatas reais)
+    const dupGroups = [];
+    groupsByName.forEach((group, key) => {
+      if(group.length >= 2) dupGroups.push({key: 'Nome: "'+group[0].name+'"', items: group, reason: 'nome'});
+    });
+    // Adiciona grupos por conteúdo (sem repetir grupos por nome)
+    const seenIds = new Set();
+    dupGroups.forEach(g => g.items.forEach(it => seenIds.add(it.id)));
+    groupsByContent.forEach((group, key) => {
+      if(group.length < 2) return;
+      const newOnes = group.filter(it => !seenIds.has(it.id));
+      if(newOnes.length < 2) return;
+      dupGroups.push({key: 'Conteúdo similar — "'+(group[0].name || 'sem nome')+'"', items: newOnes, reason: 'conteúdo'});
+      newOnes.forEach(it => seenIds.add(it.id));
+    });
+    container.innerHTML = '';
+    if(dupGroups.length === 0){
+      const ok = mk('div');
+      ok.style.cssText = 'padding:.75rem 1rem;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.22);border-radius:8px;color:var(--accent-text);font-size:13px';
+      ok.innerHTML = '✓ Nenhuma duplicata encontrada nas <b>'+items.length+'</b> fontes públicas.';
+      container.appendChild(ok);
+      const rescanBtn = mkBtn('🔍 Escanear novamente','btn btn-sm');
+      rescanBtn.style.marginTop = '.5rem';
+      rescanBtn.addEventListener('click', () => scanDuplicateSources(container, rescanBtn));
+      container.appendChild(rescanBtn);
+      if(btn) btn.disabled = false;
+      return;
+    }
+    const summary = mk('div');
+    summary.style.cssText = 'padding:.625rem .875rem;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.22);border-radius:8px;margin-bottom:.875rem;font-size:13px';
+    summary.innerHTML = `⚠ <b>${dupGroups.length}</b> grupos de duplicatas encontrados em <b>${items.length}</b> fontes públicas.`;
+    container.appendChild(summary);
+    dupGroups.forEach((group) => {
+      const groupCard = mk('div');
+      groupCard.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:.75rem .875rem;margin-bottom:.75rem;background:var(--surface)';
+      const groupTitle = mk('div');
+      groupTitle.style.cssText = 'font-size:13px;font-weight:700;margin-bottom:.5rem;color:var(--text);display:flex;align-items:center;gap:8px';
+      groupTitle.innerHTML = `<span style="font-size:11px;background:rgba(245,158,11,.18);color:var(--amber-text);padding:2px 7px;border-radius:999px;font-weight:600">${group.reason}</span><span>${escapeHTML(group.key.slice(0, 80))}</span>`;
+      groupCard.appendChild(groupTitle);
+      // Lista os itens — primeiro (mais antigo) marcado como CANÔNICO, outros como REMOVER
+      group.items.forEach((item, idx) => {
+        const row = mk('div');
+        row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:.5rem .625rem;background:'+(idx === 0 ? 'rgba(16,185,129,.05)' : 'rgba(232,76,76,.04)')+';border-radius:7px;margin-top:.375rem;font-size:12px;flex-wrap:wrap';
+        const left = mk('div');
+        left.style.cssText = 'flex:1;min-width:240px';
+        const tag = idx === 0
+          ? '<span style="background:rgba(16,185,129,.18);color:var(--accent-text);padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:600;margin-right:6px">MANTER (canônico)</span>'
+          : '<span style="background:rgba(232,76,76,.18);color:var(--red-text);padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:600;margin-right:6px">DUPLICATA</span>';
+        const importStr = item.import_count ? ` · ${item.import_count} import${item.import_count!==1?'ações':'ação'}` : '';
+        const dateStr = item.created_at ? new Date(item.created_at).toLocaleDateString('pt-BR') : '?';
+        left.innerHTML = `${tag}<b>${escapeHTML(item.name || '(sem nome)')}</b> <span style="color:var(--text3);font-size:11px">· criado ${dateStr}${importStr}</span>`;
+        row.appendChild(left);
+        if(idx > 0){
+          const delBtn = mkBtn('🗑 Remover do catálogo','btn btn-sm');
+          delBtn.style.cssText = 'background:rgba(232,76,76,.08);color:var(--red-text);border-color:rgba(232,76,76,.30);font-weight:600;padding:4px 10px';
+          delBtn.addEventListener('click', () => {
+            if(!confirm('Remover "'+item.name+'" do catálogo público?\n\nUsuários que já importaram NÃO são afetados — eles continuam com suas cópias.\n\nConfirma?')) return;
+            removePublicSource(item.id, delBtn);
+          });
+          row.appendChild(delBtn);
+        }
+        groupCard.appendChild(row);
+      });
+      container.appendChild(groupCard);
+    });
+    if(btn){ btn.disabled = false; btn.textContent = '🔍 Escanear duplicatas'; }
+  }catch(e){
+    container.innerHTML = '';
+    const err = mk('div','warn-box');
+    err.innerHTML = '⚠ Erro: '+escapeHTML(e.message || String(e));
+    container.appendChild(err);
+    const retryBtn = mkBtn('Tentar de novo','btn btn-sm');
+    retryBtn.style.marginTop = '.5rem';
+    retryBtn.addEventListener('click', () => scanDuplicateSources(container, retryBtn));
+    container.appendChild(retryBtn);
+    if(btn){ btn.disabled = false; btn.textContent = '🔍 Escanear duplicatas'; }
+  }
+}
+
+async function removePublicSource(resourceId, btn){
+  if(!supa) return;
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Removendo...';
+  try{
+    // Soft-delete: marca como inactive em vez de DELETE.
+    // Vantagens: mantém auditoria + reversível + RLS pode filtrar.
+    // Se a tabela não tiver coluna `status`, faz DELETE normal.
+    const {error: updateErr} = await supa
+      .from('shared_resources')
+      .update({status: 'removed_by_admin', removed_at: new Date().toISOString()})
+      .eq('id', resourceId);
+    if(updateErr){
+      // Fallback: DELETE se a coluna status não existir
+      if(updateErr.message && updateErr.message.includes('column')){
+        const {error: delErr} = await supa.from('shared_resources').delete().eq('id', resourceId);
+        if(delErr) throw delErr;
+      } else throw updateErr;
+    }
+    showToast('✓ Fonte removida do catálogo público (importações existentes preservadas)', 6500);
+    // Marca visualmente o botão
+    btn.style.background = 'rgba(16,185,129,.10)';
+    btn.style.color = 'var(--accent-text)';
+    btn.style.borderColor = 'rgba(16,185,129,.30)';
+    btn.textContent = '✓ Removida';
+    btn.disabled = true;
+  }catch(e){
+    showToast('Erro: '+e.message, 7000);
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
 function renderAdminDashboard(){
   const wrap = mk('div','fade admin-dashboard');
 
@@ -53579,6 +54063,30 @@ function renderAdminDashboard(){
   wrap.appendChild(contentCard);
 
   loadAdminContentStats(contentBody);
+
+  // V15.12.75.92 — Card: Fontes públicas duplicadas.
+  // Detecta fontes do shared_resources com nome+conteúdo similar e permite
+  // remover do CATÁLOGO PÚBLICO (não toca em quem já importou — essas cópias
+  // já viraram dados locais do usuário, intocadas).
+  const dupSrcCard = mk('section','admin-card');
+  dupSrcCard.appendChild(adminSectionLabel('🗂 Fontes duplicadas'));
+  const dupSrcHead = mk('h2','admin-section-title');
+  dupSrcHead.textContent = 'Detectar e remover fontes duplicadas do catálogo público';
+  dupSrcCard.appendChild(dupSrcHead);
+
+  const dupSrcInfo = mk('p','txt2');
+  dupSrcInfo.style.cssText = 'font-size:12.5px;line-height:1.55;margin:0 0 .875rem';
+  dupSrcInfo.innerHTML = 'Detecta fontes públicas com <b>nome idêntico</b> ou conteúdo muito similar (>90% de overlap de hash de primeiras 2k chars). Remoção <b>SÓ tira do catálogo público</b> — usuários que já importaram pra conta deles continuam com suas cópias intactas.';
+  dupSrcCard.appendChild(dupSrcInfo);
+
+  const dupSrcBody = mk('div');
+  dupSrcBody.id = 'admin-dup-sources-body';
+  dupSrcCard.appendChild(dupSrcBody);
+
+  const dupSrcScanBtn = mkBtn('🔍 Escanear duplicatas','btn btn-sm btn-p');
+  dupSrcScanBtn.addEventListener('click', () => scanDuplicateSources(dupSrcBody, dupSrcScanBtn));
+  dupSrcBody.appendChild(dupSrcScanBtn);
+  wrap.appendChild(dupSrcCard);
 
   // === Card: Receita (V12 — dados reais via Supabase) ===
   const revCard = mk('section','admin-card admin-revenue');
