@@ -5149,20 +5149,22 @@ body.forest-expanded{overflow:hidden}
    Mesmo padrão da gralha: foreignObject visível por default, SVG fallback
    escondido. JS pós-mount adiciona .araucaria-fallback no <g> do grupo se
    o vídeo falhar. prefers-reduced-motion força SVG estático. */
+/* V15.12.75.120 — Crossfade REMOVIDO. Causava "fade pra preto" no loop: as
+   transições de opacity (.6s) deixavam ambos os vídeos semi-transparentes,
+   o fundo escuro aparecia entre eles. Agora usa <video loop> nativo: vídeo
+   simplesmente recomeça. Bem mais simples e elimina o escurecimento.
+   Também só 1 vídeo por árvore agora (era 2) — metade da carga de GPU. */
 .araucaria-video-fo{overflow:visible}
 .araucaria-video-wrap{width:100%;height:100%;position:relative;pointer-events:none}
-/* V15.12.62 — Os 2 vídeos ficam sobrepostos no mesmo espaço.
-   transition de opacity controlada pelo JS pra fazer crossfade nos loops. */
-.araucaria-video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent;display:block;pointer-events:none;transition:opacity .6s ease}
-.araucaria-video-a{opacity:1;z-index:2}
-.araucaria-video-b{opacity:0;z-index:1}
-/* Quando JS trocar de A pra B, inverte z-index e opacity */
-.araucaria.crossfade-active .araucaria-video-a{opacity:0;z-index:1}
-.araucaria.crossfade-active .araucaria-video-b{opacity:1;z-index:2}
+.araucaria-video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent;display:block;pointer-events:none}
 /* SVG fallback escondido por default */
 .araucaria .araucaria-svg{display:none}
 .araucaria.araucaria-fallback .araucaria-video-fo{display:none}
 .araucaria.araucaria-fallback .araucaria-svg{display:block}
+/* V15.12.75.120 — Modo PAUSED: vídeo travado no primeiro frame. Usado
+   quando o cap de árvores animadas estoura — visual ainda é a animação,
+   só não roda. */
+.araucaria.araucaria-paused .araucaria-video{opacity:.95}
 @media (prefers-reduced-motion: reduce){
   .araucaria .araucaria-video-fo{display:none}
   .araucaria .araucaria-svg{display:block}
@@ -7408,7 +7410,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.119';
+window.GRALIA_VERSION = 'V15.12.75.120';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -32889,9 +32891,24 @@ const Pinhal = (() => {
     card.appendChild(levelNum);
 
     const levelName = mk('div');
-    levelName.style.cssText = 'font-size:16px;font-weight:600;color:var(--gralia-purple);margin-bottom:1rem';
+    levelName.style.cssText = 'font-size:16px;font-weight:600;color:var(--gralia-purple);margin-bottom:.875rem';
     levelName.textContent = info.name;
     card.appendChild(levelName);
+
+    // V15.12.75.120 — Contexto: o que significa subir de nível.
+    // User pediu mais clareza nos pop-ups do pinhal.
+    const ctx = mk('div');
+    ctx.style.cssText = 'font-size:12px;color:var(--text3);line-height:1.5;margin-bottom:1rem;padding:0 .5rem';
+    if(newLevel === 2){
+      ctx.textContent = 'Cada nível abre mais slots para plantar árvores no seu pinhal e desbloqueia novos cards da fauna e flora.';
+    } else if(newLevel >= 8){
+      ctx.textContent = 'Você está nos níveis mais avançados! A floresta está se tornando uma mata madura, com árvores centenárias e a fauna mais rara.';
+    } else if(newLevel >= 5){
+      ctx.textContent = 'Você passou da metade da jornada. Suas árvores estão amadurecendo e cards mais raros começam a aparecer.';
+    } else {
+      ctx.textContent = 'Continue estudando para evoluir suas árvores e descobrir mais espécies da Mata de Araucárias.';
+    }
+    card.appendChild(ctx);
 
     if(info.reward){
       const reward = mk('div');
@@ -33139,9 +33156,10 @@ const Pinhal = (() => {
         <div style="position:absolute;inset:4px;border-radius:50%;background:${color}1A;display:flex;align-items:center;justify-content:center;font-size:22px">${card.emoji}</div>
       </div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.6px">🎁 Card ${rarLabels[card.rar]||'Comum'}</div>
+        <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.6px">🎁 Novo card · ${rarLabels[card.rar]||'Comum'}</div>
         <div style="font-size:14px;font-weight:700;color:var(--text);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(card.nome)}</div>
         <div style="font-size:11px;color:var(--text3);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(card.cientifico)}</div>
+        <div style="font-size:10.5px;color:${color};font-weight:600;margin-top:2px">→ Clique pra ver detalhes</div>
       </div>`;
     document.body.appendChild(toast);
 
@@ -33230,8 +33248,17 @@ const Pinhal = (() => {
     const color = rarColors[card.rar] || '#8042fa';
     const m = mk('div');
     m.style.cssText = 'max-width:380px;width:100%';
+
+    // V15.12.75.120 — Bloco introdutório com contexto sobre o que é um card.
+    // Aparece sempre — ajuda user novo a entender o sistema. User reportou
+    // que pop-ups do pinhal precisavam de mais contexto.
+    const intro = mk('div');
+    intro.style.cssText = 'background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.18);padding:.625rem .875rem;margin:-1.25rem -1.25rem .875rem;border-radius:12px 12px 0 0;font-size:11.5px;color:var(--text2);line-height:1.5;text-align:left';
+    intro.innerHTML = `<b style="color:var(--gralia-purple)">🎴 O que é isto?</b> Os cards do Pinhal são figurinhas digitais da fauna e flora da Mata de Araucárias. Você descobre novas espécies conforme estuda — cada ação acumula XP e desbloqueia cards da região.`;
+    m.appendChild(intro);
+
     const head = mk('div');
-    head.style.cssText = `text-align:center;padding:1.25rem 1rem;background:linear-gradient(135deg,${color}15,${color}05);border-radius:12px 12px 0 0;margin:-1.25rem -1.25rem 1rem`;
+    head.style.cssText = `text-align:center;padding:1.25rem 1rem;background:linear-gradient(135deg,${color}15,${color}05);margin:0 -1.25rem 1rem`;
     head.innerHTML = `
       <div style="display:inline-block;width:84px;height:84px;border-radius:18px;background:${color}1A;border:2px solid ${color}40;display:flex;align-items:center;justify-content:center;font-size:44px;margin-bottom:.625rem">${card.emoji}</div>
       <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${rarLabels[card.rar]||'Comum'}</div>
@@ -67348,9 +67375,11 @@ function buildForestScene(trees){
   // <video> WebM (visual primário) + <g> com SVG desenhado (fallback).
   // CSS controla qual está visível. JS pós-mount adiciona .araucaria-fallback
   // no grupo externo se o vídeo falhar.
-  // V15.12.75.119 — Param useStaticSvg força fallback SVG estático (sem vídeo).
-  // Usado quando há muitas árvores do mesmo tipo (performance: cap de vídeos).
-  function drawAraucariaHybrid(cx, cy, scale, type, treeId, useStaticSvg){
+  // V15.12.75.120 — Param `pauseAtStart` faz o vídeo carregar mas ficar travado
+  // no primeiro frame. Usado quando há muitas árvores (performance) — preserva
+  // o visual da animação que o user fez (não vira SVG sintético), só não roda.
+  // Apenas seeds usam SVG real porque o user gostou daquele especificamente.
+  function drawAraucariaHybrid(cx, cy, scale, type, treeId, pauseAtStart){
     const videoSrc = type === 'ancient' ? BRAND.araucariaCentenaria :
                      type === 'mature'  ? BRAND.araucariaAdulta :
                      type === 'young'   ? BRAND.araucariaJovem :
@@ -67367,10 +67396,9 @@ function buildForestScene(trees){
     const safeId = (treeId||'').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0, 24);
     const groupId = 'arau_' + type + '_' + safeId;
 
-    // V15.12.75.119 — Modo estático puro: pula vídeos, vai direto pro SVG.
-    // Reduz drasticamente carga de GPU quando há muitas árvores. Visual ainda
-    // é bonito (SVG vetorial), só perde a animação de balanço com o vento.
-    if(useStaticSvg){
+    // V15.12.75.120 — Seeds: SVG vetorial (user gostou desse especificamente).
+    // Outros tipos: webm (animação que o user fez), com modo paused se cap estourar.
+    if(type === 'seed'){
       let s = `<g class="araucaria araucaria-${type} araucaria-fallback" data-tree-id="${groupId}">`;
       s += `<g class="araucaria-svg">`;
       s += drawAraucaria(cx, cy, scale, type);
@@ -67378,25 +67406,21 @@ function buildForestScene(trees){
       return s;
     }
 
-    // Estrutura padrão (com vídeo + fallback SVG)
-    let s = `<g class="araucaria araucaria-${type}" data-tree-id="${groupId}">`;
+    // V15.12.75.120 — Vídeo único com loop nativo (sem crossfade que escurecia).
+    // Se pauseAtStart=true, JS pós-mount pausa o vídeo no primeiro frame
+    // (visualmente: animação congelada no início).
+    const pausedClass = pauseAtStart ? ' araucaria-paused' : '';
+    let s = `<g class="araucaria araucaria-${type}${pausedClass}" data-tree-id="${groupId}"${pauseAtStart ? ' data-paused="1"' : ''}>`;
     s += `<foreignObject class="araucaria-video-fo" x="${foX}" y="${foY}" width="${size.w}" height="${size.h}">`;
     s += `<div xmlns="http://www.w3.org/1999/xhtml" class="araucaria-video-wrap">`;
-    // Vídeo A — primário, começa visível. preload=auto pra começar a tocar logo.
-    s += `<video class="araucaria-video araucaria-video-a" muted playsinline preload="auto" aria-hidden="true">`;
-    s += `<source src="${videoSrc}" type="video/webm">`;
-    s += `</video>`;
-    // Vídeo B — secundário, começa invisível e desfasado
-    // V15.12.75.63 — preload=metadata em vez de auto. Reduz carga de rede
-    // inicial: B só carrega o vídeo real quando o crossfade aciona play(),
-    // não baixa antes. Resultado: 30 árvores = 30 downloads imediatos + 30
-    // sob demanda (em vez de 60 imediatos). Crossfade ainda funciona — quando
-    // dá play(), browser baixa rapidamente o que falta.
-    s += `<video class="araucaria-video araucaria-video-b" muted playsinline preload="metadata" aria-hidden="true">`;
+    // Atributo loop nativo — vídeo recomeça sozinho sem crossfade.
+    // preload=metadata em pausadas (só baixa o primeiro frame); auto nas tocando.
+    const preloadAttr = pauseAtStart ? 'metadata' : 'auto';
+    s += `<video class="araucaria-video" muted playsinline loop preload="${preloadAttr}" aria-hidden="true">`;
     s += `<source src="${videoSrc}" type="video/webm">`;
     s += `</video>`;
     s += `</div></foreignObject>`;
-    // Fallback SVG dentro de um g escondido por default
+    // Fallback SVG (vetorial) — só aparece se vídeo falhar (.araucaria-fallback adicionada por JS)
     s += `<g class="araucaria-svg">`;
     s += drawAraucaria(cx, cy, scale, type);
     s += `</g></g>`;
@@ -67430,36 +67454,33 @@ function buildForestScene(trees){
     });
   };
 
-  // V15.12.75.119 — Cap de árvores animadas (vídeos) pra evitar travamento na
-  // fase final (45 árvores × 2 vídeos = 90 vídeos). Total ≤15 vídeos:
-  //   - até 4 ancients animadas (resto SVG)
-  //   - até 5 matures animadas
-  //   - até 4 youngs animadas
-  //   - até 3 seeds animadas
-  // SVG fallback é bonito (vetorial), só perde animação de vento.
-  const VIDEO_CAPS = { ancient: 4, mature: 5, young: 4, seed: 3 };
+  // V15.12.75.120 — Cap de árvores ANIMADAS (com vídeo tocando). Resto fica
+  // com o vídeo carregado mas PAUSADO no primeiro frame — visual preserva
+  // a animação do user (não vira SVG sintético), só não roda = sem custo de GPU.
+  // Seeds não contam (sempre SVG vetorial, user disse que gosta da semente).
+  const VIDEO_CAPS = { ancient: 4, mature: 5, young: 4 };
 
   // Ordem de desenho: ancient atrás (maior z-depth → desenha primeiro), depois
   // mature, young, seeds (perto da câmera). Cada grupo distribuído uniformemente.
   const ancientLayout = distributeXY(grouped.ancient, H * 0.74, 26, 60, 1.35, 0.35);
   ancientLayout.forEach(({x, y, size, id}, i) => {
-    const useStatic = i >= VIDEO_CAPS.ancient;
-    svg += drawAraucariaHybrid(x, y, size, 'ancient', id, useStatic);
+    const pauseAtStart = i >= VIDEO_CAPS.ancient;
+    svg += drawAraucariaHybrid(x, y, size, 'ancient', id, pauseAtStart);
   });
   const matureLayout = distributeXY(grouped.mature, H * 0.81, 24, 50, 1.00, 0.30);
   matureLayout.forEach(({x, y, size, id}, i) => {
-    const useStatic = i >= VIDEO_CAPS.mature;
-    svg += drawAraucariaHybrid(x, y, size, 'mature', id, useStatic);
+    const pauseAtStart = i >= VIDEO_CAPS.mature;
+    svg += drawAraucariaHybrid(x, y, size, 'mature', id, pauseAtStart);
   });
   const youngLayout = distributeXY(grouped.young, H * 0.88, 18, 35, 0.70, 0.25);
   youngLayout.forEach(({x, y, size, id}, i) => {
-    const useStatic = i >= VIDEO_CAPS.young;
-    svg += drawAraucariaHybrid(x, y, size, 'young', id, useStatic);
+    const pauseAtStart = i >= VIDEO_CAPS.young;
+    svg += drawAraucariaHybrid(x, y, size, 'young', id, pauseAtStart);
   });
+  // Seeds: sempre SVG (user gosta), sem cap
   const seedLayout = distributeXY(grouped.seed, H * 0.93, 14, 22, 0.45, 0.20);
-  seedLayout.forEach(({x, y, size, id}, i) => {
-    const useStatic = i >= VIDEO_CAPS.seed;
-    svg += drawAraucariaHybrid(x, y, size, 'seed', id, useStatic);
+  seedLayout.forEach(({x, y, size, id}) => {
+    svg += drawAraucariaHybrid(x, y, size, 'seed', id);
   });
 
   // === GRALHA — alinhada à identidade da marca ===
@@ -67539,92 +67560,52 @@ function buildForestScene(trees){
     }
 
     // V15.12.58 — Mesmo hook pra cada araucária. Cada <g.araucaria> tem seu
-    // próprio video, então cada um tem seu listener individual. Falha
-    // independente: se 1 vídeo falhar, só aquela árvore vira SVG.
-    // V15.12.62 — Agora cada árvore tem 2 vídeos (A e B) pra crossfade.
-    // Lógica: A começa tocando. Quando chega aos últimos 0.6s, B é resetado
-    // pra 0 e começa a tocar com fade-in (CSS transition). A faz fade-out.
-    // No próximo loop, B vira o "ativo" e A começa quando B chegar perto do
-    // fim. Resultado: nunca há corte brusco no loop.
-    const CROSSFADE_THRESHOLD = 0.6; // segundos antes do fim pra começar transição
+    // V15.12.75.120 — Reescrito SEM crossfade. Cada árvore tem 1 só vídeo
+    // com `loop` nativo. Se o grupo tem `data-paused="1"`, o vídeo carrega
+    // mas é pausado no primeiro frame (preserva visual da animação que o user
+    // fez, sem rodar = sem custo de GPU).
     const araucarias = container.querySelectorAll('.araucaria');
     araucarias.forEach(group => {
-      const va = group.querySelector('.araucaria-video-a');
-      const vb = group.querySelector('.araucaria-video-b');
-      if(!va || !vb) return;
+      const v = group.querySelector('.araucaria-video');
+      if(!v) return;
 
-      const activate = ()=>{
+      // Detecta falha — força fallback SVG
+      const markBroken = () => {
         group.classList.add('araucaria-fallback');
-        try{ va.pause && va.pause(); }catch(_){}
-        try{ vb.pause && vb.pause(); }catch(_){}
+        try{ v.pause && v.pause(); }catch(_){}
       };
-      // Detecta falha em qualquer um dos 2 vídeos
-      [va, vb].forEach(v => {
-        v.addEventListener('error', activate);
-        const src = v.querySelector('source');
-        if(src) src.addEventListener('error', activate);
-        v.addEventListener('loadedmetadata', ()=>{
-          if(!v.videoWidth || !v.videoHeight) activate();
-        });
+      v.addEventListener('error', markBroken);
+      const src = v.querySelector('source');
+      if(src) src.addEventListener('error', markBroken);
+      v.addEventListener('loadedmetadata', () => {
+        if(!v.videoWidth || !v.videoHeight) markBroken();
       });
 
-      // Estado de qual vídeo está ativo agora
-      let activeVideo = va;
-      let standbyVideo = vb;
-
-      const swapActive = () => {
-        // Reset standby pro início
-        try{ standbyVideo.currentTime = 0; }catch(_){}
-        // Toca standby (que vai virar o ativo após o fade)
-        const playPromise = standbyVideo.play();
-        if(playPromise && typeof playPromise.catch === 'function'){
-          playPromise.catch(()=>{}); // silencia erros de autoplay
-        }
-        // Toggle classe — CSS faz o fade visual
-        group.classList.toggle('crossfade-active');
-        // Inverte refs
-        const tmp = activeVideo;
-        activeVideo = standbyVideo;
-        standbyVideo = tmp;
-      };
-
-      // timeupdate dispara muitas vezes por segundo. Quando o vídeo ativo
-      // chega aos últimos CROSSFADE_THRESHOLD segundos, dispara o swap UMA
-      // vez. Flag local impede múltiplos swaps no mesmo ciclo.
-      let swapping = false;
-      const onTime = (e) => {
-        const v = e.target;
-        if(v !== activeVideo) return; // só o ativo controla
-        if(swapping) return;
-        if(!v.duration || isNaN(v.duration)) return;
-        const remaining = v.duration - v.currentTime;
-        if(remaining <= CROSSFADE_THRESHOLD && remaining > 0){
-          swapping = true;
-          swapActive();
-          // Quando o vídeo "antigo" (standby agora) terminar, libera flag pra
-          // V15.12.63 — Antes liberava em 1.5s fixo, mas se duração total
-          // fosse curta (<1.5s) podia disparar dois swaps no mesmo ciclo.
-          // Agora usa duração real do vídeo + 200ms de margem.
-          const releaseDelay = ((v.duration || 4) * 1000) + 200;
-          setTimeout(()=>{ swapping = false; }, releaseDelay);
-        }
-      };
-      [va, vb].forEach(v => v.addEventListener('timeupdate', onTime));
-
-      // Bonus: quando vídeo ativo chega ao fim natural (loop antigo), se o
-      // crossfade não pegou (timeupdate falho), reinicia ele mesmo pra evitar
-      // travar. NÃO usa loop nativo — controlamos manualmente.
-      [va, vb].forEach(v => {
-        v.addEventListener('ended', () => {
-          // Se o swap não rolou, reinicia o próprio vídeo
-          if(v === activeVideo){
-            try{ v.currentTime = 0; v.play().catch(()=>{}); }catch(_){}
+      const isPaused = group.dataset.paused === '1';
+      if(isPaused){
+        // Modo pausado: aguarda o vídeo carregar e pausa no primeiro frame
+        // (currentTime=0). preload=metadata só baixa o necessário pra exibir
+        // o frame, sem download completo do .webm.
+        v.addEventListener('loadeddata', () => {
+          try{
+            v.currentTime = 0;
+            v.pause();
+          }catch(_){}
+        });
+        // Mesmo assim damos um play inicial (curto) pra forçar render do 1º frame
+        // em alguns browsers que não mostram nada sem play. Pausamos logo depois.
+        try{
+          const p = v.play();
+          if(p && p.then){
+            p.then(() => {
+              setTimeout(() => { try{ v.pause(); v.currentTime = 0; }catch(_){} }, 50);
+            }).catch(() => {});
           }
-        });
-      });
-
-      // Inicia A; B fica em pause aguardando seu turno
-      try{ va.play().catch(()=>{}); }catch(_){}
+        }catch(_){}
+      } else {
+        // Modo normal: toca em loop (atributo loop já está no markup)
+        try{ v.play().catch(() => {}); }catch(_){}
+      }
     });
   }, 0);
 
