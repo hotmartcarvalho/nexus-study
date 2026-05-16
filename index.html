@@ -5088,10 +5088,13 @@ body.forest-expanded{overflow:hidden}
 @media (max-width: 600px){
   .forest-scene-card.forest-expanded{width:96vw !important; height:96vh !important}
 }
-.forest-bird{transform-origin:0 0;animation:forest-bird-fly 36s ease-in-out infinite}
-/* V15.12.75.111 — Gralha muito menor (scale 0.6-0.9 era 1.7-2.1) e voando
-   MAIS BAIXO (y 200-310, entre as árvores). User reportou que estava grande
-   demais e voando alto, parecia desproporcional. */
+/* V15.12.75.119 — Animação da gralha agora ida-e-volta (`alternate`) em vez
+   de loop com teleporte. Antes: keyframe 0% e 100% tinham mesmo ponto (esquerda),
+   mas em 90% estava na direita, então havia um "salto" da direita pra esquerda
+   no final. Agora: vai 0→100% (esquerda→direita), depois volta 100→0% suavemente
+   (direita→esquerda), repete. Sem quebra brusca. Duração mantida em 36s por
+   metade (72s total no ciclo completo). */
+.forest-bird{transform-origin:0 0;animation:forest-bird-fly 36s ease-in-out infinite alternate}
 @keyframes forest-bird-fly{
   0%{transform:translate(80px, 280px) scale(0.65) rotate(-4deg)}
   15%{transform:translate(180px, 240px) scale(0.70) rotate(-2deg)}
@@ -5099,8 +5102,7 @@ body.forest-expanded{overflow:hidden}
   45%{transform:translate(460px, 220px) scale(0.85) rotate(-3deg)}
   60%{transform:translate(580px, 270px) scale(0.90) rotate(-1deg)}
   75%{transform:translate(680px, 210px) scale(0.80) rotate(-3deg)}
-  90%{transform:translate(720px, 290px) scale(0.70) rotate(-2deg)}
-  100%{transform:translate(80px, 280px) scale(0.65) rotate(-4deg)}
+  100%{transform:translate(720px, 280px) scale(0.70) rotate(-2deg)}
 }
 /* Bater de asas — sutil, em ciclo curto */
 .forest-bird-wing-l{transform-origin:-5px -2px;animation:bird-wing-l 0.45s ease-in-out infinite}
@@ -7406,7 +7408,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.118';
+window.GRALIA_VERSION = 'V15.12.75.119';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -67346,17 +67348,13 @@ function buildForestScene(trees){
   // <video> WebM (visual primário) + <g> com SVG desenhado (fallback).
   // CSS controla qual está visível. JS pós-mount adiciona .araucaria-fallback
   // no grupo externo se o vídeo falhar.
-  function drawAraucariaHybrid(cx, cy, scale, type, treeId){
+  // V15.12.75.119 — Param useStaticSvg força fallback SVG estático (sem vídeo).
+  // Usado quando há muitas árvores do mesmo tipo (performance: cap de vídeos).
+  function drawAraucariaHybrid(cx, cy, scale, type, treeId, useStaticSvg){
     const videoSrc = type === 'ancient' ? BRAND.araucariaCentenaria :
                      type === 'mature'  ? BRAND.araucariaAdulta :
                      type === 'young'   ? BRAND.araucariaJovem :
                                           BRAND.araucariaMuda;
-    // V15.12.60 — Aumentos diferenciados por tipo conforme feedback:
-    //   - centenária e adulta: +30% (animação fica mais fluida sem dominar)
-    //   - jovem: +60% (estavam pequenas demais pra ver detalhe da animação)
-    //   - muda: +100% (era a menos visível, dobrou de tamanho)
-    // Aplicado sobre os valores da V15.12.59. Mantém a hierarquia visual
-    // (centenária ainda é a maior) mas reduz o gap entre tipos.
     const sizeMap = {
       ancient: { w: 109 * scale, h: 172 * scale, dy: 0.95 },
       mature:  { w: 86 * scale,  h: 140 * scale, dy: 0.95 },
@@ -67369,12 +67367,18 @@ function buildForestScene(trees){
     const safeId = (treeId||'').replace(/[^a-zA-Z0-9_-]/g,'_').slice(0, 24);
     const groupId = 'arau_' + type + '_' + safeId;
 
-    // Estrutura: g com classes que controlam qual filho mostra
-    // V15.12.62 — Crossfade entre 2 vídeos sobrepostos pra eliminar a "queda"
-    // visível quando o loop reinicia. Vídeo A toca; quando chega perto do fim,
-    // vídeo B (reseted pra 0) começa a tocar com fade-in enquanto A faz fade-out.
-    // Hook JS pós-mount controla o crossover. Sem crossfade, o usuário percebia
-    // o vídeo cortar bruscamente a cada loop curto.
+    // V15.12.75.119 — Modo estático puro: pula vídeos, vai direto pro SVG.
+    // Reduz drasticamente carga de GPU quando há muitas árvores. Visual ainda
+    // é bonito (SVG vetorial), só perde a animação de balanço com o vento.
+    if(useStaticSvg){
+      let s = `<g class="araucaria araucaria-${type} araucaria-fallback" data-tree-id="${groupId}">`;
+      s += `<g class="araucaria-svg">`;
+      s += drawAraucaria(cx, cy, scale, type);
+      s += `</g></g>`;
+      return s;
+    }
+
+    // Estrutura padrão (com vídeo + fallback SVG)
     let s = `<g class="araucaria araucaria-${type}" data-tree-id="${groupId}">`;
     s += `<foreignObject class="araucaria-video-fo" x="${foX}" y="${foY}" width="${size.w}" height="${size.h}">`;
     s += `<div xmlns="http://www.w3.org/1999/xhtml" class="araucaria-video-wrap">`;
@@ -67399,25 +67403,63 @@ function buildForestScene(trees){
     return s;
   }
 
-  grouped.ancient.forEach((t, i)=>{
-    const x = 80 + hashPos(t.id, W - 160);
-    const y = H * 0.76 + hashPos(t.id+'y', 14);
-    svg += drawAraucariaHybrid(x, y, 1.5, 'ancient', t.id);
+  // V15.12.75.119 — Distribuição uniforme em "colunas" baseada no índice da
+  // árvore no grupo (não só hash). Antes: hash puro fazia árvores se aglomerarem
+  // quando havia muitas (fase Lendária/Final com 15-25 do mesmo tipo). Agora:
+  // cada grupo distribui suas árvores em colunas regulares com jitter pequeno
+  // pra parecer natural. Variação vertical aumentada (jitter 28 em vez de 14).
+  //
+  // Layout: árvores grandes (ancient) ocupam o fundo/meio, médias mais à frente,
+  // jovens ainda mais à frente, sementes na borda inferior.
+  const distributeXY = (group, baseY, yJitter, marginX, minSize, sizeJitter) => {
+    const N = group.length;
+    if(N === 0) return [];
+    return group.map((t, i) => {
+      // X em colunas regulares (1/(N+1), 2/(N+1), ...) + jitter por hash
+      const colCenter = ((i + 1) / (N + 1)) * (W - 2 * marginX) + marginX;
+      // Jitter horizontal: ±15% da largura de uma "coluna" pra evitar grid rígido
+      const laneWidth = (W - 2 * marginX) / Math.max(1, N);
+      const xJitterMax = laneWidth * 0.30;
+      const xJ = ((hashPos(t.id, 100) - 50) / 50) * xJitterMax;
+      const x = Math.max(marginX, Math.min(W - marginX, colCenter + xJ));
+      // Y com jitter mais amplo (parece natural)
+      const y = baseY + hashPos(t.id + 'y', yJitter);
+      // Variação leve de tamanho pra dar profundidade dentro do grupo
+      const size = minSize + (hashPos(t.id + 's', 100) / 100) * sizeJitter;
+      return {x, y, size, id: t.id};
+    });
+  };
+
+  // V15.12.75.119 — Cap de árvores animadas (vídeos) pra evitar travamento na
+  // fase final (45 árvores × 2 vídeos = 90 vídeos). Total ≤15 vídeos:
+  //   - até 4 ancients animadas (resto SVG)
+  //   - até 5 matures animadas
+  //   - até 4 youngs animadas
+  //   - até 3 seeds animadas
+  // SVG fallback é bonito (vetorial), só perde animação de vento.
+  const VIDEO_CAPS = { ancient: 4, mature: 5, young: 4, seed: 3 };
+
+  // Ordem de desenho: ancient atrás (maior z-depth → desenha primeiro), depois
+  // mature, young, seeds (perto da câmera). Cada grupo distribuído uniformemente.
+  const ancientLayout = distributeXY(grouped.ancient, H * 0.74, 26, 60, 1.35, 0.35);
+  ancientLayout.forEach(({x, y, size, id}, i) => {
+    const useStatic = i >= VIDEO_CAPS.ancient;
+    svg += drawAraucariaHybrid(x, y, size, 'ancient', id, useStatic);
   });
-  grouped.mature.forEach((t, i)=>{
-    const x = 60 + hashPos(t.id, W - 120);
-    const y = H * 0.82 + hashPos(t.id+'y', 18);
-    svg += drawAraucariaHybrid(x, y, 1.1, 'mature', t.id);
+  const matureLayout = distributeXY(grouped.mature, H * 0.81, 24, 50, 1.00, 0.30);
+  matureLayout.forEach(({x, y, size, id}, i) => {
+    const useStatic = i >= VIDEO_CAPS.mature;
+    svg += drawAraucariaHybrid(x, y, size, 'mature', id, useStatic);
   });
-  grouped.young.forEach((t, i)=>{
-    const x = 40 + hashPos(t.id, W - 80);
-    const y = H * 0.89 + hashPos(t.id+'y', 14);
-    svg += drawAraucariaHybrid(x, y, 0.75, 'young', t.id);
+  const youngLayout = distributeXY(grouped.young, H * 0.88, 18, 35, 0.70, 0.25);
+  youngLayout.forEach(({x, y, size, id}, i) => {
+    const useStatic = i >= VIDEO_CAPS.young;
+    svg += drawAraucariaHybrid(x, y, size, 'young', id, useStatic);
   });
-  grouped.seed.forEach((t, i)=>{
-    const x = 25 + hashPos(t.id, W - 50);
-    const y = H * 0.94 + hashPos(t.id+'y', 10);
-    svg += drawAraucariaHybrid(x, y, 0.5, 'seed', t.id);
+  const seedLayout = distributeXY(grouped.seed, H * 0.93, 14, 22, 0.45, 0.20);
+  seedLayout.forEach(({x, y, size, id}, i) => {
+    const useStatic = i >= VIDEO_CAPS.seed;
+    svg += drawAraucariaHybrid(x, y, size, 'seed', id, useStatic);
   });
 
   // === GRALHA — alinhada à identidade da marca ===
