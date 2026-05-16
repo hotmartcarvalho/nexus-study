@@ -4400,6 +4400,25 @@ input[type="month"]::-webkit-calendar-picker-indicator{
   font-size:14.5px;
 }
 .source-reader-shell.focus-on .reader-sidebar{display:none !important}
+/* V15.12.75.91 — Modo foco zen: também esconde fundo escuro do modal-bg,
+   modo foco zen estilo flashcards. O shell ocupa quase a tela toda com fundo
+   sólido limpo. */
+.modal-bg:has(.source-reader-shell.focus-on){
+  background:var(--surface) !important;
+  padding:0 !important;
+}
+.modal-bg:has(.source-reader-shell.focus-on) .modal{
+  max-width:100vw !important;
+  max-height:100vh !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+}
+.source-reader-shell.focus-on{
+  max-width:100% !important;
+  height:100vh !important;
+  max-height:100vh !important;
+  border-radius:0 !important;
+}
 /* Botão flutuante "sair do foco" só aparece no modo foco */
 .source-reader-shell .reader-focus-exit{display:none}
 .source-reader-shell.focus-on .reader-focus-exit{display:flex}
@@ -5453,10 +5472,12 @@ body.pomo-float-visible .faq-floating-btn{display:none !important}
 /* V15.12.75.88 — Filtros premium: identidade roxa coerente com o Gralia,
    tipografia refinada (contadores em tabular-nums), espaçamento generoso,
    hover state suave, agrupamento visual sutil. Antes era "funcional, sem
-   personalidade"; agora tem peso de produto. */
+   personalidade"; agora tem peso de produto.
+   V15.12.75.91 — Linha vertical lateral muito mais saturada. Antes alpha 0.3
+   + opacity 0.55 = quase invisível. Agora 4px de largura com cor sólida. */
 .bank-filters{
   margin-bottom:1rem;
-  padding:.875rem 1rem;
+  padding:.875rem 1rem .875rem 1.125rem;
   background:var(--surface);
   border:1px solid var(--border);
   border-radius:12px;
@@ -5465,11 +5486,11 @@ body.pomo-float-visible .faq-floating-btn{display:none !important}
 .bank-filters::before{
   content:'';
   position:absolute;
-  left:0;top:12px;bottom:12px;
-  width:2px;
-  background:linear-gradient(180deg, var(--gralia-purple) 0%, rgba(128,66,250,.3) 100%);
-  border-radius:0 2px 2px 0;
-  opacity:.55;
+  left:0;top:10px;bottom:10px;
+  width:4px;
+  background:var(--gralia-purple);
+  border-radius:0 3px 3px 0;
+  opacity:.85;
 }
 .filter-row{
   display:flex;
@@ -5624,7 +5645,7 @@ body.pomo-float-visible .faq-floating-btn{display:none !important}
   background:var(--surface);
   border:1px solid var(--border);
   border-radius:12px;
-  padding:1rem 1.125rem;
+  padding:1rem 1.125rem 1rem 1.25rem;
   margin-bottom:1rem;
   position:relative;
 }
@@ -5632,10 +5653,10 @@ body.pomo-float-visible .faq-floating-btn{display:none !important}
   content:'';
   position:absolute;
   left:0;top:14px;bottom:14px;
-  width:2px;
-  background:linear-gradient(180deg, var(--gralia-purple) 0%, rgba(128,66,250,.3) 100%);
-  border-radius:0 2px 2px 0;
-  opacity:.55;
+  width:4px;
+  background:var(--gralia-purple);
+  border-radius:0 3px 3px 0;
+  opacity:.85;
 }
 .pool-search-section-label{
   font-size:10.5px;
@@ -7139,7 +7160,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.90';
+window.GRALIA_VERSION = 'V15.12.75.91';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -23684,7 +23705,7 @@ function renderSourceList(wrap){
   // Antes: chip "ativa" sem explicar o que significa.
   // Agora: alerta no topo explica conexão entre disciplina ativa → métodos.
   const explainBox = mk('div');
-  explainBox.style.cssText = 'background:rgba(128,66,250,.04);border:1px solid rgba(128,66,250,.15);border-left:3px solid var(--gralia-purple);border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;gap:10px;align-items:flex-start';
+  explainBox.style.cssText = 'background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.20);border-left:4px solid var(--gralia-purple);border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;gap:10px;align-items:flex-start';
   explainBox.innerHTML = `
     <span style="font-size:18px;line-height:1;flex-shrink:0">💡</span>
     <div style="flex:1;font-size:12.5px;line-height:1.55;color:var(--text2)">
@@ -23778,13 +23799,25 @@ function renderSourceList(wrap){
     }
 
     // V15.9: Toggle agrupar por disciplina
+    // V15.12.75.91 — Migrado de ST (volátil) pra DATA.config (persistente).
+    // Estado escolhido sobrevive a reload/login.
     if(DATA.disciplines.length >= 2){
+      if(!DATA.config) DATA.config = {};
+      // Migra valor antigo de ST pra DATA.config se existir
+      if(ST.srcGroupByDiscipline !== undefined && DATA.config.srcGroupByDiscipline === undefined){
+        DATA.config.srcGroupByDiscipline = !!ST.srcGroupByDiscipline;
+      }
       const groupBtn = mk('button');
       groupBtn.type='button';
-      const isGrouped = !!ST.srcGroupByDiscipline;
+      const isGrouped = !!DATA.config.srcGroupByDiscipline;
       groupBtn.style.cssText = `font-size:12px;padding:4px 10px;border:1px solid ${isGrouped?'var(--gralia-purple)':'var(--border)'};background:${isGrouped?'var(--gralia-purple)':'var(--surface2)'};color:${isGrouped?'#fff':'var(--text2)'};border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600`;
       groupBtn.textContent = isGrouped ? '✓ Agrupado por disciplina' : '📑 Agrupar por disciplina';
-      groupBtn.addEventListener('click',()=>{ST.srcGroupByDiscipline=!ST.srcGroupByDiscipline;render();});
+      groupBtn.addEventListener('click',()=>{
+        DATA.config.srcGroupByDiscipline = !DATA.config.srcGroupByDiscipline;
+        ST.srcGroupByDiscipline = DATA.config.srcGroupByDiscipline;  // mantém sync
+        save();
+        render();
+      });
       filterRow.appendChild(groupBtn);
     }
 
@@ -23819,7 +23852,9 @@ function renderSourceList(wrap){
 
   // V15.9: Agrupamento opcional por disciplina (com seções colapsáveis).
   // Quando ativo, monta grupos. Quando desativo, lista plana.
-  if(ST.srcGroupByDiscipline){
+  // V15.12.75.91 — Lê de DATA.config (persistente), com fallback pra ST (legado).
+  const isGroupedView = (DATA.config && DATA.config.srcGroupByDiscipline) || !!ST.srcGroupByDiscipline;
+  if(isGroupedView){
     if(!ST.srcCollapsed) ST.srcCollapsed = {};
     const groups = new Map();
     sourcesToShow.forEach(src => {
@@ -23888,10 +23923,31 @@ function renderSourceList(wrap){
     }
     const ic = mk('div','src-icon');ic.style.background=cfg.bg;ic.style.color=cfg.color;ic.textContent=cfg.icon;
     const info = mk('div','src-info');
-    const name = mk('div','src-name');name.textContent=src.name;
+    const name = mk('div','src-name');
+    // V15.12.75.91 — Check verde se fonte foi marcada como lida (atingiu
+    // 95% scroll + 60% tempo estimado). Tooltip mostra data.
+    if(src.readAt){
+      const readBadge = mk('span');
+      readBadge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:rgba(16,185,129,.18);color:var(--accent-text);font-size:11px;font-weight:700;margin-right:6px;vertical-align:middle';
+      readBadge.textContent = '✓';
+      readBadge.title = 'Lida em ' + new Date(src.readAt).toLocaleDateString('pt-BR') + (src.readingTimeSeconds ? ' · '+Math.round(src.readingTimeSeconds/60)+' min de leitura' : '');
+      name.appendChild(readBadge);
+    }
+    const nameText = mk('span');nameText.textContent = src.name;
+    name.appendChild(nameText);
     const meta = mk('div','src-meta');
     const mt1 = mk('span');mt1.textContent=`${cfg.label} · ${(src.content.length/1000).toFixed(1)}k chars`;
     meta.appendChild(mt1);
+    // V15.12.75.91 — Tempo total já lido (se houver). Útil pra ver fontes
+    // em progresso (começou mas não terminou).
+    if(src.readingTimeSeconds && src.readingTimeSeconds >= 30 && !src.readAt){
+      const timeTag = mk('span','src-meta-tag');
+      timeTag.style.cssText = 'background:rgba(128,66,250,.10);color:var(--gralia-purple);border:1px solid rgba(128,66,250,.25);font-weight:600';
+      const min = Math.round(src.readingTimeSeconds / 60);
+      timeTag.innerHTML = `📖 ${min < 1 ? '<1' : min} min lidos`;
+      timeTag.title = 'Tempo real ativo gasto lendo esta fonte';
+      meta.appendChild(timeTag);
+    }
     // V14: Badge "Exemplo" pra fontes de tutorial
     if(src.isExample){
       const exTag = mk('span','src-meta-tag');
@@ -31848,7 +31904,26 @@ function showSourceReaderModal(src){
 
   // Botões do header
   const headBtns = mk('div');
-  headBtns.style.cssText = 'display:flex;gap:6px;flex-shrink:0';
+  headBtns.style.cssText = 'display:flex;gap:6px;flex-shrink:0;align-items:center';
+
+  // V15.12.75.91 — Botões "início" e "fim" pra pular pra começo/fim do texto.
+  // Atalhos teclado Home/End já fazem isso; estes botões dão affordance visual.
+  const mkNavBtn = (icon, title, onClick) => {
+    const b = mk('button');
+    b.type = 'button';
+    b.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease';
+    b.innerHTML = icon;
+    b.title = title;
+    b.addEventListener('mouseenter',()=>{b.style.background='rgba(128,66,250,.10)';b.style.borderColor='rgba(128,66,250,.40)';b.style.color='var(--gralia-purple)';});
+    b.addEventListener('mouseleave',()=>{b.style.background='var(--surface)';b.style.borderColor='var(--border)';b.style.color='var(--text2)';});
+    b.addEventListener('click',onClick);
+    return b;
+  };
+  const toStartBtn = mkNavBtn('⏮', 'Voltar pro início (Home)', () => content.scrollTo({top: 0, behavior: 'smooth'}));
+  const toEndBtn = mkNavBtn('⏭', 'Pular pro fim (End)', () => content.scrollTo({top: content.scrollHeight, behavior: 'smooth'}));
+  headBtns.appendChild(toStartBtn);
+  headBtns.appendChild(toEndBtn);
+
   // V15.12.75.90 — Botão "modo foco": esconde header, marcadores e
   // distrações. Deixa só texto + barra fina de progresso.
   const focusBtnH = mk('button');
@@ -32052,6 +32127,71 @@ function showSourceReaderModal(src){
   body.appendChild(content);
   m.appendChild(body);
 
+  // V15.12.75.91 — Tempo real de leitura + check "fonte lida".
+  // Tracking INTELIGENTE (não estimativa cega):
+  //   - Só conta tempo se a aba está VISÍVEL (document.hidden = false)
+  //   - Só conta se houve INTERAÇÃO recente (scroll/mousemove/keypress < 30s atrás)
+  //   - A cada 5s ativos, incrementa src.readingTimeSeconds e persiste
+  //
+  // Fonte "lida": marca quando atingir scroll >= 95% E tempo lido >= 60% do
+  // estimado. Combinação evita: (a) marcar por rolar rápido o documento,
+  // (b) marcar só por deixar aberto sem ler.
+  if(!src.readingTimeSeconds) src.readingTimeSeconds = 0;
+  let lastInteractionTs = Date.now();
+  const noteInteraction = () => { lastInteractionTs = Date.now(); };
+  content.addEventListener('scroll', noteInteraction, {passive: true});
+  content.addEventListener('mousemove', noteInteraction, {passive: true});
+  content.addEventListener('keydown', noteInteraction);
+
+  // Cria mini-display de tempo no header (entre stats)
+  const timeDisplay = mk('span');
+  timeDisplay.style.cssText = 'color:var(--gralia-purple);font-weight:600;font-variant-numeric:tabular-nums';
+  timeDisplay.title = 'Tempo real de leitura ativa (só conta com aba visível + interação recente)';
+  const fmtTime = (sec) => {
+    if(sec < 60) return Math.round(sec) + 's';
+    const m = Math.floor(sec / 60);
+    const s = Math.round(sec % 60);
+    if(m < 60) return m + 'min' + (s > 0 ? ' '+s+'s' : '');
+    return Math.floor(m/60) + 'h ' + (m%60) + 'min';
+  };
+  const updateTimeDisplay = () => {
+    timeDisplay.textContent = `📖 ${fmtTime(src.readingTimeSeconds)} lido`;
+    if(src.readAt){
+      timeDisplay.innerHTML += ` <span style="color:var(--accent-text);font-weight:700" title="Marcado como lido em ${new Date(src.readAt).toLocaleDateString('pt-BR')}">✓</span>`;
+    }
+  };
+  // Adiciona na linha de stats
+  stats.appendChild(timeDisplay);
+  updateTimeDisplay();
+
+  // Tick a cada 5s pra incrementar tempo se ativo
+  let lastSavedTime = src.readingTimeSeconds;
+  const timeTicker = setInterval(() => {
+    const idle = (Date.now() - lastInteractionTs) > 30000;
+    if(document.hidden || idle){
+      // Inativo — não conta
+      return;
+    }
+    src.readingTimeSeconds = (src.readingTimeSeconds || 0) + 5;
+    updateTimeDisplay();
+    // Salva no localStorage a cada 30s (não a cada tick pra reduzir IO)
+    if(src.readingTimeSeconds - lastSavedTime >= 30){
+      try{ save(); lastSavedTime = src.readingTimeSeconds; }catch(_){}
+    }
+    // Tenta marcar como lida (check + tempo combinados)
+    if(!src.readAt){
+      const scrollable = content.scrollHeight - content.clientHeight;
+      const scrollPct = scrollable > 0 ? (content.scrollTop / scrollable) * 100 : 100;
+      const requiredSec = minutesEstimate * 60 * 0.6;  // 60% do estimado
+      if(scrollPct >= 95 && src.readingTimeSeconds >= requiredSec){
+        src.readAt = Date.now();
+        try{ save(); }catch(_){}
+        updateTimeDisplay();
+        showToast('✓ "'+src.name+'" marcada como lida!', 6000);
+      }
+    }
+  }, 5000);
+
   // V15.12.75.90 — Botão flutuante "sair do foco" (só aparece com classe focus-on)
   const focusExit = mk('button','reader-focus-exit');
   focusExit.type = 'button';
@@ -32092,6 +32232,9 @@ function showSourceReaderModal(src){
   // Cleanup quando modal fecha
   const cleanupKeys = () => {
     document.removeEventListener('keydown', keyHandler);
+    // V15.12.75.91 — Limpa também o tracker de tempo + salva último estado
+    if(timeTicker) clearInterval(timeTicker);
+    try{ save(); }catch(_){}
   };
   // Hook no MutationObserver — quando m sair do DOM, remove o listener
   const observer = new MutationObserver((mutations) => {
@@ -68115,8 +68258,9 @@ function showToast(msg, duration){
   const t = mk('div','ux-toast');
   t.textContent = msg;
   // V14: tempo maior por padrão pra mensagens longas, e clicável pra dispensar antes
-  // Escala duração com tamanho da mensagem: ~70 wpm de leitura → 1 char = ~12ms
-  const baseMs = Math.max(3500, Math.min(9000, msg.length * 50));
+  // V15.12.75.91 — User reportou que toast some rápido demais. +5s na base
+  // (3500 → 8500 mínimo) e +5s no teto (9000 → 14000). Continua clicável pra dispensar antes.
+  const baseMs = Math.max(8500, Math.min(14000, msg.length * 50));
   const ms = (typeof duration === 'number' && duration > 0) ? duration : baseMs;
   t.title = 'Clique pra dispensar';
   t.addEventListener('click', ()=>{
