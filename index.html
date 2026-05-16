@@ -437,14 +437,11 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
 .bt-cta{margin-top:.75rem;padding-top:.625rem;border-top:1px solid var(--border);font-size:11.5px;color:var(--gralia-purple);font-weight:700;text-align:right}
 @media(max-width:640px){.brand-tooltip{display:none}}
 .brand-bird{height:44px;width:auto;display:block;flex-shrink:0;margin-right:-2px} /* V15.12.9: +10% (40→44px) */
-/* V15.12.22: logo do topbar agora contém o nome — span "GRALIA" fica oculto (só fallback se img falhar) */
-/* V15.12.23: altura 48→38 — Jean reportou que 48 ficou exagerada visualmente */
-/* V15.12.24: 38→30 — ainda estava grande comparado a outros elementos da topbar */
-/* V15.12.28: 30→27 (-10%) — Jean reportou que ainda estava um pouco grande */
-/* V15.12.75.57: 27→31 (+15%) — nova logo tem detalhe acima do G, aumento
-   compensa a altura extra ocupada pelo detalhe pra letras ficarem do mesmo
-   tamanho visual de antes. max-width acompanha (122→140) pra preservar proporção. */
-.brand .brand-bird{height:31px;max-width:140px;object-fit:contain}
+/* V15.12.75.105 — Logo da topbar aumentada de 31→50px (+61%). User pediu
+   100% maior mas optou por manter topbar em 56px, então o máximo que cabe
+   confortavelmente é 50px (deixa ~3px de respiro acima e abaixo).
+   Max-width acompanha proporcionalmente (140→225) pra logo+nome caberem. */
+.brand .brand-bird{height:50px;max-width:225px;object-fit:contain}
 .brand .brand-name{display:none}
 .brand .brand-name.brand-fallback.show{display:inline-flex}
 .brand-bird-dark{display:none}
@@ -2316,12 +2313,14 @@ html.dark .wfb-tag-ai{color:#b08aff}
   user-select:none;-webkit-user-drag:none;cursor:default;
 }
 
-/* V15.12.26 (Rodada 1): mascote ESTÁTICO menor que o animado.
-   Animação 96px chama atenção (correto pra abertura). Estado final 72px é
-   harmonioso, fica como decoração permanente sem competir com o card "Hoje". */
+/* V15.12.75.105 — Mascote estático MESMO TAMANHO do vídeo (96px).
+   Antes V15.12.26 deixava estático 72px (menor que vídeo 96px), causando
+   reflow visível das seções abaixo quando a animação terminava — parecia bug.
+   Agora ambos 96px = sem salto. Opacidade .85 mantida pra distinguir
+   sutilmente o estado final do estado durante animação. */
 .dash-mascot.dash-mascot-static .dash-mascot-img{
-  height:72px;
-  max-width:90px;
+  height:96px;
+  max-width:120px;
   opacity:.85;
 }
 
@@ -2330,8 +2329,8 @@ html.dark .wfb-tag-ai{color:#b08aff}
    estática). Regras desativadas. Removidas em rodada futura quando o tema
    final estiver estável. */
 .dash-mascot.dash-mascot-frozen .dash-mascot-video{
-  height:72px;
-  max-width:90px;
+  height:96px;
+  max-width:120px;
   opacity:.85;
   transition:height .35s ease, max-width .35s ease, opacity .35s ease;
 }
@@ -4551,8 +4550,11 @@ input[type="month"]::-webkit-calendar-picker-indicator{
   padding-bottom:.625rem !important;
 }
 /* Width picker dentro do header — só visível no modo foco */
-.source-reader-shell .reader-width-inline{display:none}
-.source-reader-shell.focus-on .reader-width-inline{display:inline-flex}
+/* V15.12.75.104 — Classe pra elementos que aparecem SÓ no modo foco.
+   Antes chamava `reader-width-inline` (era do picker que sumiu); agora só
+   o botão "✕ Sair do foco" usa. */
+.source-reader-shell .reader-focus-only{display:none}
+.source-reader-shell.focus-on .reader-focus-only{display:inline-flex}
 /* V15.12.75.99 — Botão "🎯 Foco" SÓ aparece no modo normal (esconde no foco).
    Antes ficava visível redundantemente. */
 /* V15.12.75.99 — Botão "🎯 Foco" SÓ aparece no modo normal (esconde no foco).
@@ -4579,43 +4581,23 @@ input[type="month"]::-webkit-calendar-picker-indicator{
   margin-bottom:2px !important;
   font-size:10px !important;
 }
-/* No modo foco, o badge pomodoro ganha destaque visual:
-   gradient mais vivo, sombra maior, escala 1.05. */
+/* V15.12.75.104 — No modo foco, pomodoro fica DISCRETO (sem destaque
+   visual extravagante). User reportou que estava extravagante. Visual
+   limpo, sem scale, sem gradient. A posição central via JS já dá a ênfase. */
 .source-reader-shell.focus-on .src-pomo-badge-rich{
-  background:linear-gradient(135deg, rgba(128,66,250,.08), rgba(128,66,250,.02)) !important;
-  border:1px solid rgba(128,66,250,.35) !important;
-  box-shadow:0 6px 20px rgba(128,66,250,.18), 0 2px 6px rgba(0,0,0,.06) !important;
-  transform:scale(1.05);
-  transform-origin:center;
+  /* Mantém o estilo padrão — sem destaque adicional */
+}
+/* V15.12.75.104 — Slot central pro pomodoro no foco — visível só no foco */
+.source-reader-shell.focus-on .reader-pomo-center{
+  display:flex !important;
 }
 
-/* DEFAULT do modo foco (caso classe fw-* esteja ausente) — equivale a fw-medium */
+/* V15.12.75.104 — Modo foco fica SEMPRE em largura estendida (~1500px).
+   Picker de outras larguras foi removido. */
 .source-reader-shell.focus-on .reader-content{
-  padding:2.5rem max(1.5rem, calc((100% - 820px) / 2));
-  font-size:14.5px;
-  line-height:1.75;
-}
-/* V15.12.75.103 — Larguras do modo foco — sincronizadas com applyWidth.
-   Estendido bem largo, pequeno mais legível que antes. */
-.source-reader-shell.focus-on.fw-wide .reader-content{
   padding:2.5rem max(1rem, calc((100% - 1500px) / 2));
   font-size:15px;
   line-height:1.7;
-}
-.source-reader-shell.focus-on.fw-large .reader-content{
-  padding:2.5rem max(1.5rem, calc((100% - 1100px) / 2));
-  font-size:15px;
-  line-height:1.7;
-}
-.source-reader-shell.focus-on.fw-medium .reader-content{
-  padding:2.5rem max(1.5rem, calc((100% - 820px) / 2));
-  font-size:14.5px;
-  line-height:1.75;
-}
-.source-reader-shell.focus-on.fw-small .reader-content{
-  padding:2.5rem max(1.5rem, calc((100% - 680px) / 2));
-  font-size:14.5px;
-  line-height:1.75;
 }
 /* V15.12.75.91 — Modo foco zen: também esconde fundo escuro do modal-bg,
    modo foco zen estilo flashcards. O shell ocupa quase a tela toda com fundo
@@ -7382,7 +7364,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.103';
+window.GRALIA_VERSION = 'V15.12.75.105';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -33645,6 +33627,13 @@ function showSourceReaderModal(src){
 
   header.appendChild(headLeft);
 
+  // V15.12.75.104 — Slot central pro pomodoro no modo foco.
+  // No modo normal: vazio (pomo fica no headBtns).
+  // No modo foco: JS move o pomoBadgeWrap pra cá (centralizado real).
+  const pomoCenterSlot = mk('div','reader-pomo-center');
+  pomoCenterSlot.style.cssText = 'display:none;flex:0 0 auto;align-items:center;justify-content:center';
+  header.appendChild(pomoCenterSlot);
+
   // V15.12.75.95 — Container central pra badge do pomodoro (estilo pomo-float)
   // Visual idêntico ao widget flutuante global do app — SVG circle progress
   // ao redor do ícone, tempo em monospace, fundo gradient sutil, sombra.
@@ -33786,10 +33775,13 @@ function showSourceReaderModal(src){
     b.addEventListener('click',onClick);
     return b;
   };
-  // V15.12.75.103 — Ícones ⏮ ⏭ confundiam com player de música. Trocados
-  // por setas duplas pra "topo" / "fim".
-  const toStartBtn = mkNavBtn('⤒', 'Voltar pro início (Home)', () => content.scrollTo({top: 0, behavior: 'smooth'}));
-  const toEndBtn = mkNavBtn('⤓', 'Pular pro fim (End)', () => content.scrollTo({top: content.scrollHeight, behavior: 'smooth'}));
+  // V15.12.75.104 — Ícones SVG limpos pra navegação (substitui ⤒⤓ que user
+  // achou feios). Seta com barra: traço horizontal indica o "limite" (topo
+  // ou base) e a seta aponta na direção do movimento. Universal e claro.
+  const iconToStart = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="3" x2="13" y2="3"/><polyline points="4 9 8 5 12 9"/><line x1="8" y1="5" x2="8" y2="13"/></svg>';
+  const iconToEnd = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="13" x2="13" y2="13"/><polyline points="4 7 8 11 12 7"/><line x1="8" y1="3" x2="8" y2="11"/></svg>';
+  const toStartBtn = mkNavBtn(iconToStart, 'Voltar pro início (Home)', () => content.scrollTo({top: 0, behavior: 'smooth'}));
+  const toEndBtn = mkNavBtn(iconToEnd, 'Pular pro fim (End)', () => content.scrollTo({top: content.scrollHeight, behavior: 'smooth'}));
   headBtns.appendChild(toStartBtn);
   headBtns.appendChild(toEndBtn);
 
@@ -33835,13 +33827,9 @@ function showSourceReaderModal(src){
   });
   headBtns.appendChild(ambientBtn);
 
-  // V15.12.75.96 — Slot pro widthPicker (só no foco)
-  const widthPickerSlot = mk('span');
-  widthPickerSlot.style.cssText = 'display:contents';
-  headBtns.appendChild(widthPickerSlot);
-  // V15.12.75.103 — focusExitSlot agora vai pro FINAL (depois de tudo) pra
-  // virar o "primeiro à direita" como user pediu. Mais isolado dos outros
-  // botões pra distinção visual.
+  // V15.12.75.104 — widthPickerSlot REMOVIDO (picker de largura tirado).
+  // focusExitSlot agora vai no FINAL (depois de tudo) pra ser "primeiro à
+  // direita" no modo foco.
 
   // V15.12.75.90 — Botão "modo foco": esconde header, marcadores e
   // distrações. Deixa só texto + barra fina de progresso.
@@ -34230,57 +34218,28 @@ function showSourceReaderModal(src){
   // V15.12.75.90 — Botão flutuante "sair do foco" (só aparece com classe focus-on)
   // V15.12.75.92 — Junto, um seletor compacto de largura (Estendido/Grande/Médio/Pequeno)
   // V15.12.75.95 — Barra flutuante do modo foco (sair + larguras). Movida
-  // V15.12.75.96 — Width picker INLINE no header (não mais flutuante).
-  // Aparece com classe .reader-width-inline (CSS controla display via .focus-on).
-  const widthOptions = [
-    {key:'wide',   label:'Estendido', title:'Sem limite (até 1200px)'},
-    {key:'large',  label:'Grande',    title:'960px'},
-    {key:'medium', label:'Médio',     title:'720px'},
-    {key:'small',  label:'Pequeno',   title:'560px'}
-  ];
-  const widthPicker = mk('div','reader-width-inline');
-  widthPicker.style.cssText = 'align-items:center;gap:2px;padding:2px;background:rgba(128,66,250,.06);border:1px solid rgba(128,66,250,.18);border-radius:9px';
-  const widthBtns = {};
-  const applyWidth = (key) => {
+  // V15.12.75.104 — Picker de largura REMOVIDO (user pediu).
+  // Modo foco fica SEMPRE em largura estendida (1500px). As outras opções
+  // (Grande/Médio/Pequeno) não agradaram e foram removidas. Mantém o nome
+  // `applyWidth` pra não quebrar chamadas internas — agora ignora o param
+  // e sempre aplica a largura wide.
+  const widthPicker = null;  // não anexado a lugar nenhum
+  const widthBtns = {};      // vazio, mantido pra compat
+  const applyWidth = (_keyIgnored) => {
+    // Sempre força "wide" — única largura disponível agora
     m.classList.remove('fw-wide','fw-large','fw-medium','fw-small');
-    m.classList.add('fw-' + key);
+    m.classList.add('fw-wide');
     if(!DATA.config) DATA.config = {};
-    DATA.config.readerFocusWidth = key;
-    try{ save(); }catch(_){}
-    Object.keys(widthBtns).forEach(k => {
-      const isOn = k === key;
-      widthBtns[k].style.background = isOn ? 'var(--gralia-purple)' : 'transparent';
-      widthBtns[k].style.color = isOn ? '#fff' : 'var(--gralia-purple)';
-      widthBtns[k].style.fontWeight = isOn ? '700' : '500';
-    });
-    // V15.12.75.99 — Force-aplica padding via inline (CSS por classe estava
-    // sendo ignorado em alguns casos por especificidade ou ordem de cascata).
-    // Inline style tem prioridade máxima sem precisar !important.
-    // V15.12.75.103 — Larguras ajustadas. User pediu: estendido bem maior
-    // (mínima margem entre TOC e scroll), pequeno menos minúsculo.
-    const widths = {wide:1500, large:1100, medium:820, small:680};
-    const fontSizes = {wide:'15px', large:'15px', medium:'14.5px', small:'14px'};
-    const lineHeights = {wide:'1.7', large:'1.7', medium:'1.75', small:'1.8'};
-    const targetW = widths[key] || 720;
+    DATA.config.readerFocusWidth = 'wide';
     if(content){
-      content.style.padding = `2.5rem max(2rem, calc((100% - ${targetW}px) / 2))`;
-      content.style.fontSize = fontSizes[key];
-      content.style.lineHeight = lineHeights[key];
+      content.style.padding = `2.5rem max(2rem, calc((100% - 1500px) / 2))`;
+      content.style.fontSize = '15px';
+      content.style.lineHeight = '1.7';
     }
   };
-  widthOptions.forEach(opt => {
-    const b = mk('button');
-    b.type = 'button';
-    b.style.cssText = 'padding:4px 9px;background:transparent;color:var(--gralia-purple);border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .12s';
-    b.textContent = opt.label;
-    b.title = opt.title;
-    b.addEventListener('click', () => applyWidth(opt.key));
-    widthBtns[opt.key] = b;
-    widthPicker.appendChild(b);
-  });
 
   // Botão "Sair do foco" inline também — só visível no modo foco
-  const focusExit = mk('button','reader-width-inline');
+  const focusExit = mk('button','reader-focus-only');
   focusExit.type = 'button';
   focusExit.style.cssText = 'align-items:center;gap:5px;padding:5px 10px;background:var(--gralia-purple);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:11.5px;font-weight:700;transition:all .15s ease';
   focusExit.innerHTML = '<span style="font-size:12px">✕</span><span>Sair do foco</span>';
@@ -34318,11 +34277,14 @@ function showSourceReaderModal(src){
       else modalBg.classList.remove('reader-focus-bg');
     }
     if(inFocus){
-      // Reaplicar largura salva uma vez ao entrar no foco
-      const current = ['wide','large','medium','small'].find(k => m.classList.contains('fw-'+k)) || 'medium';
-      applyWidth(current);
+      // Reaplicar largura (sempre wide agora)
+      applyWidth('wide');
       // V15.12.75.103 — Aba lateral aparece se sidebar fechada
       if(tocTab && !isSidebarOpen) tocTab.style.display = 'flex';
+      // V15.12.75.104 — Move pomoBadgeWrap pro slot central (centralizado real)
+      if(pomoBadgeWrap && pomoCenterSlot && pomoBadgeWrap.parentNode !== pomoCenterSlot){
+        pomoCenterSlot.appendChild(pomoBadgeWrap);
+      }
     } else {
       // V15.12.75.101 — Restaura padding/font do modo normal explicitamente
       if(content){
@@ -34332,6 +34294,11 @@ function showSourceReaderModal(src){
       }
       // V15.12.75.103 — Aba lateral fica oculta fora do modo foco
       if(tocTab) tocTab.style.display = 'none';
+      // V15.12.75.104 — Volta pomoBadgeWrap pro headBtns (posição original)
+      if(pomoBadgeWrap && headBtns && pomoBadgeWrap.parentNode !== headBtns){
+        // Insere como primeiro filho do headBtns (posição original)
+        headBtns.insertBefore(pomoBadgeWrap, headBtns.firstChild);
+      }
     }
   });
   // V15.12.75.100 — attributeOldValue: true permite detectar QUAL classe mudou
@@ -34343,9 +34310,7 @@ function showSourceReaderModal(src){
     if(modalEl) modalEl.classList.add('modal-reader');
   }, 0);
 
-  // V15.12.75.96 — Anexa widthPicker e focusExit aos slots do header.
-  // Visibilidade controlada via CSS (.reader-width-inline aparece em .focus-on)
-  widthPickerSlot.appendChild(widthPicker);
+  // V15.12.75.104 — Anexa apenas focusExit (widthPicker foi removido).
   focusExitSlot.appendChild(focusExit);
 
   // V15.12.75.90 — Setas ↑/↓ + PageUp/PageDown + Home/End rolam o content.
