@@ -4542,6 +4542,9 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 /* Width picker dentro do header — só visível no modo foco */
 .source-reader-shell .reader-width-inline{display:none}
 .source-reader-shell.focus-on .reader-width-inline{display:inline-flex}
+/* V15.12.75.99 — Botão "🎯 Foco" SÓ aparece no modo normal (esconde no foco).
+   Antes ficava visível redundantemente. */
+.source-reader-shell.focus-on .reader-focus-btn-toggle{display:none !important}
 
 /* DEFAULT do modo foco (caso classe fw-* esteja ausente) — equivale a fw-medium */
 .source-reader-shell.focus-on .reader-content{
@@ -7335,7 +7338,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.98';
+window.GRALIA_VERSION = 'V15.12.75.99';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -33072,19 +33075,12 @@ function showSourceReaderModal(src){
   infoBtnH.addEventListener('mouseleave',()=>{infoBtnH.style.background='var(--surface)';infoBtnH.style.borderColor='var(--border)';infoBtnH.style.color='var(--text2)';});
   infoBtnH.addEventListener('click', ()=>showSourceInfoModal(src));
 
-  // V15.12.75.96 — Reorganização: 3 grupos visuais separados.
-  // Grupo 1 (Navegação): ⏮ ⏭
-  // Grupo 2 (Modo de leitura): widthPicker[só foco] · sair foco[só foco] · 🎯 Foco
-  // Grupo 3 (Ações): ℹ ✏️ ×
-  // Separadores verticais entre grupos pra clareza visual.
+  // V15.12.75.99 — Header SEM separadores verticais. User reportou aglomerado.
+  // Solução: gap uniforme entre botões. Visual respira sem precisar de bars.
+  // Ordem: [⏮ ⏭] [📑] [picker][sair foco] [🎯 Foco] [ℹ ✏ ×]
+  //        ─grupo nav─ ─índice─ ─modo (só foco)─ ─toggle foco─ ─ações─
 
-  const mkSep = () => {
-    const s = mk('span');
-    s.style.cssText = 'width:1px;height:22px;background:var(--border);margin:0 2px;flex-shrink:0';
-    return s;
-  };
-
-  // V15.12.75.91 — Botões "início" e "fim" (Grupo 1: Navegação)
+  // V15.12.75.91 — Botões "início" e "fim"
   const mkNavBtn = (icon, title, onClick) => {
     const b = mk('button');
     b.type = 'button';
@@ -33101,17 +33097,13 @@ function showSourceReaderModal(src){
   headBtns.appendChild(toStartBtn);
   headBtns.appendChild(toEndBtn);
 
-  headBtns.appendChild(mkSep());
-
   // V15.12.75.98 — Slot pro botão "📑 Índice" (TOC toggle). Preenchido depois
-  // que cleanedToc e sidebar existirem. Ficar no Grupo 2 perto do foco/largura
-  // dá descoberta fácil pro user (era escondido na sidebar antes).
+  // que cleanedToc e sidebar existirem.
   const tocBtnSlot = mk('span');
   tocBtnSlot.style.cssText = 'display:contents';
   headBtns.appendChild(tocBtnSlot);
 
-  // V15.12.75.96 — Grupo 2: modo de leitura.
-  // Placeholders pro widthPicker e focusExit (inseridos depois).
+  // V15.12.75.96 — Slots pro widthPicker e focusExit (visíveis só no foco)
   const widthPickerSlot = mk('span');
   widthPickerSlot.style.cssText = 'display:contents';
   headBtns.appendChild(widthPickerSlot);
@@ -33122,7 +33114,7 @@ function showSourceReaderModal(src){
   // V15.12.75.90 — Botão "modo foco": esconde header, marcadores e
   // distrações. Deixa só texto + barra fina de progresso.
   // V15.12.75.92 — Aplica classe de largura salva em DATA.config.readerFocusWidth.
-  const focusBtnH = mk('button');
+  const focusBtnH = mk('button','reader-focus-btn-toggle');
   focusBtnH.type = 'button';
   focusBtnH.style.cssText = 'padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;gap:6px;transition:all .15s ease';
   focusBtnH.innerHTML = '<span style="font-size:14px">🎯</span><span>Foco</span>';
@@ -33182,10 +33174,7 @@ function showSourceReaderModal(src){
   });
   headBtns.appendChild(focusBtnH);
 
-  // V15.12.75.96 — Separador antes do Grupo 3 (Ações)
-  headBtns.appendChild(mkSep());
-
-  // Grupo 3 (Ações): ℹ ✏️ ×
+  // V15.12.75.99 — Ações finais sem separador. Visual fica mais limpo.
   headBtns.appendChild(infoBtnH);
   const editBtnH = mk('button');
   editBtnH.type = 'button';
@@ -33324,10 +33313,7 @@ function showSourceReaderModal(src){
       updateTocBtnState();
     });
     tocBtnSlot.appendChild(headerTocBtn);
-    // Adiciona separador antes do widthPicker (sep visual entre TOC e larguras)
-    const sepAfterToc = mk('span');
-    sepAfterToc.style.cssText = 'width:1px;height:22px;background:var(--border);margin:0 2px;flex-shrink:0';
-    tocBtnSlot.appendChild(sepAfterToc);
+    // V15.12.75.99 — Separador removido (visual limpo sem barras divisórias)
   }
 
   // Corpo do conteúdo
@@ -33498,6 +33484,18 @@ function showSourceReaderModal(src){
       widthBtns[k].style.color = isOn ? '#fff' : 'var(--gralia-purple)';
       widthBtns[k].style.fontWeight = isOn ? '700' : '500';
     });
+    // V15.12.75.99 — Force-aplica padding via inline (CSS por classe estava
+    // sendo ignorado em alguns casos por especificidade ou ordem de cascata).
+    // Inline style tem prioridade máxima sem precisar !important.
+    const widths = {wide:1200, large:960, medium:720, small:560};
+    const fontSizes = {wide:'15px', large:'15px', medium:'14.5px', small:'14px'};
+    const lineHeights = {wide:'1.7', large:'1.7', medium:'1.75', small:'1.8'};
+    const targetW = widths[key] || 720;
+    if(content){
+      content.style.padding = `2.5rem max(2rem, calc((100% - ${targetW}px) / 2))`;
+      content.style.fontSize = fontSizes[key];
+      content.style.lineHeight = lineHeights[key];
+    }
   };
   widthOptions.forEach(opt => {
     const b = mk('button');
@@ -33525,6 +33523,7 @@ function showSourceReaderModal(src){
   // V15.12.75.96 — Sincroniza largura visual no picker quando classes mudam
   // V15.12.75.98 — Também sincroniza classe `.reader-focus-bg` no modal-bg
   // (substitui o seletor :has que não era confiável em todos os browsers).
+  // V15.12.75.99 — Ao sair do foco, reseta inline styles que applyWidth setou.
   const focusObs = new MutationObserver(() => {
     const inFocus = m.classList.contains('focus-on');
     // Sincroniza modal-bg
@@ -33541,6 +33540,15 @@ function showSourceReaderModal(src){
         widthBtns[k].style.color = isOn ? '#fff' : 'var(--gralia-purple)';
         widthBtns[k].style.fontWeight = isOn ? '700' : '500';
       });
+      // Aplica largura inline pra essa entrada (caso já tenha classe fw-* salva)
+      applyWidth(current);
+    } else {
+      // V15.12.75.99 — Limpa inline styles do reader-content quando sai do foco
+      if(content){
+        content.style.padding = '';
+        content.style.fontSize = '';
+        content.style.lineHeight = '';
+      }
     }
   });
   focusObs.observe(m, {attributes: true, attributeFilter: ['class']});
@@ -47974,19 +47982,22 @@ function renderPomodoro(){
     const adminRow2 = mk('div');
     adminRow2.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:.5rem';
     // Animações + sons de FIM (3 vibes)
-    const fakeSrc = {name: 'Fonte de Teste', pomoState: {pomosCompleted: 1}};
+    // V15.12.75.99 — Bug crítico achado: os 3 botões caíam SEMPRE em
+    // 'achievement' porque celebratePomoFinish calcula pct via
+    // estimatedPomosForSource, que com content vazio retorna 1 → pct=1.0 → achievement.
+    // Fix: chamar playPomoFinishSound + showPomoFinishAnimation DIRETO com a vibe.
+    const fakeSrc = {name: 'Fonte de Teste', pomoState: {pomosCompleted: 1}, content: 'x'.repeat(5000)};
     adminRow2.appendChild(mkTestBtn('✨ Fim · Suave', () => {
-      fakeSrc.pomoState.pomosCompleted = 1;
-      celebratePomoFinish(fakeSrc, false);
+      playPomoFinishSound('soft');
+      showPomoFinishAnimation(fakeSrc, 'soft', 1, 5);
     }));
     adminRow2.appendChild(mkTestBtn('🎉 Fim · Empolgante', () => {
-      // Força pct intermediário simulando 2 de 3 pomos
-      const mockSrc = {name: 'Fonte de Teste', pomoState: {pomosCompleted: 2}, content: 'a'.repeat(8000)};
-      celebratePomoFinish(mockSrc, false);
+      playPomoFinishSound('energetic');
+      showPomoFinishAnimation(fakeSrc, 'energetic', 3, 5);
     }));
     adminRow2.appendChild(mkTestBtn('🏆 Fim · Conquista', () => {
-      const mockSrc = {name: 'Fonte de Teste', pomoState: {pomosCompleted: 4}};
-      celebratePomoFinish(mockSrc, true);
+      playPomoFinishSound('achievement');
+      showPomoFinishAnimation(fakeSrc, 'achievement', 5, 5);
     }));
     adminCard.appendChild(adminRow2);
     wrap.appendChild(adminCard);
