@@ -7426,7 +7426,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.125';
+window.GRALIA_VERSION = 'V15.12.75.128';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -12305,6 +12305,7 @@ const RESERVED_USERNAMES = new Set([
   'srs','flashcards','mapa','pomodoro','pinhal','settings','config','history','historico',
   'practice','simulado','calibration','drill','examiner','elaborative','interleaving',
   'usage','review','revisao','turbo','revgen','goals','metas','profile','perfil',
+  'mentor','diario','principios','doses',
   'login','signup','register','logout','signin','signout','forgot','reset',
   'auth','authenticate','signin','sign-in','sign-up','sign-out',
   // Comuns que confundem
@@ -18304,6 +18305,8 @@ function buildAppSidebar(){
       items:[
         {view:'goals', icon:'🎯', label:'Metas'},
         {view:'schedule', icon:'📅', label:'Cronograma', desc:'Blocos de estudo, treino, sono'},
+        // V15.12.75.128 — Mentor: espaço pessoal com doses, princípios e diário
+        {view:'mentor', icon:'🧭', label:'Mentor', desc:'Doses, princípios e diário pessoal'},
         {view:'editals', icon:'📋', label:'Análise de editais', desc:'IA analisa o PDF do edital'},
         {view:'exams', icon:'✅', label:'Análise de provas', desc:'Registre e analise provas reais que você fez'},
         {view:'mapa', icon:'🗺️', label:'Mapa da matéria'},
@@ -18552,6 +18555,8 @@ function render(){
     interleaving:renderInterleaving,srs:renderSRS,mapa:renderMapa,usage:renderUsage,goals:renderGoals,userProfile:renderUserProfile,discover:renderDiscover,feed:renderFeed,about:renderAbout,simulado:renderSimulado,
     exams:renderExams,examEdit:renderExamEdit,
     editals:renderEditals,editalView:renderEditalView,
+    // V15.12.75.128 — Mentor (privado): doses, princípios, diário
+    mentor:renderMentor,
     admin:renderAdminDashboard, eyeCare:renderEyeCare,
     // V15.12.75.114 — `forest` legado redirecionado pro `pinhal` novo.
     // Mantém compat com URLs antigos (#forest) e botões esquecidos.
@@ -20739,6 +20744,7 @@ const VIEW_META = {
   // Planejar
   goals:        {label:'Metas',                 icon:'🎯', group:'plan'},
   schedule:     {label:'Cronograma',            icon:'📅', group:'plan'},
+  mentor:       {label:'Mentor',                icon:'🧭', group:'plan'},
   editals:      {label:'Análise de editais',    icon:'📋', group:'plan'},
   exams:        {label:'Análise de provas',     icon:'✅', group:'plan'},
   mapa:         {label:'Mapa da matéria',       icon:'🗺️', group:'plan'},
@@ -20890,6 +20896,7 @@ function renderTopbar(){
     {type:'group',key:'plan',label:'Planejar',icon:'🗺',children:[
       {view:'goals',label:'Metas',icon:'🎯',desc:'Metas mensais/semanais com fasamento'},
       {view:'schedule',label:'Cronograma',icon:'📅',desc:'Blocos de estudo, exercício e descanso'},
+      {view:'mentor',label:'Mentor',icon:'🧭',desc:'Doses, princípios e diário pessoal (privado)'},
       {view:'editals',label:'Análise de editais',icon:'📋',desc:'IA lê o edital e organiza o que importa'},
       {view:'exams',label:'Análise de provas',icon:'✅',desc:'Registre e analise provas reais que você fez'},
       {view:'simulado',label:'Simulado Gralia',icon:'⏰',desc:'Simulados cronometrados gerados pela IA'},
@@ -40510,6 +40517,413 @@ Regras rígidas:
 
 Responda APENAS com o roteiro. Sem preâmbulo, sem fecho, sem narração adicional.`;
 
+// ============================================================================
+// V15.12.75.128 — MENTOR (privado, sem XP)
+// ============================================================================
+// Aba pessoal que combina:
+//   1. Hoje: doses sugeridas do dia (catálogo completo na Rodada 2)
+//   2. Princípios: mantras rotativos extraídos das anotações pessoais
+//   3. Diário: registro livre por data (estilo journaling)
+// Inspirado nas anotações do Notion/planilha do user sobre dopamina natural,
+// reflexões sobre disciplina ("eu soldado / eu general") e diário de bordo.
+// 100% privado — fica em DATA.mentor, nunca compartilha com perfil público.
+
+const MENTOR_DEFAULT_PRINCIPLES = [
+  { id:'soldier_general', text:'Eu soldado executa o que eu general planejou' },
+  { id:'me_yesterday',    text:'Compare-se com o eu de ontem, não com os outros' },
+  { id:'do_what_said',    text:'Eu fiz o que disse que faria' },
+  { id:'trajectory',      text:'Dopamina de trajetória, não de resultado imediato' },
+  { id:'error_adjust',    text:'A cada erro, análise + ajuste — assim erro cada vez menos' },
+  { id:'today_simple',    text:'O que era difícil ontem, hoje é simples' },
+  { id:'support_now',     text:'Suporte o desconforto agora pra ter naturalidade no futuro' },
+  { id:'one_focus',       text:'Não preciso ser bom em tudo agora — preciso ser bom no que importa mais' },
+  { id:'commit_total',    text:'Se for pra fazer mais ou menos, melhor parar agora' },
+  { id:'purpose_image',   text:'Lembrar do propósito final: a farda, o distintivo, a operação' }
+];
+
+// Entradas iniciais do diário (importadas das anotações do user)
+const MENTOR_DIARY_SEED = [
+  { date: '2025-08-15', text: 'Dificuldade em alternar atividades com o estudo. Ex: assistir algum vídeo no YouTube, escutar uma música, ver alguma rede social e voltar ao estudo depois. Essa volta é difícil, pois alterna entre uma atividade difícil (estudo) para uma fácil, e novamente para a atividade difícil. Essa volta para a atividade difícil novamente é mais demorada, pois exige que o cérebro seja "limpo" das informações do conteúdo fácil que foi visto recentemente. Portanto, o estudo sendo a atividade mais difícil e importante do dia, é extremamente importante não dar atenção a outras tarefas. Caso precise almoçar fora de horário, almoce; caso precise ficar um dia sem correr para compensar os estudos, faça isso. Você não precisa ser perfeito em todas as áreas da vida, mas ter a atitude frequente de escolher o que é melhor para você, mesmo que vá contra a sua vontade. Dessa forma vai fortalecer o sistema de recompensa e ensinar o seu cérebro que quando cumprir o que se comprometeu, irá ter a recompensa. A cada erro, precisa ser feita uma análise do que o levou a cometê-lo e a como evitá-lo. Dessa forma, irá errar cada vez menos e cumprir as atividades mais importantes do dia.' },
+  { date: '2025-08-18', text: 'Vou ter que dar tudo de si pelos próximos 89 dias. Sem falhar. Se for pra fazer mais ou menos, pararia agora. Vou priorizar 100% cumprir os horários semanais de estudo e nada mais. Vou fazer mesmo com sono, tédio, tristeza, aflição, raiva, e todas as outras coisas que possam impactar nisso. O meu eu "soldado" precisa aprender a executar o que o meu eu "general" planejou, pois o plano foi pensado e analisado várias vezes, agora precisa apenas ser executado. O foco é o esforço que vou precisar fazer para cumprir as horas líquidas de estudo todos os dias, e não apenas o resultado final. Vou abdicar de qualquer outra coisa que possa me fazer perder o foco e não cumprir o que foi ESTABELECIDO.' },
+  { date: '2025-10-15', text: 'Como disse, se for pra fazer mais ou menos teria parado, e foi o que eu fiz: não estudei mais devido reforma na casa e principalmente no meu quarto, pois tivemos troca de piso, pintura nova nas paredes, comprei mesa nova e estive fazendo freelances de Excel para pagar as contas.' }
+];
+
+function initMentorData(){
+  if(!DATA.mentor){
+    DATA.mentor = {
+      principles: MENTOR_DEFAULT_PRINCIPLES.map(p => ({...p, addedAt: Date.now()})),
+      diary: MENTOR_DIARY_SEED.map(d => ({...d, createdAt: Date.now()})),
+      doses: { enabled: [], completedByDate: {} },
+      // qual sub-aba estava aberta da última vez
+      lastTab: 'principles'
+    };
+    try{ save(); }catch(_){}
+  } else {
+    // Migração: garante campos novos sem sobrescrever existentes
+    if(!DATA.mentor.principles) DATA.mentor.principles = MENTOR_DEFAULT_PRINCIPLES.map(p => ({...p, addedAt: Date.now()}));
+    if(!DATA.mentor.diary) DATA.mentor.diary = [];
+    if(!DATA.mentor.doses) DATA.mentor.doses = { enabled: [], completedByDate: {} };
+    if(!DATA.mentor.lastTab) DATA.mentor.lastTab = 'principles';
+  }
+  return DATA.mentor;
+}
+
+function renderMentor(){
+  const wrap = mk('div','fade');
+  const m = initMentorData();
+
+  // === HEADER ===
+  const h = mk('h1');
+  h.textContent = '🧭 Mentor';
+  wrap.appendChild(h);
+  const lead = mk('p','txt2');
+  lead.style.cssText = 'margin:.25rem 0 1.5rem;font-size:13.5px;line-height:1.55;max-width:680px';
+  lead.textContent = 'Espaço pessoal pra cultivar disciplina e propósito. Doses do dia, princípios pra recordar e diário pra registrar a jornada. Tudo privado — só você vê.';
+  wrap.appendChild(lead);
+
+  // === TABS ===
+  const tabs = mk('div');
+  tabs.style.cssText = 'display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:1.25rem;overflow-x:auto';
+  const tabDefs = [
+    { id:'today',      label:'☀️ Hoje',      desc:'Doses sugeridas' },
+    { id:'principles', label:'⚓ Princípios', desc:'Mantras' },
+    { id:'diary',      label:'📓 Diário',     desc:'Registro livre' }
+  ];
+  const content = mk('div');
+  const setActive = (id) => {
+    m.lastTab = id;
+    try{ save(); }catch(_){}
+    tabs.querySelectorAll('button').forEach(b => {
+      const isActive = b.dataset.tab === id;
+      b.style.borderBottom = isActive ? '2px solid var(--gralia-purple)' : '2px solid transparent';
+      b.style.color = isActive ? 'var(--gralia-purple)' : 'var(--text2)';
+      b.style.fontWeight = isActive ? '700' : '500';
+    });
+    content.innerHTML = '';
+    if(id === 'today') content.appendChild(renderMentorToday(m));
+    else if(id === 'principles') content.appendChild(renderMentorPrinciples(m));
+    else if(id === 'diary') content.appendChild(renderMentorDiary(m));
+  };
+  tabDefs.forEach(t => {
+    const b = mk('button');
+    b.type = 'button';
+    b.dataset.tab = t.id;
+    b.style.cssText = 'padding:.625rem 1rem;background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;font-size:13.5px;color:var(--text2);font-weight:500;white-space:nowrap;transition:all .15s ease;margin-bottom:-1px';
+    b.innerHTML = `<span>${t.label}</span>`;
+    b.addEventListener('click', () => setActive(t.id));
+    tabs.appendChild(b);
+  });
+  wrap.appendChild(tabs);
+  wrap.appendChild(content);
+
+  // Ativa última aba (ou principles por default)
+  setActive(m.lastTab || 'principles');
+  return wrap;
+}
+
+// --- Aba HOJE (stub na Rodada 1; catálogo completo na Rodada 2) ---
+function renderMentorToday(m){
+  const wrap = mk('div');
+  const card = mk('div','card');
+  card.style.cssText = 'padding:1.5rem;text-align:center';
+  card.innerHTML = `
+    <div style="font-size:36px;margin-bottom:.5rem">☀️</div>
+    <h3 style="margin:0 0 .375rem;font-size:16px;font-weight:700">Doses do dia</h3>
+    <p style="margin:0 0 .75rem;font-size:13px;color:var(--text2);line-height:1.55;max-width:420px;margin-left:auto;margin-right:auto">
+      Em breve — catálogo de micro-hábitos saudáveis (sol matinal, jazz no estudo, banho quente noturno, journaling pós-estudo, etc).
+      Você escolhe quais habilitar, e cada dia o Mentor sugere 3-4 pra você.
+    </p>
+    <div style="font-size:11.5px;color:var(--text3);font-style:italic">A construir na próxima atualização. Por enquanto, use Princípios e Diário.</div>
+  `;
+  wrap.appendChild(card);
+  return wrap;
+}
+
+// --- Aba PRINCÍPIOS ---
+function renderMentorPrinciples(m){
+  const wrap = mk('div');
+
+  // Princípio do dia em destaque (rotaciona por dia)
+  const today = new Date();
+  const dayHash = today.getFullYear() * 1000 + (today.getMonth() + 1) * 31 + today.getDate();
+  const principle = m.principles[dayHash % m.principles.length] || m.principles[0];
+
+  const featured = mk('div','card');
+  featured.style.cssText = 'padding:2rem 1.5rem;background:linear-gradient(135deg,rgba(128,66,250,.10),rgba(128,66,250,.02));border:1px solid rgba(128,66,250,.25);text-align:center;margin-bottom:1.5rem';
+  featured.innerHTML = `
+    <div style="font-size:10px;font-weight:700;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:.625rem">Princípio do dia</div>
+    <div style="font-size:18px;font-weight:600;line-height:1.45;max-width:540px;margin:0 auto;color:var(--text)">"${escapeHTML(principle.text)}"</div>
+  `;
+  wrap.appendChild(featured);
+
+  // Lista completa
+  const listHead = mk('div');
+  listHead.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;gap:1rem';
+  const listTitle = mk('h3');
+  listTitle.style.cssText = 'margin:0;font-size:14px;font-weight:700';
+  listTitle.textContent = `Todos os princípios (${m.principles.length})`;
+  listHead.appendChild(listTitle);
+  // Botão adicionar
+  const addBtn = mk('button');
+  addBtn.type = 'button';
+  addBtn.style.cssText = 'padding:.375rem .875rem;background:var(--gralia-purple);border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;color:#fff';
+  addBtn.textContent = '+ Adicionar';
+  addBtn.addEventListener('click', () => openPrincipleModal(null, m, wrap));
+  listHead.appendChild(addBtn);
+  wrap.appendChild(listHead);
+
+  const list = mk('div');
+  list.style.cssText = 'display:flex;flex-direction:column;gap:6px';
+  if(m.principles.length === 0){
+    const empty = mk('div','txt3');
+    empty.style.cssText = 'text-align:center;padding:1.5rem;font-size:13px';
+    empty.textContent = 'Nenhum princípio cadastrado. Clica em "+ Adicionar" pra começar.';
+    list.appendChild(empty);
+  } else {
+    m.principles.forEach((p, idx) => {
+      const row = mk('div','card');
+      row.style.cssText = 'padding:.75rem 1rem;display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .15s ease';
+      row.addEventListener('mouseenter', () => row.style.background = 'var(--surface2)');
+      row.addEventListener('mouseleave', () => row.style.background = 'var(--surface)');
+      row.addEventListener('click', () => openPrincipleModal(p, m, wrap));
+      row.innerHTML = `
+        <div style="flex:1;min-width:0;font-size:13.5px;line-height:1.45;color:var(--text)">"${escapeHTML(p.text)}"</div>
+        <div style="font-size:11px;color:var(--text3);flex-shrink:0">Editar</div>
+      `;
+      list.appendChild(row);
+    });
+  }
+  wrap.appendChild(list);
+  return wrap;
+}
+
+// Modal de edição/criação de princípio
+function openPrincipleModal(existing, m, parentWrap){
+  const overlay = mk('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99800;display:flex;align-items:center;justify-content:center;padding:1rem';
+  const box = mk('div','card');
+  box.style.cssText = 'max-width:480px;width:100%;padding:1.5rem';
+  const title = mk('h3');
+  title.style.cssText = 'margin:0 0 .75rem;font-size:16px;font-weight:700';
+  title.textContent = existing ? 'Editar princípio' : 'Novo princípio';
+  box.appendChild(title);
+  const ta = mk('textarea');
+  ta.style.cssText = 'width:100%;min-height:80px;padding:.625rem .75rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13.5px;color:var(--text);line-height:1.45;resize:vertical;box-sizing:border-box';
+  ta.placeholder = 'Escreva o princípio aqui (ex: "Cumpra o que disse que faria")';
+  if(existing) ta.value = existing.text;
+  box.appendChild(ta);
+  const btns = mk('div');
+  btns.style.cssText = 'display:flex;justify-content:space-between;gap:8px;margin-top:1rem';
+  // Esquerda: deletar (se editando)
+  const left = mk('div');
+  if(existing){
+    const del = mk('button');
+    del.type = 'button';
+    del.style.cssText = 'padding:.5rem 1rem;background:transparent;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;color:#dc2626';
+    del.textContent = '🗑 Remover';
+    del.addEventListener('click', () => {
+      if(!confirm('Remover este princípio?')) return;
+      m.principles = m.principles.filter(p => p.id !== existing.id);
+      try{ save(); }catch(_){}
+      overlay.remove();
+      // Re-render aba
+      const newView = renderMentorPrinciples(m);
+      parentWrap.replaceWith(newView);
+    });
+    left.appendChild(del);
+  }
+  btns.appendChild(left);
+  // Direita: cancelar + salvar
+  const right = mk('div');
+  right.style.cssText = 'display:flex;gap:8px';
+  const cancel = mk('button');
+  cancel.type = 'button';
+  cancel.style.cssText = 'padding:.5rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;color:var(--text2)';
+  cancel.textContent = 'Cancelar';
+  cancel.addEventListener('click', () => overlay.remove());
+  right.appendChild(cancel);
+  const save_ = mk('button');
+  save_.type = 'button';
+  save_.style.cssText = 'padding:.5rem 1rem;background:var(--gralia-purple);border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;color:#fff;font-weight:600';
+  save_.textContent = 'Salvar';
+  save_.addEventListener('click', () => {
+    const text = ta.value.trim();
+    if(!text){ ta.focus(); return; }
+    if(existing){
+      existing.text = text;
+    } else {
+      m.principles.push({
+        id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+        text,
+        addedAt: Date.now()
+      });
+    }
+    try{ save(); }catch(_){}
+    overlay.remove();
+    const newView = renderMentorPrinciples(m);
+    parentWrap.replaceWith(newView);
+  });
+  right.appendChild(save_);
+  btns.appendChild(right);
+  box.appendChild(btns);
+  overlay.appendChild(box);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  setTimeout(() => ta.focus(), 50);
+}
+
+// --- Aba DIÁRIO ---
+function renderMentorDiary(m){
+  const wrap = mk('div');
+  wrap.style.cssText = 'display:grid;grid-template-columns:280px 1fr;gap:1rem;align-items:start';
+
+  // Estado local: qual entrada está aberta (default: mais recente)
+  const sortedDiary = (m.diary || []).slice().sort((a, b) => {
+    return (new Date(b.date)).getTime() - (new Date(a.date)).getTime();
+  });
+
+  // Painel esquerdo: lista de entradas + botão novo
+  const left = mk('div');
+  left.style.cssText = 'display:flex;flex-direction:column;gap:6px';
+  const newBtn = mk('button');
+  newBtn.type = 'button';
+  newBtn.style.cssText = 'padding:.625rem .875rem;background:var(--gralia-purple);border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:600;color:#fff;margin-bottom:6px';
+  newBtn.textContent = '+ Nova entrada (hoje)';
+  newBtn.addEventListener('click', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    // Se já tem entrada hoje, abre ela; senão cria
+    let existing = (m.diary || []).find(d => d.date === today);
+    if(!existing){
+      existing = { date: today, text: '', createdAt: Date.now() };
+      m.diary = m.diary || [];
+      m.diary.push(existing);
+      try{ save(); }catch(_){}
+    }
+    showEntryInRight(existing);
+    refreshLeftList();
+  });
+  left.appendChild(newBtn);
+
+  const listEl = mk('div');
+  listEl.style.cssText = 'display:flex;flex-direction:column;gap:6px;max-height:560px;overflow-y:auto;padding-right:4px';
+  left.appendChild(listEl);
+
+  // Painel direito: editor
+  const right = mk('div');
+  right.style.cssText = 'min-height:400px';
+
+  let currentEntry = null;
+
+  const formatDateBR = (iso) => {
+    try{
+      const d = new Date(iso + 'T12:00:00');
+      return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
+    }catch(_){ return iso; }
+  };
+
+  const refreshLeftList = () => {
+    listEl.innerHTML = '';
+    const sorted = (m.diary || []).slice().sort((a, b) => {
+      return (new Date(b.date)).getTime() - (new Date(a.date)).getTime();
+    });
+    if(sorted.length === 0){
+      const empty = mk('div','txt3');
+      empty.style.cssText = 'padding:1rem;font-size:12.5px;text-align:center';
+      empty.textContent = 'Nenhuma entrada ainda.';
+      listEl.appendChild(empty);
+      return;
+    }
+    sorted.forEach(entry => {
+      const row = mk('div');
+      const isActive = currentEntry && currentEntry.date === entry.date;
+      row.style.cssText = `padding:.625rem .75rem;background:${isActive ? 'rgba(128,66,250,.10)' : 'var(--surface)'};border:1px solid ${isActive ? 'var(--gralia-purple)' : 'var(--border)'};border-radius:8px;cursor:pointer;transition:all .15s ease`;
+      const preview = (entry.text || '').split('\n')[0].slice(0, 50);
+      row.innerHTML = `
+        <div style="font-size:11.5px;font-weight:700;color:${isActive ? 'var(--gralia-purple)' : 'var(--text)'};margin-bottom:2px">${formatDateBR(entry.date)}</div>
+        <div style="font-size:11.5px;color:var(--text3);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(preview) || '(vazio)'}</div>
+      `;
+      row.addEventListener('click', () => {
+        showEntryInRight(entry);
+        refreshLeftList();
+      });
+      listEl.appendChild(row);
+    });
+  };
+
+  const showEntryInRight = (entry) => {
+    currentEntry = entry;
+    right.innerHTML = '';
+    const card = mk('div','card');
+    card.style.cssText = 'padding:1.25rem';
+    // Header com data e ação remover
+    const head = mk('div');
+    head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.875rem;flex-wrap:wrap';
+    const dateLabel = mk('div');
+    dateLabel.style.cssText = 'display:flex;align-items:center;gap:8px';
+    dateLabel.innerHTML = `<span style="font-size:18px">📓</span><b style="font-size:14px">${formatDateBR(entry.date)}</b>`;
+    head.appendChild(dateLabel);
+    // Botão remover (se não for hoje, pra evitar deletar acidente)
+    const delBtn = mk('button');
+    delBtn.type = 'button';
+    delBtn.style.cssText = 'padding:.375rem .75rem;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;color:#dc2626';
+    delBtn.textContent = '🗑 Remover';
+    delBtn.addEventListener('click', () => {
+      if(!confirm(`Remover a entrada de ${formatDateBR(entry.date)}?`)) return;
+      m.diary = (m.diary || []).filter(d => d.date !== entry.date);
+      try{ save(); }catch(_){}
+      currentEntry = null;
+      right.innerHTML = '';
+      const placeholder = mk('div','txt3');
+      placeholder.style.cssText = 'text-align:center;padding:3rem 1rem;font-size:13px';
+      placeholder.textContent = 'Selecione uma entrada à esquerda ou crie uma nova.';
+      right.appendChild(placeholder);
+      refreshLeftList();
+    });
+    head.appendChild(delBtn);
+    card.appendChild(head);
+    // Textarea grande
+    const ta = mk('textarea');
+    ta.style.cssText = 'width:100%;min-height:380px;padding:.875rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13.5px;color:var(--text);line-height:1.6;resize:vertical;box-sizing:border-box';
+    ta.placeholder = 'O que aconteceu hoje?\n\n• Obstáculos\n• Ajustes pra amanhã\n• 3 coisas que deram certo\n• O que aprendi\n\nLembrete: você não precisa ser perfeito, precisa escolher o que é melhor pra você, mesmo que vá contra a vontade.';
+    ta.value = entry.text || '';
+    let saveTimer = null;
+    ta.addEventListener('input', () => {
+      entry.text = ta.value;
+      if(saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        try{ save(); }catch(_){}
+        // Atualiza preview na lista esquerda
+        const previewEl = listEl.querySelector('div[style*="purple"]');
+        // simples: re-render lista pra atualizar preview
+        refreshLeftList();
+      }, 800);
+    });
+    card.appendChild(ta);
+    // Footer com status de save
+    const footer = mk('div','txt3');
+    footer.style.cssText = 'font-size:11px;margin-top:.625rem;text-align:right;font-style:italic';
+    footer.textContent = 'Salva automaticamente';
+    card.appendChild(footer);
+    right.appendChild(card);
+  };
+
+  refreshLeftList();
+  // Abre a entrada mais recente por default
+  if(sortedDiary.length > 0){
+    showEntryInRight(sortedDiary[0]);
+    refreshLeftList();
+  } else {
+    const placeholder = mk('div','txt3');
+    placeholder.style.cssText = 'text-align:center;padding:3rem 1rem;font-size:13px';
+    placeholder.textContent = 'Clica em "+ Nova entrada" pra começar.';
+    right.appendChild(placeholder);
+  }
+
+  wrap.appendChild(left);
+  wrap.appendChild(right);
+  return wrap;
+}
+
 function renderRevgen(){
   const wrap = mk('div','fade');
   const backB = mkBtn('← Voltar','back-btn');
@@ -50157,6 +50571,38 @@ function showTreeDetailModal(tree, idx){
 }
 
 function renderPinhal(){
+  // V15.12.75.126 — Cleanup defensivo: remove backdrops órfãos do fullscreen.
+  // User reportou que ao trocar de aba do browser durante fullscreen e voltar,
+  // o backdrop escuro ficava sobreposto à página em estado não-fullscreen.
+  // Causa: re-render do pinhal cria novo sceneWrap, mas o backdrop ficou no
+  // document.body sem dono. Solução: ao renderizar, varrer e remover qualquer
+  // backdrop existente E forçar remoção da classe forest-expanded do body.
+  // V15.12.75.127 — Adicionado handler GLOBAL de visibilitychange (registrado
+  // uma vez via flag). Garante limpeza mesmo quando user volta pra aba sem
+  // que nada re-renderize. Resolve "backdrop fantasma" definitivamente.
+  try{
+    document.querySelectorAll('.forest-expanded-backdrop').forEach(b => b.remove());
+    document.body.classList.remove('forest-expanded');
+    document.querySelectorAll('.forest-scene-card.forest-expanded').forEach(c => {
+      c.classList.remove('forest-expanded');
+    });
+  }catch(_){}
+  // Listener global (1× só) — limpa órfãos sempre que aba volta pro foco.
+  if(!window._pinhalVisGlobal){
+    window._pinhalVisGlobal = true;
+    document.addEventListener('visibilitychange', () => {
+      if(!document.hidden){
+        // Voltou pra aba: se algum backdrop ficou órfão (sem scene em
+        // forest-expanded), limpa.
+        const hasExpanded = document.querySelector('.forest-scene-card.forest-expanded');
+        if(!hasExpanded){
+          document.querySelectorAll('.forest-expanded-backdrop').forEach(b => b.remove());
+          document.body.classList.remove('forest-expanded');
+        }
+      }
+    });
+  }
+
   const wrap = mk('div','fade');
   Pinhal.init();
   const info = Pinhal.getLevel();
@@ -50277,6 +50723,7 @@ function renderPinhal(){
       expandBtn.setAttribute('aria-label', 'Expandir pinhal');
       expandBtn.innerHTML = '⛶';
       let backdrop = null;
+      let hiddenAt = null;  // timestamp de quando aba foi escondida
       const closeExpanded = () => {
         sceneWrap.classList.remove('forest-expanded');
         document.body.classList.remove('forest-expanded');
@@ -50305,6 +50752,25 @@ function renderPinhal(){
         }
       };
       document.addEventListener('keydown', escHandler);
+
+      // V15.12.75.126 — Auto-fecha fullscreen ao voltar pra aba se ficou
+      // >30s escondida. Resolve "backdrop fantasma" quando user troca de aba
+      // do browser durante fullscreen — ao voltar, fecha automaticamente
+      // pra evitar estado inconsistente (backdrop órfão).
+      const visHandler = () => {
+        if(document.hidden){
+          hiddenAt = Date.now();
+        } else if(hiddenAt && (Date.now() - hiddenAt > 30000)){
+          // Aba ficou escondida >30s — fecha o fullscreen pra prevenir bugs
+          if(sceneWrap.classList.contains('forest-expanded')){
+            closeExpanded();
+          }
+          hiddenAt = null;
+        } else {
+          hiddenAt = null;
+        }
+      };
+      document.addEventListener('visibilitychange', visHandler);
       // V15.12.75.122 — Cleanup leve: observa só o PARENT do sceneWrap (não
       // document.body subtree). Antes V121 observava o body inteiro com
       // subtree:true, dispara em qualquer mutation = caro com muitos cards.
@@ -50313,6 +50779,7 @@ function renderPinhal(){
       const cleanupObserver = new MutationObserver(() => {
         if(!document.body.contains(sceneWrap)){
           document.removeEventListener('keydown', escHandler);
+          document.removeEventListener('visibilitychange', visHandler);
           document.body.classList.remove('forest-expanded');
           if(backdrop){ backdrop.remove(); backdrop = null; }
           cleanupObserver.disconnect();
@@ -67231,7 +67698,12 @@ function buildForestScene(trees){
   // resultando em aglomerados inevitáveis (não há espaço físico pra tantas).
   // Agora: cap por tipo, restantes contam só pro stat textual mas não
   // renderizam. Limite alinha com o que cabe sem sobreposição.
-  const VISIBILITY_CAPS = { ancient: 6, mature: 8, young: 10, seed: 12 };
+  // V15.12.75.126 — Caps aumentados pra fases avançadas (10+12+14+16=52 visíveis).
+  // V15.12.75.127 — Caps aumentados ainda mais (12+16+18+20=66 visíveis) +
+  // tamanhos um pouco menores no distribute pra caber sem aglomerar. User
+  // reportou que ficou muito longe / vazia. Fases lendária/final agora têm
+  // floresta visualmente densa.
+  const VISIBILITY_CAPS = { ancient: 12, mature: 16, young: 18, seed: 20 };
   const hiddenCount = {
     ancient: Math.max(0, grouped.ancient.length - VISIBILITY_CAPS.ancient),
     mature:  Math.max(0, grouped.mature.length  - VISIBILITY_CAPS.mature),
@@ -67737,20 +68209,23 @@ function buildForestScene(trees){
   // ySpacingFactor controla peso da distância Y na detecção (1.0 = igual a X,
   // 2.0 = Y conta dobro). Subi pra 2.0 porque árvores em Y próximo se
   // sobrepõem mais visualmente que árvores em X próximo.
-  // V15.12.75.125 — minSpacing reduzido (árvores menores agora). Antes: 130/90/55/32.
-  const ancientLayout = distributeXY(grouped.ancient, H * 0.78, 60, 1.10, 0.40, { minSpacing: 95, avoidSun: true, ySpacingFactor: 2.0, yShiftMax: 40 });
+  // V15.12.75.126 — minSpacings reduzidos pra mata mais densa.
+  // V15.12.75.127 — Reduzidos mais um nível. Antes V126: 70/52/35/22.
+  // Agora: 58/44/30/19. Mata bem mais cheia sem aglomerar (collision 2D
+  // global mantém ordem).
+  const ancientLayout = distributeXY(grouped.ancient, H * 0.78, 50, 1.10, 0.40, { minSpacing: 58, avoidSun: true, ySpacingFactor: 2.0, yShiftMax: 40 });
   ancientLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'ancient', id);
   });
-  const matureLayout = distributeXY(grouped.mature, H * 0.84, 45, 0.85, 0.30, { minSpacing: 70, ySpacingFactor: 2.0, yShiftMax: 28 });
+  const matureLayout = distributeXY(grouped.mature, H * 0.84, 40, 0.85, 0.30, { minSpacing: 44, ySpacingFactor: 2.0, yShiftMax: 28 });
   matureLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'mature', id);
   });
-  const youngLayout = distributeXY(grouped.young, H * 0.89, 35, 0.60, 0.25, { minSpacing: 42, ySpacingFactor: 2.0, yShiftMax: 18 });
+  const youngLayout = distributeXY(grouped.young, H * 0.89, 30, 0.60, 0.25, { minSpacing: 30, ySpacingFactor: 2.0, yShiftMax: 18 });
   youngLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'young', id);
   });
-  const seedLayout = distributeXY(grouped.seed, H * 0.94, 22, 0.40, 0.20, { minSpacing: 26, ySpacingFactor: 2.0, yShiftMax: 10 });
+  const seedLayout = distributeXY(grouped.seed, H * 0.94, 18, 0.40, 0.20, { minSpacing: 19, ySpacingFactor: 2.0, yShiftMax: 10 });
   seedLayout.forEach(({x, y, size, id}) => {
     svg += drawAraucariaHybrid(x, y, size, 'seed', id);
   });
@@ -72995,6 +73470,7 @@ function showCommandPalette(){
       // Planejar
       {label:'Metas', icon:'🎯', kind:'Planejar', keywords:'objetivos diaria semanal mensal', action:()=>{ST.view='goals';render();}},
       {label:'Cronograma', icon:'📅', kind:'Planejar', keywords:'cronograma rotina horario blocos planejamento', action:()=>{ST.view='schedule';render();}},
+      {label:'Mentor', icon:'🧭', kind:'Planejar', keywords:'mentor diario journal principios doses dopamina disciplina propósito', action:()=>{ST.view='mentor';render();}},
       {label:'Análise de editais', icon:'📋', kind:'Planejar', keywords:'edital prova analise', action:()=>{ST.view='editals';render();}},
       {label:'Análise de provas', icon:'✅', kind:'Planejar', keywords:'provas exames simulados conferir analise', action:()=>{ST.view='exams';render();}},
       {label:'Mapa da matéria', icon:'🗺️', kind:'Planejar', keywords:'mapa visao topicos', action:()=>{ST.view='mapa';render();}},
