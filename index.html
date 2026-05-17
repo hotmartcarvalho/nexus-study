@@ -266,20 +266,26 @@ body.sidebar-collapsed .sidebar-collapse-toggle{right:auto;left:50%;transform:tr
 .app-sidebar-brand .brand-bird{height:35px;width:auto;flex-shrink:0;margin-right:0;transition:height .2s} /* V15.12.9: +10% (32→35px) */
 body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: +10% (28→31px) */
 .app-sidebar-brand-emoji{font-size:22px;line-height:1}
-.app-sidebar-section{padding:10px 12px 4px}
+/* V15.12.75.141 — Section padding menor (10/4 → 6/2) pra economizar
+   altura vertical e caber sem scroll. */
+.app-sidebar-section{padding:6px 12px 2px}
 .app-sidebar-section-label{
   font-size:10px;
   font-weight:700;
   color:var(--text3);
   text-transform:uppercase;
   letter-spacing:.5px;
-  padding:0 8px 6px;
+  padding:0 8px 4px;
 }
 .app-sidebar-item{
   display:flex;
   align-items:center;
   gap:11px;
-  padding:.55rem .8rem;
+  /* V15.12.75.141 — Padding levemente reduzido (.55 .8rem → .45rem .75rem)
+     pra eliminar scroll vertical em viewports ~800-900px de altura, agora
+     que o menu tem 17+ itens. Antes: ~36px altura por item × 17 = 612px +
+     grupos = ~712px. Depois: ~32px × 17 = 544px + grupos = ~644px. */
+  padding:.45rem .75rem;
   margin:2px 4px;
   border-radius:8px;
   color:var(--text2);
@@ -318,6 +324,16 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
   line-height:1;
   flex-shrink:0;
 }
+/* V15.12.75.141 — Variante SVG (ícones lucide). Herda cor via currentColor.
+   Item normal: text2 (mesmo cinza do label). Item ativo: purple.
+   Hover: text. Centralizado dentro do width:22px do container. */
+.app-sidebar-item-ico-svg{
+  color:var(--text2);
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:color .15s ease;
+}
+.app-sidebar-item:hover .app-sidebar-item-ico-svg{color:var(--text)}
+.app-sidebar-item.active .app-sidebar-item-ico-svg{color:var(--gralia-purple)}
 .app-sidebar-item-label{
   flex:1;
   white-space:nowrap;
@@ -7975,7 +7991,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.140';
+window.GRALIA_VERSION = 'V15.12.75.141';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -12644,6 +12660,57 @@ function examCountdown(){
     };
   }
 }
+// ============================================================================
+// V15.12.75.141 — Biblioteca de ícones SVG monocromáticos (lucide-style)
+// ============================================================================
+// Substituiu os emojis coloridos do menu lateral por SVG com currentColor +
+// stroke-width 1.5 (estética Lucide). Vantagem: cor única, peso visual
+// uniforme, escala em qualquer tamanho, herda tema dark/light naturalmente.
+//
+// Uso: lucideIcon('home') → string com SVG inline pra setar via innerHTML.
+// Pode ser usado em qualquer lugar do app via `lucideIcon(nome)`.
+//
+// Todos os ícones têm:
+//   - viewBox="0 0 24 24"
+//   - fill="none" stroke="currentColor"
+//   - stroke-width="1.75" (um pouco mais grosso que lucide padrão pra legibilidade
+//     em tamanho pequeno do sidebar)
+//   - stroke-linecap="round" stroke-linejoin="round"
+const LUCIDE_ICONS = {
+  // Estudo
+  'home':           '<path d="M3 12 12 3l9 9"/><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/><path d="M10 21v-6h4v6"/>',
+  'book-open':      '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+  'zap':            '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  'inbox':          '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  // Revisar
+  'layers':         '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+  'history':        '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+  'refresh-cw':     '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  'timer':          '<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/>',
+  'trees':          '<path d="M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z"/><path d="M7 16v6"/><path d="M13 19h6"/><path d="M16 16v6"/><path d="M16 13.4A4 4 0 0 0 13 6.5a4 4 0 0 0-6 0 4 4 0 0 0-1.4 6.4"/><path d="M16 9c0 3.3 1.7 6 5 6"/>',
+  // Planejar
+  'target':         '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  'calendar':       '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+  'headphones':     '<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H4a1 1 0 0 1-1-1zM21 14h-3a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h2a1 1 0 0 0 1-1z"/><path d="M3 14a9 9 0 0 1 18 0"/>',
+  'file-search':    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9.5L14 2z"/><polyline points="14 2 14 8 20 8"/><circle cx="11.5" cy="14.5" r="2.5"/><line x1="13.27" x2="15" y1="16.27" y2="18"/>',
+  'clipboard-check':'<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+  'map':            '<polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/>',
+  // Comunidade
+  'globe':          '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+  'rss':            '<path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/>',
+  'scale':          '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
+  'users':          '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
+};
+
+// Helper: gera string SVG inline pronta pra setar via innerHTML.
+// Width/height são herdados via CSS (.app-sidebar-item-ico configura).
+function lucideIcon(name, size){
+  const body = LUCIDE_ICONS[name];
+  if(!body) return '';
+  const s = size || 18;
+  return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+}
+
 const BRAND = {
   name: 'Gralia',
   // V15.12.22 — separação de mascote (só pássaro) e logo com nome.
@@ -18826,50 +18893,55 @@ function buildAppSidebar(){
   const errorsNoCard = isAuthed() ? (DATA.errors||[]).filter(e=>!e.hasCard).length : 0;
 
   // Grupos
+  // V15.12.75.141 — Ícones migrados de emojis pra SVG lucide-style.
+  // Vantagens: cor única (currentColor), peso visual uniforme, herda
+  // tema dark/light automaticamente. Notação `lucide:nome` = renderiza
+  // via lucideIcon(). Compatibilidade: se prefixo não bater, cai pra
+  // emoji puro (mantém legado funcionando).
   const groups = [
     {
       label:'Estudo',
       items:[
-        {view:'dashboard', icon:'🏠', label:'Painel'},
-        {view:'sources', icon:'📚', label:'Fontes', desc:'Material que você importou'},
-        {view:'methods', icon:'⚡', label:'Métodos', desc:'Praticar e calibrar com IA'},
-        {view:'imported', icon:'📥', label:'Cadernos de prática', desc:'Importe questões, organize em cadernos e refaça'},
+        {view:'dashboard', icon:'lucide:home',      label:'Painel'},
+        {view:'sources',   icon:'lucide:book-open', label:'Fontes', desc:'Material que você importou'},
+        {view:'methods',   icon:'lucide:zap',       label:'Métodos', desc:'Praticar e calibrar com IA'},
+        {view:'imported',  icon:'lucide:inbox',     label:'Cadernos de prática', desc:'Importe questões, organize em cadernos e refaça'},
       ]
     },
     {
       label:'Revisar',
       items:[
-        {view:'srs', icon:'🎴', label:'Flashcards', badge:dueSrs > 0 ? dueSrs : null},
-        {view:'history', icon:'📜', label:'Histórico de erros', badge:errorsNoCard > 0 ? errorsNoCard : null},
+        {view:'srs',      icon:'lucide:layers',     label:'Flashcards', badge:dueSrs > 0 ? dueSrs : null},
+        {view:'history',  icon:'lucide:history',    label:'Histórico de erros', badge:errorsNoCard > 0 ? errorsNoCard : null},
         // V15.12.75.112 — Modos de Revisão (hub com Turbo/Véspera/Material).
         // Antes estava acessível só via comando ou welcome guide — perdia no menu.
-        {view:'review', icon:'⚡', label:'Modos de Revisão', desc:'Turbo, véspera, material de revisão e roteiro NotebookLM'},
-        {view:'pomodoro', icon:'🌰', label:'Pomodoro', desc:'Timer de estudo com pausas'},
+        {view:'review',   icon:'lucide:refresh-cw', label:'Modos de Revisão', desc:'Turbo, véspera, material de revisão e roteiro NotebookLM'},
+        {view:'pomodoro', icon:'lucide:timer',      label:'Pomodoro', desc:'Timer de estudo com pausas'},
         // V15.12.75.106 — Pinhal: gamificação. XP/nível/floresta/cards
-        {view:'pinhal', icon:'🌲', label:'Pinhal', desc:'Sua floresta de estudos'},
+        {view:'pinhal',   icon:'lucide:trees',      label:'Pinhal', desc:'Sua floresta de estudos'},
       ]
     },
     {
       label:'Planejar',
       items:[
-        {view:'goals', icon:'🎯', label:'Metas'},
-        {view:'schedule', icon:'📅', label:'Cronograma', desc:'Blocos de estudo, treino, sono'},
+        {view:'goals',    icon:'lucide:target',           label:'Metas'},
+        {view:'schedule', icon:'lucide:calendar',         label:'Cronograma', desc:'Blocos de estudo, treino, sono'},
         // V15.12.75.128 — Mentor: espaço pessoal com doses, princípios e diário
-        {view:'mentor', icon:'🧭', label:'Mentor', desc:'Doses, princípios e diário pessoal'},
-        {view:'editals', icon:'📋', label:'Análise de editais', desc:'IA analisa o PDF do edital'},
-        {view:'exams', icon:'✅', label:'Análise de provas', desc:'Registre e analise provas reais que você fez'},
-        {view:'mapa', icon:'🗺️', label:'Mapa da matéria'},
+        {view:'mentor',   icon:'lucide:headphones',       label:'Mentor', desc:'Doses, princípios e diário pessoal'},
+        {view:'editals',  icon:'lucide:file-search',      label:'Análise de editais', desc:'IA analisa o PDF do edital'},
+        {view:'exams',    icon:'lucide:clipboard-check',  label:'Análise de provas', desc:'Registre e analise provas reais que você fez'},
+        {view:'mapa',     icon:'lucide:map',              label:'Mapa da matéria'},
       ]
     },
     {
       label:'Comunidade',
       items:[
-        {view:'discover', icon:'🌐', label:'Comunidade', desc:'Materiais públicos de outros assinantes'},
-        {view:'feed', icon:'📡', label:'Feed dos seguidos', desc:'Atividade de quem você segue'},
-        {view:'legalUpdates', icon:'⚖️', label:'Atualizações legais', desc:'Leis e jurisprudência novas'},
+        {view:'discover',     icon:'lucide:globe', label:'Comunidade', desc:'Materiais públicos de outros assinantes'},
+        {view:'feed',         icon:'lucide:rss',   label:'Feed dos seguidos', desc:'Atividade de quem você segue'},
+        {view:'legalUpdates', icon:'lucide:scale', label:'Atualizações legais', desc:'Leis e jurisprudência novas'},
         // V15.12.75.114 — `forest` (Pinhal antigo V14) REMOVIDO. Substituído
         // pelo `pinhal` novo (V106+) no grupo Revisar.
-        {view:'groups', icon:'👥', label:'Grupos', desc:'Rankings de até 25 pessoas'},
+        {view:'groups',       icon:'lucide:users', label:'Grupos', desc:'Rankings de até 25 pessoas'},
       ]
     }
   ];
@@ -18891,7 +18963,14 @@ function buildAppSidebar(){
       // V14: Title pra tooltip no modo colapsado (mouse hover mostra label completo)
       item.title = it.label + (it.desc ? ' — ' + it.desc : '');
       const ico = mk('span','app-sidebar-item-ico');
-      ico.textContent = it.icon;
+      // V15.12.75.141 — Suporta ícones SVG via prefixo "lucide:". Emoji puro
+      // continua funcionando (fallback).
+      if(typeof it.icon === 'string' && it.icon.startsWith('lucide:')){
+        ico.innerHTML = lucideIcon(it.icon.slice(7), 18);
+        ico.classList.add('app-sidebar-item-ico-svg');
+      } else {
+        ico.textContent = it.icon;
+      }
       const lbl = mk('span','app-sidebar-item-label');
       lbl.textContent = it.label;
       item.appendChild(ico);
