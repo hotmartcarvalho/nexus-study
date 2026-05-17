@@ -7426,7 +7426,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.128';
+window.GRALIA_VERSION = 'V15.12.75.129';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -40568,57 +40568,577 @@ function initMentorData(){
   return DATA.mentor;
 }
 
+// V15.12.75.129 — Codinomes ficcionais inspirados em CoD/Ghost Recon.
+// Halsey "Cipher" = comandante tático/estratégico (analítico, frio, métricas).
+// Vargas "Drago" = operador de assalto (intenso, agressivo psicológico).
+// Operação Distintivo = nome da missão do user (extraído das anotações).
+const MENTOR_AGENTS = {
+  halsey: {
+    id: 'halsey',
+    name: 'Cap. Halsey',
+    callsign: 'Cipher',
+    role: 'Comando Tático',
+    avatar: '🎯',
+    accent: '#3a5a8a',   // azul-grafite
+    accentBg: 'rgba(58,90,138,.08)',
+    accentBorder: 'rgba(58,90,138,.30)',
+    bio: 'Estratégico, frio, foco em métricas e execução.'
+  },
+  drago: {
+    id: 'drago',
+    name: 'Sgt. Vargas',
+    callsign: 'Drago',
+    role: 'Operador de Assalto',
+    avatar: '🔥',
+    accent: '#a02942',   // vermelho-carmim
+    accentBg: 'rgba(160,41,66,.08)',
+    accentBorder: 'rgba(160,41,66,.30)',
+    bio: 'Intenso, brutal psicológico, combate a procrastinação.'
+  }
+};
+
+// V15.12.75.129 — Coleta snapshot do dia (pomodoros, XP, erros, streak, etc).
+// Usado pra: (1) mostrar no briefing card do Mentor; (2) anexar ao prompt
+// quando user mandar mensagem aos mentores (na sub-rodada 2b).
+function getMentorSnapshot(){
+  const now = Date.now();
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const todayStartMs = todayStart.getTime();
+  const weekAgoMs = now - 7*24*3600*1000;
+  const todayDateISO = todayStart.toISOString().slice(0,10);
+
+  // Pomodoros
+  const pomoSessions = ((DATA.pomo||{}).sessions||[]).filter(s => s.phase==='focus');
+  const pomoToday = pomoSessions.filter(s => s.date >= todayStartMs).length;
+  const pomoWeek = pomoSessions.filter(s => s.date >= weekAgoMs).length;
+
+  // Questões — DATA.session é a sessão atual; acumulado vem dos erros + acertos
+  // Como acertos não são persistidos individualmente, uso "total de erros do dia"
+  // como proxy pra atividade de questões. (V129 sub-rodada 2b vai refinar.)
+  const errorsAll = DATA.errors || [];
+  const errorsToday = errorsAll.filter(e => e.date && e.date >= todayStartMs).length;
+  const errorsWeek = errorsAll.filter(e => e.date && e.date >= weekAgoMs).length;
+
+  // Pinhal
+  const pinhal = DATA.pinhal || {};
+  const pinhalLevel = pinhal.level || 1;
+  const pinhalXp = pinhal.xp || 0;
+  const pinhalStreak = pinhal.streakDays || 0;
+  const pinhalDailyXp = (pinhal.dailyXp && pinhal.dailyXp.date === todayDateISO) ? (pinhal.dailyXp.total || 0) : 0;
+
+  // Fontes lidas hoje
+  const sources = DATA.sources || [];
+  const readToday = sources.filter(s => s.readAt && s.readAt >= todayStartMs).length;
+
+  // Flashcards revisados (SRS) hoje — uso DATA.srsLog se existir
+  const srsLog = DATA.srsLog || [];
+  const srsToday = srsLog.filter(l => l.date && l.date >= todayStartMs).length;
+
+  // Última entrada do diário (do próprio Mentor)
+  let lastDiary = null;
+  try{
+    if(DATA.mentor && DATA.mentor.diary && DATA.mentor.diary.length > 0){
+      const sorted = DATA.mentor.diary.slice().sort((a,b) => (new Date(b.date)).getTime() - (new Date(a.date)).getTime());
+      lastDiary = sorted[0];
+    }
+  }catch(_){}
+
+  // Dia da operação (desde 1º pomo registrado, ou desde 2025-08-15 se faltar)
+  let operationDay = 1;
+  try{
+    const firstPomo = pomoSessions.sort((a,b) => a.date - b.date)[0];
+    const startMs = firstPomo ? firstPomo.date : (new Date('2025-08-15')).getTime();
+    operationDay = Math.max(1, Math.floor((now - startMs) / (24*3600*1000)) + 1);
+  }catch(_){}
+
+  return {
+    operationDay,
+    pomoToday,
+    pomoWeek,
+    errorsToday,
+    errorsWeek,
+    readToday,
+    srsToday,
+    pinhalLevel,
+    pinhalXp,
+    pinhalStreak,
+    pinhalDailyXp,
+    lastDiary,
+    timestamp: now
+  };
+}
+
+// V15.12.75.129 — Calcula "status" do dia baseado no snapshot.
+// Verde = no trilho, Amarelo = atenção, Vermelho = ação urgente.
+function getMentorDayStatus(snap){
+  const hr = new Date().getHours();
+  const totalActivity = snap.pomoToday + snap.srsToday + (snap.readToday * 2);
+  // Critério: leva em conta a hora do dia (de manhã exige menos)
+  if(hr < 10){
+    // Manhã cedo — qualquer atividade > 0 é OK, 0 é amarelo (pra estimular)
+    if(totalActivity >= 1) return { level:'green', label:'No trilho', color:'#10b981' };
+    return { level:'yellow', label:'Aguardando ação', color:'#d97706' };
+  }
+  if(hr < 14){
+    if(totalActivity >= 3) return { level:'green', label:'Operação em curso', color:'#10b981' };
+    if(totalActivity >= 1) return { level:'yellow', label:'Velocidade abaixo do plano', color:'#d97706' };
+    return { level:'red', label:'Ação urgente requerida', color:'#dc2626' };
+  }
+  if(hr < 19){
+    if(totalActivity >= 5) return { level:'green', label:'Operação em curso', color:'#10b981' };
+    if(totalActivity >= 2) return { level:'yellow', label:'Recupere o ritmo', color:'#d97706' };
+    return { level:'red', label:'Dia em risco', color:'#dc2626' };
+  }
+  // Noite
+  if(totalActivity >= 7) return { level:'green', label:'Missão cumprida', color:'#10b981' };
+  if(totalActivity >= 3) return { level:'yellow', label:'Cumprido parcialmente', color:'#d97706' };
+  return { level:'red', label:'Dia perdido — não repita', color:'#dc2626' };
+}
+
 function renderMentor(){
   const wrap = mk('div','fade');
   const m = initMentorData();
-
-  // === HEADER ===
-  const h = mk('h1');
-  h.textContent = '🧭 Mentor';
-  wrap.appendChild(h);
-  const lead = mk('p','txt2');
-  lead.style.cssText = 'margin:.25rem 0 1.5rem;font-size:13.5px;line-height:1.55;max-width:680px';
-  lead.textContent = 'Espaço pessoal pra cultivar disciplina e propósito. Doses do dia, princípios pra recordar e diário pra registrar a jornada. Tudo privado — só você vê.';
-  wrap.appendChild(lead);
-
-  // === TABS ===
-  const tabs = mk('div');
-  tabs.style.cssText = 'display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:1.25rem;overflow-x:auto';
-  const tabDefs = [
-    { id:'today',      label:'☀️ Hoje',      desc:'Doses sugeridas' },
-    { id:'principles', label:'⚓ Princípios', desc:'Mantras' },
-    { id:'diary',      label:'📓 Diário',     desc:'Registro livre' }
-  ];
-  const content = mk('div');
-  const setActive = (id) => {
-    m.lastTab = id;
+  // V15.12.75.129 — Garante estrutura de chat
+  if(!m.conversations) m.conversations = [];   // [{id, startedAt, messages:[]}]
+  if(!m.currentConversationId){
+    // Cria nova conversa do dia se não houver
+    const today = (new Date()).toISOString().slice(0,10);
+    const existing = m.conversations.find(c => c.dateISO === today);
+    if(existing){ m.currentConversationId = existing.id; }
+    else {
+      const newConv = {
+        id: 'conv_' + Date.now(),
+        dateISO: today,
+        startedAt: Date.now(),
+        messages: []
+      };
+      m.conversations.push(newConv);
+      m.currentConversationId = newConv.id;
+    }
     try{ save(); }catch(_){}
-    tabs.querySelectorAll('button').forEach(b => {
-      const isActive = b.dataset.tab === id;
-      b.style.borderBottom = isActive ? '2px solid var(--gralia-purple)' : '2px solid transparent';
-      b.style.color = isActive ? 'var(--gralia-purple)' : 'var(--text2)';
-      b.style.fontWeight = isActive ? '700' : '500';
-    });
-    content.innerHTML = '';
-    if(id === 'today') content.appendChild(renderMentorToday(m));
-    else if(id === 'principles') content.appendChild(renderMentorPrinciples(m));
-    else if(id === 'diary') content.appendChild(renderMentorDiary(m));
-  };
-  tabDefs.forEach(t => {
-    const b = mk('button');
-    b.type = 'button';
-    b.dataset.tab = t.id;
-    b.style.cssText = 'padding:.625rem 1rem;background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;font-size:13.5px;color:var(--text2);font-weight:500;white-space:nowrap;transition:all .15s ease;margin-bottom:-1px';
-    b.innerHTML = `<span>${t.label}</span>`;
-    b.addEventListener('click', () => setActive(t.id));
-    tabs.appendChild(b);
-  });
-  wrap.appendChild(tabs);
-  wrap.appendChild(content);
+  }
+  const conv = m.conversations.find(c => c.id === m.currentConversationId) || m.conversations[m.conversations.length - 1];
 
-  // Ativa última aba (ou principles por default)
-  setActive(m.lastTab || 'principles');
+  const snap = getMentorSnapshot();
+  const status = getMentorDayStatus(snap);
+
+  // === LAYOUT GERAL: 2 colunas (chat principal + sidebar colapsável) ===
+  const layout = mk('div');
+  layout.style.cssText = 'display:grid;grid-template-columns:1fr 320px;gap:1.25rem;align-items:start';
+  // Responsive: empilha em mobile
+  if(window.innerWidth < 900){ layout.style.gridTemplateColumns = '1fr'; }
+  window.addEventListener('resize', () => {
+    layout.style.gridTemplateColumns = window.innerWidth < 900 ? '1fr' : '1fr 320px';
+  }, { passive: true });
+
+  // ========== COLUNA PRINCIPAL: BRIEFING + CHAT ==========
+  const mainCol = mk('div');
+
+  // -- HEADER: nome da operação + status do dia --
+  const header = mk('div');
+  header.style.cssText = 'margin-bottom:1.25rem';
+  const headerTop = mk('div');
+  headerTop.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:.375rem;flex-wrap:wrap';
+  const opTitle = mk('h1');
+  opTitle.style.cssText = 'margin:0;font-size:24px;font-weight:800;letter-spacing:-.5px;display:flex;align-items:center;gap:10px';
+  opTitle.innerHTML = `<span>🧭</span><span>Operação Distintivo</span>`;
+  headerTop.appendChild(opTitle);
+  const dayChip = mk('div');
+  dayChip.style.cssText = 'padding:4px 10px;background:rgba(128,66,250,.10);border:1px solid rgba(128,66,250,.25);border-radius:999px;font-size:11.5px;font-weight:700;color:var(--gralia-purple);letter-spacing:.3px';
+  dayChip.textContent = `Dia ${snap.operationDay}`;
+  headerTop.appendChild(dayChip);
+  const statusChip = mk('div');
+  statusChip.style.cssText = `padding:4px 10px;background:${status.color}15;border:1px solid ${status.color}40;border-radius:999px;font-size:11.5px;font-weight:700;color:${status.color};letter-spacing:.3px;display:flex;align-items:center;gap:6px`;
+  statusChip.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:${status.color};display:inline-block"></span><span>${status.label}</span>`;
+  headerTop.appendChild(statusChip);
+  header.appendChild(headerTop);
+  const headerSub = mk('p','txt2');
+  headerSub.style.cssText = 'margin:.125rem 0 0;font-size:13px;line-height:1.5';
+  headerSub.textContent = 'Sala de operações. Halsey analisa, Drago cobra. Tudo que você compartilha aqui é privado.';
+  header.appendChild(headerSub);
+  mainCol.appendChild(header);
+
+  // -- BRIEFING CARD: snapshot do dia --
+  const briefing = mk('div','card');
+  briefing.style.cssText = 'padding:1rem 1.125rem;margin-bottom:1rem;background:linear-gradient(135deg,rgba(128,66,250,.04),rgba(128,66,250,.01));border:1px solid var(--border)';
+  const briefingHead = mk('div');
+  briefingHead.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:.625rem;gap:1rem';
+  const briefingTitle = mk('div');
+  briefingTitle.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;display:flex;align-items:center;gap:6px';
+  briefingTitle.innerHTML = `<span>📊</span><span>Briefing do dia</span>`;
+  briefingHead.appendChild(briefingTitle);
+  briefing.appendChild(briefingHead);
+  // Métricas em chips
+  const metricsRow = mk('div');
+  metricsRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px';
+  const mkMetricChip = (icon, value, label, color) => {
+    const chip = mk('div');
+    chip.style.cssText = `padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;display:flex;align-items:center;gap:6px;font-family:inherit`;
+    chip.innerHTML = `<span style="font-size:13px">${icon}</span><b style="color:${color||'var(--text)'};font-weight:700">${value}</b><span style="color:var(--text3);font-size:11.5px">${label}</span>`;
+    return chip;
+  };
+  metricsRow.appendChild(mkMetricChip('🎯', snap.pomoToday, 'pomodoros hoje', snap.pomoToday > 0 ? '#10b981' : 'var(--text)'));
+  metricsRow.appendChild(mkMetricChip('🔥', snap.pinhalStreak, `dia${snap.pinhalStreak===1?'':'s'} de sequência`, snap.pinhalStreak > 0 ? '#f97316' : 'var(--text)'));
+  metricsRow.appendChild(mkMetricChip('⚡', snap.pinhalDailyXp, 'XP hoje', 'var(--gralia-purple)'));
+  metricsRow.appendChild(mkMetricChip('📖', snap.readToday, `fonte${snap.readToday===1?'':'s'} lida${snap.readToday===1?'':'s'}`, 'var(--text)'));
+  metricsRow.appendChild(mkMetricChip('🎴', snap.srsToday, 'flashcards', 'var(--text)'));
+  metricsRow.appendChild(mkMetricChip('❌', snap.errorsToday, 'erros (hoje)', snap.errorsToday > 0 ? '#dc2626' : 'var(--text3)'));
+  metricsRow.appendChild(mkMetricChip('🌲', `Nv ${snap.pinhalLevel}`, 'Pinhal', 'var(--gralia-purple)'));
+  briefing.appendChild(metricsRow);
+  mainCol.appendChild(briefing);
+
+  // -- CHAT AREA --
+  const chatCard = mk('div','card');
+  chatCard.style.cssText = 'padding:0;display:flex;flex-direction:column;min-height:480px;max-height:680px;overflow:hidden';
+
+  // Header do chat
+  const chatHead = mk('div');
+  chatHead.style.cssText = 'padding:.75rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap';
+  chatHead.innerHTML = `
+    <div style="display:flex;align-items:center;gap:6px">
+      <span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block"></span>
+      <b style="font-size:12.5px">Mentores em standby</b>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+      <span style="padding:2px 8px;background:${MENTOR_AGENTS.halsey.accentBg};border:1px solid ${MENTOR_AGENTS.halsey.accentBorder};border-radius:999px;font-size:10.5px;font-weight:700;color:${MENTOR_AGENTS.halsey.accent}">🎯 Halsey · Cipher</span>
+      <span style="padding:2px 8px;background:${MENTOR_AGENTS.drago.accentBg};border:1px solid ${MENTOR_AGENTS.drago.accentBorder};border-radius:999px;font-size:10.5px;font-weight:700;color:${MENTOR_AGENTS.drago.accent}">🔥 Drago · Vargas</span>
+    </div>
+  `;
+  chatCard.appendChild(chatHead);
+
+  // Stream de mensagens
+  const chatStream = mk('div');
+  chatStream.style.cssText = 'flex:1;overflow-y:auto;padding:1rem 1.125rem;display:flex;flex-direction:column;gap:1rem;background:var(--surface2)';
+  chatCard.appendChild(chatStream);
+
+  // Função pra renderizar mensagens
+  const renderMessages = () => {
+    chatStream.innerHTML = '';
+    if(!conv.messages || conv.messages.length === 0){
+      // Estado vazio: convite + sugestões
+      const empty = mk('div');
+      empty.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2.5rem 1rem;text-align:center';
+      empty.innerHTML = `
+        <div style="font-size:32px;margin-bottom:.5rem">🎙</div>
+        <div style="font-size:15px;font-weight:700;margin-bottom:.375rem">Aguardando relatório, operador.</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.55;max-width:380px;margin-bottom:1rem">
+          Conte como está o seu dia, o que travou, o que cumpriu. Halsey e Drago vão analisar com base nos seus dados do app.
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+          <button data-quick="briefing" style="padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;color:var(--text2)">⚡ Como estou hoje?</button>
+          <button data-quick="travei" style="padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;color:var(--text2)">😓 Travei, preciso de ajuste</button>
+          <button data-quick="vitoria" style="padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;color:var(--text2)">✅ Cumpri o que prometi</button>
+        </div>
+      `;
+      empty.querySelectorAll('button[data-quick]').forEach(b => {
+        b.addEventListener('click', () => {
+          const map = {
+            briefing: 'Como estou hoje?',
+            travei: 'Travei. Não estou conseguindo executar o cronograma. Preciso de ajuste.',
+            vitoria: 'Cumpri o que prometi hoje.'
+          };
+          textInput.value = map[b.dataset.quick] || '';
+          textInput.focus();
+        });
+      });
+      chatStream.appendChild(empty);
+      return;
+    }
+    conv.messages.forEach(msg => {
+      const row = mk('div');
+      if(msg.role === 'user'){
+        row.style.cssText = 'display:flex;justify-content:flex-end';
+        const bubble = mk('div');
+        bubble.style.cssText = 'max-width:75%;padding:.625rem .875rem;background:var(--gralia-purple);color:#fff;border-radius:14px 14px 4px 14px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-wrap:break-word';
+        bubble.textContent = msg.text;
+        row.appendChild(bubble);
+      } else {
+        // Mensagem do mentor
+        const agent = MENTOR_AGENTS[msg.agent] || MENTOR_AGENTS.halsey;
+        row.style.cssText = 'display:flex;flex-direction:column;align-items:flex-start;gap:4px';
+        const header = mk('div');
+        header.style.cssText = 'display:flex;align-items:center;gap:6px;padding-left:8px';
+        header.innerHTML = `<span style="font-size:14px">${agent.avatar}</span><b style="font-size:11.5px;color:${agent.accent};letter-spacing:.2px">${agent.name} · ${agent.callsign}</b>`;
+        row.appendChild(header);
+        const bubble = mk('div');
+        bubble.style.cssText = `max-width:85%;padding:.75rem 1rem;background:${agent.accentBg};border:1px solid ${agent.accentBorder};border-radius:4px 14px 14px 14px;font-size:13.5px;line-height:1.55;color:var(--text);white-space:pre-wrap;word-wrap:break-word`;
+        bubble.innerHTML = msg.html || escapeHTML(msg.text);
+        row.appendChild(bubble);
+      }
+      chatStream.appendChild(row);
+    });
+    // Scroll pro final
+    setTimeout(() => { chatStream.scrollTop = chatStream.scrollHeight; }, 50);
+  };
+
+  // Footer com input
+  const chatFoot = mk('div');
+  chatFoot.style.cssText = 'padding:.75rem 1rem;border-top:1px solid var(--border);background:var(--surface)';
+  const inputRow = mk('div');
+  inputRow.style.cssText = 'display:flex;gap:8px;align-items:flex-end';
+  const textInput = mk('textarea');
+  textInput.placeholder = 'Relate ao posto de comando... (Enter pra enviar, Shift+Enter pra nova linha)';
+  textInput.style.cssText = 'flex:1;min-height:44px;max-height:140px;padding:.625rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:13.5px;color:var(--text);line-height:1.45;resize:none;box-sizing:border-box';
+  textInput.addEventListener('input', () => {
+    textInput.style.height = 'auto';
+    textInput.style.height = Math.min(140, textInput.scrollHeight) + 'px';
+  });
+  const sendBtn = mk('button');
+  sendBtn.type = 'button';
+  sendBtn.style.cssText = 'padding:.625rem 1.125rem;background:var(--gralia-purple);border:none;border-radius:10px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:#fff;flex-shrink:0';
+  sendBtn.innerHTML = '✉ Enviar';
+
+  const handleSend = () => {
+    const text = textInput.value.trim();
+    if(!text) return;
+    // Adiciona mensagem do user
+    conv.messages.push({
+      role: 'user',
+      text,
+      timestamp: Date.now()
+    });
+    // V15.12.75.129 — Sub-rodada 2a: SEM IA ainda. Adiciona placeholder
+    // dos mentores que será substituído pelo response real em 2b.
+    conv.messages.push({
+      role: 'mentor',
+      agent: 'halsey',
+      text: '[ Resposta da IA virá na próxima atualização (sub-rodada 2b). ] Por enquanto, sua mensagem foi registrada no histórico — quando ligarmos a integração com Sonnet 4.6, Halsey e Drago vão responder com base no seu briefing do dia, diário recente e princípios.',
+      timestamp: Date.now() + 1
+    });
+    try{ save(); }catch(_){}
+    textInput.value = '';
+    textInput.style.height = '44px';
+    renderMessages();
+  };
+
+  sendBtn.addEventListener('click', handleSend);
+  textInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' && !e.shiftKey){
+      e.preventDefault();
+      handleSend();
+    }
+  });
+  inputRow.appendChild(textInput);
+  inputRow.appendChild(sendBtn);
+  chatFoot.appendChild(inputRow);
+
+  // Action row: Check-in completo / Nova conversa
+  const actionRow = mk('div');
+  actionRow.style.cssText = 'display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:var(--text3)';
+  const checkinBtn = mk('button');
+  checkinBtn.type = 'button';
+  checkinBtn.style.cssText = 'padding:4px 10px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;color:var(--text2)';
+  checkinBtn.innerHTML = '📋 Check-in completo';
+  checkinBtn.title = 'Em breve — formulário estruturado de relato';
+  checkinBtn.addEventListener('click', () => {
+    if(typeof showToast === 'function') showToast('Check-in estruturado virá em breve (sub-rodada 2b)', 3500);
+  });
+  actionRow.appendChild(checkinBtn);
+  const newConvBtn = mk('button');
+  newConvBtn.type = 'button';
+  newConvBtn.style.cssText = 'padding:4px 10px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;color:var(--text2)';
+  newConvBtn.innerHTML = '🔄 Nova conversa';
+  newConvBtn.addEventListener('click', () => {
+    if(conv.messages.length === 0){
+      if(typeof showToast === 'function') showToast('Esta conversa já está vazia', 2500);
+      return;
+    }
+    if(!confirm('Iniciar nova conversa? A atual vai pro histórico.')) return;
+    const newConv = {
+      id: 'conv_' + Date.now(),
+      dateISO: (new Date()).toISOString().slice(0,10),
+      startedAt: Date.now(),
+      messages: []
+    };
+    m.conversations.push(newConv);
+    m.currentConversationId = newConv.id;
+    try{ save(); }catch(_){}
+    // Re-render
+    const newView = renderMentor();
+    wrap.replaceWith(newView);
+  });
+  actionRow.appendChild(newConvBtn);
+  const tokenNote = mk('div');
+  tokenNote.style.cssText = 'margin-left:auto;font-size:10.5px;color:var(--text3);font-style:italic';
+  tokenNote.textContent = 'Sonnet 4.6 · seus créditos';
+  actionRow.appendChild(tokenNote);
+  chatFoot.appendChild(actionRow);
+
+  chatCard.appendChild(chatFoot);
+  mainCol.appendChild(chatCard);
+
+  // Renderiza mensagens iniciais
+  renderMessages();
+
+  // ========== COLUNA LATERAL: PRINCÍPIO DO DIA + DIÁRIO QUICK ==========
+  const sideCol = mk('div');
+  sideCol.style.cssText = 'display:flex;flex-direction:column;gap:1rem';
+
+  // -- Princípio do dia (rotaciona por hash do dia) --
+  const today = new Date();
+  const dayHash = today.getFullYear() * 1000 + (today.getMonth() + 1) * 31 + today.getDate();
+  if(m.principles && m.principles.length > 0){
+    const principle = m.principles[dayHash % m.principles.length];
+    const pCard = mk('div','card');
+    pCard.style.cssText = 'padding:1rem;background:linear-gradient(135deg,rgba(128,66,250,.08),rgba(128,66,250,.02));border:1px solid rgba(128,66,250,.20)';
+    pCard.innerHTML = `
+      <div style="font-size:10px;font-weight:700;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.8px;margin-bottom:.5rem;display:flex;align-items:center;gap:6px">
+        <span>⚓</span><span>Princípio do dia</span>
+      </div>
+      <div style="font-size:13.5px;line-height:1.5;font-weight:600;color:var(--text);font-style:italic">"${escapeHTML(principle.text)}"</div>
+      <div style="margin-top:.625rem;text-align:right">
+        <button data-action="all-principles" style="padding:3px 8px;background:transparent;border:none;cursor:pointer;font-family:inherit;font-size:11px;color:var(--gralia-purple);font-weight:600">Ver todos →</button>
+      </div>
+    `;
+    pCard.querySelector('button[data-action="all-principles"]').addEventListener('click', () => {
+      openPrinciplesPanel(m, wrap);
+    });
+    sideCol.appendChild(pCard);
+  }
+
+  // -- Diário compacto: última entrada + acesso --
+  const dCard = mk('div','card');
+  dCard.style.cssText = 'padding:1rem';
+  let lastDiaryEntry = null;
+  if(m.diary && m.diary.length > 0){
+    const sorted = m.diary.slice().sort((a,b) => (new Date(b.date)).getTime() - (new Date(a.date)).getTime());
+    lastDiaryEntry = sorted[0];
+  }
+  const dHead = mk('div');
+  dHead.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:.625rem;gap:8px';
+  dHead.innerHTML = `
+    <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;display:flex;align-items:center;gap:6px">
+      <span>📓</span><span>Diário</span>
+    </div>
+  `;
+  const openDiaryBtn = mk('button');
+  openDiaryBtn.type = 'button';
+  openDiaryBtn.style.cssText = 'padding:3px 8px;background:transparent;border:none;cursor:pointer;font-family:inherit;font-size:11px;color:var(--gralia-purple);font-weight:600';
+  openDiaryBtn.textContent = lastDiaryEntry ? 'Abrir →' : '+ Nova entrada';
+  openDiaryBtn.addEventListener('click', () => openDiaryPanel(m, wrap));
+  dHead.appendChild(openDiaryBtn);
+  dCard.appendChild(dHead);
+
+  if(lastDiaryEntry){
+    const formatDateBR = (iso) => {
+      try{
+        const d = new Date(iso + 'T12:00:00');
+        return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+      }catch(_){ return iso; }
+    };
+    const isToday = lastDiaryEntry.date === (new Date()).toISOString().slice(0,10);
+    const preview = mk('div');
+    preview.style.cssText = 'font-size:11px;color:var(--text3);font-weight:600;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px';
+    preview.textContent = isToday ? 'Entrada de hoje' : `Última · ${formatDateBR(lastDiaryEntry.date)}`;
+    dCard.appendChild(preview);
+    const previewText = mk('div');
+    previewText.style.cssText = 'font-size:12.5px;color:var(--text2);line-height:1.5;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden';
+    previewText.textContent = (lastDiaryEntry.text || '(vazia)').slice(0, 280);
+    dCard.appendChild(previewText);
+  } else {
+    const empty = mk('div');
+    empty.style.cssText = 'font-size:12px;color:var(--text3);font-style:italic';
+    empty.textContent = 'Nenhuma entrada ainda. Use o botão acima pra começar.';
+    dCard.appendChild(empty);
+  }
+  sideCol.appendChild(dCard);
+
+  // -- Conversas anteriores --
+  if(m.conversations && m.conversations.length > 1){
+    const histCard = mk('div','card');
+    histCard.style.cssText = 'padding:1rem';
+    histCard.innerHTML = `
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:.625rem;display:flex;align-items:center;gap:6px">
+        <span>💬</span><span>Conversas anteriores</span>
+      </div>
+    `;
+    const list = mk('div');
+    list.style.cssText = 'display:flex;flex-direction:column;gap:4px';
+    const sorted = m.conversations.slice().sort((a,b) => b.startedAt - a.startedAt);
+    sorted.slice(0, 6).forEach(c => {
+      if(c.id === m.currentConversationId) return;
+      const item = mk('button');
+      item.type = 'button';
+      const formatD = (iso) => {
+        try{
+          const d = new Date(iso + 'T12:00:00');
+          return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'short' });
+        }catch(_){ return iso; }
+      };
+      const msgCount = (c.messages || []).length;
+      item.style.cssText = 'padding:6px 10px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;color:var(--text2);text-align:left;display:flex;justify-content:space-between;align-items:center';
+      item.innerHTML = `<span>${formatD(c.dateISO)}</span><span style="color:var(--text3);font-size:10.5px">${msgCount} msg</span>`;
+      item.addEventListener('click', () => {
+        m.currentConversationId = c.id;
+        try{ save(); }catch(_){}
+        const newView = renderMentor();
+        wrap.replaceWith(newView);
+      });
+      list.appendChild(item);
+    });
+    histCard.appendChild(list);
+    sideCol.appendChild(histCard);
+  }
+
+  layout.appendChild(mainCol);
+  layout.appendChild(sideCol);
+  wrap.appendChild(layout);
+
   return wrap;
+}
+
+// V15.12.75.129 — Painel modal de Princípios (substitui aba antiga).
+// Reusa renderMentorPrinciples mas em modal de tela cheia.
+function openPrinciplesPanel(m, anchorWrap){
+  const overlay = mk('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99700;display:flex;align-items:center;justify-content:center;padding:1rem;animation:forest-backdrop-in .2s ease';
+  const box = mk('div','card');
+  box.style.cssText = 'max-width:580px;width:100%;max-height:85vh;overflow-y:auto;padding:1.5rem';
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem';
+  const title = mk('h3');
+  title.style.cssText = 'margin:0;font-size:16px;font-weight:700';
+  title.innerHTML = '⚓ Princípios';
+  head.appendChild(title);
+  const closeBtn = mk('button');
+  closeBtn.type = 'button';
+  closeBtn.style.cssText = 'width:30px;height:30px;border-radius:6px;background:transparent;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:14px;color:var(--text2)';
+  closeBtn.innerHTML = '×';
+  closeBtn.addEventListener('click', () => overlay.remove());
+  head.appendChild(closeBtn);
+  box.appendChild(head);
+  // Renderiza conteúdo aqui (reusa lógica antiga, mas inline e simplificada)
+  const content = renderMentorPrinciples(m);
+  box.appendChild(content);
+  overlay.appendChild(box);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+// V15.12.75.129 — Painel modal de Diário.
+function openDiaryPanel(m, anchorWrap){
+  const overlay = mk('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99700;display:flex;align-items:center;justify-content:center;padding:1rem;animation:forest-backdrop-in .2s ease';
+  const box = mk('div','card');
+  box.style.cssText = 'max-width:900px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem';
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem';
+  const title = mk('h3');
+  title.style.cssText = 'margin:0;font-size:16px;font-weight:700';
+  title.innerHTML = '📓 Diário';
+  head.appendChild(title);
+  const closeBtn = mk('button');
+  closeBtn.type = 'button';
+  closeBtn.style.cssText = 'width:30px;height:30px;border-radius:6px;background:transparent;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:14px;color:var(--text2)';
+  closeBtn.innerHTML = '×';
+  closeBtn.addEventListener('click', () => overlay.remove());
+  head.appendChild(closeBtn);
+  box.appendChild(head);
+  const content = renderMentorDiary(m);
+  box.appendChild(content);
+  overlay.appendChild(box);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
 }
 
 // --- Aba HOJE (stub na Rodada 1; catálogo completo na Rodada 2) ---
