@@ -267,15 +267,24 @@ body.sidebar-collapsed .sidebar-collapse-toggle{right:auto;left:50%;transform:tr
 body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: +10% (28→31px) */
 .app-sidebar-brand-emoji{font-size:22px;line-height:1}
 /* V15.12.75.141 — Section padding menor (10/4 → 6/2) pra economizar
-   altura vertical e caber sem scroll. */
+   altura vertical e caber sem scroll.
+   V15.12.75.142 — Separador sutil entre grupos (border-top no 2º+). */
 .app-sidebar-section{padding:6px 12px 2px}
+.app-sidebar-section + .app-sidebar-section{
+  border-top:1px solid var(--border);
+  margin-top:4px;
+  padding-top:8px;
+}
 .app-sidebar-section-label{
   font-size:10px;
   font-weight:700;
-  color:var(--text3);
+  /* V15.12.75.142 — Label de seção um pouquinho mais vívido (text3 → text2).
+     Ainda discreto mas dá mais hierarquia entre seções. */
+  color:var(--text2);
   text-transform:uppercase;
-  letter-spacing:.5px;
+  letter-spacing:.6px;
   padding:0 8px 4px;
+  opacity:.75;
 }
 .app-sidebar-item{
   display:flex;
@@ -290,9 +299,11 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
   border-radius:8px;
   color:var(--text2);
   font-size:13px;
-  font-weight:500;
+  /* V15.12.75.142 — Weight 500 → 550 dá mais "presença" sem deixar pesado */
+  font-weight:550;
   cursor:pointer;
-  transition:background .12s, color .12s;
+  /* V15.12.75.142 — Transição inclui transform pra hover slide horizontal sutil */
+  transition:background .15s ease, color .15s ease, transform .15s ease;
   border:none;
   background:transparent;
   width:calc(100% - 8px);
@@ -300,11 +311,23 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
   font-family:inherit;
   position:relative;
 }
-.app-sidebar-item:hover{background:var(--surface2);color:var(--text)}
+/* V15.12.75.142 — Hover com micro-slide horizontal (2px) — sensação de
+   "abrir caminho" quando o cursor passa, sem agressividade visual. */
+.app-sidebar-item:hover{
+  background:var(--surface2);
+  color:var(--text);
+  transform:translateX(2px);
+}
 .app-sidebar-item.active{
-  background:linear-gradient(90deg, rgba(128,66,250,.12) 0%, rgba(128,66,250,.04) 100%);
+  /* V15.12.75.142 — Gradiente mais marcante (12% → 18%) + sombra interna sutil */
+  background:linear-gradient(90deg, rgba(128,66,250,.18) 0%, rgba(128,66,250,.04) 100%);
   color:var(--gralia-purple);
-  font-weight:600;
+  font-weight:700;
+  box-shadow:inset 0 0 0 1px rgba(128,66,250,.10);
+}
+.app-sidebar-item.active:hover{
+  /* Ativo + hover: mantém o gradiente mas adiciona leve elevação */
+  transform:translateX(2px);
 }
 .app-sidebar-item.active::before{
   content:'';
@@ -313,8 +336,11 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
   top:6px;
   bottom:6px;
   width:3px;
-  background:var(--gralia-purple);
-  border-radius:0 2px 2px 0;
+  /* V15.12.75.142 — Gradient na barra lateral em vez de cor sólida */
+  background:linear-gradient(180deg, var(--gralia-purple) 0%, #6a30dc 100%);
+  border-radius:0 3px 3px 0;
+  /* Brilho sutil */
+  box-shadow:0 0 8px rgba(128,66,250,.35);
 }
 .app-sidebar-item-ico{
   /* V15.10: ícones 20% maiores (14→17px) — Jean pediu pra ocupar melhor o espaço da sidebar */
@@ -326,14 +352,19 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
 }
 /* V15.12.75.141 — Variante SVG (ícones lucide). Herda cor via currentColor.
    Item normal: text2 (mesmo cinza do label). Item ativo: purple.
-   Hover: text. Centralizado dentro do width:22px do container. */
+   Hover: text. Centralizado dentro do width:22px do container.
+   V15.12.75.142 — Micro-scale no estado ativo (1.0 → 1.1) — feedback sutil
+   de seleção. Transição também no transform. */
 .app-sidebar-item-ico-svg{
   color:var(--text2);
   display:inline-flex;align-items:center;justify-content:center;
-  transition:color .15s ease;
+  transition:color .15s ease, transform .2s cubic-bezier(.34,1.56,.64,1);
 }
 .app-sidebar-item:hover .app-sidebar-item-ico-svg{color:var(--text)}
-.app-sidebar-item.active .app-sidebar-item-ico-svg{color:var(--gralia-purple)}
+.app-sidebar-item.active .app-sidebar-item-ico-svg{
+  color:var(--gralia-purple);
+  transform:scale(1.08);
+}
 .app-sidebar-item-label{
   flex:1;
   white-space:nowrap;
@@ -7991,7 +8022,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.141';
+window.GRALIA_VERSION = 'V15.12.75.142';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -12676,24 +12707,80 @@ function examCountdown(){
 //   - stroke-width="1.75" (um pouco mais grosso que lucide padrão pra legibilidade
 //     em tamanho pequeno do sidebar)
 //   - stroke-linecap="round" stroke-linejoin="round"
+// ============================================================================
+// V15.12.75.141 — Biblioteca de ícones SVG monocromáticos (lucide-style)
+// ============================================================================
+// V15.12.75.142 — Suporte a acento colorido em ícones específicos (pinhal,
+// cadernos, mentor, provas, pomodoro). Ícone pode ser string (puro
+// monocromático) ou objeto {body, accent, accentColor}.
+//
+// Cada ícone tem:
+//   - viewBox="0 0 24 24"
+//   - fill="none" stroke="currentColor"
+//   - stroke-width="1.75" (mais grosso pra legibilidade em sidebar)
+//   - stroke-linecap="round" stroke-linejoin="round"
+//
+// Quando ícone tem accent: render adiciona 2º <g> com stroke="..." fixo
+// (não muda com active/hover — detalhe permanente).
 const LUCIDE_ICONS = {
   // Estudo
   'home':           '<path d="M3 12 12 3l9 9"/><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/><path d="M10 21v-6h4v6"/>',
   'book-open':      '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
   'zap':            '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
-  'inbox':          '<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+
+  // V15.12.75.142 — Cadernos de prática: notebook com caneta. Acento na ponta
+  // da caneta em roxo Gralia (comunica "escrever/praticar").
+  'notebook-pen':   {
+    body:   '<path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><rect width="16" height="20" x="4" y="2" rx="2"/>',
+    accent: '<path d="M16 4 21 9l-5.5 5.5-3.5 1 1-3.5L16 4z"/>',
+    accentColor: 'var(--gralia-purple)'
+  },
+
   // Revisar
   'layers':         '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
   'history':        '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
   'refresh-cw':     '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
-  'timer':          '<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/>',
-  'trees':          '<path d="M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z"/><path d="M7 16v6"/><path d="M13 19h6"/><path d="M16 16v6"/><path d="M16 13.4A4 4 0 0 0 13 6.5a4 4 0 0 0-6 0 4 4 0 0 0-1.4 6.4"/><path d="M16 9c0 3.3 1.7 6 5 6"/>',
+
+  // V15.12.75.142 — Pomodoro: timer com ponteiro vermelho (foco/urgência).
+  'timer':          {
+    body:   '<line x1="10" x2="14" y1="2" y2="2"/><circle cx="12" cy="14" r="8"/>',
+    accent: '<line x1="12" x2="15" y1="14" y2="11"/>',
+    accentColor: '#dc2626'
+  },
+
+  // V15.12.75.142 — Pinhal: araucária estilizada (silhueta horizontal com
+  // copa-guarda-chuva característica) + pinha em âmbar/marrom.
+  // Identidade própria, não copia de Lucide. Araucária = símbolo do Gralia.
+  'araucaria':      {
+    body:   '<path d="M12 22V14"/><path d="M5 12c0-2 2-3 3.5-3 1 0 1.5.3 2 .7"/><path d="M19 12c0-2-2-3-3.5-3-1 0-1.5.3-2 .7"/><path d="M3 13c1.5-1 3-1.5 4.5-1.5"/><path d="M21 13c-1.5-1-3-1.5-4.5-1.5"/><path d="M6 10c0-2.5 2.5-4 4-4 1 0 1.5.4 2 1"/><path d="M18 10c0-2.5-2.5-4-4-4-1 0-1.5.4-2 1"/><path d="M9 7c0-2 1.5-3 3-3s3 1 3 3"/>',
+    accent: '<ellipse cx="12" cy="18.5" rx="2" ry="2.5"/><path d="M11 17.5 L11 19.5 M12 17 L12 20 M13 17.5 L13 19.5"/>',
+    accentColor: '#a16207'
+  },
+
   // Planejar
   'target':         '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
   'calendar':       '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
-  'headphones':     '<path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H4a1 1 0 0 1-1-1zM21 14h-3a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h2a1 1 0 0 0 1-1z"/><path d="M3 14a9 9 0 0 1 18 0"/>',
+
+  // V15.12.75.142 — Mentor: 2 balões de chat sobrepostos (Halsey + Drago).
+  // Balão de trás (Drago) em vermelho carmim, balão da frente (Halsey) em
+  // azul-grafite. Acento dual: usa 2 cores via accent + accent2.
+  'messages-square':{
+    body:   '',  // sem stroke principal — tudo são acentos coloridos
+    accent: '<path d="M14 9a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1l-3 3v-3H6a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h8z"/>',
+    accentColor: '#3a5a8a',
+    accent2: '<path d="M18 14h.5a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H11a2 2 0 0 0-2 2v1"/>',
+    accent2Color: '#a02942'
+  },
+
   'file-search':    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9.5L14 2z"/><polyline points="14 2 14 8 20 8"/><circle cx="11.5" cy="14.5" r="2.5"/><line x1="13.27" x2="15" y1="16.27" y2="18"/>',
-  'clipboard-check':'<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+
+  // V15.12.75.142 — Análise de provas: prancheta + check verde
+  'clipboard-check':{
+    body:   '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
+    accent: '<path d="m9 14 2 2 4-4"/>',
+    accentColor: '#10b981'
+  },
+
   'map':            '<polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/>',
   // Comunidade
   'globe':          '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
@@ -12704,11 +12791,25 @@ const LUCIDE_ICONS = {
 
 // Helper: gera string SVG inline pronta pra setar via innerHTML.
 // Width/height são herdados via CSS (.app-sidebar-item-ico configura).
+// V15.12.75.142 — Suporta ícones com acento colorido (objeto {body, accent, accentColor}).
 function lucideIcon(name, size){
-  const body = LUCIDE_ICONS[name];
-  if(!body) return '';
+  const entry = LUCIDE_ICONS[name];
+  if(!entry) return '';
   const s = size || 18;
-  return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+  const open = `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">`;
+  // Caso simples: string puro
+  if(typeof entry === 'string'){
+    return open + entry + '</svg>';
+  }
+  // Caso composto: body + accent(s) com cor fixa
+  let inner = entry.body || '';
+  if(entry.accent){
+    inner += `<g stroke="${entry.accentColor || 'currentColor'}">${entry.accent}</g>`;
+  }
+  if(entry.accent2){
+    inner += `<g stroke="${entry.accent2Color || 'currentColor'}">${entry.accent2}</g>`;
+  }
+  return open + inner + '</svg>';
 }
 
 const BRAND = {
@@ -18905,7 +19006,8 @@ function buildAppSidebar(){
         {view:'dashboard', icon:'lucide:home',      label:'Painel'},
         {view:'sources',   icon:'lucide:book-open', label:'Fontes', desc:'Material que você importou'},
         {view:'methods',   icon:'lucide:zap',       label:'Métodos', desc:'Praticar e calibrar com IA'},
-        {view:'imported',  icon:'lucide:inbox',     label:'Cadernos de prática', desc:'Importe questões, organize em cadernos e refaça'},
+        // V15.12.75.142 — Cadernos: trocado inbox → notebook-pen (com acento roxo).
+        {view:'imported',  icon:'lucide:notebook-pen', label:'Cadernos de prática', desc:'Importe questões, organize em cadernos e refaça'},
       ]
     },
     {
@@ -18918,7 +19020,9 @@ function buildAppSidebar(){
         {view:'review',   icon:'lucide:refresh-cw', label:'Modos de Revisão', desc:'Turbo, véspera, material de revisão e roteiro NotebookLM'},
         {view:'pomodoro', icon:'lucide:timer',      label:'Pomodoro', desc:'Timer de estudo com pausas'},
         // V15.12.75.106 — Pinhal: gamificação. XP/nível/floresta/cards
-        {view:'pinhal',   icon:'lucide:trees',      label:'Pinhal', desc:'Sua floresta de estudos'},
+        // V15.12.75.142 — Pinhal: trocado trees → araucaria (identidade própria,
+        // com pinha em âmbar/marrom como acento).
+        {view:'pinhal',   icon:'lucide:araucaria',  label:'Pinhal', desc:'Sua floresta de estudos'},
       ]
     },
     {
@@ -18927,7 +19031,9 @@ function buildAppSidebar(){
         {view:'goals',    icon:'lucide:target',           label:'Metas'},
         {view:'schedule', icon:'lucide:calendar',         label:'Cronograma', desc:'Blocos de estudo, treino, sono'},
         // V15.12.75.128 — Mentor: espaço pessoal com doses, princípios e diário
-        {view:'mentor',   icon:'lucide:headphones',       label:'Mentor', desc:'Doses, princípios e diário pessoal'},
+        // V15.12.75.142 — Mentor: trocado headphones → messages-square com 2
+        // balões bicolores (Halsey azul-grafite #3a5a8a + Drago carmim #a02942).
+        {view:'mentor',   icon:'lucide:messages-square',       label:'Mentor', desc:'Doses, princípios e diário pessoal'},
         {view:'editals',  icon:'lucide:file-search',      label:'Análise de editais', desc:'IA analisa o PDF do edital'},
         {view:'exams',    icon:'lucide:clipboard-check',  label:'Análise de provas', desc:'Registre e analise provas reais que você fez'},
         {view:'mapa',     icon:'lucide:map',              label:'Mapa da matéria'},
