@@ -4124,6 +4124,61 @@ body.settings-compact .settings-page-v2{font-size:13px}
 }
 .mentor-conv-item:hover{background:var(--surface2);border-color:rgba(128,66,250,.25)}
 
+/* V15.12.75.135 — Card de doses na sidebar */
+.mentor-side-card-doses{
+  background:linear-gradient(135deg,rgba(217,119,6,.06),rgba(16,185,129,.03));
+  border:1px solid rgba(217,119,6,.18);
+}
+.mentor-doses-empty{display:flex;flex-direction:column;gap:8px}
+.mentor-doses-empty-text{
+  font-size:12.5px;color:var(--text2);line-height:1.5;
+}
+.mentor-doses-counter{
+  font-size:12.5px;margin-bottom:.75rem;display:flex;align-items:baseline;gap:5px;
+  padding-bottom:.625rem;border-bottom:1px dashed var(--border);
+}
+.mentor-doses-counter b{font-size:15px}
+.mentor-doses-list{display:flex;flex-direction:column;gap:5px}
+.mentor-dose-item{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  cursor:pointer;font-family:inherit;width:100%;text-align:left;
+  transition:all .15s ease;
+}
+.mentor-dose-item:hover{background:var(--surface2);border-color:rgba(128,66,250,.25);transform:translateX(2px)}
+.mentor-dose-check{
+  width:18px;height:18px;border-radius:5px;border:1.5px solid var(--border);
+  display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+  background:transparent;
+}
+.mentor-dose-check-mark{
+  color:#fff;font-size:11px;font-weight:700;line-height:1;opacity:0;
+}
+.mentor-dose-emoji{font-size:14px;flex-shrink:0;line-height:1}
+.mentor-dose-label{
+  flex:1;font-size:12.5px;color:var(--text);line-height:1.4;
+}
+.mentor-doses-allgood{
+  font-size:12px;color:#10b981;font-style:italic;padding:6px 0;
+}
+.mentor-doses-done-section{
+  margin-top:.75rem;padding-top:.625rem;border-top:1px dashed var(--border);
+}
+.mentor-doses-done-title{
+  font-size:10px;color:var(--text3);font-weight:700;
+  text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;
+}
+.mentor-doses-done-list{
+  display:flex;flex-wrap:wrap;gap:4px;
+}
+.mentor-dose-done-chip{
+  padding:3px 8px;background:rgba(16,185,129,.10);border:1px solid rgba(16,185,129,.25);
+  border-radius:999px;cursor:pointer;font-family:inherit;font-size:10.5px;
+  color:#059669;display:inline-flex;align-items:center;gap:4px;
+  transition:all .15s ease;
+}
+.mentor-dose-done-chip:hover{background:rgba(16,185,129,.18);border-color:rgba(16,185,129,.40)}
+
 /* V15.12.75.134 — Menu de ações no header do chat */
 .mentor-head-menu-btn{
   width:32px;height:32px;border-radius:8px;
@@ -7772,7 +7827,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.134';
+window.GRALIA_VERSION = 'V15.12.75.135';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -40924,6 +40979,132 @@ function initMentorData(){
   return DATA.mentor;
 }
 
+// ============================================================================
+// V15.12.75.135 — CATÁLOGO DE DOSES
+// ============================================================================
+// 30 doses de dopamina natural extraídas das anotações pessoais do user
+// (Notion/planilha). Agrupadas em 6 categorias com timing (período do dia).
+// timing: 'manha' | 'tarde' | 'noite' | 'qualquer'
+// User precisa habilitar (via toggle) pra ver no "Hoje". Marcações persistem
+// por data em DATA.mentor.doses.completedByDate.
+const MENTOR_DOSES_CATALOG = [
+  // 🍽️ REFEIÇÕES
+  { id:'meal_quality',         category:'meals',     emoji:'🍽️', label:'Prato bem preparado e saboroso',                             timing:'qualquer' },
+  { id:'meal_unhurried',       category:'meals',     emoji:'🥣', label:'Comer sem pressa, sem tela na frente',                       timing:'qualquer' },
+  { id:'meal_post_lunch',      category:'meals',     emoji:'🌞', label:'Pós-almoço: sol + descanso leve (10-15min)',                 timing:'tarde'    },
+  // 🏃 FÍSICAS
+  { id:'sun_morning',          category:'physical',  emoji:'☀️', label:'Sol matinal 5-10 min',                                       timing:'manha'    },
+  { id:'cold_shower',          category:'physical',  emoji:'🧊', label:'Banho gelado ou contraste quente-frio',                      timing:'manha'    },
+  { id:'intense_workout',      category:'physical',  emoji:'💪', label:'Treino intenso (corrida ativa D2)',                          timing:'qualquer' },
+  { id:'physical_feedback',    category:'physical',  emoji:'🔥', label:'Notar corpo mais forte/recuperado',                          timing:'qualquer' },
+  { id:'warm_shower_night',    category:'physical',  emoji:'🛁', label:'Banho quente + jazz/blues',                                  timing:'noite'    },
+  // 🎧 SENSORIAIS
+  { id:'lo_fi_study',          category:'sensory',   emoji:'🎵', label:'Jazz/lo-fi/blues no estudo',                                 timing:'qualquer' },
+  { id:'tea_ritual',           category:'sensory',   emoji:'🍵', label:'Ritual do chá antes do estudo',                              timing:'qualquer' },
+  { id:'clean_environment',    category:'sensory',   emoji:'🕯️', label:'Mesa/quarto limpo antes de começar',                         timing:'manha'    },
+  { id:'notion_dashboard',     category:'sensory',   emoji:'🖥️', label:'Layout bonito do Notion/dashboard',                          timing:'qualquer' },
+  { id:'phone_distance',       category:'sensory',   emoji:'📵', label:'Celular fora do alcance no foco',                            timing:'qualquer' },
+  // 💬 SOCIAIS / EMOCIONAIS
+  { id:'compare_yesterday',    category:'social',    emoji:'🧍', label:'Comparar com o eu de ontem',                                 timing:'qualquer' },
+  { id:'mentor_talk',          category:'social',    emoji:'🫱', label:'Conversa com mentor/colega de concurso',                     timing:'qualquer' },
+  { id:'motivational_video',   category:'social',    emoji:'🎥', label:'Vídeo motivacional curto (Goggins, Cbum, etc)',              timing:'tarde'    },
+  { id:'journal_3good',        category:'social',    emoji:'✍️', label:'Journaling: 3 coisas boas do dia',                           timing:'noite'    },
+  { id:'self_praise',          category:'social',    emoji:'💬', label:'Autoelogio após cumprir cronograma',                         timing:'qualquer' },
+  { id:'purpose_visualization',category:'social',    emoji:'🧭', label:'Visualizar a farda/posse/objetivo final',                    timing:'manha'    },
+  // ⚙️ CONTROLE
+  { id:'avoid_passive_dopamine',category:'control',  emoji:'⛔', label:'Sem feed/shorts/porn no horário de foco',                    timing:'qualquer' },
+  { id:'social_window',        category:'control',   emoji:'📱', label:'Redes só no horário designado',                              timing:'qualquer' },
+  { id:'trajectory_focus',     category:'control',   emoji:'🧭', label:'Recompensa de trajetória, não de resultado',                 timing:'qualquer' },
+  { id:'detox_block',          category:'control',   emoji:'🔒', label:'Bloco offline (sem digital)',                                timing:'qualquer' },
+  { id:'post_study_meditation',category:'control',   emoji:'🧘', label:'Meditação 5 min pós-estudo',                                 timing:'tarde'    },
+  { id:'sleep_9h',             category:'control',   emoji:'🌙', label:'9h de sono sem telas',                                       timing:'noite'    },
+  // 📚 ESTUDO DIRETO
+  { id:'deep_understanding',   category:'study',     emoji:'🧠', label:'Compreensão profunda de tema difícil',                       timing:'qualquer' },
+  { id:'srs_fluid',            category:'study',     emoji:'🔁', label:'Revisão Anki fluida (respostas rápidas)',                    timing:'qualquer' },
+  { id:'schedule_review',      category:'study',     emoji:'🗺️', label:'Revisar cronograma com calma',                              timing:'manha'    },
+  { id:'planning_clarity',     category:'study',     emoji:'📋', label:'Planejamento claro do dia',                                  timing:'manha'    },
+  { id:'study_breakthrough',   category:'study',     emoji:'📚', label:'Sensação de avanço/domínio do conteúdo',                     timing:'qualquer' }
+];
+
+const MENTOR_DOSE_CATEGORIES = {
+  meals:    { label:'Refeições',           emoji:'🍽️', accent:'#d97706' },
+  physical: { label:'Físicas',             emoji:'🏃', accent:'#10b981' },
+  sensory:  { label:'Sensoriais',          emoji:'🎧', accent:'#0891b2' },
+  social:   { label:'Sociais/emocionais',  emoji:'💬', accent:'#a02942' },
+  control:  { label:'Controle',            emoji:'⚙️', accent:'#6366f1' },
+  study:    { label:'Estudo direto',       emoji:'📚', accent:'#8042fa' }
+};
+
+// V15.12.75.135 — Helpers de doses
+function getCurrentDayPeriod(){
+  const hr = new Date().getHours();
+  if(hr < 5)  return 'noite';   // madrugada conta como noite
+  if(hr < 12) return 'manha';
+  if(hr < 18) return 'tarde';
+  return 'noite';
+}
+
+function getTodayDoseISO(){
+  return (new Date()).toISOString().slice(0, 10);
+}
+
+// Sugere doses elegíveis pra agora: habilitadas + timing compatível + não marcadas.
+// Retorna até 4. Ordenação determinística por dia (hash data+id).
+function suggestMentorDosesForNow(m, max){
+  if(!m || !m.doses) return [];
+  const enabled = new Set(m.doses.enabled || []);
+  const todayISO = getTodayDoseISO();
+  const done = new Set((m.doses.completedByDate || {})[todayISO] || []);
+  const period = getCurrentDayPeriod();
+  const candidates = MENTOR_DOSES_CATALOG.filter(d =>
+    enabled.has(d.id) &&
+    !done.has(d.id) &&
+    (d.timing === 'qualquer' || d.timing === period)
+  );
+  // Hash determinístico (mesmo conjunto durante o dia)
+  const dayHash = (s) => {
+    let h = 0;
+    for(let i=0; i<s.length; i++) h = ((h<<5) - h) + s.charCodeAt(i);
+    return Math.abs(h);
+  };
+  candidates.sort((a, b) => dayHash(todayISO + a.id) - dayHash(todayISO + b.id));
+  return candidates.slice(0, max || 4);
+}
+
+// Estatística semanal: total de doses marcadas nos últimos 7 dias
+function getMentorDoseWeekStats(m){
+  if(!m || !m.doses || !m.doses.completedByDate) return { total:0, byDay:[] };
+  const byDay = [];
+  let total = 0;
+  for(let i = 6; i >= 0; i--){
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const iso = d.toISOString().slice(0, 10);
+    const count = (m.doses.completedByDate[iso] || []).length;
+    byDay.push({ date: iso, count, dayLabel: ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d.getDay()] });
+    total += count;
+  }
+  return { total, byDay };
+}
+
+// Toggle marcação. Retorna o novo estado (true = agora marcada).
+function toggleMentorDose(m, doseId){
+  if(!m.doses) m.doses = { enabled: [], completedByDate: {} };
+  if(!m.doses.completedByDate) m.doses.completedByDate = {};
+  const todayISO = getTodayDoseISO();
+  if(!m.doses.completedByDate[todayISO]) m.doses.completedByDate[todayISO] = [];
+  const list = m.doses.completedByDate[todayISO];
+  const idx = list.indexOf(doseId);
+  if(idx >= 0){
+    list.splice(idx, 1);
+    try{ save(); }catch(_){}
+    return false;
+  }
+  list.push(doseId);
+  try{ save(); }catch(_){}
+  return true;
+}
+
 // V15.12.75.129 — Codinomes ficcionais inspirados em CoD/Ghost Recon.
 // Halsey "Cipher" = comandante tático/estratégico (analítico, frio, métricas).
 // Vargas "Drago" = operador de assalto (intenso, agressivo psicológico).
@@ -41110,6 +41291,30 @@ function getMentorSnapshot(){
     targetExamDate: profile.target_exam_date || null
   } : null;
 
+  // V15.12.75.135 — Stats de doses
+  const mentorData = DATA.mentor || {};
+  const dosesEnabled = (mentorData.doses && mentorData.doses.enabled || []).length;
+  const todayDoseISO = todayDateISO;
+  const dosesTodayList = (mentorData.doses && mentorData.doses.completedByDate && mentorData.doses.completedByDate[todayDoseISO]) || [];
+  const dosesToday = dosesTodayList.length;
+  // Doses tomadas na semana
+  let dosesWeek = 0;
+  if(mentorData.doses && mentorData.doses.completedByDate){
+    for(let i = 0; i < 7; i++){
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const iso = d.toISOString().slice(0,10);
+      dosesWeek += (mentorData.doses.completedByDate[iso] || []).length;
+    }
+  }
+  // Labels das doses tomadas hoje (pros mentores referenciarem)
+  const dosesTodayLabels = dosesTodayList
+    .map(id => {
+      const d = MENTOR_DOSES_CATALOG.find(x => x.id === id);
+      return d ? d.label : null;
+    })
+    .filter(Boolean);
+
   return {
     operationDay,
     pomoToday,
@@ -41125,6 +41330,10 @@ function getMentorSnapshot(){
     lastDiary,
     operation: getMentorOperation(),
     profile: profileMeta,
+    dosesEnabled,
+    dosesToday,
+    dosesWeek,
+    dosesTodayLabels,
     timestamp: now
   };
 }
@@ -41205,6 +41414,13 @@ function mentorSystemPrompt(snap){
   ctx.push(`Erros registrados hoje: ${snap.errorsToday} | semana: ${snap.errorsWeek}`);
   ctx.push(`Fontes lidas hoje: ${snap.readToday}`);
   ctx.push(`Flashcards revisados hoje: ${snap.srsToday}`);
+  // V15.12.75.135 — Doses naturais (micro-hábitos saudáveis)
+  if(snap.dosesEnabled > 0){
+    ctx.push(`Doses naturais hoje: ${snap.dosesToday}/${snap.dosesEnabled} habilitadas | semana: ${snap.dosesWeek}`);
+    if(snap.dosesTodayLabels && snap.dosesTodayLabels.length > 0){
+      ctx.push(`Doses tomadas hoje: ${snap.dosesTodayLabels.slice(0,6).join(' · ')}`);
+    }
+  }
   // Hora atual local — pra mentores saberem se é manhã/tarde/noite
   const now = new Date();
   const hr = now.getHours();
@@ -41919,6 +42135,110 @@ function renderMentor(){
     side.appendChild(pCard);
   }
 
+  // V15.12.75.135 — Card de DOSES NATURAIS na sidebar.
+  // Mostra sugestões do momento atual + checkboxes inline.
+  // Se user ainda não habilitou nada, mostra CTA pra configurar.
+  const dosesCard = mk('div','mentor-side-card mentor-side-card-doses');
+  const todayDoseISO = getTodayDoseISO();
+  const dosesEnabledCount = (m.doses && m.doses.enabled || []).length;
+  const dosesDoneToday = (m.doses && m.doses.completedByDate && m.doses.completedByDate[todayDoseISO]) || [];
+  const doneSet = new Set(dosesDoneToday);
+  const suggestions = suggestMentorDosesForNow(m, 4);
+
+  const dosesEyebrow = `<div class="mentor-side-eyebrow"><span>☀️</span><span>Doses do dia</span></div>`;
+
+  if(dosesEnabledCount === 0){
+    // Estado vazio — user nunca configurou
+    dosesCard.innerHTML = `
+      ${dosesEyebrow}
+      <div class="mentor-doses-empty">
+        <div class="mentor-doses-empty-text">Micro-hábitos saudáveis pra apoiar a rotina. Sol matinal, jazz no estudo, banho quente noturno...</div>
+        <button class="mentor-side-link" data-action="config-doses">Configurar minhas doses →</button>
+      </div>
+    `;
+  } else {
+    // Renderiza lista compacta de sugestões + já feitas hoje
+    const stats = getMentorDoseWeekStats(m);
+    const doneTodayLabels = dosesDoneToday
+      .map(id => MENTOR_DOSES_CATALOG.find(d => d.id === id))
+      .filter(Boolean);
+    // Header com counter
+    const totalAvail = MENTOR_DOSES_CATALOG.filter(d => (m.doses.enabled||[]).includes(d.id)).length;
+    let listHTML = `${dosesEyebrow}
+      <div class="mentor-doses-counter">
+        <b style="color:${doneTodayLabels.length > 0 ? '#10b981' : 'var(--text2)'}">${doneTodayLabels.length}</b>
+        <span style="color:var(--text3)">/ ${totalAvail} hoje · ${stats.total} na semana</span>
+      </div>`;
+    // Sugestões pra agora
+    if(suggestions.length > 0){
+      listHTML += `<div class="mentor-doses-list"></div>`;
+      dosesCard.innerHTML = listHTML;
+      const list = dosesCard.querySelector('.mentor-doses-list');
+      suggestions.forEach(dose => {
+        const item = mk('button','mentor-dose-item');
+        item.type = 'button';
+        item.innerHTML = `
+          <span class="mentor-dose-check"><span class="mentor-dose-check-mark">✓</span></span>
+          <span class="mentor-dose-emoji">${dose.emoji}</span>
+          <span class="mentor-dose-label">${escapeHTML(dose.label)}</span>
+        `;
+        item.addEventListener('click', () => {
+          const isNowDone = toggleMentorDose(m, dose.id);
+          // Re-render só o card pra atualizar visualmente
+          const newCard = (() => {
+            // truque: chamar renderMentor inteiro daria flash; mais barato é
+            // re-renderizar a página toda já que estado mudou
+            const newView = renderMentor();
+            wrap.replaceWith(newView);
+          });
+          newCard();
+        });
+        list.appendChild(item);
+      });
+    } else {
+      // Nenhuma sugestão (tudo já feito ou nada elegível pro horário)
+      const doneEmpty = doneTodayLabels.length > 0;
+      listHTML += `
+        <div class="mentor-doses-allgood">
+          ${doneEmpty ? '✓ Doses do horário tomadas.' : 'Sem doses habilitadas pra agora.'}
+        </div>
+      `;
+      dosesCard.innerHTML = listHTML;
+    }
+    // Já tomadas hoje (mini lista) + botão configurar
+    if(doneTodayLabels.length > 0){
+      const doneSection = mk('div');
+      doneSection.className = 'mentor-doses-done-section';
+      doneSection.innerHTML = `<div class="mentor-doses-done-title">Tomadas hoje:</div>`;
+      const doneList = mk('div','mentor-doses-done-list');
+      doneTodayLabels.slice(0, 6).forEach(dose => {
+        const chip = mk('button','mentor-dose-done-chip');
+        chip.type = 'button';
+        chip.title = 'Clicar pra desmarcar';
+        chip.innerHTML = `<span>${dose.emoji}</span><span>${escapeHTML(dose.label.split(' ').slice(0, 3).join(' '))}</span>`;
+        chip.addEventListener('click', () => {
+          toggleMentorDose(m, dose.id);
+          const newView = renderMentor();
+          wrap.replaceWith(newView);
+        });
+        doneList.appendChild(chip);
+      });
+      doneSection.appendChild(doneList);
+      dosesCard.appendChild(doneSection);
+    }
+    // Botão configurar
+    const cfgBtn = mk('button','mentor-side-link');
+    cfgBtn.dataset.action = 'config-doses';
+    cfgBtn.innerHTML = `Configurar doses (${dosesEnabledCount} ativas) →`;
+    dosesCard.appendChild(cfgBtn);
+  }
+  // Listener do botão configurar (estado vazio ou não)
+  const cfgBtnEl = dosesCard.querySelector('button[data-action="config-doses"]');
+  if(cfgBtnEl){
+    cfgBtnEl.addEventListener('click', () => openDosesPanel(m, wrap));
+  }
+  side.appendChild(dosesCard);
+
   // Diário compacto
   const dCard = mk('div','mentor-side-card');
   let lastDiaryEntry = null;
@@ -42061,6 +42381,142 @@ function openDiaryPanel(m, anchorWrap){
   box.appendChild(content);
   overlay.appendChild(box);
   overlay.addEventListener('click', (e) => { if(e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+// V15.12.75.135 — Modal de CONFIGURAÇÃO DE DOSES.
+// Lista as 30 doses agrupadas por categoria. Toggle on/off por dose.
+// Mostra timing (manhã/tarde/noite/qualquer) ao lado do label.
+// Quando user fecha, re-renderiza o Mentor pra refletir as mudanças.
+function openDosesPanel(m, anchorWrap){
+  const overlay = mk('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99700;display:flex;align-items:center;justify-content:center;padding:1rem;animation:forest-backdrop-in .2s ease';
+  const box = mk('div','card');
+  box.style.cssText = 'max-width:680px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem';
+  // Header
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:.625rem;gap:1rem;flex-wrap:wrap';
+  const title = mk('h3');
+  title.style.cssText = 'margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px';
+  title.innerHTML = '<span>☀️</span><span>Configurar minhas doses</span>';
+  head.appendChild(title);
+  const closeBtn = mk('button');
+  closeBtn.type = 'button';
+  closeBtn.style.cssText = 'width:30px;height:30px;border-radius:6px;background:transparent;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:14px;color:var(--text2)';
+  closeBtn.innerHTML = '×';
+  closeBtn.addEventListener('click', () => closeAndRefresh());
+  head.appendChild(closeBtn);
+  box.appendChild(head);
+  // Subtítulo
+  const sub = mk('p');
+  sub.style.cssText = 'margin:0 0 1.25rem;font-size:13px;color:var(--text2);line-height:1.55';
+  sub.textContent = 'Habilite os micro-hábitos que fazem sentido pra sua rotina. O Mentor vai sugerir 3-4 por dia, baseado no horário. Sem XP, sem cobrança — é apoio.';
+  box.appendChild(sub);
+  // Toolbar: counter + ações em massa
+  const toolbar = mk('div');
+  toolbar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:1rem;flex-wrap:wrap';
+  const counter = mk('div');
+  const updateCounter = () => {
+    const enabledCount = (m.doses.enabled || []).length;
+    const total = MENTOR_DOSES_CATALOG.length;
+    counter.style.cssText = 'font-size:13px;color:var(--text2)';
+    counter.innerHTML = `<b style="color:var(--text)">${enabledCount}</b> de ${total} habilitadas`;
+  };
+  updateCounter();
+  toolbar.appendChild(counter);
+  // Ações em massa
+  const actions = mk('div');
+  actions.style.cssText = 'display:flex;gap:6px';
+  const mkActionBtn = (label, onClick) => {
+    const b = mk('button');
+    b.type = 'button';
+    b.style.cssText = 'padding:5px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;color:var(--text2)';
+    b.textContent = label;
+    b.addEventListener('click', onClick);
+    return b;
+  };
+  actions.appendChild(mkActionBtn('Ativar todas', () => {
+    m.doses.enabled = MENTOR_DOSES_CATALOG.map(d => d.id);
+    try{ save(); }catch(_){}
+    refreshList();
+    updateCounter();
+  }));
+  actions.appendChild(mkActionBtn('Limpar', () => {
+    m.doses.enabled = [];
+    try{ save(); }catch(_){}
+    refreshList();
+    updateCounter();
+  }));
+  toolbar.appendChild(actions);
+  box.appendChild(toolbar);
+  // Lista agrupada
+  const listWrap = mk('div');
+  listWrap.style.cssText = 'display:flex;flex-direction:column;gap:1.25rem';
+  box.appendChild(listWrap);
+
+  const timingBadge = (t) => {
+    const map = {
+      manha:    { label:'☀ Manhã',    color:'#d97706' },
+      tarde:    { label:'🌤 Tarde',    color:'#0891b2' },
+      noite:    { label:'🌙 Noite',    color:'#6366f1' },
+      qualquer: { label:'· Qualquer', color:'var(--text3)' }
+    };
+    return map[t] || map.qualquer;
+  };
+
+  const refreshList = () => {
+    listWrap.innerHTML = '';
+    Object.keys(MENTOR_DOSE_CATEGORIES).forEach(catKey => {
+      const cat = MENTOR_DOSE_CATEGORIES[catKey];
+      const doses = MENTOR_DOSES_CATALOG.filter(d => d.category === catKey);
+      if(doses.length === 0) return;
+      // Header categoria
+      const catBlock = mk('div');
+      const catHead = mk('div');
+      catHead.style.cssText = `font-size:11px;font-weight:700;color:${cat.accent};text-transform:uppercase;letter-spacing:.6px;margin-bottom:.5rem;display:flex;align-items:center;gap:6px`;
+      catHead.innerHTML = `<span style="font-size:14px">${cat.emoji}</span><span>${escapeHTML(cat.label)}</span>`;
+      catBlock.appendChild(catHead);
+      const catList = mk('div');
+      catList.style.cssText = 'display:flex;flex-direction:column;gap:4px';
+      doses.forEach(dose => {
+        const enabled = (m.doses.enabled || []).includes(dose.id);
+        const row = mk('button');
+        row.type = 'button';
+        row.style.cssText = `display:flex;align-items:center;gap:10px;padding:.5rem .75rem;background:${enabled ? 'rgba(128,66,250,.06)' : 'transparent'};border:1px solid ${enabled ? 'rgba(128,66,250,.25)' : 'var(--border)'};border-radius:8px;cursor:pointer;font-family:inherit;width:100%;text-align:left;transition:all .15s ease`;
+        const badge = timingBadge(dose.timing);
+        row.innerHTML = `
+          <span style="width:18px;height:18px;border-radius:5px;border:1.5px solid ${enabled ? 'var(--gralia-purple)' : 'var(--border)'};background:${enabled ? 'var(--gralia-purple)' : 'transparent'};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:#fff;font-weight:700;line-height:1">${enabled ? '✓' : ''}</span>
+          <span style="font-size:14px;flex-shrink:0">${dose.emoji}</span>
+          <span style="flex:1;font-size:13px;color:var(--text);line-height:1.4">${escapeHTML(dose.label)}</span>
+          <span style="flex-shrink:0;font-size:10px;color:${badge.color};font-weight:600">${badge.label}</span>
+        `;
+        row.addEventListener('click', () => {
+          if(!m.doses.enabled) m.doses.enabled = [];
+          const idx = m.doses.enabled.indexOf(dose.id);
+          if(idx >= 0) m.doses.enabled.splice(idx, 1);
+          else m.doses.enabled.push(dose.id);
+          try{ save(); }catch(_){}
+          refreshList();
+          updateCounter();
+        });
+        catList.appendChild(row);
+      });
+      catBlock.appendChild(catList);
+      listWrap.appendChild(catBlock);
+    });
+  };
+  refreshList();
+
+  const closeAndRefresh = () => {
+    overlay.remove();
+    // Re-render Mentor pra refletir mudanças
+    if(anchorWrap){
+      const newView = renderMentor();
+      anchorWrap.replaceWith(newView);
+    }
+  };
+  overlay.appendChild(box);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) closeAndRefresh(); });
   document.body.appendChild(overlay);
 }
 
