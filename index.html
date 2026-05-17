@@ -437,9 +437,9 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
 .bt-cta{margin-top:.75rem;padding-top:.625rem;border-top:1px solid var(--border);font-size:11.5px;color:var(--gralia-purple);font-weight:700;text-align:right}
 @media(max-width:640px){.brand-tooltip{display:none}}
 .brand-bird{height:44px;width:auto;display:block;flex-shrink:0;margin-right:-2px} /* V15.12.9: +10% (40→44px) */
-/* V15.12.75.113 — Logo topbar reduzida em 40% (50→30px, max-width 225→135).
-   Antes V105 tinha aumentado pra 50px (+61%), mas ficou grande demais. */
-.brand .brand-bird{height:30px;max-width:135px;object-fit:contain}
+/* V15.12.75.140 — Logo topbar +50% (30→45px, max-width 135→200px).
+   Antes V113: 30px/135 era pequena. Jean pediu mais presença. */
+.brand .brand-bird{height:45px;max-width:200px;object-fit:contain}
 .brand .brand-name{display:none}
 .brand .brand-name.brand-fallback.show{display:inline-flex}
 .brand-bird-dark{display:none}
@@ -4328,6 +4328,70 @@ body.settings-compact .settings-page-v2{font-size:13px}
   color:#dc2626 !important;
 }
 
+/* V15.12.75.140 — Botão de painel admin (só admin vê) */
+.mentor-admin-btn{
+  margin-left:auto;
+  padding:5px 12px;border-radius:999px;
+  background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.30);
+  color:#dc2626;font-family:inherit;font-size:11px;font-weight:700;
+  letter-spacing:.4px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:6px;
+  transition:all .15s ease;
+}
+.mentor-admin-btn:hover{
+  background:rgba(220,38,38,.12);border-color:rgba(220,38,38,.50);
+}
+
+/* V15.12.75.139 — Badge de escudos de streak disponíveis */
+.mentor-shields-row{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:.625rem 1rem;margin-bottom:1rem;
+  background:linear-gradient(135deg,rgba(8,145,178,.06),rgba(8,145,178,.02));
+  border:1px solid rgba(8,145,178,.22);
+  border-radius:10px;
+}
+.mentor-shields-icon{font-size:16px;line-height:1}
+.mentor-shields-label{font-size:12.5px;color:#0e7490;font-weight:600}
+.mentor-shields-label b{font-size:13.5px;color:#0891b2}
+.mentor-shields-hint{font-size:11px;color:var(--text3);font-style:italic;margin-left:auto}
+
+/* V15.12.75.139 — Célula de recompensa concedida (entre as bolhas) */
+.mentor-msg-reward{
+  display:flex;gap:14px;align-items:flex-start;
+  padding:1rem 1.25rem;margin:.5rem 0;
+  border-radius:14px;
+  animation:mentor-reward-in .55s cubic-bezier(.34,1.56,.64,1) both;
+}
+.mentor-msg-reward-icon{
+  flex-shrink:0;width:44px;height:44px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;line-height:1;
+}
+.mentor-msg-reward-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.mentor-msg-reward-eyebrow{
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+}
+.mentor-msg-reward-title{
+  font-size:14.5px;font-weight:700;color:var(--text);line-height:1.3;
+}
+.mentor-msg-reward-meta{
+  font-size:11.5px;color:var(--text2);line-height:1.5;
+  display:flex;flex-wrap:wrap;gap:6px;align-items:center;
+}
+.mentor-msg-reward-sep{opacity:.4}
+
+@keyframes mentor-reward-in{
+  0%{opacity:0;transform:scale(.85) translateY(8px)}
+  60%{opacity:1;transform:scale(1.02) translateY(-2px)}
+  100%{opacity:1;transform:scale(1) translateY(0)}
+}
+
+/* Pulse no emoji do modal de proposta */
+@keyframes mentor-reward-pulse{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.08)}
+}
+
 /* === V14: Modo Foco SRS — visual premium fullscreen pra revisão === */
 /* Usuário entra clicando em "🎯 Modo Foco" em SRS Study. Cobre toda a tela
    com visual minimalista, card grande, sem distração. */
@@ -7911,7 +7975,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.138';
+window.GRALIA_VERSION = 'V15.12.75.140';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -33490,8 +33554,27 @@ const Pinhal = (() => {
     if(p.lastStudyDate === isoYesterday()){
       p.streakDays = (p.streakDays || 0) + 1;
     } else {
-      // gap maior que 1 dia — reseta streak
-      p.streakDays = 1;
+      // V15.12.75.139 — Gap maior que 1 dia. Antes de resetar, verifica
+      // se há escudos de streak disponíveis (concedidos pelos mentores).
+      // Se houver, consome 1 escudo e MANTÉM a streak somando +1.
+      const shields = (DATA.mentor && DATA.mentor.shields) || null;
+      if(shields && shields.available > 0){
+        shields.available--;
+        if(!shields.history) shields.history = [];
+        shields.history.push({
+          consumedAt: Date.now(),
+          consumedReason: 'gap de dia coberto por escudo'
+        });
+        p.streakDays = (p.streakDays || 0) + 1;
+        try{
+          if(typeof showToast === 'function'){
+            showToast('🛡 Escudo de Streak consumido — streak preservada', 4000);
+          }
+        }catch(_){}
+      } else {
+        // sem escudo — reseta normalmente
+        p.streakDays = 1;
+      }
     }
     p.lastStudyDate = today;
   }
@@ -41569,6 +41652,12 @@ function mentorSystemPrompt(snap){
     }
   }catch(_){}
 
+  // V15.12.75.139 — Histórico de recompensas recentes (anti-abuso)
+  let rewardsCtx = '';
+  try{
+    rewardsCtx = getRecentRewardsContext(DATA.mentor);
+  }catch(_){}
+
   return `Você está rodando como DOIS mentores ficcionais que respondem juntos num chat. Eles são:
 
 🎯 CAP. HALSEY (codinome CIPHER) — Comando Tático
@@ -41608,19 +41697,54 @@ REGRAS CRÍTICAS DE COMPORTAMENTO:
 14. ${vocabLine}
 
 CONTEXTO OPERACIONAL ATUAL (snapshot real do app):
-${ctx.map(l => '- ' + l).join('\n')}${diaryCtx}${pinnedDiaryCtx}${principlesCtx}${memoryCtx}
+${ctx.map(l => '- ' + l).join('\n')}${diaryCtx}${pinnedDiaryCtx}${principlesCtx}${memoryCtx}${rewardsCtx}
 
 CODINOME DO OPERADOR: ${codename}
 
+RECOMPENSAS — REGRAS ESTRITAS:
+Você PODE incluir um campo opcional "reward" na resposta SOMENTE QUANDO o operador relata uma vitória REAL E SIGNIFICATIVA. Use parcimônia — recompensa em excesso perde credibilidade.
+
+CONCEDA APENAS SE:
+1. Operador superou um padrão antigo (quebrou dia ruim, fechou meta semanal acima do habitual).
+2. Virou um dia perdido em produtivo dentro da mesma sessão.
+3. Cumpriu um compromisso difícil que tinha assumido em conversa anterior (veja MEMÓRIA DAS CONVERSAS).
+4. Demonstrou autoconsciência genuína sobre um padrão de sabotagem (não apenas reclamou).
+
+NÃO CONCEDA SE:
+- Operador fez o mínimo (1-2 pomos sem contexto especial).
+- Está só pedindo ajuda ou fazendo check-in rotineiro.
+- O dia está apenas "ok" — recompensa exige acima do esperado.
+- Já houve recompensa hoje (veja RECOMPENSAS CONCEDIDAS NOS ÚLTIMOS 7 DIAS).
+- Você está em dúvida — na dúvida, NÃO conceda.
+
+TIPOS DE RECOMPENSA:
+- "commendation": Simbólico, sem efeito mecânico. Use quando houver ato genuíno de disciplina ou virada. Mais frequente dos 3, mas ainda raro.
+- "xp_bonus": Concede 10-50 XP no Pinhal. Use pra vitórias claras e materiais. Amount proporcional ao tamanho da vitória (10=pequena, 30=média, 50=grande).
+- "streak_shield": RARÍSSIMO. Só pra operador que demonstrou várias semanas de consistência e merece proteção pra um descanso. Use no máximo 1 vez por semana.
+
+QUEM CONCEDE:
+- Halsey concede com formalidade tática ("Reconhecimento operacional concedido — você executou acima do briefing").
+- Drago concede com intensidade ("É ISSO, operador. Bandeira fincada. Eu vi.").
+- Defina em "grantedBy" qual mentor está concedendo: "halsey" ou "drago".
+
 FORMATO DE RESPOSTA (OBRIGATÓRIO):
-Você deve responder APENAS com um JSON válido com esta estrutura exata:
+Você deve responder APENAS com um JSON válido com esta estrutura:
 {
-  "halsey": "texto da resposta do Halsey (200-500 palavras, pode ter linhas em branco)",
-  "drago": "texto da resposta do Drago (150-400 palavras, pode ter linhas em branco)"
+  "halsey": "texto da resposta do Halsey (200-500 palavras)",
+  "drago": "texto da resposta do Drago (150-400 palavras)",
+  "reward": {
+    "type": "commendation" | "xp_bonus" | "streak_shield",
+    "amount": 30,
+    "reason": "motivo conciso (10-150 chars) — o que o operador fez de excepcional",
+    "grantedBy": "halsey" | "drago"
+  }
 }
 
+O campo "reward" é OPCIONAL. Inclua APENAS quando os critérios acima forem cumpridos. Na grande maioria das respostas, NÃO inclua "reward".
+"amount" só é obrigatório se type="xp_bonus". Pra outros, omita.
+
 Não inclua markdown fences (\`\`\`). Não inclua comentários. APENAS o JSON.
-Cada campo é uma string com a fala COMPLETA daquele mentor. Pode ter \\n pra quebras de linha.
+Cada campo de texto é uma string com a fala COMPLETA daquele mentor. Pode ter \\n pra quebras de linha.
 Não use markdown dentro das strings — texto puro com quebras.`;
 }
 
@@ -41729,9 +41853,20 @@ async function sendMentorMessage(userText, conv, snap){
     err.raw = raw;
     throw err;
   }
+  // V15.12.75.139 — Parseia campo reward (opcional) e normaliza.
+  // Validação acontece depois no handleSend.
+  let rewardOut = null;
+  if(parsed.reward && typeof parsed.reward === 'object' && parsed.reward.type){
+    try{
+      rewardOut = normalizeMentorReward(parsed.reward, parsed.reward.grantedBy);
+    }catch(e){
+      console.warn('[mentor-reward] falha ao normalizar reward proposta:', e);
+    }
+  }
   return {
     halsey: (parsed.halsey || '').trim(),
-    drago: (parsed.drago || '').trim()
+    drago: (parsed.drago || '').trim(),
+    reward: rewardOut
   };
 }
 
@@ -41826,6 +41961,414 @@ function getMentorConversationMemory(m, currentConvId, maxConvs){
     .slice(0, max);
   return others.map(c => ({ date: c.dateISO, summary: c.summary }));
 }
+
+// ============================================================================
+// V15.12.75.139 — SISTEMA DE RECOMPENSAS DOS MENTORES
+// ============================================================================
+// Mentores (via IA) podem conceder 3 tipos de recompensas em ocasiões REAIS
+// de vitória, com validação anti-abuso no frontend.
+//
+// Princípio de design: recompensa deve ser ganha, rara, e o user precisa
+// CONFIRMAR (pop-up). Evita que IA "encha de XP" e perca credibilidade.
+//
+// Tipos:
+//   - commendation:    Simbólico (só insígnia), 1/dia
+//   - xp_bonus:        10-50 XP no Pinhal, 1/dia
+//   - streak_shield:   Escudo que protege a streak por 1 dia, 1/semana
+
+// Limites por tipo (validação anti-abuso)
+const MENTOR_REWARD_LIMITS = {
+  commendation:   { perDay: 1, perWeek: 3,  minAmount: null, maxAmount: null },
+  xp_bonus:       { perDay: 1, perWeek: 4,  minAmount: 10,   maxAmount: 50  },
+  streak_shield:  { perDay: 1, perWeek: 1,  minAmount: null, maxAmount: null }
+};
+
+// Labels visuais + som correspondente do catálogo do Pinhal
+const MENTOR_REWARD_META = {
+  commendation:  { emoji:'🏅', label:'Comendação',         color:'#d97706', sound:'tree_evolved'  },
+  xp_bonus:      { emoji:'⚡', label:'Bônus de XP',         color:'#8042fa', sound:'tree_planted'  },
+  streak_shield: { emoji:'🛡', label:'Escudo de Streak',    color:'#0891b2', sound:'level_up'      }
+};
+
+// Verifica se reward proposta é válida (caps + ranges).
+// Retorna { valid, reason } onde reason é texto pra debug/log se inválida.
+function validateMentorReward(m, reward){
+  if(!reward || typeof reward !== 'object') return { valid:false, reason:'sem dados' };
+  const type = reward.type;
+  const limit = MENTOR_REWARD_LIMITS[type];
+  if(!limit) return { valid:false, reason:'tipo inválido: ' + type };
+  // Range de amount (só pra xp_bonus)
+  if(type === 'xp_bonus'){
+    const amount = parseInt(reward.amount, 10);
+    if(!amount || isNaN(amount) || amount < 1) return { valid:false, reason:'amount inválido' };
+  }
+  // Caps por dia/semana
+  const todayISO = (new Date()).toISOString().slice(0,10);
+  const weekAgo = Date.now() - 7*24*3600*1000;
+  const all = (m.rewards || []).filter(r => r.accepted);  // só conta as aceitas
+  const todayCount = all.filter(r => r.dateISO === todayISO && r.type === type).length;
+  const weekCount = all.filter(r => r.timestamp >= weekAgo && r.type === type).length;
+  if(todayCount >= limit.perDay) return { valid:false, reason:`limite diário (${limit.perDay}) atingido pro tipo ${type}` };
+  if(weekCount >= limit.perWeek) return { valid:false, reason:`limite semanal (${limit.perWeek}) atingido pro tipo ${type}` };
+  // Razão obrigatória mínima
+  if(!reward.reason || typeof reward.reason !== 'string' || reward.reason.trim().length < 8){
+    return { valid:false, reason:'motivo ausente ou muito curto' };
+  }
+  return { valid:true };
+}
+
+// Normaliza reward (clamp amount, sanitiza campos)
+function normalizeMentorReward(reward, agentId){
+  const out = {
+    id: 'rew_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    type: reward.type,
+    grantedBy: agentId || reward.grantedBy || 'halsey',
+    reason: (reward.reason || '').trim().slice(0, 200),
+    proposed: true,
+    accepted: false,
+    timestamp: Date.now(),
+    dateISO: (new Date()).toISOString().slice(0,10)
+  };
+  if(reward.type === 'xp_bonus'){
+    const lim = MENTOR_REWARD_LIMITS.xp_bonus;
+    out.amount = Math.max(lim.minAmount, Math.min(lim.maxAmount, parseInt(reward.amount, 10) || 0));
+  }
+  return out;
+}
+
+// Aplica reward já validada e aceita. Modifica DATA.
+// Retorna info pra UI (animação + som).
+function applyMentorReward(m, reward){
+  if(!m.rewards) m.rewards = [];
+  reward.accepted = true;
+  reward.proposed = false;
+  reward.acceptedAt = Date.now();
+
+  // Efeitos por tipo
+  if(reward.type === 'xp_bonus'){
+    try{
+      const result = Pinhal.award({ action:'mentor_reward', xp: reward.amount, ctx: reward.reason });
+      reward.appliedXp = result && typeof result.xp === 'number' ? result.xp : reward.amount;
+      reward.capped = !!(result && result.capped);
+    }catch(e){
+      console.warn('[mentor-reward] falha ao aplicar XP', e);
+      reward.appliedXp = 0;
+    }
+  } else if(reward.type === 'streak_shield'){
+    // Inicializa estrutura se não existir
+    if(!m.shields) m.shields = { available: 0, history: [] };
+    m.shields.available = (m.shields.available || 0) + 1;
+    m.shields.history.push({
+      grantedAt: Date.now(),
+      grantedBy: reward.grantedBy,
+      reason: reward.reason
+    });
+    reward.shieldGrantedTotal = m.shields.available;
+  }
+  // commendation: nada material, só registro
+
+  // Histórico
+  m.rewards.push(reward);
+  try{ save(); }catch(_){}
+
+  return {
+    type: reward.type,
+    meta: MENTOR_REWARD_META[reward.type],
+    sound: (MENTOR_REWARD_META[reward.type] || {}).sound
+  };
+}
+
+// Recusa explícita (pra log e regras de cooldown)
+function declineMentorReward(m, reward){
+  if(!m.rewards) m.rewards = [];
+  reward.accepted = false;
+  reward.declined = true;
+  reward.proposed = false;
+  reward.declinedAt = Date.now();
+  m.rewards.push(reward);
+  try{ save(); }catch(_){}
+}
+
+// V15.12.75.139 — Modal de aceitação de recompensa.
+// Aparece quando IA concede algo. User decide se aceita ou recusa.
+// Não permite spam: só fecha após escolha (ou ESC = recusa).
+function showRewardAcceptModal(m, reward, onAccept, onDecline){
+  const meta = MENTOR_REWARD_META[reward.type];
+  if(!meta){
+    console.warn('[mentor-reward] tipo desconhecido:', reward.type);
+    return;
+  }
+  const agentName = reward.grantedBy === 'drago' ? 'Sgt. Vargas (Drago)' : 'Cap. Halsey (Cipher)';
+  const agentEmoji = reward.grantedBy === 'drago' ? '🔥' : '🎯';
+  // Detalhe do que vai ganhar
+  let effectLine;
+  if(reward.type === 'xp_bonus'){
+    effectLine = `<b style="font-size:20px;color:${meta.color}">+${reward.amount} XP</b><span style="color:var(--text3);margin-left:6px;font-size:13px">no Pinhal</span>`;
+  } else if(reward.type === 'streak_shield'){
+    effectLine = `<b style="font-size:18px;color:${meta.color}">Escudo de Streak</b><div style="color:var(--text2);font-size:12.5px;margin-top:4px">Protege sua streak por 1 dia caso você falhe em estudar</div>`;
+  } else {
+    effectLine = `<b style="font-size:18px;color:${meta.color}">Comendação simbólica</b><div style="color:var(--text2);font-size:12.5px;margin-top:4px">Reconhecimento sem efeito mecânico — fica no histórico</div>`;
+  }
+
+  const overlay = mk('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:99800;display:flex;align-items:center;justify-content:center;padding:1rem;animation:forest-backdrop-in .2s ease;backdrop-filter:blur(3px)';
+  const box = mk('div','card mentor-reward-modal');
+  box.style.cssText = `max-width:480px;width:100%;padding:0;overflow:hidden;border:1px solid ${meta.color}40;box-shadow:0 12px 40px rgba(0,0,0,.25),0 0 0 1px ${meta.color}25`;
+
+  // Banner header com gradient da cor do tipo
+  const header = mk('div');
+  header.style.cssText = `padding:1.5rem 1.5rem 1.25rem;background:linear-gradient(135deg,${meta.color}15,${meta.color}05);border-bottom:1px solid ${meta.color}25;text-align:center`;
+  header.innerHTML = `
+    <div style="font-size:48px;line-height:1;margin-bottom:.625rem;animation:mentor-reward-pulse 1.5s ease-in-out infinite">${meta.emoji}</div>
+    <div style="font-size:10px;font-weight:700;color:${meta.color};text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">Recompensa proposta</div>
+    <div style="font-size:17px;font-weight:700;color:var(--text)">${meta.label}</div>
+  `;
+  box.appendChild(header);
+
+  // Corpo: quem concedeu + efeito + motivo
+  const body = mk('div');
+  body.style.cssText = 'padding:1.25rem 1.5rem';
+  body.innerHTML = `
+    <div style="margin-bottom:1rem;text-align:center">${effectLine}</div>
+    <div style="padding:.75rem 1rem;background:var(--surface2);border-radius:10px;border:1px solid var(--border);margin-bottom:1rem">
+      <div style="font-size:10.5px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Concedido por</div>
+      <div style="font-size:13.5px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px">
+        <span>${agentEmoji}</span><span>${agentName}</span>
+      </div>
+    </div>
+    <div style="padding:.75rem 1rem;background:var(--surface2);border-radius:10px;border:1px solid var(--border)">
+      <div style="font-size:10.5px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">Motivo</div>
+      <div style="font-size:13px;color:var(--text);font-style:italic;line-height:1.5">"${escapeHTML(reward.reason)}"</div>
+    </div>
+  `;
+  box.appendChild(body);
+
+  // Footer com botões
+  const footer = mk('div');
+  footer.style.cssText = 'padding:1rem 1.5rem 1.25rem;display:flex;gap:10px;justify-content:flex-end';
+  const declineBtn = mk('button');
+  declineBtn.type = 'button';
+  declineBtn.style.cssText = 'padding:.625rem 1.25rem;background:transparent;border:1px solid var(--border);border-radius:10px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--text2);font-weight:600;transition:all .15s ease';
+  declineBtn.textContent = 'Recusar';
+  declineBtn.addEventListener('mouseenter', () => { declineBtn.style.background = 'var(--surface2)'; });
+  declineBtn.addEventListener('mouseleave', () => { declineBtn.style.background = 'transparent'; });
+  declineBtn.addEventListener('click', () => {
+    overlay.remove();
+    if(typeof onDecline === 'function') onDecline();
+  });
+  footer.appendChild(declineBtn);
+
+  const acceptBtn = mk('button');
+  acceptBtn.type = 'button';
+  acceptBtn.style.cssText = `padding:.625rem 1.5rem;background:linear-gradient(135deg,${meta.color},${meta.color}cc);border:none;border-radius:10px;cursor:pointer;font-family:inherit;font-size:13px;color:#fff;font-weight:700;transition:transform .15s ease,box-shadow .15s ease;box-shadow:0 2px 8px ${meta.color}40`;
+  acceptBtn.textContent = 'Aceitar';
+  acceptBtn.addEventListener('mouseenter', () => { acceptBtn.style.transform = 'translateY(-1px)'; acceptBtn.style.boxShadow = `0 4px 14px ${meta.color}55`; });
+  acceptBtn.addEventListener('mouseleave', () => { acceptBtn.style.transform = ''; acceptBtn.style.boxShadow = `0 2px 8px ${meta.color}40`; });
+  acceptBtn.addEventListener('click', () => {
+    overlay.remove();
+    if(typeof onAccept === 'function') onAccept();
+  });
+  footer.appendChild(acceptBtn);
+  box.appendChild(footer);
+
+  // ESC fecha como recusa
+  const escHandler = (ev) => {
+    if(ev.key === 'Escape'){
+      overlay.remove();
+      document.removeEventListener('keydown', escHandler);
+      if(typeof onDecline === 'function') onDecline();
+    }
+  };
+  document.addEventListener('keydown', escHandler);
+
+  overlay.appendChild(box);
+  // Não fecha clicando fora — força decisão explícita
+  document.body.appendChild(overlay);
+}
+
+// Histórico recente pra IA não conceder em excesso (vai no system prompt)
+function getRecentRewardsContext(m){
+  if(!m || !m.rewards) return '';
+  const weekAgo = Date.now() - 7*24*3600*1000;
+  const recent = m.rewards
+    .filter(r => r.accepted && r.timestamp >= weekAgo)
+    .sort((a,b) => b.timestamp - a.timestamp)
+    .slice(0, 6);
+  if(recent.length === 0) return '';
+  const fmt = (iso) => {
+    try{
+      const d = new Date(iso + 'T12:00:00');
+      return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+    }catch(_){ return iso; }
+  };
+  const lines = recent.map(r => {
+    const meta = MENTOR_REWARD_META[r.type] || {};
+    const amt = r.type === 'xp_bonus' ? ` (+${r.appliedXp || r.amount} XP)` : '';
+    return `- ${fmt(r.dateISO)} · ${meta.label}${amt} por ${r.grantedBy}: ${r.reason}`;
+  }).join('\n');
+  return `\n\nRECOMPENSAS CONCEDIDAS NOS ÚLTIMOS 7 DIAS (NÃO repita conceder em situações similares — operador já foi reconhecido):\n${lines}`;
+}
+
+// V15.12.75.140 — Painel admin pra testar recompensas rapidamente.
+// Visível só pra admin (checagem feita no botão antes de abrir).
+// Permite simular as 3 recompensas (commendation/xp_bonus/streak_shield)
+// sem precisar gerar vitórias reais pra IA conceder, e também limpar
+// histórico de recompensas pra resetar caps anti-abuso.
+function openMentorAdminPanel(m, conv, wrap){
+  const overlay = mk('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99700;display:flex;align-items:center;justify-content:center;padding:1rem;animation:forest-backdrop-in .2s ease';
+  const box = mk('div','card');
+  box.style.cssText = 'max-width:560px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem';
+
+  // Header
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:1rem';
+  const title = mk('h3');
+  title.style.cssText = 'margin:0;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px';
+  title.innerHTML = '<span>🔧</span><span>Painel admin — Testes do Mentor</span>';
+  head.appendChild(title);
+  const closeBtn = mk('button');
+  closeBtn.type = 'button';
+  closeBtn.style.cssText = 'width:30px;height:30px;border-radius:6px;background:transparent;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:14px;color:var(--text2)';
+  closeBtn.innerHTML = '×';
+  closeBtn.addEventListener('click', () => overlay.remove());
+  head.appendChild(closeBtn);
+  box.appendChild(head);
+
+  // Subtítulo
+  const sub = mk('p');
+  sub.style.cssText = 'margin:0 0 1.25rem;font-size:12.5px;color:var(--text2);line-height:1.5';
+  sub.innerHTML = 'Atalhos pra simular recompensas e testar fluxos visuais. <b>Bypassa validação de caps</b> — usar com bom senso. Não disponível em produção pra usuários normais.';
+  box.appendChild(sub);
+
+  // === Seção 1: Propor recompensa (passa pelo modal de aceitação)
+  const section1 = mk('div');
+  section1.style.cssText = 'margin-bottom:1.5rem';
+  section1.innerHTML = `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:.625rem">Propor recompensa (abre modal de aceitação)</div>`;
+  const propRow = mk('div');
+  propRow.style.cssText = 'display:flex;flex-direction:column;gap:6px';
+
+  const mkProposeBtn = (type, label, agentId, customReason, amount) => {
+    const btn = mk('button');
+    btn.type = 'button';
+    const meta = MENTOR_REWARD_META[type];
+    btn.style.cssText = `padding:.625rem .875rem;background:${meta.color}10;border:1px solid ${meta.color}40;border-radius:10px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--text);text-align:left;display:flex;align-items:center;gap:10px;transition:all .15s ease`;
+    btn.innerHTML = `<span style="font-size:18px">${meta.emoji}</span><span style="flex:1"><b>${label}</b><div style="font-size:11px;color:var(--text3);font-weight:400;margin-top:2px">${escapeHTML(customReason)}${amount ? ` · +${amount} XP` : ''}</div></span><span style="color:${meta.color};font-size:11px;font-weight:700">${(agentId === 'drago' ? '🔥 Drago' : '🎯 Halsey')}</span>`;
+    btn.addEventListener('click', () => {
+      // Cria reward fake e abre modal de aceitação
+      const reward = normalizeMentorReward({
+        type, reason: customReason, amount, grantedBy: agentId
+      }, agentId);
+      overlay.remove();
+      showRewardAcceptModal(m, reward,
+        () => {
+          const result = applyMentorReward(m, reward);
+          try{
+            if(result.sound && typeof Pinhal === 'object' && typeof Pinhal._playSound === 'function'){
+              Pinhal._playSound(result.sound);
+            }
+          }catch(_){}
+          conv.messages.push({
+            role: 'reward',
+            reward,
+            timestamp: Date.now()
+          });
+          try{ save(); }catch(_){}
+          const newView = renderMentor();
+          wrap.replaceWith(newView);
+        },
+        () => {
+          declineMentorReward(m, reward);
+        }
+      );
+    });
+    return btn;
+  };
+
+  propRow.appendChild(mkProposeBtn('commendation', 'Comendação', 'halsey', 'Persistência em semana difícil — operador manteve o trilho mesmo sob ruído'));
+  propRow.appendChild(mkProposeBtn('xp_bonus',     'Bônus XP (+30)', 'drago',  'Virar dia perdido em produtivo — protocolo cumprido', 30));
+  propRow.appendChild(mkProposeBtn('xp_bonus',     'Bônus XP (+50)', 'halsey', 'Operador fechou meta semanal acima do esperado', 50));
+  propRow.appendChild(mkProposeBtn('streak_shield','Escudo de Streak', 'halsey', 'Várias semanas de consistência — operador merece proteção pra descanso'));
+  section1.appendChild(propRow);
+  box.appendChild(section1);
+
+  // === Seção 2: Stats atuais
+  const stats = mk('div');
+  stats.style.cssText = 'margin-bottom:1.5rem;padding:.875rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px';
+  const todayISO = (new Date()).toISOString().slice(0,10);
+  const weekAgo = Date.now() - 7*24*3600*1000;
+  const allRewards = (m.rewards || []).filter(r => r.accepted);
+  const todayCount = allRewards.filter(r => r.dateISO === todayISO).length;
+  const weekCount = allRewards.filter(r => r.timestamp >= weekAgo).length;
+  const shieldsCount = (m.shields && m.shields.available) || 0;
+  stats.innerHTML = `
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:.625rem">Estado atual</div>
+    <div style="font-size:12.5px;color:var(--text);line-height:1.8">
+      Recompensas hoje: <b>${todayCount}</b><br>
+      Recompensas na semana: <b>${weekCount}</b><br>
+      Escudos disponíveis: <b style="color:#0891b2">${shieldsCount}</b><br>
+      Total no histórico: <b>${allRewards.length}</b>
+    </div>
+  `;
+  box.appendChild(stats);
+
+  // === Seção 3: Ações destrutivas
+  const danger = mk('div');
+  danger.innerHTML = `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:.625rem">Reset (cuidado)</div>`;
+  const dangerRow = mk('div');
+  dangerRow.style.cssText = 'display:flex;flex-direction:column;gap:6px';
+
+  const mkDangerBtn = (label, onClick, color) => {
+    const btn = mk('button');
+    btn.type = 'button';
+    btn.style.cssText = `padding:.5rem .875rem;background:transparent;border:1px solid ${color || 'var(--border)'};border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;color:${color || 'var(--text2)'};font-weight:500;text-align:left`;
+    btn.textContent = label;
+    btn.addEventListener('click', onClick);
+    return btn;
+  };
+
+  dangerRow.appendChild(mkDangerBtn('🗑 Limpar histórico de recompensas (reseta caps anti-abuso)', () => {
+    if(!confirm('Apagar todas as recompensas do histórico? Isso reseta os caps diários/semanais. XP já creditado no Pinhal não é removido.')) return;
+    m.rewards = [];
+    try{ save(); }catch(_){}
+    if(typeof showToast === 'function') showToast('Histórico de recompensas limpo', 2500);
+    overlay.remove();
+  }, '#dc2626'));
+
+  dangerRow.appendChild(mkDangerBtn('🛡 Zerar escudos de streak', () => {
+    if(!confirm('Zerar contador de escudos disponíveis?')) return;
+    if(m.shields) m.shields.available = 0;
+    try{ save(); }catch(_){}
+    if(typeof showToast === 'function') showToast('Escudos zerados', 2500);
+    overlay.remove();
+    const newView = renderMentor();
+    wrap.replaceWith(newView);
+  }, '#dc2626'));
+
+  dangerRow.appendChild(mkDangerBtn('+1 Escudo de streak (instantâneo, sem modal)', () => {
+    if(!m.shields) m.shields = { available: 0, history: [] };
+    m.shields.available++;
+    if(!m.shields.history) m.shields.history = [];
+    m.shields.history.push({
+      grantedAt: Date.now(),
+      grantedBy: 'admin',
+      reason: 'Adicionado via painel admin (teste)'
+    });
+    try{ save(); }catch(_){}
+    if(typeof showToast === 'function') showToast(`🛡 Escudo adicionado (total: ${m.shields.available})`, 2500);
+    overlay.remove();
+    const newView = renderMentor();
+    wrap.replaceWith(newView);
+  }, '#0891b2'));
+
+  danger.appendChild(dangerRow);
+  box.appendChild(danger);
+
+  overlay.appendChild(box);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 
 // ============================================================================
 // V15.12.75.136 — EXPORT DE DADOS DO MENTOR (diário e conversas)
@@ -42003,6 +42546,17 @@ function renderMentor(){
   statusChip.style.color = status.color;
   statusChip.innerHTML = `<span class="mentor-status-dot" style="background:${status.color}"></span><span>${status.label}</span>`;
   heroRow.appendChild(statusChip);
+  // V15.12.75.140 — Botão de painel admin (só visível pra admin).
+  // Permite simular recompensas pra testar UX sem precisar gerar vitórias reais.
+  if(typeof isAdminUser === 'function' && isAdminUser()){
+    const adminBtn = mk('button');
+    adminBtn.type = 'button';
+    adminBtn.className = 'mentor-admin-btn';
+    adminBtn.title = 'Painel de teste de admin';
+    adminBtn.innerHTML = '🔧 Admin';
+    adminBtn.addEventListener('click', () => openMentorAdminPanel(m, conv, wrap));
+    heroRow.appendChild(adminBtn);
+  }
   hero.appendChild(heroRow);
   const heroLead = mk('p','mentor-hero-lead');
   // V15.12.75.131 — Lead menciona o "símbolo" final pra contextualizar a missão.
@@ -42037,6 +42591,21 @@ function renderMentor(){
   row2.appendChild(mkMetric('🌲', `Nv ${snap.pinhalLevel}`, 'Pinhal', 'var(--gralia-purple)', true));
   briefing.appendChild(row2);
   wrap.appendChild(briefing);
+
+  // V15.12.75.139 — Badge de escudos disponíveis (se houver). Discreto, na hierarquia
+  // visual abaixo do briefing. Aparece só quando há shields > 0.
+  const shieldsCount = (m.shields && m.shields.available) || 0;
+  if(shieldsCount > 0){
+    const shieldsRow = mk('div','mentor-shields-row');
+    shieldsRow.innerHTML = `
+      <span class="mentor-shields-icon">🛡</span>
+      <span class="mentor-shields-label">
+        <b>${shieldsCount}</b> escudo${shieldsCount===1?'':'s'} de streak disponíve${shieldsCount===1?'l':'is'}
+      </span>
+      <span class="mentor-shields-hint">Se você faltar 1 dia, a streak fica protegida</span>
+    `;
+    wrap.appendChild(shieldsRow);
+  }
 
   // ============ GRID: CHAT + SIDEBAR ============
   const grid = mk('div','mentor-grid');
@@ -42221,6 +42790,35 @@ function renderMentor(){
         bubble.textContent = msg.text;
         row.appendChild(bubble);
         chatStream.appendChild(row);
+      } else if(msg.role === 'reward'){
+        // V15.12.75.139 — Célula de recompensa entre as bolhas
+        const r = msg.reward;
+        const meta = MENTOR_REWARD_META[r.type] || MENTOR_REWARD_META.commendation;
+        const agentName = r.grantedBy === 'drago' ? 'Sgt. Vargas (Drago)' : 'Cap. Halsey (Cipher)';
+        const agentEmoji = r.grantedBy === 'drago' ? '🔥' : '🎯';
+        let effectText;
+        if(r.type === 'xp_bonus'){
+          effectText = `+${r.appliedXp || r.amount} XP no Pinhal`;
+        } else if(r.type === 'streak_shield'){
+          effectText = 'Escudo de Streak adquirido';
+        } else {
+          effectText = 'Comendação simbólica';
+        }
+        const rewardCell = mk('div','mentor-msg-reward');
+        rewardCell.style.cssText = `border:1px solid ${meta.color}40;background:linear-gradient(135deg,${meta.color}10,${meta.color}03)`;
+        rewardCell.innerHTML = `
+          <div class="mentor-msg-reward-icon" style="background:${meta.color}20;border:1px solid ${meta.color}50;color:${meta.color}">${meta.emoji}</div>
+          <div class="mentor-msg-reward-body">
+            <div class="mentor-msg-reward-eyebrow" style="color:${meta.color}">Recompensa concedida</div>
+            <div class="mentor-msg-reward-title">${escapeHTML(effectText)}</div>
+            <div class="mentor-msg-reward-meta">
+              <span>${agentEmoji} ${escapeHTML(agentName)}</span>
+              <span class="mentor-msg-reward-sep">·</span>
+              <span style="font-style:italic">"${escapeHTML(r.reason)}"</span>
+            </div>
+          </div>
+        `;
+        chatStream.appendChild(rewardCell);
       } else {
         const agent = MENTOR_AGENTS[msg.agent] || MENTOR_AGENTS.halsey;
         const row = mk('div','mentor-msg-mentor');
@@ -42329,6 +42927,39 @@ function renderMentor(){
       dragoPlaceholder.isLoading = false;
       try{ save(); }catch(_){}
       renderMessages();
+      // V15.12.75.139 — Processa recompensa (se houver). Valida primeiro;
+      // se passar, mostra modal de aceitação. User decide.
+      if(reply.reward){
+        const validation = validateMentorReward(m, reply.reward);
+        if(validation.valid){
+          showRewardAcceptModal(m, reply.reward,
+            // onAccept
+            () => {
+              const result = applyMentorReward(m, reply.reward);
+              // Som de unlock — Pinhal._playSound é a interface pública
+              try{
+                if(result.sound && typeof Pinhal === 'object' && typeof Pinhal._playSound === 'function'){
+                  Pinhal._playSound(result.sound);
+                }
+              }catch(_){}
+              // Adiciona célula-evento na conversa
+              conv.messages.push({
+                role: 'reward',
+                reward: reply.reward,
+                timestamp: Date.now()
+              });
+              try{ save(); }catch(_){}
+              renderMessages();
+            },
+            // onDecline
+            () => {
+              declineMentorReward(m, reply.reward);
+            }
+          );
+        } else {
+          console.warn('[mentor-reward] reward proposta inválida:', validation.reason);
+        }
+      }
     }catch(e){
       // 5. Erro — substitui placeholders por mensagem de erro
       let errMsg = 'Falha no contato com a torre de controle.';
