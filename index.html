@@ -3955,12 +3955,26 @@ body.settings-compact .settings-page-v2{font-size:13px}
   width:8px;height:8px;border-radius:50%;background:#10b981;
   box-shadow:0 0 0 3px rgba(16,185,129,.18);
   animation:mentor-pulse 2.5s ease-in-out infinite;
+  transition:background .2s ease;
 }
 @keyframes mentor-pulse{
   0%,100%{box-shadow:0 0 0 3px rgba(16,185,129,.18)}
   50%{box-shadow:0 0 0 6px rgba(16,185,129,.08)}
 }
-.mentor-agents-row{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+/* V15.12.75.138 — Bug 9: dot âmbar com pulse mais rápido durante análise */
+.mentor-chat-status-dot-busy{
+  background:#d97706;
+  animation:mentor-pulse-busy 1.2s ease-in-out infinite !important;
+}
+@keyframes mentor-pulse-busy{
+  0%,100%{box-shadow:0 0 0 3px rgba(217,119,6,.25)}
+  50%{box-shadow:0 0 0 6px rgba(217,119,6,.10)}
+}
+.mentor-agents-row{
+  display:flex;gap:6px;margin-left:auto;flex-wrap:nowrap;
+  /* V15.12.75.138 — nowrap pra não quebrar pra linha de baixo em telas estreitas */
+  min-width:0;
+}
 .mentor-agent-chip{
   padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;
   display:inline-flex;align-items:center;gap:5px;
@@ -4043,15 +4057,9 @@ body.settings-compact .settings-page-v2{font-size:13px}
 }
 .mentor-empty-title{font-size:17px;font-weight:700;color:var(--text);margin:0}
 .mentor-empty-sub{font-size:13.5px;color:var(--text2);line-height:1.55;max-width:420px;margin:0}
-.mentor-empty-quicks{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px}
-.mentor-quickbtn{
-  padding:.5rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:999px;
-  cursor:pointer;font-family:inherit;font-size:12.5px;color:var(--text2);font-weight:500;
-  transition:all .15s ease;
-}
-.mentor-quickbtn:hover{
-  background:rgba(128,66,250,.06);border-color:rgba(128,66,250,.30);color:var(--gralia-purple);
-}
+/* V15.12.75.138 — Removidas classes mentor-empty-quicks e mentor-quickbtn:
+   quickstart agora fica nos chips fixos acima do input (mentor-quickrow),
+   evitando duplicação visual. */
 
 /* Footer com input */
 .mentor-chat-foot{
@@ -4068,9 +4076,36 @@ body.settings-compact .settings-page-v2{font-size:13px}
   padding:5px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:999px;
   cursor:pointer;font-family:inherit;font-size:11.5px;color:var(--text2);font-weight:500;
   transition:all .15s ease;line-height:1.2;
+  /* V15.12.75.138 — Bug 8: posicionamento pra tooltip custom */
+  position:relative;
 }
 .mentor-quickchip:hover{
   background:rgba(128,66,250,.06);border-color:rgba(128,66,250,.30);color:var(--gralia-purple);
+}
+/* V15.12.75.138 — Tooltip custom (substitui o nativo do browser, que é feio).
+   Aparece no hover após 600ms, com fade. Usa data-tooltip pra conteúdo. */
+.mentor-quickchip[data-tooltip]:hover::after{
+  content:attr(data-tooltip);
+  position:absolute;bottom:calc(100% + 8px);left:50%;
+  transform:translateX(-50%);
+  background:var(--text);color:var(--bg);
+  padding:6px 10px;border-radius:8px;
+  font-size:11.5px;font-weight:500;line-height:1.4;
+  white-space:normal;max-width:280px;width:max-content;
+  z-index:100;pointer-events:none;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+  animation:mentor-tooltip-in .25s ease .4s both;
+}
+.mentor-quickchip[data-tooltip]:hover::before{
+  content:'';position:absolute;bottom:calc(100% + 3px);left:50%;
+  transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:var(--text);
+  z-index:100;pointer-events:none;
+  animation:mentor-tooltip-in .25s ease .4s both;
+}
+@keyframes mentor-tooltip-in{
+  from{opacity:0;transform:translateX(-50%) translateY(4px)}
+  to{opacity:1;transform:translateX(-50%) translateY(0)}
 }
 .mentor-quickchip-refresh{
   padding:5px 8px;font-size:13px;color:var(--text3);
@@ -4105,6 +4140,8 @@ body.settings-compact .settings-page-v2{font-size:13px}
 
 .mentor-foot-actions{
   display:flex;gap:6px;margin-top:10px;align-items:center;flex-wrap:wrap;
+  /* V15.12.75.138 — gap menor pra caber mais coisa antes de quebrar */
+  row-gap:8px;
 }
 .mentor-foot-btn{
   padding:5px 12px;background:transparent;border:1px solid var(--border);border-radius:8px;
@@ -4118,6 +4155,13 @@ body.settings-compact .settings-page-v2{font-size:13px}
 }
 
 /* Sidebar */
+/* V15.12.75.138 — Bug 5: Escala tipográfica unificada da sidebar.
+   - eyebrow (rótulo de seção):     10px
+   - body (texto comum):            12.5px
+   - destaque (princípio do dia):   14px
+   - action link:                   11.5px
+   - data/meta:                     10.5px
+   Antes tinha 6 tamanhos espalhados sem clara hierarquia. */
 .mentor-side{display:flex;flex-direction:column;gap:1rem}
 .mentor-side-card{
   padding:1.125rem 1.25rem;background:var(--surface);border:1px solid var(--border);
@@ -4157,7 +4201,7 @@ body.settings-compact .settings-page-v2{font-size:13px}
 .mentor-conv-list{display:flex;flex-direction:column;gap:5px}
 .mentor-conv-item{
   padding:8px 12px;background:transparent;border:1px solid var(--border);border-radius:8px;
-  cursor:pointer;font-family:inherit;font-size:12px;color:var(--text2);
+  cursor:pointer;font-family:inherit;font-size:12.5px;color:var(--text2);
   text-align:left;display:flex;justify-content:space-between;align-items:center;
   transition:all .15s ease;
 }
@@ -4193,12 +4237,13 @@ body.settings-compact .settings-page-v2{font-size:13px}
 .mentor-dose-check-mark{
   color:#fff;font-size:11px;font-weight:700;line-height:1;opacity:0;
 }
-.mentor-dose-emoji{font-size:14px;flex-shrink:0;line-height:1}
+.mentor-dose-emoji{font-size:13px;flex-shrink:0;line-height:1}
 .mentor-dose-label{
-  flex:1;font-size:12.5px;color:var(--text);line-height:1.4;
+  flex:1;font-size:12px;color:var(--text);line-height:1.4;
+  /* V15.12.75.138 — Bug 6: reduzido pra 12px (encaixa no padrão visual da sidebar) */
 }
 .mentor-doses-allgood{
-  font-size:12px;color:#10b981;font-style:italic;padding:6px 0;
+  font-size:12.5px;color:#10b981;font-style:italic;padding:6px 0;
 }
 .mentor-doses-done-section{
   margin-top:.75rem;padding-top:.625rem;border-top:1px dashed var(--border);
@@ -7866,7 +7911,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.137';
+window.GRALIA_VERSION = 'V15.12.75.138';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -41999,14 +42044,17 @@ function renderMentor(){
   // === CHAT ===
   const chatCard = mk('div','mentor-chat');
   const chatHead = mk('div','mentor-chat-head');
+  // V15.12.75.138 — Bug 3: nomes curtos no header (Halsey/Drago) — callsigns
+  // Cipher/Vargas ficam visíveis nas bolhas, não precisam aqui. Evita quebra
+  // de linha em viewports estreitos.
   chatHead.innerHTML = `
     <div class="mentor-chat-status">
       <span class="mentor-chat-status-dot"></span>
-      <span>Mentores em standby</span>
+      <span class="mentor-chat-status-label">Mentores em standby</span>
     </div>
     <div class="mentor-agents-row">
-      <span class="mentor-agent-chip mentor-agent-halsey">🎯 Halsey · Cipher</span>
-      <span class="mentor-agent-chip mentor-agent-drago">🔥 Drago · Vargas</span>
+      <span class="mentor-agent-chip mentor-agent-halsey">🎯 Halsey</span>
+      <span class="mentor-agent-chip mentor-agent-drago">🔥 Drago</span>
     </div>
   `;
   // V15.12.75.134 — Botão de ações da conversa (⋯) à direita.
@@ -42106,7 +42154,9 @@ function renderMentor(){
       const btn = mk('button','mentor-quickchip');
       btn.type = 'button';
       btn.innerHTML = `<span>${p.emoji}</span><span>${escapeHTML(p.label)}</span>`;
-      btn.title = p.text;
+      // V15.12.75.138 — Bug 8: data-tooltip pro tooltip custom (CSS) em vez
+      // do nativo do browser, que é feio (fonte do sistema, fundo cinza).
+      btn.setAttribute('data-tooltip', p.text);
       btn.addEventListener('click', () => {
         textInput.value = p.text;
         textInput.focus();
@@ -42118,7 +42168,7 @@ function renderMentor(){
     const refreshBtn = mk('button','mentor-quickchip mentor-quickchip-refresh');
     refreshBtn.type = 'button';
     refreshBtn.innerHTML = '🔀';
-    refreshBtn.title = 'Outras sugestões';
+    refreshBtn.setAttribute('data-tooltip', 'Outras sugestões');
     refreshBtn.addEventListener('click', () => {
       quickOffset = (quickOffset + 3) % ALL_QUICK_PROMPTS.length;
       renderQuickRow();
@@ -42152,29 +42202,15 @@ function renderMentor(){
   const renderMessages = () => {
     chatStream.innerHTML = '';
     if(!conv.messages || conv.messages.length === 0){
+      // V15.12.75.138 — Quickstart REMOVIDO do estado vazio. Era duplicado:
+      // os mesmos atalhos já estão sempre visíveis nos chips acima do input
+      // (mentor-quickrow). Aqui sobra só o convite visual + instrução.
       const empty = mk('div','mentor-empty');
       empty.innerHTML = `
         <div class="mentor-empty-icon">🎙</div>
         <h3 class="mentor-empty-title">Aguardando relatório, operador.</h3>
-        <p class="mentor-empty-sub">Conte como está o seu dia, o que travou, o que cumpriu. Halsey e Drago vão analisar com base nos seus dados reais do app.</p>
-        <div class="mentor-empty-quicks">
-          <button class="mentor-quickbtn" data-quick="briefing">⚡ Como estou hoje?</button>
-          <button class="mentor-quickbtn" data-quick="travei">😓 Travei, preciso de ajuste</button>
-          <button class="mentor-quickbtn" data-quick="vitoria">✅ Cumpri o que prometi</button>
-        </div>
+        <p class="mentor-empty-sub">Conte como está o seu dia, o que travou, o que cumpriu. Halsey e Drago vão analisar com base nos seus dados reais do app — ou use uma das sugestões abaixo.</p>
       `;
-      empty.querySelectorAll('button[data-quick]').forEach(b => {
-        b.addEventListener('click', () => {
-          const map = {
-            briefing: 'Como estou hoje?',
-            travei: 'Travei. Não estou conseguindo executar o cronograma. Preciso de ajuste.',
-            vitoria: 'Cumpri o que prometi hoje.'
-          };
-          textInput.value = map[b.dataset.quick] || '';
-          textInput.focus();
-          textInput.dispatchEvent(new Event('input'));
-        });
-      });
       chatStream.appendChild(empty);
       return;
     }
@@ -42232,6 +42268,19 @@ function renderMentor(){
     sendBtn.style.cursor = sending ? 'wait' : 'pointer';
     sendBtn.innerHTML = sending ? '⏳ Enviando...' : '✉ Enviar';
     textInput.disabled = sending;
+    // V15.12.75.138 — Bug 9: Indicador "Mentores em standby" muda durante loading.
+    // Verde (standby) → âmbar (Em análise) — comunica que IA está processando.
+    const statusDot = chatHead.querySelector('.mentor-chat-status-dot');
+    const statusLabel = chatHead.querySelector('.mentor-chat-status-label');
+    if(statusDot && statusLabel){
+      if(sending){
+        statusDot.classList.add('mentor-chat-status-dot-busy');
+        statusLabel.textContent = 'Em análise...';
+      } else {
+        statusDot.classList.remove('mentor-chat-status-dot-busy');
+        statusLabel.textContent = 'Mentores em standby';
+      }
+    }
   };
 
   const handleSend = async () => {
