@@ -3849,77 +3849,97 @@ body.settings-compact .settings-page-v2{font-size:13px}
 }
 .mentor-hero{
   position:relative;
-  padding:1.5rem 1.75rem;
-  margin-bottom:1.25rem;
+  padding:1.125rem 1.5rem;
+  margin-bottom:1rem;
   background:linear-gradient(135deg,rgba(128,66,250,.10) 0%,rgba(128,66,250,.02) 35%,rgba(58,90,138,.05) 70%,rgba(160,41,66,.04) 100%);
   border:1px solid rgba(128,66,250,.18);
-  border-radius:16px;
+  border-radius:14px;
   overflow:hidden;
 }
 .mentor-hero::before{
-  content:'';position:absolute;top:0;right:-40px;width:280px;height:100%;
+  content:'';position:absolute;top:0;right:-40px;width:240px;height:100%;
   background:radial-gradient(circle at 70% 50%, rgba(128,66,250,.10), transparent 60%);
   pointer-events:none;
 }
 .mentor-hero-row{
-  display:flex;align-items:center;gap:14px;flex-wrap:wrap;position:relative;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:relative;
 }
 .mentor-hero-title{
-  margin:0;font-size:28px;font-weight:800;letter-spacing:-.6px;
-  display:flex;align-items:center;gap:12px;color:var(--text);
+  margin:0;font-size:22px;font-weight:800;letter-spacing:-.4px;
+  display:flex;align-items:center;gap:10px;color:var(--text);
 }
 .mentor-hero-icon{
   display:inline-flex;align-items:center;justify-content:center;
-  width:44px;height:44px;border-radius:12px;
+  width:36px;height:36px;border-radius:10px;
   background:rgba(128,66,250,.15);border:1px solid rgba(128,66,250,.35);
-  font-size:22px;
+  font-size:18px;
 }
 .mentor-chip{
-  padding:5px 12px;border-radius:999px;font-size:11.5px;font-weight:700;
+  padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;
   letter-spacing:.4px;display:inline-flex;align-items:center;gap:6px;
 }
 .mentor-chip-day{
   background:rgba(128,66,250,.10);color:var(--gralia-purple);
   border:1px solid rgba(128,66,250,.30);
 }
-.mentor-chip-status{padding:5px 12px;border-radius:999px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:7px}
-.mentor-status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.mentor-chip-status{padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:7px}
+.mentor-status-dot{width:7px;height:7px;border-radius:50%;display:inline-block}
 .mentor-hero-lead{
-  margin:.625rem 0 0;font-size:13.5px;line-height:1.55;color:var(--text2);
+  margin:.5rem 0 0;font-size:12.5px;line-height:1.5;color:var(--text2);
   max-width:640px;position:relative;
 }
 
-/* Briefing — métricas em grid amplo */
+/* V15.12.75.137 — Briefing em DUAS linhas hierárquicas:
+   - Linha 1: 4 métricas primárias (Pomos, Streak, XP, Erros)
+   - Linha 2: 3 métricas auxiliares menores (Fontes, Flashcards, Pinhal)
+   Resolve o problema de "1 card sozinho na última linha" em telas wide.
+   Em mobile (<700px) tudo colapsa pra 2 colunas. */
 .mentor-briefing{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
-  gap:10px;margin-bottom:1.25rem;
+  display:flex;flex-direction:column;gap:8px;margin-bottom:1rem;
+}
+.mentor-briefing-row{
+  display:grid;gap:8px;
+}
+.mentor-briefing-row-primary{grid-template-columns:repeat(4, minmax(0,1fr))}
+.mentor-briefing-row-secondary{grid-template-columns:repeat(3, minmax(0,1fr))}
+@media (max-width: 760px){
+  .mentor-briefing-row-primary,
+  .mentor-briefing-row-secondary{grid-template-columns:repeat(2, minmax(0,1fr))}
 }
 .mentor-metric{
-  padding:.75rem .875rem;background:var(--surface);border:1px solid var(--border);
-  border-radius:12px;display:flex;flex-direction:column;gap:2px;
+  padding:.625rem .75rem;background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;display:flex;flex-direction:column;gap:1px;
   transition:transform .15s ease, border-color .15s ease;
 }
-.mentor-metric:hover{transform:translateY(-2px);border-color:rgba(128,66,250,.25)}
-.mentor-metric-icon{font-size:18px;line-height:1;margin-bottom:2px}
-.mentor-metric-value{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text);line-height:1.1}
-.mentor-metric-label{font-size:10.5px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.mentor-metric:hover{transform:translateY(-1px);border-color:rgba(128,66,250,.25)}
+.mentor-metric-icon{font-size:15px;line-height:1;margin-bottom:1px}
+.mentor-metric-value{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--text);line-height:1.1}
+.mentor-metric-label{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.mentor-metric-secondary .mentor-metric-value{font-size:14px}
+.mentor-metric-secondary{padding:.5rem .625rem}
+.mentor-metric-secondary .mentor-metric-icon{font-size:13px}
+.mentor-metric-secondary .mentor-metric-label{font-size:9.5px}
 
 /* Layout principal: chat 2/3 + lateral 1/3 */
 .mentor-grid{
-  display:grid;grid-template-columns:minmax(0,1fr) 320px;
-  gap:1.25rem;align-items:start;
+  display:grid;grid-template-columns:minmax(0,1fr) 300px;
+  gap:1rem;align-items:start;
 }
 @media (max-width: 980px){
   .mentor-grid{grid-template-columns:1fr}
 }
 
-/* Chat principal — card alto e elegante */
+/* V15.12.75.137 — Chat agora ocupa o espaço todo visível sem precisar rolar.
+   Antes: min-height 520px + max 720px. Resultado: laptop ~768px de altura
+   tinha chat de 448px (sobrava pouco depois do hero+briefing).
+   Agora: flexível com a viewport, mínimo 600px, ocupa o que tem disponível. */
 .mentor-chat{
   background:var(--surface);border:1px solid var(--border);
-  border-radius:16px;
+  border-radius:14px;
   display:flex;flex-direction:column;
-  height:min(720px, calc(100vh - 320px));
-  min-height:520px;
+  height:calc(100vh - 240px);
+  min-height:600px;
+  max-height:880px;
   overflow:hidden;
   box-shadow:0 2px 12px rgba(0,0,0,.04);
 }
@@ -4039,6 +4059,25 @@ body.settings-compact .settings-page-v2{font-size:13px}
   background:var(--surface);
 }
 .mentor-input-row{display:flex;gap:10px;align-items:flex-end}
+/* V15.12.75.137 — Linha de sugestões rápidas acima do input */
+.mentor-quickrow{
+  display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.625rem;
+}
+.mentor-quickchip{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:999px;
+  cursor:pointer;font-family:inherit;font-size:11.5px;color:var(--text2);font-weight:500;
+  transition:all .15s ease;line-height:1.2;
+}
+.mentor-quickchip:hover{
+  background:rgba(128,66,250,.06);border-color:rgba(128,66,250,.30);color:var(--gralia-purple);
+}
+.mentor-quickchip-refresh{
+  padding:5px 8px;font-size:13px;color:var(--text3);
+}
+.mentor-quickchip-refresh:hover{
+  background:var(--surface);transform:rotate(180deg);color:var(--text2);
+}
 .mentor-textarea{
   flex:1;min-height:48px;max-height:180px;
   padding:.75rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:12px;
@@ -7827,7 +7866,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.136';
+window.GRALIA_VERSION = 'V15.12.75.137';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -41927,9 +41966,11 @@ function renderMentor(){
   wrap.appendChild(hero);
 
   // ============ BRIEFING ============
+  // V15.12.75.137 — 2 linhas hierárquicas: 4 primárias + 3 auxiliares.
+  // Resolve "1 card sozinho na última linha" que aparecia com 7 métricas em grid.
   const briefing = mk('div','mentor-briefing');
-  const mkMetric = (icon, value, label, color) => {
-    const card = mk('div','mentor-metric');
+  const mkMetric = (icon, value, label, color, secondary) => {
+    const card = mk('div','mentor-metric' + (secondary ? ' mentor-metric-secondary' : ''));
     card.innerHTML = `
       <div class="mentor-metric-icon">${icon}</div>
       <div class="mentor-metric-value"${color ? ' style="color:'+color+'"' : ''}>${value}</div>
@@ -41937,13 +41978,19 @@ function renderMentor(){
     `;
     return card;
   };
-  briefing.appendChild(mkMetric('🎯', snap.pomoToday, 'pomodoros hoje', snap.pomoToday > 0 ? '#10b981' : null));
-  briefing.appendChild(mkMetric('🔥', snap.pinhalStreak, `dia${snap.pinhalStreak===1?'':'s'} de streak`, snap.pinhalStreak > 0 ? '#f97316' : null));
-  briefing.appendChild(mkMetric('⚡', snap.pinhalDailyXp, 'XP do dia', 'var(--gralia-purple)'));
-  briefing.appendChild(mkMetric('📖', snap.readToday, `fonte${snap.readToday===1?'':'s'} lida${snap.readToday===1?'':'s'}`));
-  briefing.appendChild(mkMetric('🎴', snap.srsToday, 'flashcards'));
-  briefing.appendChild(mkMetric('❌', snap.errorsToday, 'erros hoje', snap.errorsToday > 0 ? '#dc2626' : null));
-  briefing.appendChild(mkMetric('🌲', `Nv ${snap.pinhalLevel}`, 'Pinhal', 'var(--gralia-purple)'));
+  // Linha 1: ações do dia (primárias)
+  const row1 = mk('div','mentor-briefing-row mentor-briefing-row-primary');
+  row1.appendChild(mkMetric('🎯', snap.pomoToday, 'pomodoros hoje', snap.pomoToday > 0 ? '#10b981' : null));
+  row1.appendChild(mkMetric('🔥', snap.pinhalStreak, `dia${snap.pinhalStreak===1?'':'s'} de streak`, snap.pinhalStreak > 0 ? '#f97316' : null));
+  row1.appendChild(mkMetric('⚡', snap.pinhalDailyXp, 'XP do dia', 'var(--gralia-purple)'));
+  row1.appendChild(mkMetric('❌', snap.errorsToday, 'erros hoje', snap.errorsToday > 0 ? '#dc2626' : null));
+  briefing.appendChild(row1);
+  // Linha 2: info auxiliar
+  const row2 = mk('div','mentor-briefing-row mentor-briefing-row-secondary');
+  row2.appendChild(mkMetric('📖', snap.readToday, `fonte${snap.readToday===1?'':'s'} lida${snap.readToday===1?'':'s'}`, null, true));
+  row2.appendChild(mkMetric('🎴', snap.srsToday, 'flashcards', null, true));
+  row2.appendChild(mkMetric('🌲', `Nv ${snap.pinhalLevel}`, 'Pinhal', 'var(--gralia-purple)', true));
+  briefing.appendChild(row2);
   wrap.appendChild(briefing);
 
   // ============ GRID: CHAT + SIDEBAR ============
@@ -42031,6 +42078,56 @@ function renderMentor(){
 
   // Footer com input
   const chatFoot = mk('div','mentor-chat-foot');
+
+  // V15.12.75.137 — Linha de sugestões SEMPRE visível acima do input.
+  // Antes só aparecia no estado vazio (após primeira msg, sumia). User pediu
+  // que fique sempre disponível pra agilizar relatos comuns.
+  // 8 sugestões rotacionam aleatoriamente, mostra 3 por vez + botão refresh.
+  const ALL_QUICK_PROMPTS = [
+    { emoji:'⚡', label:'Briefing rápido',            text:'Como estou hoje?' },
+    { emoji:'😓', label:'Travei',                     text:'Travei. Não estou conseguindo executar o cronograma. Preciso de ajuste.' },
+    { emoji:'✅', label:'Cumpri',                     text:'Cumpri o que prometi hoje.' },
+    { emoji:'🎯', label:'Plano pra amanhã',           text:'Quero alinhar o plano pra amanhã. Como devo estruturar o dia?' },
+    { emoji:'🔥', label:'Recuperar dia',              text:'O dia tá ruim, mas ainda dá pra recuperar. Por onde começo?' },
+    { emoji:'🧠', label:'Padrão de procrastinação',   text:'Acho que tenho um padrão de procrastinação. Conseguem analisar?' },
+    { emoji:'😴', label:'Cansaço',                    text:'Tô muito cansado hoje. Como decidir entre estudar e descansar?' },
+    { emoji:'💭', label:'Dúvida estratégica',         text:'Estou em dúvida sobre uma decisão de estudo. Posso conversar?' }
+  ];
+
+  const quickRow = mk('div','mentor-quickrow');
+  let quickOffset = 0;
+  const renderQuickRow = () => {
+    quickRow.innerHTML = '';
+    const visible = [];
+    for(let i = 0; i < 3; i++){
+      visible.push(ALL_QUICK_PROMPTS[(quickOffset + i) % ALL_QUICK_PROMPTS.length]);
+    }
+    visible.forEach(p => {
+      const btn = mk('button','mentor-quickchip');
+      btn.type = 'button';
+      btn.innerHTML = `<span>${p.emoji}</span><span>${escapeHTML(p.label)}</span>`;
+      btn.title = p.text;
+      btn.addEventListener('click', () => {
+        textInput.value = p.text;
+        textInput.focus();
+        textInput.dispatchEvent(new Event('input'));
+      });
+      quickRow.appendChild(btn);
+    });
+    // Botão refresh pra rotacionar
+    const refreshBtn = mk('button','mentor-quickchip mentor-quickchip-refresh');
+    refreshBtn.type = 'button';
+    refreshBtn.innerHTML = '🔀';
+    refreshBtn.title = 'Outras sugestões';
+    refreshBtn.addEventListener('click', () => {
+      quickOffset = (quickOffset + 3) % ALL_QUICK_PROMPTS.length;
+      renderQuickRow();
+    });
+    quickRow.appendChild(refreshBtn);
+  };
+  renderQuickRow();
+  chatFoot.appendChild(quickRow);
+
   const inputRow = mk('div','mentor-input-row');
   const textInput = mk('textarea','mentor-textarea');
   textInput.placeholder = 'Relate ao posto de comando... (Enter envia, Shift+Enter quebra linha)';
@@ -42217,14 +42314,9 @@ function renderMentor(){
 
   // Footer actions
   const footActions = mk('div','mentor-foot-actions');
-  const checkinBtn = mk('button','mentor-foot-btn');
-  checkinBtn.type = 'button';
-  checkinBtn.innerHTML = '📋 Check-in completo';
-  checkinBtn.title = 'Em breve — formulário estruturado de relato';
-  checkinBtn.addEventListener('click', () => {
-    if(typeof showToast === 'function') showToast('Check-in estruturado virá em breve (sub-rodada 2b)', 3500);
-  });
-  footActions.appendChild(checkinBtn);
+  // V15.12.75.137 — Botão "Check-in completo" REMOVIDO. Duplicava função do
+  // chat livre (você já pode mandar relato completo digitando). Removido pra
+  // simplificar UI e tirar placeholder "Em breve" que estava no tooltip.
   const newConvBtn = mk('button','mentor-foot-btn');
   newConvBtn.type = 'button';
   newConvBtn.innerHTML = '🔄 Nova conversa';
@@ -42264,8 +42356,11 @@ function renderMentor(){
     wrap.replaceWith(newView);
   });
   footActions.appendChild(newConvBtn);
+  // V15.12.75.137 — Antes: "Sonnet 4.6 · seus créditos" (técnico, quebra
+  // imersão dos mentores). Agora: indicador discreto de canal seguro,
+  // alinhado com o vocabulário militar de Halsey/Drago.
   const tokenNote = mk('div','mentor-foot-meta');
-  tokenNote.textContent = 'Sonnet 4.6 · seus créditos';
+  tokenNote.innerHTML = '<span style="opacity:.6">📡</span><span>Canal criptografado · privado</span>';
   footActions.appendChild(tokenNote);
   chatFoot.appendChild(footActions);
 
