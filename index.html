@@ -379,11 +379,10 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
   overflow:hidden;
   text-overflow:ellipsis;
 }
-/* V15.12.75.143 — Badges de contagem repensados.
-   Antes: pílula roxa sólida, mesmo visual independente da quantidade.
-   Agora: cor varia por urgência (cinza ≤4, âmbar 5-19, vermelho ≥20).
-   Tipografia: tabular-nums (números alinhados), font menor mais elegante.
-   Visual: background tonal sutil + border, em vez de sólido. */
+/* V15.12.75.144 — Badges voltam pra paleta sóbria (roxo Gralia).
+   V143 tentou usar âmbar e vermelho por urgência, mas ficou poluído.
+   Agora: tudo roxo, variando só a INTENSIDADE (opacity do bg) conforme
+   a quantidade. Mais elegante e coerente com o resto do app. */
 .app-sidebar-badge{
   display:inline-flex;
   align-items:center;
@@ -393,7 +392,7 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
   padding:0 5px;
   background:rgba(128,66,250,.10);
   color:var(--gralia-purple);
-  border:1px solid rgba(128,66,250,.25);
+  border:1px solid rgba(128,66,250,.22);
   border-radius:8px;
   font-size:10.5px;
   font-weight:700;
@@ -402,26 +401,21 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
   letter-spacing:0;
 }
 .app-sidebar-badge-warn{
-  background:rgba(217,119,6,.10);
-  color:#d97706;
-  border-color:rgba(217,119,6,.30);
+  /* 5-19 — um pouco mais saturado */
+  background:rgba(128,66,250,.16);
+  border-color:rgba(128,66,250,.35);
 }
 .app-sidebar-badge-urgent{
-  background:rgba(220,38,38,.10);
-  color:#dc2626;
-  border-color:rgba(220,38,38,.30);
+  /* ≥20 — mais saturado ainda, mas mantém a paleta roxa */
+  background:rgba(128,66,250,.22);
+  border-color:rgba(128,66,250,.48);
+  font-weight:800;
 }
-/* Item ativo: badge fica em destaque (sólido roxo) */
+/* Item ativo: badge fica sólido */
 .app-sidebar-item.active .app-sidebar-badge{
   background:var(--gralia-purple);
   color:#fff;
   border-color:var(--gralia-purple);
-}
-.app-sidebar-item.active .app-sidebar-badge-warn{
-  background:#d97706;border-color:#d97706;color:#fff;
-}
-.app-sidebar-item.active .app-sidebar-badge-urgent{
-  background:#dc2626;border-color:#dc2626;color:#fff;
 }
 .app-sidebar-secondary{
   margin-top:auto;
@@ -8148,7 +8142,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.143';
+window.GRALIA_VERSION = 'V15.12.75.144';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -12849,73 +12843,39 @@ function examCountdown(){
 // Quando ícone tem accent: render adiciona 2º <g> com stroke="..." fixo
 // (não muda com active/hover — detalhe permanente).
 const LUCIDE_ICONS = {
-  // V15.12.75.143 — Todos os ícones agora têm acento colorido sutil (não só 5).
-  // Antes ficava feio "alguns com cor, outros monocromáticos". Padronizei.
-  // Cores escolhidas por afinidade semântica (não aleatórias).
+  // V15.12.75.144 — REVERTIDO V143: ícones voltam a ser monocromáticos.
+  // Acentos coloridos em todos os 19 deixou o menu "feio, cheio de cor".
+  // Mantém colorido APENAS em 2 ícones onde a cor é identidade real:
+  //   - 'pinheiro' (Pinhal) — pinha em marrom (símbolo do app)
+  //   - 'messages-square' (Mentor) — bicolor Halsey azul + Drago carmim
+  // Resto é puro currentColor, herda do estado (text2 / text / purple ativo).
 
-  // Estudo — tons quentes/dourados
-  'home':           {
-    body:   '<path d="M3 12 12 3l9 9"/><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/>',
-    accent: '<path d="M10 21v-6h4v6"/>',
-    accentColor: '#d97706'  // porta em âmbar (luz/lar)
-  },
-  'book-open':      {
-    body:   '<path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
-    accent: '<path d="M12 7v14"/>',
-    accentColor: '#dc2626'  // marcador central em vermelho
-  },
-  'zap':            {
-    body:   '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
-    accent: '<circle cx="11.5" cy="12" r=".8" fill="#fbbf24" stroke="none"/>',
-    accentColor: '#fbbf24'
-  },
-  'notebook-pen':   {
-    body:   '<path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><rect width="16" height="20" x="4" y="2" rx="2"/>',
-    accent: '<path d="M16 4 21 9l-5.5 5.5-3.5 1 1-3.5L16 4z"/>',
-    accentColor: 'var(--gralia-purple)'
-  },
+  // Estudo
+  'home':           '<path d="M3 12 12 3l9 9"/><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/><path d="M10 21v-6h4v6"/>',
+  'book-open':      '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+  'zap':            '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  'notebook-pen':   '<path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M16 4 21 9l-5.5 5.5-3.5 1 1-3.5L16 4z"/>',
 
-  // Revisar — tons diversificados por função
-  'layers':         {
-    body:   '<path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
-    accent: '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/>',
-    accentColor: '#10b981'  // camada de cima em verde (último aprendido)
-  },
-  'history':        {
-    body:   '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
-    accent: '<path d="M12 7v5l4 2"/>',
-    accentColor: '#dc2626'  // ponteiros em vermelho (tempo/erro)
-  },
-  'refresh-cw':     {
-    body:   '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>',
-    accent: '<path d="M21 3v5h-5"/><path d="M8 16H3v5"/>',
-    accentColor: '#0891b2'  // pontas das setas em ciano (refrescar)
-  },
-  'timer':          {
-    body:   '<line x1="10" x2="14" y1="2" y2="2"/><circle cx="12" cy="14" r="8"/>',
-    accent: '<line x1="12" x2="15" y1="14" y2="11"/>',
-    accentColor: '#dc2626'
-  },
-  // V15.12.75.143 — Pinhal: REFEITO como pinheiro triangular com pinha
-  // visível na base. Mais legível que a tentativa anterior de araucária.
-  // Triângulos sobrepostos (silhueta de pinheiro) + pinha em âmbar.
+  // Revisar
+  'layers':         '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+  'history':        '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+  'refresh-cw':     '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+  'timer':          '<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/>',
+
+  // V15.12.75.143 — Pinhal: pinheiro triangular com pinha em marrom.
+  // MANTIDO bicolor — é identidade central do app (Gralia = araucária/pinhão).
   'pinheiro':       {
     body:   '<path d="M12 3 L7 9 L10 9 L5 15 L9 15 L4 21 L20 21 L15 15 L19 15 L14 9 L17 9 Z"/>',
     accent: '<path d="M10 19 Q12 17 14 19 Q13 21 12 21 Q11 21 10 19 Z" fill="#a16207" stroke="#92400e" stroke-width="1"/>',
-    accentColor: '#92400e'  // pinha em marrom (cor real da pinha madura)
+    accentColor: '#92400e'
   },
 
-  // Planejar — tons profissionais
-  'target':         {
-    body:   '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/>',
-    accent: '<circle cx="12" cy="12" r="2" fill="#dc2626" stroke="#dc2626"/>',
-    accentColor: '#dc2626'  // bullseye vermelho
-  },
-  'calendar':       {
-    body:   '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/>',
-    accent: '<path d="M3 10h18"/>',
-    accentColor: 'var(--gralia-purple)'  // linha divisória em roxo (hoje)
-  },
+  // Planejar
+  'target':         '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  'calendar':       '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+
+  // V15.12.75.142 — Mentor: MANTIDO bicolor — representa os 2 mentores
+  // (Halsey azul-grafite + Drago carmim). Sem cor não faria sentido.
   'messages-square':{
     body:   '',
     accent: '<path d="M14 9a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1l-3 3v-3H6a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h8z"/>',
@@ -12923,63 +12883,26 @@ const LUCIDE_ICONS = {
     accent2: '<path d="M18 14h.5a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H11a2 2 0 0 0-2 2v1"/>',
     accent2Color: '#a02942'
   },
-  'file-search':    {
-    body:   '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9.5L14 2z"/><polyline points="14 2 14 8 20 8"/>',
-    accent: '<circle cx="11.5" cy="14.5" r="2.5"/><line x1="13.27" x2="15" y1="16.27" y2="18"/>',
-    accentColor: 'var(--gralia-purple)'  // lupa em roxo
-  },
-  'clipboard-check':{
-    body:   '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
-    accent: '<path d="m9 14 2 2 4-4"/>',
-    accentColor: '#10b981'
-  },
-  'map':            {
-    body:   '<polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>',
-    accent: '<line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/>',
-    accentColor: 'var(--gralia-purple)'  // dobras do mapa em roxo
-  },
-  // V15.12.75.143 — Dicas das bancas (nova entrada — vai pra sidebar)
-  'lightbulb':      {
-    body:   '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
-    accent: '<circle cx="12" cy="8" r="1" fill="#fbbf24" stroke="none"/>',
-    accentColor: '#fbbf24'  // miolo amarelo (ideia)
-  },
 
-  // Comunidade — tons frios/sociais
-  'globe':          {
-    body:   '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>',
-    accent: '<path d="M2 12h20"/>',
-    accentColor: '#0891b2'  // equador em ciano (mar)
-  },
-  'rss':            {
-    body:   '<path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/>',
-    accent: '<circle cx="5" cy="19" r="1.5" fill="#f97316" stroke="none"/>',
-    accentColor: '#f97316'  // ponto pulsante em laranja
-  },
-  'scale':          {
-    body:   '<path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
-    accent: '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>',
-    accentColor: '#d97706'  // pratos em âmbar (justiça/peso)
-  },
-  'users':          {
-    body:   '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',
-    accent: '<path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
-    accentColor: 'var(--gralia-purple)'  // 2º usuário em roxo (grupo)
-  },
+  'file-search':    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9.5L14 2z"/><polyline points="14 2 14 8 20 8"/><circle cx="11.5" cy="14.5" r="2.5"/><line x1="13.27" x2="15" y1="16.27" y2="18"/>',
+  'clipboard-check':'<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>',
+  'lightbulb':      '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+  'map':            '<polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/>',
+
+  // Comunidade
+  'globe':          '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+  'rss':            '<path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/>',
+  'scale':          '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
+  'users':          '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
 
   // V15.12.75.143 — Ícones utilitários (topbar, toggle, help)
   'panel-left-close': '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/>',
   'panel-left-open':  '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/>',
-  'life-buoy':        {
-    body:   '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/>',
-    accent: '<line x1="4.93" x2="9.17" y1="4.93" y2="9.17"/><line x1="14.83" x2="19.07" y1="14.83" y2="19.07"/><line x1="14.83" x2="19.07" y1="9.17" y2="4.93"/><line x1="14.83" x2="18.36" y1="9.17" y2="5.64"/><line x1="4.93" x2="9.17" y1="19.07" y2="14.83"/>',
-    accentColor: '#dc2626'
-  },
+  'life-buoy':        '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="4.93" x2="9.17" y1="4.93" y2="9.17"/><line x1="14.83" x2="19.07" y1="14.83" y2="19.07"/><line x1="14.83" x2="19.07" y1="9.17" y2="4.93"/><line x1="4.93" x2="9.17" y1="19.07" y2="14.83"/>',
   'help-circle':      '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
   'keyboard':         '<rect width="20" height="16" x="2" y="4" rx="2" ry="2"/><path d="M6 8h.01"/><path d="M10 8h.01"/><path d="M14 8h.01"/><path d="M18 8h.01"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/><path d="M7 16h10"/>',
   'message-circle':   '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
   'info':             '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
-  // V15.12.75.143 — Sun/moon pro theme switch
   'sun':              '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
   'moon':             '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
 };
