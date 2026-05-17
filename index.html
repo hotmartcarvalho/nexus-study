@@ -7827,7 +7827,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.135';
+window.GRALIA_VERSION = 'V15.12.75.136';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -41012,7 +41012,7 @@ const MENTOR_DOSES_CATALOG = [
   { id:'self_praise',          category:'social',    emoji:'💬', label:'Autoelogio após cumprir cronograma',                         timing:'qualquer' },
   { id:'purpose_visualization',category:'social',    emoji:'🧭', label:'Visualizar a farda/posse/objetivo final',                    timing:'manha'    },
   // ⚙️ CONTROLE
-  { id:'avoid_passive_dopamine',category:'control',  emoji:'⛔', label:'Sem feed/shorts/porn no horário de foco',                    timing:'qualquer' },
+  { id:'avoid_passive_dopamine',category:'control',  emoji:'⛔', label:'Sem feed/shorts/conteúdo passivo no horário de foco',       timing:'qualquer' },
   { id:'social_window',        category:'control',   emoji:'📱', label:'Redes só no horário designado',                              timing:'qualquer' },
   { id:'trajectory_focus',     category:'control',   emoji:'🧭', label:'Recompensa de trajetória, não de resultado',                 timing:'qualquer' },
   { id:'detox_block',          category:'control',   emoji:'🔒', label:'Bloco offline (sem digital)',                                timing:'qualquer' },
@@ -41266,10 +41266,14 @@ function getMentorSnapshot(){
 
   // Última entrada do diário (do próprio Mentor)
   let lastDiary = null;
+  // V15.12.75.136 — Entradas pinadas (marcadas como importantes) vão SEMPRE
+  // pro contexto da IA, independente da data. Limita a 3 pra não estourar tokens.
+  let pinnedDiary = [];
   try{
     if(DATA.mentor && DATA.mentor.diary && DATA.mentor.diary.length > 0){
       const sorted = DATA.mentor.diary.slice().sort((a,b) => (new Date(b.date)).getTime() - (new Date(a.date)).getTime());
       lastDiary = sorted[0];
+      pinnedDiary = DATA.mentor.diary.filter(d => d.isPinned).slice(0, 3);
     }
   }catch(_){}
 
@@ -41328,6 +41332,7 @@ function getMentorSnapshot(){
     pinhalStreak,
     pinhalDailyXp,
     lastDiary,
+    pinnedDiary,
     operation: getMentorOperation(),
     profile: profileMeta,
     dosesEnabled,
@@ -41433,6 +41438,20 @@ function mentorSystemPrompt(snap){
     const txt = (snap.lastDiary.text || '').slice(0, 600);
     diaryCtx = `\n\nÚLTIMA ENTRADA DE DIÁRIO (data ${snap.lastDiary.date}):\n${txt}`;
   }
+  // V15.12.75.136 — Entradas pinadas (marcadas como importantes) sempre
+  // entram no contexto, mesmo se forem antigas. Limita texto pra controlar
+  // tokens. Operador usa isso pra registrar viradas/decisões marcantes que
+  // os mentores devem lembrar continuamente.
+  let pinnedDiaryCtx = '';
+  if(snap.pinnedDiary && snap.pinnedDiary.length > 0){
+    // Filtra duplicatas: se a pinada também é a última, não repete
+    const lastDate = snap.lastDiary ? snap.lastDiary.date : null;
+    const pinned = snap.pinnedDiary.filter(p => p.date !== lastDate);
+    if(pinned.length > 0){
+      pinnedDiaryCtx = '\n\nENTRADAS DE DIÁRIO MARCADAS COMO IMPORTANTES PELO OPERADOR (referenciam decisões/viradas relevantes — use sempre que conectarem com a situação atual):\n' +
+        pinned.map(p => `[${p.date}]: ${(p.text || '').slice(0, 500)}`).join('\n\n');
+    }
+  }
 
   // Princípios do user (puxa do DATA.mentor)
   let principlesCtx = '';
@@ -41505,7 +41524,7 @@ REGRAS CRÍTICAS DE COMPORTAMENTO:
 14. ${vocabLine}
 
 CONTEXTO OPERACIONAL ATUAL (snapshot real do app):
-${ctx.map(l => '- ' + l).join('\n')}${diaryCtx}${principlesCtx}${memoryCtx}
+${ctx.map(l => '- ' + l).join('\n')}${diaryCtx}${pinnedDiaryCtx}${principlesCtx}${memoryCtx}
 
 CODINOME DO OPERADOR: ${codename}
 
@@ -41724,6 +41743,123 @@ function getMentorConversationMemory(m, currentConvId, maxConvs){
   return others.map(c => ({ date: c.dateISO, summary: c.summary }));
 }
 
+// ============================================================================
+// V15.12.75.136 — EXPORT DE DADOS DO MENTOR (diário e conversas)
+// ============================================================================
+// Geram markdown formatado e disparam download. 100% client-side, sem custo.
+
+// Helper genérico: dispara download de string como arquivo
+function downloadMentorFile(content, filename, mimeType){
+  try{
+    const blob = new Blob([content], { type: (mimeType || 'text/markdown') + ';charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return true;
+  }catch(e){
+    console.error('[mentor-export]', e);
+    return false;
+  }
+}
+
+// Formata data ISO pra string BR
+function fmtDateBR(iso){
+  try{
+    const d = new Date(iso + 'T12:00:00');
+    return d.toLocaleDateString('pt-BR');
+  }catch(_){ return iso; }
+}
+
+// Export do DIÁRIO INTEIRO como markdown
+function exportMentorDiary(m){
+  if(!m || !m.diary || m.diary.length === 0){
+    if(typeof showToast === 'function') showToast('Nenhuma entrada no diário pra exportar', 3000);
+    return;
+  }
+  const sorted = m.diary.slice().sort((a, b) => (new Date(b.date)).getTime() - (new Date(a.date)).getTime());
+  const today = (new Date()).toISOString().slice(0, 10);
+  let md = `# Diário do Operador\n\n`;
+  md += `_Exportado em ${fmtDateBR(today)} · ${sorted.length} entrada${sorted.length===1?'':'s'}_\n\n`;
+  // Pinadas primeiro (destacadas)
+  const pinned = sorted.filter(e => e.isPinned);
+  const others = sorted.filter(e => !e.isPinned);
+  if(pinned.length > 0){
+    md += `## ★ Entradas marcadas como importantes\n\n`;
+    pinned.forEach(e => {
+      md += `### ${fmtDateBR(e.date)}\n\n${e.text || '_(vazia)_'}\n\n---\n\n`;
+    });
+    md += `\n## Demais entradas\n\n`;
+  }
+  others.forEach(e => {
+    md += `### ${fmtDateBR(e.date)}\n\n${e.text || '_(vazia)_'}\n\n---\n\n`;
+  });
+  const ok = downloadMentorFile(md, `diario-mentor-${today}.md`);
+  if(ok && typeof showToast === 'function') showToast('Diário exportado', 2500);
+}
+
+// Export de UMA CONVERSA específica
+function exportMentorConversation(conv){
+  if(!conv || !conv.messages || conv.messages.length === 0){
+    if(typeof showToast === 'function') showToast('Conversa vazia', 2500);
+    return;
+  }
+  let md = `# Conversa com Mentores · ${fmtDateBR(conv.dateISO)}\n\n`;
+  md += `_${conv.messages.length} mensagem${conv.messages.length===1?'':'s'}_\n\n`;
+  if(conv.summary){
+    md += `> **Resumo de memória:** ${conv.summary}\n\n`;
+  }
+  md += `---\n\n`;
+  conv.messages.forEach(msg => {
+    if(msg.role === 'user'){
+      md += `## 👤 Operador\n\n${msg.text}\n\n`;
+    } else if(msg.role === 'mentor' && !msg.isLoading && !msg.isError){
+      const agentName = msg.agent === 'drago' ? '🔥 Sgt. Vargas (Drago)' : '🎯 Cap. Halsey (Cipher)';
+      md += `## ${agentName}\n\n${msg.text}\n\n`;
+    } else if(msg.role === 'mentor' && msg.isError){
+      md += `## ⚠️ Erro\n\n${msg.text}\n\n`;
+    }
+  });
+  const ok = downloadMentorFile(md, `conversa-mentor-${conv.dateISO}.md`);
+  if(ok && typeof showToast === 'function') showToast('Conversa exportada', 2500);
+}
+
+// Export de TODAS as conversas em arquivo único
+function exportAllMentorConversations(m){
+  if(!m || !m.conversations || m.conversations.length === 0){
+    if(typeof showToast === 'function') showToast('Sem conversas pra exportar', 3000);
+    return;
+  }
+  const sorted = m.conversations.slice().sort((a, b) => b.startedAt - a.startedAt);
+  const today = (new Date()).toISOString().slice(0, 10);
+  let md = `# Histórico Completo de Conversas com Mentores\n\n`;
+  md += `_Exportado em ${fmtDateBR(today)} · ${sorted.length} conversa${sorted.length===1?'':'s'}_\n\n`;
+  sorted.forEach((conv, i) => {
+    if(!conv.messages || conv.messages.length === 0) return;
+    md += `\n# ${fmtDateBR(conv.dateISO)}\n\n`;
+    md += `_${conv.messages.length} mensagem${conv.messages.length===1?'':'s'}_\n\n`;
+    if(conv.summary){
+      md += `> **Resumo:** ${conv.summary}\n\n`;
+    }
+    md += `---\n\n`;
+    conv.messages.forEach(msg => {
+      if(msg.role === 'user'){
+        md += `**👤 Operador:**\n\n${msg.text}\n\n`;
+      } else if(msg.role === 'mentor' && !msg.isLoading && !msg.isError){
+        const agentName = msg.agent === 'drago' ? '🔥 Drago' : '🎯 Halsey';
+        md += `**${agentName}:**\n\n${msg.text}\n\n`;
+      }
+    });
+    md += `\n`;
+  });
+  const ok = downloadMentorFile(md, `historico-mentor-${today}.md`);
+  if(ok && typeof showToast === 'function') showToast('Histórico exportado', 2500);
+}
+
 
 // V15.12.75.130 — renderMentor refeito com qualidade premium.
 // Resolve: visual amontoado, chat apertado, falta de hierarquia.
@@ -41840,6 +41976,29 @@ function renderMentor(){
     let dropdown = menuWrap.querySelector('.mentor-head-menu');
     if(dropdown){ dropdown.remove(); return; }
     dropdown = mk('div','mentor-head-menu');
+    // V15.12.75.136 — Export desta conversa
+    const exportItem = mk('button','mentor-head-menu-item');
+    exportItem.type = 'button';
+    exportItem.innerHTML = '⬇ Exportar esta conversa (.md)';
+    exportItem.addEventListener('click', () => {
+      dropdown.remove();
+      exportMentorConversation(conv);
+    });
+    dropdown.appendChild(exportItem);
+    // V15.12.75.136 — Export de todo o histórico
+    const exportAllItem = mk('button','mentor-head-menu-item');
+    exportAllItem.type = 'button';
+    exportAllItem.innerHTML = '⬇ Exportar todo o histórico';
+    exportAllItem.addEventListener('click', () => {
+      dropdown.remove();
+      exportAllMentorConversations(m);
+    });
+    dropdown.appendChild(exportAllItem);
+    // Separador
+    const sep = mk('div');
+    sep.style.cssText = 'height:1px;background:var(--border);margin:4px 0';
+    dropdown.appendChild(sep);
+    // Excluir
     const delItem = mk('button','mentor-head-menu-item mentor-head-menu-item-danger');
     delItem.type = 'button';
     delItem.innerHTML = '🗑 Excluir esta conversa';
@@ -42365,17 +42524,28 @@ function openDiaryPanel(m, anchorWrap){
   const box = mk('div','card');
   box.style.cssText = 'max-width:900px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem';
   const head = mk('div');
-  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem';
+  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;gap:8px;flex-wrap:wrap';
   const title = mk('h3');
   title.style.cssText = 'margin:0;font-size:16px;font-weight:700';
   title.innerHTML = '📓 Diário';
   head.appendChild(title);
+  // V15.12.75.136 — Botões à direita: exportar + fechar
+  const headActions = mk('div');
+  headActions.style.cssText = 'display:flex;gap:6px;align-items:center';
+  const exportBtn = mk('button');
+  exportBtn.type = 'button';
+  exportBtn.style.cssText = 'padding:6px 12px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-family:inherit;font-size:12px;color:var(--text2);font-weight:500';
+  exportBtn.innerHTML = '⬇ Exportar (.md)';
+  exportBtn.title = 'Baixa o diário completo em markdown';
+  exportBtn.addEventListener('click', () => exportMentorDiary(m));
+  headActions.appendChild(exportBtn);
   const closeBtn = mk('button');
   closeBtn.type = 'button';
   closeBtn.style.cssText = 'width:30px;height:30px;border-radius:6px;background:transparent;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:14px;color:var(--text2)';
   closeBtn.innerHTML = '×';
   closeBtn.addEventListener('click', () => overlay.remove());
-  head.appendChild(closeBtn);
+  headActions.appendChild(closeBtn);
+  head.appendChild(headActions);
   box.appendChild(head);
   const content = renderMentorDiary(m);
   box.appendChild(content);
@@ -42722,7 +42892,10 @@ function renderMentorDiary(m){
 
   const refreshLeftList = () => {
     listEl.innerHTML = '';
+    // V15.12.75.136 — Ordena: pinadas primeiro, depois por data DESC
     const sorted = (m.diary || []).slice().sort((a, b) => {
+      if(a.isPinned && !b.isPinned) return -1;
+      if(!a.isPinned && b.isPinned) return 1;
       return (new Date(b.date)).getTime() - (new Date(a.date)).getTime();
     });
     if(sorted.length === 0){
@@ -42737,8 +42910,10 @@ function renderMentorDiary(m){
       const isActive = currentEntry && currentEntry.date === entry.date;
       row.style.cssText = `padding:.625rem .75rem;background:${isActive ? 'rgba(128,66,250,.10)' : 'var(--surface)'};border:1px solid ${isActive ? 'var(--gralia-purple)' : 'var(--border)'};border-radius:8px;cursor:pointer;transition:all .15s ease`;
       const preview = (entry.text || '').split('\n')[0].slice(0, 50);
+      // V15.12.75.136 — Estrela pra entradas marcadas como importantes
+      const pinIcon = entry.isPinned ? '<span title="Importante (vai pro contexto da IA)" style="color:#d97706;flex-shrink:0">★</span>' : '';
       row.innerHTML = `
-        <div style="font-size:11.5px;font-weight:700;color:${isActive ? 'var(--gralia-purple)' : 'var(--text)'};margin-bottom:2px">${formatDateBR(entry.date)}</div>
+        <div style="font-size:11.5px;font-weight:700;color:${isActive ? 'var(--gralia-purple)' : 'var(--text)'};margin-bottom:2px;display:flex;align-items:center;gap:5px">${pinIcon}<span>${formatDateBR(entry.date)}</span></div>
         <div style="font-size:11.5px;color:var(--text3);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(preview) || '(vazio)'}</div>
       `;
       row.addEventListener('click', () => {
@@ -42761,6 +42936,27 @@ function renderMentorDiary(m){
     dateLabel.style.cssText = 'display:flex;align-items:center;gap:8px';
     dateLabel.innerHTML = `<span style="font-size:18px">📓</span><b style="font-size:14px">${formatDateBR(entry.date)}</b>`;
     head.appendChild(dateLabel);
+    // V15.12.75.136 — Botão "Marcar como importante" pinas a entrada
+    // pra que ela vá sempre pro contexto da IA (mentor). Útil pra registros
+    // que mostram padrões, decisões ou viradas importantes da jornada.
+    const headActions = mk('div');
+    headActions.style.cssText = 'display:flex;gap:6px';
+    const pinBtn = mk('button');
+    pinBtn.type = 'button';
+    const renderPinBtn = () => {
+      const pinned = !!entry.isPinned;
+      pinBtn.style.cssText = `padding:.375rem .75rem;background:${pinned ? 'rgba(217,119,6,.10)' : 'transparent'};border:1px solid ${pinned ? 'rgba(217,119,6,.40)' : 'var(--border)'};border-radius:6px;cursor:pointer;font-family:inherit;font-size:11.5px;color:${pinned ? '#d97706' : 'var(--text2)'};font-weight:${pinned ? '700' : '500'}`;
+      pinBtn.title = pinned ? 'Entrada importante — vai pro contexto do Mentor. Clique pra desmarcar.' : 'Marcar como importante — vai pro contexto do Mentor';
+      pinBtn.innerHTML = pinned ? '★ Importante' : '☆ Marcar importante';
+    };
+    renderPinBtn();
+    pinBtn.addEventListener('click', () => {
+      entry.isPinned = !entry.isPinned;
+      try{ save(); }catch(_){}
+      renderPinBtn();
+      refreshLeftList();
+    });
+    headActions.appendChild(pinBtn);
     // Botão remover (se não for hoje, pra evitar deletar acidente)
     const delBtn = mk('button');
     delBtn.type = 'button';
@@ -42778,7 +42974,8 @@ function renderMentorDiary(m){
       right.appendChild(placeholder);
       refreshLeftList();
     });
-    head.appendChild(delBtn);
+    headActions.appendChild(delBtn);
+    head.appendChild(headActions);
     card.appendChild(head);
     // Textarea grande
     const ta = mk('textarea');
