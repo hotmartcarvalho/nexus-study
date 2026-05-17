@@ -7723,7 +7723,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.132';
+window.GRALIA_VERSION = 'V15.12.75.133';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -22883,6 +22883,9 @@ const AI_COSTS = {
 
   // ---- 15 créditos ----
   exam_analysis: 15,
+  // V15.12.75.133 — Mentor chat: Sonnet 4.6 com prompt ~1240 tok input
+  // + ~2500 tok output. Custo real Anthropic ~$0.04/msg.
+  mentor_chat: 15,
 
   // ---- 20 créditos ----
   simulado_generation: 20,
@@ -22933,7 +22936,9 @@ const ACTION_LABELS = {
   topic_profile: 'Perfil aprofundado de tópico',
   edital_synthesis: 'Síntese de edital',
   edital_synthesis_premium: 'Síntese de edital aprofundada',
-  exam_analysis_premium: 'Análise de prova aprofundada'
+  exam_analysis_premium: 'Análise de prova aprofundada',
+  // V15.12.75.133 — Mentor (Halsey + Drago, Sonnet 4.6)
+  mentor_chat: 'Conversa com mentores'
 };
 
 function actionLabel(action_id){
@@ -41572,6 +41577,11 @@ function renderMentor(){
 
     // 3. Chama IA
     try{
+      // V15.12.75.133 — Pré-flight de saldo (regra Jean: toda action paga
+      // confirma saldo antes de chamar a IA). Evita 402 no meio da chamada.
+      if(typeof assertCanAffordFresh === 'function'){
+        await assertCanAffordFresh('mentor_chat');
+      }
       // Pega snapshot fresco no momento do envio (números podem ter mudado)
       const freshSnap = getMentorSnapshot();
       const reply = await sendMentorMessage(text, conv, freshSnap);
