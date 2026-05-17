@@ -4118,6 +4118,28 @@ body.settings-compact .settings-page-v2{font-size:13px}
 }
 .mentor-conv-item:hover{background:var(--surface2);border-color:rgba(128,66,250,.25)}
 
+/* V15.12.75.132 — Typing indicator (3 dots animados) + estado de erro */
+.mentor-msg-typing{
+  display:inline-flex !important;align-items:center;min-width:40px;padding:1rem 1.125rem !important;
+}
+.mentor-typing-dots{display:inline-flex;gap:5px;align-items:center}
+.mentor-typing-dots span{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--text3);opacity:.5;
+  animation:mentor-typing-bounce 1.2s infinite ease-in-out;
+}
+.mentor-typing-dots span:nth-child(2){animation-delay:.18s}
+.mentor-typing-dots span:nth-child(3){animation-delay:.36s}
+@keyframes mentor-typing-bounce{
+  0%,80%,100%{transform:scale(.7);opacity:.4}
+  40%{transform:scale(1);opacity:.85}
+}
+.mentor-msg-error{
+  background:rgba(220,38,38,.05) !important;
+  border-color:rgba(220,38,38,.30) !important;
+  color:#dc2626 !important;
+}
+
 /* === V14: Modo Foco SRS — visual premium fullscreen pra revisão === */
 /* Usuário entra clicando em "🎯 Modo Foco" em SRS Study. Cobre toda a tela
    com visual minimalista, card grande, sem distração. */
@@ -7701,7 +7723,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.130';
+window.GRALIA_VERSION = 'V15.12.75.132';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -40875,6 +40897,99 @@ const MENTOR_AGENTS = {
 // V15.12.75.129 — Coleta snapshot do dia (pomodoros, XP, erros, streak, etc).
 // Usado pra: (1) mostrar no briefing card do Mentor; (2) anexar ao prompt
 // quando user mandar mensagem aos mentores (na sub-rodada 2b).
+// V15.12.75.131 — Detecção dinâmica do nome de operação baseado no alvo
+// do user (perfil → target_type + target_exam_name). Antes era hardcoded
+// "Operação Distintivo" (só fazia sentido pra concurso policial). Agora
+// cada tipo de alvo tem código de operação e símbolo final coerente.
+//
+// Detecção:
+//   1. target_type === 'vestibular' / 'enem' / 'oab' / 'faculdade' /
+//      'certificacao' → operação direta por tipo
+//   2. target_type === 'concurso' → analisa target_exam_name pra detectar
+//      subcategoria (policial, militar, judicial, fiscal, etc)
+//   3. Sem perfil → fallback genérico "Operação Aprovação"
+function getMentorOperation(){
+  const p = (typeof AUTH !== 'undefined' && AUTH.profile) ? AUTH.profile : null;
+  // Fallback se não tem perfil ainda
+  if(!p || !p.target_type){
+    return {
+      code: 'Aprovação',
+      symbol: 'a aprovação',
+      vocab: 'generic'
+    };
+  }
+  const type = (p.target_type || '').toLowerCase();
+  const examName = (p.target_exam_name || '').toLowerCase();
+  // Detecções diretas por tipo
+  if(type === 'vestibular' || type === 'faculdade'){
+    return { code:'Aprovação', symbol:'a vaga, a chamada', vocab:'academic' };
+  }
+  if(type === 'enem'){
+    return { code:'Nota', symbol:'a nota, a aprovação', vocab:'academic' };
+  }
+  if(type === 'oab'){
+    return { code:'Carteira', symbol:'a carteira da OAB', vocab:'legal' };
+  }
+  if(type === 'certificacao'){
+    return { code:'Selo', symbol:'a certificação', vocab:'professional' };
+  }
+  // type === 'concurso' (ou outro) — detecta subcategoria pelo nome do exame
+  if(type === 'concurso' || type === 'outro' || !type){
+    // Palavras-chave por categoria. Ordem importa: mais específicas primeiro.
+    const subcategories = [
+      {
+        // Policial — todas as forças policiais civis/federais
+        keywords:['polícia','policia','pcdf','prf','pf ','pf-','depen','penal',
+                 'agente de custódia','agente penitenciári','perito',
+                 'pcsp','pccrj','pcrj','pcmg','pcpr','pcrs','pcba','pcce',
+                 'delegado'],
+        code:'Distintivo', symbol:'a farda, o distintivo', vocab:'police'
+      },
+      {
+        // Militar
+        keywords:['militar','exército','exercito','marinha','aeronáutica','aeronautica',
+                 'pm ','pmsp','pmdf','pmrj','bombeiro','epcar','esa','aman',
+                 'esfcex','cfo','cfs','cfn','cfsd'],
+        code:'Patente', symbol:'a patente, o uniforme', vocab:'military'
+      },
+      {
+        // Judicial / Ministério Público
+        keywords:['juiz','magistratura','promotor','procurador','defensor',
+                 'ministério público','ministerio publico','mp ','mpf','mpu','mpsp',
+                 'tjsp','tjdft','tjrj','tjmg','tjpr','trf','trt','tst','stj','stf',
+                 'analista judiciário','tecnico judiciário','técnico judiciário'],
+        code:'Toga', symbol:'a toga, a posse', vocab:'legal'
+      },
+      {
+        // Fiscal / Receita / Auditoria
+        keywords:['auditor','fiscal','receita federal','receita estadual',
+                 'sefaz','sefin','tcu','tce','tcm','tribunal de contas',
+                 'aft','afrfb','atrfb'],
+        code:'Selo', symbol:'o selo, o cargo', vocab:'fiscal'
+      },
+      {
+        // Docente
+        keywords:['professor','docente','magistério','magisterio','sme'],
+        code:'Lousa', symbol:'a sala, a vaga docente', vocab:'academic'
+      },
+      {
+        // Diplomacia / Internacional
+        keywords:['diplomata','itamaraty','irbr','cacd'],
+        code:'Embaixada', symbol:'a missão diplomática', vocab:'professional'
+      }
+    ];
+    for(const sub of subcategories){
+      for(const kw of sub.keywords){
+        if(examName.includes(kw)) return { code: sub.code, symbol: sub.symbol, vocab: sub.vocab };
+      }
+    }
+    // Concurso genérico — administrativo / técnico / analista
+    return { code:'Posse', symbol:'a nomeação, a posse', vocab:'administrative' };
+  }
+  // Fallback total
+  return { code:'Aprovação', symbol:'a aprovação', vocab:'generic' };
+}
+
 function getMentorSnapshot(){
   const now = Date.now();
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
@@ -40926,6 +41041,16 @@ function getMentorSnapshot(){
     operationDay = Math.max(1, Math.floor((now - startMs) / (24*3600*1000)) + 1);
   }catch(_){}
 
+  // V15.12.75.131 — Dados do perfil pra system prompt usar na sub-rodada 2b.
+  const profile = (typeof AUTH !== 'undefined' && AUTH.profile) ? AUTH.profile : null;
+  const profileMeta = profile ? {
+    displayName: profile.display_name || profile.username || null,
+    targetType: profile.target_type || null,
+    targetExamName: profile.target_exam_name || null,
+    targetExamBoard: profile.target_exam_board || null,
+    targetExamDate: profile.target_exam_date || null
+  } : null;
+
   return {
     operationDay,
     pomoToday,
@@ -40939,6 +41064,8 @@ function getMentorSnapshot(){
     pinhalStreak,
     pinhalDailyXp,
     lastDiary,
+    operation: getMentorOperation(),
+    profile: profileMeta,
     timestamp: now
   };
 }
@@ -40968,6 +41095,244 @@ function getMentorDayStatus(snap){
   if(totalActivity >= 7) return { level:'green', label:'Missão cumprida', color:'#10b981' };
   if(totalActivity >= 3) return { level:'yellow', label:'Cumprido parcialmente', color:'#d97706' };
   return { level:'red', label:'Dia perdido — não repita', color:'#dc2626' };
+}
+
+// ============================================================================
+// V15.12.75.132 — SISTEMA DE CHAT COM IA (Sonnet 4.6)
+// ============================================================================
+
+// Constrói o system prompt completo pros mentores.
+// Recebe o snapshot e retorna o texto que vai como `system` pro Sonnet.
+// Decisões de prompt:
+//   - Personas detalhadas (Halsey/Drago) com voz distinta
+//   - Vocabulário adapta ao alvo (vocab field do snapshot.operation)
+//   - Contexto operacional injetado (dia, métricas, último diário, princípios)
+//   - Formato de resposta JSON estruturado (parsing robusto)
+//   - Regras anti-romantização/anti-fofura mas com bom senso humano
+//   - Reconhecer vitórias REAIS, não inventar elogio
+function mentorSystemPrompt(snap){
+  const op = snap.operation || { code:'Aprovação', symbol:'a aprovação', vocab:'generic' };
+  const profile = snap.profile || {};
+  const codename = profile.displayName ? profile.displayName.split(' ')[0] : 'Operador';
+
+  // Adapta vocabulário ao vocab do alvo (não muda identidade militar dos mentores,
+  // só ajusta o símbolo final e tom).
+  const vocabHints = {
+    police:   'O alvo é uma carreira policial. Símbolo final: a farda, o distintivo, a posse na corporação.',
+    military: 'O alvo é uma carreira militar. Símbolo final: a patente, o uniforme, a graduação.',
+    legal:    'O alvo é uma carreira jurídica (magistratura/MP/OAB). Símbolo final: a toga, a posse, a carteira.',
+    fiscal:   'O alvo é uma carreira fiscal/auditoria. Símbolo final: o selo, o cargo de auditor.',
+    academic: 'O alvo é vestibular/ENEM/docência. Símbolo final: a vaga, a aprovação, a chamada.',
+    professional: 'O alvo é uma certificação ou carreira profissional. Símbolo final: o selo, o reconhecimento.',
+    administrative: 'O alvo é um concurso administrativo (analista/técnico/servidor). Símbolo final: a nomeação, a posse no cargo.',
+    generic:  'O alvo é a aprovação. Trate como missão genérica de alta performance.'
+  };
+  const vocabLine = vocabHints[op.vocab] || vocabHints.generic;
+
+  // Contexto do dia
+  const ctx = [];
+  ctx.push(`Operação: ${op.code} (Dia ${snap.operationDay})`);
+  if(profile.targetExamName) ctx.push(`Concurso/prova alvo: ${profile.targetExamName}${profile.targetExamBoard ? ' — banca ' + profile.targetExamBoard : ''}`);
+  if(profile.targetExamDate){
+    try{
+      const d = new Date(profile.targetExamDate);
+      const daysLeft = Math.ceil((d.getTime() - Date.now())/(24*3600*1000));
+      if(daysLeft > 0) ctx.push(`Dias até a prova: ${daysLeft}`);
+    }catch(_){}
+  }
+  ctx.push(`Pomodoros hoje: ${snap.pomoToday} | semana: ${snap.pomoWeek}`);
+  ctx.push(`Streak Pinhal: ${snap.pinhalStreak} dia${snap.pinhalStreak===1?'':'s'}`);
+  ctx.push(`XP hoje: ${snap.pinhalDailyXp} | Nível Pinhal: ${snap.pinhalLevel}`);
+  ctx.push(`Erros registrados hoje: ${snap.errorsToday} | semana: ${snap.errorsWeek}`);
+  ctx.push(`Fontes lidas hoje: ${snap.readToday}`);
+  ctx.push(`Flashcards revisados hoje: ${snap.srsToday}`);
+  // Hora atual local — pra mentores saberem se é manhã/tarde/noite
+  const now = new Date();
+  const hr = now.getHours();
+  const periodo = hr < 6 ? 'madrugada' : hr < 12 ? 'manhã' : hr < 18 ? 'tarde' : 'noite';
+  ctx.push(`Período atual no relógio do operador: ${periodo} (${hr}h)`);
+
+  // Último diário (resumido)
+  let diaryCtx = '';
+  if(snap.lastDiary){
+    const txt = (snap.lastDiary.text || '').slice(0, 600);
+    diaryCtx = `\n\nÚLTIMA ENTRADA DE DIÁRIO (data ${snap.lastDiary.date}):\n${txt}`;
+  }
+
+  // Princípios do user (puxa do DATA.mentor)
+  let principlesCtx = '';
+  try{
+    const principles = (DATA.mentor && DATA.mentor.principles) || [];
+    if(principles.length > 0){
+      principlesCtx = '\n\nPRINCÍPIOS QUE O OPERADOR DEFINIU (use pra recordar quando relevante):\n' +
+        principles.slice(0, 10).map(p => `- "${p.text}"`).join('\n');
+    }
+  }catch(_){}
+
+  return `Você está rodando como DOIS mentores ficcionais que respondem juntos num chat. Eles são:
+
+🎯 CAP. HALSEY (codinome CIPHER) — Comando Tático
+- Voz: fria, analítica, estratégica, cirúrgica.
+- Inspiração: Capt. Price (CoD MW) + Ghost (Ghost Recon).
+- Trata o user como operador em campo. Fala em métricas, protocolos, missões.
+- Reconhece vitórias REAIS sem fofura: "1 pomodoro é melhor que zero — sustenta o trilho."
+- Aponta falhas como problemas táticos a corrigir, não falhas morais.
+- Usa termos: operador, missão, protocolo, torre de controle, execução, briefing, contato.
+- Resposta típica: começa com leitura da situação, identifica padrão, sugere ação concreta.
+- Quando o user faz pouco mas é começo do dia, é paciente. Quando o user falha à noite com dia inteiro perdido, é direto.
+
+🔥 SGT. VARGAS (codinome DRAGO) — Operador de Assalto
+- Voz: intensa, brutal psicológico positivo, combativo.
+- Inspiração: Soap MacTavish + Reznov.
+- Trata o user como irmão de pelotão. Cobra na cara, mas porque acredita.
+- Combate procrastinação, dopamina rápida, conforto, sabotagem mental.
+- Não romantiza falha. Não amolece. Mas também não destrói — cobra pra construir.
+- Usa palavras curtas, impactantes. Linhas separadas. Tom de cara que aguenta porrada.
+- Quando vê vitória real: reconhece com energia ("É ISSO. Continua.").
+- Quando vê desculpa: chama de desculpa.
+
+REGRAS CRÍTICAS DE COMPORTAMENTO:
+1. Vocês são DOIS personagens distintos. Halsey é tático. Drago é visceral. Não misture as vozes.
+2. Halsey fala primeiro (análise). Drago fala depois (cobrança/motivação direta).
+3. NUNCA invente números, ações ou eventos que o user não relatou. Use APENAS o briefing real do app + o que o user escreveu.
+4. Se o user diz "fiz 3 pomos" e o briefing diz "0 pomos hoje", aponte a discrepância sem julgar — pode ter sido offline, pode ser engano.
+5. NÃO romantize falha. NÃO use frases motivacionais vazias tipo "amanhã é um novo dia!".
+6. NÃO seja terapeuta. Vocês são mentores operacionais, não psicólogos.
+7. NÃO use emoji em excesso. 1-2 no máximo por resposta total (não por mentor).
+8. RECONHEÇA vitórias proporcionalmente: 1 pomo cedo é bom, 1 pomo à noite com dia perdido não basta.
+9. Sugira ações CONCRETAS e PRÁTICAS. Não "tente mais". Diga "senta agora e faz 1 pomo de qualquer matéria, sem escolher."
+10. Quando o user mencionar dopamina/conforto/distração, vocês relacionam com sistema de recompensa, NÃO com "vício" ou "doença". É comportamento treinável.
+11. Quando relevante, vocês podem recordar PRINCÍPIOS que o operador definiu (ver lista abaixo). Use com parcimônia — citar 1 princípio inteiro às vezes é mais forte que 3.
+12. Português brasileiro. Tom adulto, direto, sem fofura.
+13. Se o user pedir conselho sobre treino físico, sono ou alimentação, vocês podem comentar mas SEMPRE no contexto da missão (não como personal trainer).
+14. ${vocabLine}
+
+CONTEXTO OPERACIONAL ATUAL (snapshot real do app):
+${ctx.map(l => '- ' + l).join('\n')}${diaryCtx}${principlesCtx}
+
+CODINOME DO OPERADOR: ${codename}
+
+FORMATO DE RESPOSTA (OBRIGATÓRIO):
+Você deve responder APENAS com um JSON válido com esta estrutura exata:
+{
+  "halsey": "texto da resposta do Halsey (200-500 palavras, pode ter linhas em branco)",
+  "drago": "texto da resposta do Drago (150-400 palavras, pode ter linhas em branco)"
+}
+
+Não inclua markdown fences (\`\`\`). Não inclua comentários. APENAS o JSON.
+Cada campo é uma string com a fala COMPLETA daquele mentor. Pode ter \\n pra quebras de linha.
+Não use markdown dentro das strings — texto puro com quebras.`;
+}
+
+// Chama a IA pros mentores responderem.
+// Retorna { halsey, drago } parseados.
+async function sendMentorMessage(userText, conv, snap){
+  const systemPrompt = mentorSystemPrompt(snap);
+  // Constrói histórico da conversa: últimas 8 mensagens (4 pares user/mentor)
+  // pra não estourar contexto mas manter coerência.
+  const history = (conv.messages || []).slice(-16);
+  const msgs = [];
+  // Agrupa pares user → assistant. Como cada turno user gera 1 par de mentores
+  // (halsey+drago juntos no mesmo turno assistant), comprimimos.
+  // Estratégia: pega cada msg user e a próxima mentor (halsey) como par,
+  // converte pra { role:'user', content } e { role:'assistant', content: JSON }.
+  let i = 0;
+  while(i < history.length){
+    const m = history[i];
+    if(m.role === 'user'){
+      msgs.push({ role:'user', content: m.text });
+      // Procura próxima resposta dos mentores (pula erros/placeholders)
+      let halseyText = null, dragoText = null;
+      let j = i + 1;
+      while(j < history.length && history[j].role !== 'user'){
+        if(history[j].role === 'mentor' && history[j].agent === 'halsey' && !history[j].isError){
+          halseyText = history[j].text;
+        }
+        if(history[j].role === 'mentor' && history[j].agent === 'drago' && !history[j].isError){
+          dragoText = history[j].text;
+        }
+        j++;
+      }
+      if(halseyText || dragoText){
+        msgs.push({
+          role: 'assistant',
+          content: JSON.stringify({
+            halsey: halseyText || '',
+            drago: dragoText || ''
+          })
+        });
+      }
+      i = j;
+    } else {
+      i++;
+    }
+  }
+  // Adiciona mensagem atual do user
+  msgs.push({ role:'user', content: userText });
+
+  const opts = {
+    model: 'claude-sonnet-4-6',
+    raw: true,
+    skipContent: true,
+    action: 'mentor_chat'
+  };
+
+  let raw;
+  try{
+    raw = await callAPI(systemPrompt, msgs, opts);
+  }catch(e){
+    // Repassa com classificação pro caller
+    if(e && (e.name === 'CreditsError' || (e.name === 'ApiError' && e.status === 402))){
+      const err = new Error('credits');
+      err.code = 'credits';
+      throw err;
+    }
+    if(e && e.message && e.message.startsWith('network:')){
+      const err = new Error('network');
+      err.code = 'network';
+      throw err;
+    }
+    const err = new Error('api: ' + (e.message || 'erro desconhecido'));
+    err.code = 'api';
+    throw err;
+  }
+
+  // Parseia JSON — tolerante a fences ou ruído ao redor
+  const tryParse = (s) => {
+    try{ return JSON.parse(s); }catch(_){ return null; }
+  };
+  let parsed = tryParse((raw||'').trim());
+  if(!parsed){
+    // Remove fences se houver
+    const fence = (raw||'').match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if(fence) parsed = tryParse(fence[1].trim());
+  }
+  if(!parsed){
+    // Procura primeiro {...} balanceado
+    const idx = (raw||'').indexOf('{');
+    if(idx >= 0){
+      let depth = 0, inStr = false, esc = false;
+      for(let k = idx; k < raw.length; k++){
+        const ch = raw[k];
+        if(esc){ esc = false; continue; }
+        if(ch === '\\'){ esc = true; continue; }
+        if(ch === '"'){ inStr = !inStr; continue; }
+        if(inStr) continue;
+        if(ch === '{') depth++;
+        else if(ch === '}'){ depth--; if(depth === 0){ parsed = tryParse(raw.slice(idx, k+1)); break; } }
+      }
+    }
+  }
+  if(!parsed || (!parsed.halsey && !parsed.drago)){
+    const err = new Error('parse: resposta da IA fora do formato esperado');
+    err.code = 'parse';
+    err.raw = raw;
+    throw err;
+  }
+  return {
+    halsey: (parsed.halsey || '').trim(),
+    drago: (parsed.drago || '').trim()
+  };
 }
 
 
@@ -41011,12 +41376,14 @@ function renderMentor(){
 
   const snap = getMentorSnapshot();
   const status = getMentorDayStatus(snap);
+  // V15.12.75.131 — Operação dinâmica baseada no alvo do user (perfil)
+  const op = getMentorOperation();
 
   // ============ HERO ============
   const hero = mk('div','mentor-hero');
   const heroRow = mk('div','mentor-hero-row');
   const heroTitle = mk('h1','mentor-hero-title');
-  heroTitle.innerHTML = `<span class="mentor-hero-icon">🧭</span><span>Operação Distintivo</span>`;
+  heroTitle.innerHTML = `<span class="mentor-hero-icon">🧭</span><span>Operação ${escapeHTML(op.code)}</span>`;
   heroRow.appendChild(heroTitle);
   const dayChip = mk('div','mentor-chip mentor-chip-day');
   dayChip.textContent = `Dia ${snap.operationDay}`;
@@ -41029,7 +41396,8 @@ function renderMentor(){
   heroRow.appendChild(statusChip);
   hero.appendChild(heroRow);
   const heroLead = mk('p','mentor-hero-lead');
-  heroLead.textContent = 'Sala de operações. Halsey analisa, Drago cobra. Tudo que você compartilha aqui é privado.';
+  // V15.12.75.131 — Lead menciona o "símbolo" final pra contextualizar a missão.
+  heroLead.textContent = `Sala de operações. Halsey analisa, Drago cobra. Objetivo: ${op.symbol}. Tudo que você compartilha aqui é privado.`;
   hero.appendChild(heroLead);
   wrap.appendChild(hero);
 
@@ -41126,7 +41494,6 @@ function renderMentor(){
         chatStream.appendChild(row);
       } else {
         const agent = MENTOR_AGENTS[msg.agent] || MENTOR_AGENTS.halsey;
-        const isHalsey = agent.id === 'halsey';
         const row = mk('div','mentor-msg-mentor');
         const header = mk('div','mentor-msg-mentor-header');
         header.innerHTML = `
@@ -41138,7 +41505,18 @@ function renderMentor(){
         `;
         row.appendChild(header);
         const bubble = mk('div','mentor-msg-mentor-bubble mentor-msg-mentor-bubble-' + agent.id);
-        bubble.innerHTML = msg.html || escapeHTML(msg.text);
+        // V15.12.75.132 — Loading: 3 dots animados em vez do texto
+        if(msg.isLoading){
+          bubble.classList.add('mentor-msg-typing');
+          bubble.innerHTML = `<span class="mentor-typing-dots"><span></span><span></span><span></span></span>`;
+        } else if(msg.isError){
+          bubble.classList.add('mentor-msg-error');
+          bubble.innerHTML = escapeHTML(msg.text);
+        } else {
+          // V15.12.75.132 — Texto puro com quebras de linha preservadas.
+          // Converte \n em <br> respeitando escape HTML.
+          bubble.innerHTML = msg.html || escapeHTML(msg.text).replace(/\n/g, '<br>');
+        }
         row.appendChild(bubble);
         chatStream.appendChild(row);
       }
@@ -41146,21 +41524,83 @@ function renderMentor(){
     setTimeout(() => { chatStream.scrollTop = chatStream.scrollHeight; }, 60);
   };
 
-  const handleSend = () => {
+  // V15.12.75.132 — handleSend com IA real (Sonnet 4.6).
+  // Fluxo:
+  //   1. Adiciona msg user no estado
+  //   2. Adiciona msg "digitando..." dos 2 mentores (placeholder)
+  //   3. Chama sendMentorMessage (await callAPI)
+  //   4. Substitui placeholders pelas respostas reais (com mesmos timestamps)
+  //   5. Se erro: substitui por mensagem de erro contextualizada
+  let isSending = false;
+  const setSendingUI = (sending) => {
+    isSending = sending;
+    sendBtn.disabled = sending;
+    sendBtn.style.opacity = sending ? '0.55' : '1';
+    sendBtn.style.cursor = sending ? 'wait' : 'pointer';
+    sendBtn.innerHTML = sending ? '⏳ Enviando...' : '✉ Enviar';
+    textInput.disabled = sending;
+  };
+
+  const handleSend = async () => {
+    if(isSending) return;
     const text = textInput.value.trim();
     if(!text) return;
+    // 1. Adiciona msg user
     conv.messages.push({ role:'user', text, timestamp: Date.now() });
-    // V15.12.75.130 — Placeholder. Sub-rodada 2b conecta Sonnet 4.6.
-    conv.messages.push({
+    // 2. Placeholders dos 2 mentores marcados como "loading"
+    const halseyPlaceholder = {
       role: 'mentor',
       agent: 'halsey',
-      text: 'Recebido, operador. (A integração com a IA será ativada na próxima atualização — sub-rodada 2b. Quando ligar, eu e o Drago vamos analisar seu briefing do dia, diário recente e princípios pra dar um retorno cirúrgico.)',
+      text: '',
+      isLoading: true,
       timestamp: Date.now() + 1
-    });
+    };
+    const dragoPlaceholder = {
+      role: 'mentor',
+      agent: 'drago',
+      text: '',
+      isLoading: true,
+      timestamp: Date.now() + 2
+    };
+    conv.messages.push(halseyPlaceholder);
+    conv.messages.push(dragoPlaceholder);
     try{ save(); }catch(_){}
     textInput.value = '';
     textInput.style.height = '48px';
     renderMessages();
+    setSendingUI(true);
+
+    // 3. Chama IA
+    try{
+      // Pega snapshot fresco no momento do envio (números podem ter mudado)
+      const freshSnap = getMentorSnapshot();
+      const reply = await sendMentorMessage(text, conv, freshSnap);
+      // 4. Substitui placeholders
+      halseyPlaceholder.text = reply.halsey;
+      halseyPlaceholder.isLoading = false;
+      dragoPlaceholder.text = reply.drago;
+      dragoPlaceholder.isLoading = false;
+      try{ save(); }catch(_){}
+      renderMessages();
+    }catch(e){
+      // 5. Erro — substitui placeholders por mensagem de erro
+      let errMsg = 'Falha no contato com a torre de controle.';
+      if(e.code === 'credits') errMsg = 'Créditos insuficientes. Recarregue em Configurações → Plano pra reativar o canal.';
+      else if(e.code === 'network') errMsg = 'Sem sinal de rede. Verifique a conexão e tente de novo.';
+      else if(e.code === 'parse') errMsg = 'A IA respondeu fora do protocolo. Tente reenviar a mensagem.';
+      else if(e.message) errMsg = errMsg + ' Detalhe: ' + e.message.slice(0, 120);
+      halseyPlaceholder.text = '[ Erro de comunicação ] ' + errMsg;
+      halseyPlaceholder.isLoading = false;
+      halseyPlaceholder.isError = true;
+      // Remove o drago placeholder (só mostra 1 mensagem de erro)
+      const dragoIdx = conv.messages.indexOf(dragoPlaceholder);
+      if(dragoIdx >= 0) conv.messages.splice(dragoIdx, 1);
+      try{ save(); }catch(_){}
+      renderMessages();
+      console.error('[mentor-chat]', e);
+    }finally{
+      setSendingUI(false);
+    }
   };
 
   sendBtn.addEventListener('click', handleSend);
