@@ -4044,7 +4044,13 @@ body.settings-compact .settings-page-v2{font-size:13px}
   padding:.75rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:12px;
   font-family:inherit;font-size:13.5px;color:var(--text);line-height:1.5;
   resize:none;box-sizing:border-box;transition:border-color .15s ease;
+  /* V15.12.75.134 — Esconde setinhas/scroll nativo. JS controla overflow
+     dinamicamente via classe mentor-textarea-scroll quando passa do max. */
+  overflow:hidden;
+  scrollbar-width:none;
 }
+.mentor-textarea::-webkit-scrollbar{width:0;height:0;display:none}
+.mentor-textarea-scroll{overflow-y:auto !important}
 .mentor-textarea:focus{outline:none;border-color:rgba(128,66,250,.40)}
 .mentor-send{
   padding:.75rem 1.25rem;
@@ -4117,6 +4123,49 @@ body.settings-compact .settings-page-v2{font-size:13px}
   transition:all .15s ease;
 }
 .mentor-conv-item:hover{background:var(--surface2);border-color:rgba(128,66,250,.25)}
+
+/* V15.12.75.134 — Menu de ações no header do chat */
+.mentor-head-menu-btn{
+  width:32px;height:32px;border-radius:8px;
+  background:transparent;border:1px solid transparent;
+  cursor:pointer;font-family:inherit;font-size:18px;line-height:1;
+  color:var(--text3);
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:all .15s ease;
+}
+.mentor-head-menu-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--border)}
+.mentor-head-menu{
+  position:absolute;top:calc(100% + 6px);right:0;z-index:50;
+  min-width:200px;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.10);
+  padding:4px;
+  animation:mentor-msg-in .15s ease;
+}
+.mentor-head-menu-item{
+  width:100%;padding:.5rem .75rem;
+  background:transparent;border:none;border-radius:6px;
+  cursor:pointer;font-family:inherit;font-size:12.5px;color:var(--text);
+  text-align:left;display:flex;align-items:center;gap:8px;
+  transition:background .12s ease;
+}
+.mentor-head-menu-item:hover{background:var(--surface2)}
+.mentor-head-menu-item-danger{color:#dc2626}
+.mentor-head-menu-item-danger:hover{background:rgba(220,38,38,.08)}
+
+/* V15.12.75.134 — Lista de conversas com botão de delete inline */
+.mentor-conv-item-wrap{
+  display:flex;gap:4px;align-items:stretch;
+}
+.mentor-conv-item-wrap .mentor-conv-item{flex:1;min-width:0}
+.mentor-conv-del{
+  flex-shrink:0;width:28px;
+  background:transparent;border:1px solid var(--border);border-radius:8px;
+  cursor:pointer;font-family:inherit;font-size:13px;color:var(--text3);
+  transition:all .15s ease;
+  display:inline-flex;align-items:center;justify-content:center;
+}
+.mentor-conv-del:hover{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.30);color:#dc2626}
 
 /* V15.12.75.132 — Typing indicator (3 dots animados) + estado de erro */
 .mentor-msg-typing{
@@ -7723,7 +7772,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.133';
+window.GRALIA_VERSION = 'V15.12.75.134';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -22870,6 +22919,9 @@ const AI_COSTS = {
   examiner_review: 3,
   reverse_engineering: 3,
   smart_organize: 3,
+  // V15.12.75.134 — Resume conversa do Mentor em 3-5 linhas pra memória contínua.
+  // Sonnet 4.6 com prompt curto + output ~150 tokens. Custo real ~$0.01/resumo.
+  mentor_conversation_summary: 3,
 
   // ---- 5 créditos ----
   schedule_generation: 5,
@@ -22938,7 +22990,9 @@ const ACTION_LABELS = {
   edital_synthesis_premium: 'Síntese de edital aprofundada',
   exam_analysis_premium: 'Análise de prova aprofundada',
   // V15.12.75.133 — Mentor (Halsey + Drago, Sonnet 4.6)
-  mentor_chat: 'Conversa com mentores'
+  mentor_chat: 'Conversa com mentores',
+  // V15.12.75.134 — Resumo de conversa pra memória contínua
+  mentor_conversation_summary: 'Resumo de conversa do Mentor'
 };
 
 function actionLabel(action_id){
@@ -41174,6 +41228,28 @@ function mentorSystemPrompt(snap){
     }
   }catch(_){}
 
+  // V15.12.75.134 — Memória contínua: resumos das últimas 3 conversas
+  // anteriores. Permite os mentores referenciarem padrões ("ontem você
+  // prometeu X e hoje volta com Y"), sem o custo de mandar histórico
+  // completo. Resumos são pré-gerados ao fechar conversa, não custam
+  // tokens no momento do chat — só ocupam espaço de prompt.
+  let memoryCtx = '';
+  try{
+    const m = DATA.mentor;
+    const currentConvId = m ? m.currentConversationId : null;
+    const memories = getMentorConversationMemory(m, currentConvId, 3);
+    if(memories.length > 0){
+      const fmt = (iso) => {
+        try{
+          const d = new Date(iso + 'T12:00:00');
+          return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+        }catch(_){ return iso; }
+      };
+      memoryCtx = '\n\nMEMÓRIA DAS CONVERSAS ANTERIORES (use pra detectar padrões — operador prometeu X e fez Y? repete a mesma desculpa? avançou desde então?):\n' +
+        memories.map(x => `[${fmt(x.date)}]: ${x.summary}`).join('\n');
+    }
+  }catch(_){}
+
   return `Você está rodando como DOIS mentores ficcionais que respondem juntos num chat. Eles são:
 
 🎯 CAP. HALSEY (codinome CIPHER) — Comando Tático
@@ -41213,7 +41289,7 @@ REGRAS CRÍTICAS DE COMPORTAMENTO:
 14. ${vocabLine}
 
 CONTEXTO OPERACIONAL ATUAL (snapshot real do app):
-${ctx.map(l => '- ' + l).join('\n')}${diaryCtx}${principlesCtx}
+${ctx.map(l => '- ' + l).join('\n')}${diaryCtx}${principlesCtx}${memoryCtx}
 
 CODINOME DO OPERADOR: ${codename}
 
@@ -41340,6 +41416,98 @@ async function sendMentorMessage(userText, conv, snap){
   };
 }
 
+// V15.12.75.134 — Excluir conversa do histórico.
+// Se for a atual, escolhe outra como atual (ou cria nova vazia se não houver).
+// `m` é o objeto DATA.mentor.
+function deleteMentorConversation(m, convId){
+  if(!m || !m.conversations) return;
+  const idx = m.conversations.findIndex(c => c.id === convId);
+  if(idx < 0) return;
+  m.conversations.splice(idx, 1);
+  // Se excluímos a atual, escolhe outra (ou cria nova vazia)
+  if(m.currentConversationId === convId){
+    if(m.conversations.length > 0){
+      // Pega a mais recente
+      const sorted = m.conversations.slice().sort((a,b) => b.startedAt - a.startedAt);
+      m.currentConversationId = sorted[0].id;
+    } else {
+      // Nenhuma conversa restante — cria nova vazia
+      const today = (new Date()).toISOString().slice(0,10);
+      const newConv = {
+        id: 'conv_' + Date.now(),
+        dateISO: today,
+        startedAt: Date.now(),
+        messages: []
+      };
+      m.conversations.push(newConv);
+      m.currentConversationId = newConv.id;
+    }
+  }
+  try{ save(); }catch(_){}
+}
+
+// V15.12.75.134 — Resume uma conversa em 3-5 linhas via Sonnet 4.6.
+// Usado quando:
+//   - User inicia nova conversa (a antiga vai pro histórico com resumo)
+//   - Conversa tem 10+ mensagens (gera/atualiza resumo periodicamente)
+// O resumo é armazenado em `conv.summary` e usado no system prompt das
+// próximas conversas pra dar memória contínua sem custo de mandar histórico
+// inteiro a cada chamada.
+//
+// Custo: ~$0.01-0.02 por resumo (input pequeno, output curto).
+// Action id: mentor_conversation_summary (precisa estar cadastrada no
+// catálogo Supabase). Custo: 3 créditos.
+async function summarizeMentorConversation(conv){
+  if(!conv || !conv.messages || conv.messages.length < 3) return null;
+  // Monta texto da conversa
+  const transcript = conv.messages.map(msg => {
+    if(msg.role === 'user') return `[OPERADOR]: ${msg.text}`;
+    if(msg.role === 'mentor'){
+      if(msg.isError || msg.isLoading) return '';
+      const agent = (msg.agent === 'drago') ? 'DRAGO' : 'HALSEY';
+      return `[${agent}]: ${msg.text}`;
+    }
+    return '';
+  }).filter(Boolean).join('\n\n');
+  if(transcript.length < 100) return null;
+
+  const sys = `Você é um redator técnico que resume conversas operacionais entre um operador e seus mentores Halsey/Drago. Resuma em 3-5 linhas curtas, em terceira pessoa, capturando:
+1. Estado do operador no início da conversa (o que relatou)
+2. Padrões/problemas identificados pelos mentores
+3. Compromissos ou ações que o operador prometeu/aceitou
+4. Tom geral (cumprimento? falha? dúvida? ajuste?)
+
+Português direto. Sem opinião. Apenas fatos da conversa. Formato: parágrafo curto SEM listas, SEM bullets.`;
+
+  const prompt = `CONVERSA (data ${conv.dateISO}):\n\n${transcript.slice(0, 8000)}\n\nResumo (3-5 linhas):`;
+
+  try{
+    const raw = await callAPI(sys, [{role:'user', content: prompt}], {
+      model: 'claude-sonnet-4-6',
+      raw: true,
+      skipContent: true,
+      action: 'mentor_conversation_summary',
+      _silentOn402: true
+    });
+    return (raw || '').trim().slice(0, 1200);
+  }catch(e){
+    console.warn('[mentor-summary] falhou:', e.message || e);
+    return null;
+  }
+}
+
+// Pega os resumos das últimas N conversas anteriores (não a atual).
+// Usado pra montar contexto de memória contínua no system prompt.
+function getMentorConversationMemory(m, currentConvId, maxConvs){
+  if(!m || !m.conversations) return [];
+  const max = maxConvs || 3;
+  const others = m.conversations
+    .filter(c => c.id !== currentConvId && c.summary && c.summary.length > 0)
+    .sort((a, b) => b.startedAt - a.startedAt)
+    .slice(0, max);
+  return others.map(c => ({ date: c.dateISO, summary: c.summary }));
+}
+
 
 // V15.12.75.130 — renderMentor refeito com qualidade premium.
 // Resolve: visual amontoado, chat apertado, falta de hierarquia.
@@ -41442,6 +41610,45 @@ function renderMentor(){
       <span class="mentor-agent-chip mentor-agent-drago">🔥 Drago · Vargas</span>
     </div>
   `;
+  // V15.12.75.134 — Botão de ações da conversa (⋯) à direita.
+  // Hoje: só "Excluir esta conversa". Futuro: renomear, exportar, etc.
+  const menuWrap = mk('div');
+  menuWrap.style.cssText = 'position:relative;flex-shrink:0';
+  const menuBtn = mk('button');
+  menuBtn.type = 'button';
+  menuBtn.className = 'mentor-head-menu-btn';
+  menuBtn.title = 'Ações da conversa';
+  menuBtn.innerHTML = '⋯';
+  menuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    let dropdown = menuWrap.querySelector('.mentor-head-menu');
+    if(dropdown){ dropdown.remove(); return; }
+    dropdown = mk('div','mentor-head-menu');
+    const delItem = mk('button','mentor-head-menu-item mentor-head-menu-item-danger');
+    delItem.type = 'button';
+    delItem.innerHTML = '🗑 Excluir esta conversa';
+    delItem.addEventListener('click', () => {
+      dropdown.remove();
+      const msgCount = (conv.messages || []).length;
+      const lbl = msgCount > 0 ? `${msgCount} mensagem${msgCount===1?'':'s'}` : 'vazia';
+      if(!confirm(`Excluir esta conversa (${lbl})? Não pode desfazer.`)) return;
+      deleteMentorConversation(m, conv.id);
+      const newView = renderMentor();
+      wrap.replaceWith(newView);
+    });
+    dropdown.appendChild(delItem);
+    menuWrap.appendChild(dropdown);
+    // Fecha ao clicar fora
+    const closeOnOutside = (ev) => {
+      if(!menuWrap.contains(ev.target)){
+        dropdown.remove();
+        document.removeEventListener('click', closeOnOutside);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', closeOnOutside), 0);
+  });
+  menuWrap.appendChild(menuBtn);
+  chatHead.appendChild(menuWrap);
   chatCard.appendChild(chatHead);
 
   const chatStream = mk('div','mentor-chat-stream');
@@ -41453,8 +41660,17 @@ function renderMentor(){
   const textInput = mk('textarea','mentor-textarea');
   textInput.placeholder = 'Relate ao posto de comando... (Enter envia, Shift+Enter quebra linha)';
   textInput.addEventListener('input', () => {
+    // V15.12.75.134 — Auto-resize sem mostrar scrollbar enquanto não passa do max.
+    // Reset → mede → aplica altura. Adiciona classe pra scroll só quando atingir teto.
     textInput.style.height = '48px';
-    textInput.style.height = Math.min(180, textInput.scrollHeight) + 'px';
+    const needed = textInput.scrollHeight;
+    const capped = Math.min(180, needed);
+    textInput.style.height = capped + 'px';
+    if(needed > 180){
+      textInput.classList.add('mentor-textarea-scroll');
+    } else {
+      textInput.classList.remove('mentor-textarea-scroll');
+    }
   });
   const sendBtn = mk('button','mentor-send');
   sendBtn.type = 'button';
@@ -41643,6 +41859,23 @@ function renderMentor(){
       return;
     }
     if(!confirm('Iniciar nova conversa? A atual vai pro histórico.')) return;
+    // V15.12.75.134 — Gera resumo da conversa anterior em background.
+    // Não bloqueia a UI (não usa await). Se falhar ou não tiver crédito,
+    // a conversa simplesmente fica sem `summary` — memória degrada
+    // graciosamente. Só gera se conversa tiver 3+ msgs com conteúdo real.
+    const oldConv = conv;
+    const validMsgs = (oldConv.messages || []).filter(m =>
+      !m.isError && !m.isLoading && (m.text || '').trim().length > 0
+    );
+    if(validMsgs.length >= 3 && !oldConv.summary){
+      summarizeMentorConversation(oldConv).then(summary => {
+        if(summary){
+          oldConv.summary = summary;
+          oldConv.summarizedAt = Date.now();
+          try{ save(); }catch(_){}
+        }
+      }).catch(() => {});  // silencioso
+    }
     const newConv = {
       id: 'conv_' + Date.now(),
       dateISO: (new Date()).toISOString().slice(0,10),
@@ -41728,6 +41961,7 @@ function renderMentor(){
       histCard.innerHTML = html;
       const list = histCard.querySelector('.mentor-conv-list');
       others.forEach(c => {
+        const itemWrap = mk('div','mentor-conv-item-wrap');
         const item = mk('button','mentor-conv-item');
         item.type = 'button';
         const formatD = (iso) => {
@@ -41737,14 +41971,31 @@ function renderMentor(){
           }catch(_){ return iso; }
         };
         const msgCount = (c.messages || []).length;
-        item.innerHTML = `<span>${formatD(c.dateISO)}</span><span style="color:var(--text3);font-size:10.5px">${msgCount} msg${msgCount===1?'':'s'}</span>`;
+        // V15.12.75.134 — Indicador discreto se conversa já tem resumo (memória)
+        const memIcon = c.summary ? ' <span title="Tem resumo de memória" style="opacity:.55">●</span>' : '';
+        item.innerHTML = `<span>${formatD(c.dateISO)}${memIcon}</span><span style="color:var(--text3);font-size:10.5px">${msgCount} msg${msgCount===1?'':'s'}</span>`;
         item.addEventListener('click', () => {
           m.currentConversationId = c.id;
           try{ save(); }catch(_){}
           const newView = renderMentor();
           wrap.replaceWith(newView);
         });
-        list.appendChild(item);
+        // V15.12.75.134 — Botão delete inline (à direita do item)
+        const delBtn = mk('button','mentor-conv-del');
+        delBtn.type = 'button';
+        delBtn.title = 'Excluir esta conversa';
+        delBtn.innerHTML = '×';
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const lbl = msgCount > 0 ? `${msgCount} mensagem${msgCount===1?'':'s'}` : 'vazia';
+          if(!confirm(`Excluir conversa de ${formatD(c.dateISO)} (${lbl})? Não pode desfazer.`)) return;
+          deleteMentorConversation(m, c.id);
+          const newView = renderMentor();
+          wrap.replaceWith(newView);
+        });
+        itemWrap.appendChild(item);
+        itemWrap.appendChild(delBtn);
+        list.appendChild(itemWrap);
       });
       side.appendChild(histCard);
     }
