@@ -209,45 +209,51 @@ body.sidebar-collapsed .app-sidebar-search-btn span:first-child{font-size:14px}
    botão "Buscar tudo". Cálculo: sidebar tem padding-top:14px, search-btn
    tem margin-top:8px e altura ~28px → centro em y=14+8+14=36px. Toggle
    24x24px → top desejado = 36-12 = ~25px. */
+/* V15.12.75.143 — Toggle do sidebar refinado:
+   - Antes: quadradinho com seta CSS, sempre visível, competia com "Buscar tudo"
+   - Agora: ícone Lucide (panel-left-close/open), transparente em repouso,
+     aparece em hover/focus do sidebar. Tamanho reduzido (24→22px).
+   - Posição: dentro do header do sidebar (top:14px right:10px) — alinhado
+     verticalmente com o brand, não competindo com "Buscar tudo" embaixo. */
 .sidebar-collapse-toggle{
   position:absolute;
-  top:25px;
+  top:14px;
   right:10px;
-  width:24px;
-  height:24px;
-  border-radius:7px;
-  background:var(--surface2);
-  border:1px solid var(--border);
+  width:22px;
+  height:22px;
+  border-radius:6px;
+  background:transparent;
+  border:1px solid transparent;
   cursor:pointer;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:11px;
   color:var(--text3);
   z-index:10;
-  transition:all .18s ease;
+  opacity:.4;
+  transition:opacity .15s ease, background .15s ease, border-color .15s ease, color .15s ease, transform .15s ease;
   font-family:inherit;
   padding:0;
-  line-height:1;
+  line-height:0;  /* zera espaço extra do SVG */
 }
-.sidebar-collapse-toggle::before{
-  content:'';
-  display:block;
-  width:6px;height:6px;
-  border-left:1.8px solid currentColor;
-  border-bottom:1.8px solid currentColor;
-  transform:rotate(45deg);
-  margin-right:-2px;
-  transition:transform .2s;
+.sidebar-collapse-toggle svg{display:block}
+.sidebar-collapse-toggle:hover{
+  opacity:1;
+  background:var(--surface2);
+  border-color:var(--border);
+  color:var(--text);
 }
-body.sidebar-collapsed .sidebar-collapse-toggle::before{
-  transform:rotate(-135deg);
-  margin-right:0;
-  margin-left:-2px;
+/* No sidebar collapsed o toggle vai pro topo (sem brand visível) */
+body.sidebar-collapsed .sidebar-collapse-toggle{
+  right:auto;
+  left:50%;
+  transform:translateX(-50%);
+  opacity:.6;  /* fica mais visível pq é a única forma de reabrir */
 }
-.sidebar-collapse-toggle:hover{background:var(--gralia-purple);color:#fff;border-color:var(--gralia-purple);transform:scale(1.06)}
-body.sidebar-collapsed .sidebar-collapse-toggle:hover{transform:translateX(-50%) scale(1.06)}
-body.sidebar-collapsed .sidebar-collapse-toggle{right:auto;left:50%;transform:translateX(-50%)}
+body.sidebar-collapsed .sidebar-collapse-toggle:hover{
+  transform:translateX(-50%);
+  opacity:1;
+}
 
 .app-sidebar-brand{
   padding:14px 18px 16px;
@@ -299,8 +305,9 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
   border-radius:8px;
   color:var(--text2);
   font-size:13px;
-  /* V15.12.75.142 — Weight 500 → 550 dá mais "presença" sem deixar pesado */
-  font-weight:550;
+  /* V15.12.75.143 — Weight 500 (era 550 esquisito que cai pra 500 ou 600
+     dependendo do browser/fonte; agora explícito e consistente). */
+  font-weight:500;
   cursor:pointer;
   /* V15.12.75.142 — Transição inclui transform pra hover slide horizontal sutil */
   transition:background .15s ease, color .15s ease, transform .15s ease;
@@ -322,7 +329,8 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
   /* V15.12.75.142 — Gradiente mais marcante (12% → 18%) + sombra interna sutil */
   background:linear-gradient(90deg, rgba(128,66,250,.18) 0%, rgba(128,66,250,.04) 100%);
   color:var(--gralia-purple);
-  font-weight:700;
+  /* V15.12.75.143 — Weight 700 → 600 (não destoa tanto dos itens normais) */
+  font-weight:600;
   box-shadow:inset 0 0 0 1px rgba(128,66,250,.10);
 }
 .app-sidebar-item.active:hover{
@@ -371,20 +379,49 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
   overflow:hidden;
   text-overflow:ellipsis;
 }
+/* V15.12.75.143 — Badges de contagem repensados.
+   Antes: pílula roxa sólida, mesmo visual independente da quantidade.
+   Agora: cor varia por urgência (cinza ≤4, âmbar 5-19, vermelho ≥20).
+   Tipografia: tabular-nums (números alinhados), font menor mais elegante.
+   Visual: background tonal sutil + border, em vez de sólido. */
 .app-sidebar-badge{
   display:inline-flex;
   align-items:center;
   justify-content:center;
   min-width:18px;
-  height:18px;
+  height:16px;
   padding:0 5px;
+  background:rgba(128,66,250,.10);
+  color:var(--gralia-purple);
+  border:1px solid rgba(128,66,250,.25);
+  border-radius:8px;
+  font-size:10.5px;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+  line-height:1;
+  letter-spacing:0;
+}
+.app-sidebar-badge-warn{
+  background:rgba(217,119,6,.10);
+  color:#d97706;
+  border-color:rgba(217,119,6,.30);
+}
+.app-sidebar-badge-urgent{
+  background:rgba(220,38,38,.10);
+  color:#dc2626;
+  border-color:rgba(220,38,38,.30);
+}
+/* Item ativo: badge fica em destaque (sólido roxo) */
+.app-sidebar-item.active .app-sidebar-badge{
   background:var(--gralia-purple);
   color:#fff;
-  border-radius:9px;
-  font-size:10px;
-  font-weight:700;
-  line-height:1;
-  letter-spacing:.2px;
+  border-color:var(--gralia-purple);
+}
+.app-sidebar-item.active .app-sidebar-badge-warn{
+  background:#d97706;border-color:#d97706;color:#fff;
+}
+.app-sidebar-item.active .app-sidebar-badge-urgent{
+  background:#dc2626;border-color:#dc2626;color:#fff;
 }
 .app-sidebar-secondary{
   margin-top:auto;
@@ -617,17 +654,32 @@ html.dark .countdown-pill.countdown-near{color:#e8c068}
 /* Theme switch elegante (sol/lua) — usado no topbar e na welcome */
 /* V15.10: Theme switch refeito mais discreto e da mesma altura dos outros ícones (34px).
    Antes: 60x28 destoava dos botões 34x34. */
-.topbar-theme-switch{position:relative;width:54px;height:34px;border-radius:10px;border:1px solid var(--border);background:linear-gradient(90deg,#fff7e6 0%,#fef3c7 100%);padding:0 4px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit;transition:background .25s ease,border-color .15s, transform .15s;flex-shrink:0;box-sizing:border-box}
-.topbar-theme-switch.dark{background:linear-gradient(90deg,#1e1b4b 0%,#312e81 100%);border-color:#4338ca}
-.topbar-theme-switch:hover{border-color:var(--gralia-purple);transform:translateY(-1px)}
-.topbar-theme-switch .tts-icon{font-size:11px;line-height:1;width:18px;text-align:center;z-index:2;pointer-events:none;color:#92400e}
-.topbar-theme-switch.dark .tts-icon{color:#c7d2fe}
-.topbar-theme-switch .tts-icon-sun{padding-left:5px;opacity:1;transition:opacity .25s}
-.topbar-theme-switch .tts-icon-moon{padding-right:5px;opacity:.4;transition:opacity .25s}
-.topbar-theme-switch.dark .tts-icon-sun{opacity:.4}
-.topbar-theme-switch.dark .tts-icon-moon{opacity:1}
-.topbar-theme-switch .tts-thumb{position:absolute;top:4px;left:4px;width:26px;height:26px;border-radius:8px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.15);transition:transform .25s cubic-bezier(.4,0,.2,1);z-index:1}
-.topbar-theme-switch.dark .tts-thumb{transform:translateX(22px);background:#a78bfa}
+/* V15.12.75.143 — Theme switch refeito minimalista.
+   Antes: pill 54×34 com gradient laranja/indigo + emojis (roubava cena).
+   Agora: botão circular 32×32 com 1 ícone Lucide (sun/moon).
+   Coerente com outros botões da topbar (sino, avatar). */
+.topbar-theme-switch{
+  position:relative;
+  width:32px;height:32px;
+  border-radius:50%;
+  border:1px solid var(--border);
+  background:var(--surface);
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-family:inherit;
+  transition:all .18s ease;
+  flex-shrink:0;
+  color:#d97706;  /* sol em âmbar */
+}
+.topbar-theme-switch.dark{
+  color:#a78bfa;  /* lua em roxo claro */
+}
+.topbar-theme-switch:hover{
+  border-color:var(--gralia-purple);
+  background:var(--surface2);
+  transform:translateY(-1px);
+}
+.topbar-theme-switch svg{display:block}
 
 /* ===== Mobile/Tablet responsive: slide-out menu (1000px é onde o menu desktop começa a sobrepor) ===== */
 @media (max-width:1000px){
@@ -6154,7 +6206,73 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
   .admin-floating-btn .afb-label{display:none}
 }
 
-/* V12: Botão flutuante "Fale conosco" — visual neutro/sóbrio */
+/* V15.12.75.143 — HELP HUB unificado (substitui 3 botões flutuantes antigos) */
+.help-hub-btn{
+  position:fixed;bottom:20px;right:20px;z-index:500;
+  width:46px;height:46px;border-radius:50%;
+  background:var(--surface);
+  border:1px solid var(--border);
+  color:var(--text2);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-family:inherit;
+  box-shadow:0 4px 14px rgba(0,0,0,.10), 0 1px 3px rgba(0,0,0,.06);
+  transition:all .2s cubic-bezier(.34,1.4,.64,1);
+}
+.help-hub-btn:hover{
+  border-color:var(--gralia-purple);
+  color:var(--gralia-purple);
+  transform:translateY(-2px) scale(1.04);
+  box-shadow:0 6px 20px rgba(128,66,250,.18), 0 2px 6px rgba(0,0,0,.08);
+}
+.help-hub-btn:active{transform:translateY(0) scale(.96)}
+.help-hub-btn svg{display:block}
+
+.help-hub-popover{
+  position:fixed;bottom:74px;right:20px;z-index:501;
+  width:280px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  box-shadow:0 12px 32px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.08);
+  padding:8px;
+  animation:help-hub-in .18s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes help-hub-in{
+  from{opacity:0;transform:translateY(8px) scale(.96)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.help-hub-title{
+  font-size:10px;font-weight:700;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.7px;
+  padding:8px 12px 6px;
+}
+.help-hub-item{
+  width:100%;display:flex;gap:11px;align-items:center;
+  padding:9px 11px;
+  background:transparent;border:none;border-radius:9px;
+  cursor:pointer;font-family:inherit;color:var(--text);
+  text-align:left;
+  transition:background .12s ease;
+}
+.help-hub-item:hover{background:var(--surface2)}
+.help-hub-item-ico{
+  width:30px;height:30px;border-radius:8px;
+  background:rgba(128,66,250,.08);
+  color:var(--gralia-purple);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.help-hub-item-ico svg{display:block}
+.help-hub-item-body{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
+.help-hub-item-label{font-size:12.5px;font-weight:600;color:var(--text)}
+.help-hub-item-desc{font-size:11px;color:var(--text3);line-height:1.4}
+
+/* V15.12.75.143 — Os antigos floating btn (feedback, shortcuts, faq) podem
+   ainda ser referenciados em outros pontos do código. Mantemos as classes
+   antigas escondidas pra compatibilidade (caso alguma rota chame). */
+.feedback-floating-btn,
+.shortcuts-floating-btn,
+.faq-floating-btn{display:none !important}
 .feedback-floating-btn{position:fixed;bottom:20px;right:80px;z-index:500;height:42px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);color:var(--text2);display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;font-family:inherit;box-shadow:0 4px 14px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.06);transition:all .2s cubic-bezier(.34,1.4,.64,1);cursor:pointer}
 .feedback-floating-btn:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.08);border-color:var(--text3);color:var(--text)}
 .feedback-floating-btn:active{transform:translateY(0) scale(.96)}
@@ -6960,9 +7078,17 @@ body.pomo-float-visible .faq-floating-btn{display:none !important}
   color:var(--text2);cursor:pointer;
   letter-spacing:.1px;
   transition:color .15s;
+  /* V15.12.75.143 — Display flex pra alinhar ícone + label */
+  display:inline-flex;align-items:center;gap:6px;
 }
+.topbar-inst-link .til-ico{
+  display:inline-flex;align-items:center;
+  opacity:.75;transition:opacity .15s;
+}
+.topbar-inst-link:hover .til-ico{opacity:1}
+.topbar-inst-link svg{display:block}
 .topbar-inst-link::after{
-  content:'';position:absolute;left:4px;right:4px;bottom:2px;
+  content:'';position:absolute;left:24px;right:4px;bottom:2px;
   height:1.5px;background:var(--gralia-purple);
   transform:scaleX(0);transform-origin:left;
   transition:transform .2s ease;
@@ -8022,7 +8148,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.142';
+window.GRALIA_VERSION = 'V15.12.75.143';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -12723,70 +12849,139 @@ function examCountdown(){
 // Quando ícone tem accent: render adiciona 2º <g> com stroke="..." fixo
 // (não muda com active/hover — detalhe permanente).
 const LUCIDE_ICONS = {
-  // Estudo
-  'home':           '<path d="M3 12 12 3l9 9"/><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/><path d="M10 21v-6h4v6"/>',
-  'book-open':      '<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
-  'zap':            '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  // V15.12.75.143 — Todos os ícones agora têm acento colorido sutil (não só 5).
+  // Antes ficava feio "alguns com cor, outros monocromáticos". Padronizei.
+  // Cores escolhidas por afinidade semântica (não aleatórias).
 
-  // V15.12.75.142 — Cadernos de prática: notebook com caneta. Acento na ponta
-  // da caneta em roxo Gralia (comunica "escrever/praticar").
+  // Estudo — tons quentes/dourados
+  'home':           {
+    body:   '<path d="M3 12 12 3l9 9"/><path d="M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10"/>',
+    accent: '<path d="M10 21v-6h4v6"/>',
+    accentColor: '#d97706'  // porta em âmbar (luz/lar)
+  },
+  'book-open':      {
+    body:   '<path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+    accent: '<path d="M12 7v14"/>',
+    accentColor: '#dc2626'  // marcador central em vermelho
+  },
+  'zap':            {
+    body:   '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+    accent: '<circle cx="11.5" cy="12" r=".8" fill="#fbbf24" stroke="none"/>',
+    accentColor: '#fbbf24'
+  },
   'notebook-pen':   {
     body:   '<path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><rect width="16" height="20" x="4" y="2" rx="2"/>',
     accent: '<path d="M16 4 21 9l-5.5 5.5-3.5 1 1-3.5L16 4z"/>',
     accentColor: 'var(--gralia-purple)'
   },
 
-  // Revisar
-  'layers':         '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
-  'history':        '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
-  'refresh-cw':     '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
-
-  // V15.12.75.142 — Pomodoro: timer com ponteiro vermelho (foco/urgência).
+  // Revisar — tons diversificados por função
+  'layers':         {
+    body:   '<path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+    accent: '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/>',
+    accentColor: '#10b981'  // camada de cima em verde (último aprendido)
+  },
+  'history':        {
+    body:   '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+    accent: '<path d="M12 7v5l4 2"/>',
+    accentColor: '#dc2626'  // ponteiros em vermelho (tempo/erro)
+  },
+  'refresh-cw':     {
+    body:   '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>',
+    accent: '<path d="M21 3v5h-5"/><path d="M8 16H3v5"/>',
+    accentColor: '#0891b2'  // pontas das setas em ciano (refrescar)
+  },
   'timer':          {
     body:   '<line x1="10" x2="14" y1="2" y2="2"/><circle cx="12" cy="14" r="8"/>',
     accent: '<line x1="12" x2="15" y1="14" y2="11"/>',
     accentColor: '#dc2626'
   },
-
-  // V15.12.75.142 — Pinhal: araucária estilizada (silhueta horizontal com
-  // copa-guarda-chuva característica) + pinha em âmbar/marrom.
-  // Identidade própria, não copia de Lucide. Araucária = símbolo do Gralia.
-  'araucaria':      {
-    body:   '<path d="M12 22V14"/><path d="M5 12c0-2 2-3 3.5-3 1 0 1.5.3 2 .7"/><path d="M19 12c0-2-2-3-3.5-3-1 0-1.5.3-2 .7"/><path d="M3 13c1.5-1 3-1.5 4.5-1.5"/><path d="M21 13c-1.5-1-3-1.5-4.5-1.5"/><path d="M6 10c0-2.5 2.5-4 4-4 1 0 1.5.4 2 1"/><path d="M18 10c0-2.5-2.5-4-4-4-1 0-1.5.4-2 1"/><path d="M9 7c0-2 1.5-3 3-3s3 1 3 3"/>',
-    accent: '<ellipse cx="12" cy="18.5" rx="2" ry="2.5"/><path d="M11 17.5 L11 19.5 M12 17 L12 20 M13 17.5 L13 19.5"/>',
-    accentColor: '#a16207'
+  // V15.12.75.143 — Pinhal: REFEITO como pinheiro triangular com pinha
+  // visível na base. Mais legível que a tentativa anterior de araucária.
+  // Triângulos sobrepostos (silhueta de pinheiro) + pinha em âmbar.
+  'pinheiro':       {
+    body:   '<path d="M12 3 L7 9 L10 9 L5 15 L9 15 L4 21 L20 21 L15 15 L19 15 L14 9 L17 9 Z"/>',
+    accent: '<path d="M10 19 Q12 17 14 19 Q13 21 12 21 Q11 21 10 19 Z" fill="#a16207" stroke="#92400e" stroke-width="1"/>',
+    accentColor: '#92400e'  // pinha em marrom (cor real da pinha madura)
   },
 
-  // Planejar
-  'target':         '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
-  'calendar':       '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
-
-  // V15.12.75.142 — Mentor: 2 balões de chat sobrepostos (Halsey + Drago).
-  // Balão de trás (Drago) em vermelho carmim, balão da frente (Halsey) em
-  // azul-grafite. Acento dual: usa 2 cores via accent + accent2.
+  // Planejar — tons profissionais
+  'target':         {
+    body:   '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/>',
+    accent: '<circle cx="12" cy="12" r="2" fill="#dc2626" stroke="#dc2626"/>',
+    accentColor: '#dc2626'  // bullseye vermelho
+  },
+  'calendar':       {
+    body:   '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/>',
+    accent: '<path d="M3 10h18"/>',
+    accentColor: 'var(--gralia-purple)'  // linha divisória em roxo (hoje)
+  },
   'messages-square':{
-    body:   '',  // sem stroke principal — tudo são acentos coloridos
+    body:   '',
     accent: '<path d="M14 9a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1l-3 3v-3H6a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h8z"/>',
     accentColor: '#3a5a8a',
     accent2: '<path d="M18 14h.5a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H11a2 2 0 0 0-2 2v1"/>',
     accent2Color: '#a02942'
   },
-
-  'file-search':    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9.5L14 2z"/><polyline points="14 2 14 8 20 8"/><circle cx="11.5" cy="14.5" r="2.5"/><line x1="13.27" x2="15" y1="16.27" y2="18"/>',
-
-  // V15.12.75.142 — Análise de provas: prancheta + check verde
+  'file-search':    {
+    body:   '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9.5L14 2z"/><polyline points="14 2 14 8 20 8"/>',
+    accent: '<circle cx="11.5" cy="14.5" r="2.5"/><line x1="13.27" x2="15" y1="16.27" y2="18"/>',
+    accentColor: 'var(--gralia-purple)'  // lupa em roxo
+  },
   'clipboard-check':{
     body:   '<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
     accent: '<path d="m9 14 2 2 4-4"/>',
     accentColor: '#10b981'
   },
+  'map':            {
+    body:   '<polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>',
+    accent: '<line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/>',
+    accentColor: 'var(--gralia-purple)'  // dobras do mapa em roxo
+  },
+  // V15.12.75.143 — Dicas das bancas (nova entrada — vai pra sidebar)
+  'lightbulb':      {
+    body:   '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+    accent: '<circle cx="12" cy="8" r="1" fill="#fbbf24" stroke="none"/>',
+    accentColor: '#fbbf24'  // miolo amarelo (ideia)
+  },
 
-  'map':            '<polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/>',
-  // Comunidade
-  'globe':          '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
-  'rss':            '<path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/>',
-  'scale':          '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
-  'users':          '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
+  // Comunidade — tons frios/sociais
+  'globe':          {
+    body:   '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>',
+    accent: '<path d="M2 12h20"/>',
+    accentColor: '#0891b2'  // equador em ciano (mar)
+  },
+  'rss':            {
+    body:   '<path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/>',
+    accent: '<circle cx="5" cy="19" r="1.5" fill="#f97316" stroke="none"/>',
+    accentColor: '#f97316'  // ponto pulsante em laranja
+  },
+  'scale':          {
+    body:   '<path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>',
+    accent: '<path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>',
+    accentColor: '#d97706'  // pratos em âmbar (justiça/peso)
+  },
+  'users':          {
+    body:   '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>',
+    accent: '<path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+    accentColor: 'var(--gralia-purple)'  // 2º usuário em roxo (grupo)
+  },
+
+  // V15.12.75.143 — Ícones utilitários (topbar, toggle, help)
+  'panel-left-close': '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/>',
+  'panel-left-open':  '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/>',
+  'life-buoy':        {
+    body:   '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/>',
+    accent: '<line x1="4.93" x2="9.17" y1="4.93" y2="9.17"/><line x1="14.83" x2="19.07" y1="14.83" y2="19.07"/><line x1="14.83" x2="19.07" y1="9.17" y2="4.93"/><line x1="14.83" x2="18.36" y1="9.17" y2="5.64"/><line x1="4.93" x2="9.17" y1="19.07" y2="14.83"/>',
+    accentColor: '#dc2626'
+  },
+  'help-circle':      '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+  'keyboard':         '<rect width="20" height="16" x="2" y="4" rx="2" ry="2"/><path d="M6 8h.01"/><path d="M10 8h.01"/><path d="M14 8h.01"/><path d="M18 8h.01"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/><path d="M7 16h10"/>',
+  'message-circle':   '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+  'info':             '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  // V15.12.75.143 — Sun/moon pro theme switch
+  'sun':              '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+  'moon':             '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
 };
 
 // Helper: gera string SVG inline pronta pra setar via innerHTML.
@@ -15644,12 +15839,12 @@ function showUserAvatarMenu(anchor){
   }
   menu.appendChild(head);
 
-  // Items
+  // V15.12.75.143 — Removido "Minhas metas" daqui — já existe no sidebar
+  // (Planejar → Metas). Duplicação causava ruído de navegação.
   const items = [
     {icon:'👤', label:'Conta e perfil', action:()=>{ ST.view = 'settings'; render(); }},
     {icon:'💳', label:'Assinatura e planos', action:()=>{ ST.view = 'plans'; render(); }},
-    {icon:'⚡', label:'Uso de créditos', action:()=>{ ST.view = 'usage'; render(); }},
-    {icon:'🎯', label:'Minhas metas', action:()=>{ ST.view = 'goals'; render(); }}
+    {icon:'⚡', label:'Uso de créditos', action:()=>{ ST.view = 'usage'; render(); }}
   ];
   if(typeof isAdminUser === 'function' && isAdminUser()){
     // V15.10: Admin é o único caminho pro painel admin agora (botão flutuante removido).
@@ -15659,7 +15854,8 @@ function showUserAvatarMenu(anchor){
   items.push({type:'divider'});
   items.push({icon:'🎓', label:'Tutorial visual', action:()=>{ if(typeof showVisualTutorial === 'function') showVisualTutorial(); }});
   items.push({icon:'❓', label:'Como usar (texto)', action:()=>{ ST.view = 'howToUse'; render(); }});
-  items.push({icon:'🎯', label:'Dicas das bancas', action:()=>{ ST.view = 'bancaTips'; render(); }});
+  // V15.12.75.143 — "Dicas das bancas" REMOVIDO daqui — movido pra sidebar
+  // (grupo Planejar). É conteúdo de planejamento, faz mais sentido lá.
   items.push({icon:'💡', label:'FAQ', action:()=>{ ST.view = 'faq'; render(); }});
   items.push({icon:'ℹ️', label:'Sobre o Gralia', action:()=>{ ST.view = 'about'; render(); }});
   items.push({type:'divider'});
@@ -18949,12 +19145,15 @@ function showConfirmModal(config){
 function buildAppSidebar(){
   const sb = mk('aside','app-sidebar');
 
-  // V15.9: Chevron desenhado em CSS pseudo-element (gira via .sidebar-collapsed)
+  // V15.12.75.143 — Toggle do sidebar com ícone Lucide elegante.
+  // Antes V15.9: chevron CSS rotacionado. Problema: estética destoava.
+  // Agora: panel-left-close / panel-left-open conforme estado.
   const toggleBtn = mk('button','sidebar-collapse-toggle');
   toggleBtn.type = 'button';
-  toggleBtn.setAttribute('aria-label', 'Recolher menu');
   const isCollapsed = !!DATA.sidebarCollapsed;
+  toggleBtn.setAttribute('aria-label', isCollapsed ? 'Expandir menu' : 'Recolher menu');
   toggleBtn.title = isCollapsed ? 'Expandir menu' : 'Recolher menu';
+  toggleBtn.innerHTML = lucideIcon(isCollapsed ? 'panel-left-open' : 'panel-left-close', 16);
   toggleBtn.addEventListener('click',()=>{
     DATA.sidebarCollapsed = !DATA.sidebarCollapsed;
     save();
@@ -19020,9 +19219,9 @@ function buildAppSidebar(){
         {view:'review',   icon:'lucide:refresh-cw', label:'Modos de Revisão', desc:'Turbo, véspera, material de revisão e roteiro NotebookLM'},
         {view:'pomodoro', icon:'lucide:timer',      label:'Pomodoro', desc:'Timer de estudo com pausas'},
         // V15.12.75.106 — Pinhal: gamificação. XP/nível/floresta/cards
-        // V15.12.75.142 — Pinhal: trocado trees → araucaria (identidade própria,
-        // com pinha em âmbar/marrom como acento).
-        {view:'pinhal',   icon:'lucide:araucaria',  label:'Pinhal', desc:'Sua floresta de estudos'},
+        // V15.12.75.143 — Pinhal: pinheiro triangular com pinha em âmbar.
+        // Refeito da V142 (araucária ficou genérica em 18px).
+        {view:'pinhal',   icon:'lucide:pinheiro',  label:'Pinhal', desc:'Sua floresta de estudos'},
       ]
     },
     {
@@ -19036,6 +19235,9 @@ function buildAppSidebar(){
         {view:'mentor',   icon:'lucide:messages-square',       label:'Mentor', desc:'Doses, princípios e diário pessoal'},
         {view:'editals',  icon:'lucide:file-search',      label:'Análise de editais', desc:'IA analisa o PDF do edital'},
         {view:'exams',    icon:'lucide:clipboard-check',  label:'Análise de provas', desc:'Registre e analise provas reais que você fez'},
+        // V15.12.75.143 — Dicas das bancas migrado pra cá (era no menu do avatar).
+        // Faz sentido aqui: ajuda planejamento de estratégia por banca.
+        {view:'bancaTips', icon:'lucide:lightbulb',       label:'Dicas das bancas', desc:'Estratégias por banca examinadora'},
         {view:'mapa',     icon:'lucide:map',              label:'Mapa da matéria'},
       ]
     },
@@ -19082,7 +19284,14 @@ function buildAppSidebar(){
       item.appendChild(ico);
       item.appendChild(lbl);
       if(it.badge){
-        const b = mk('span','app-sidebar-badge');
+        // V15.12.75.143 — Badge muda de cor por urgência:
+        //   ≤4   = roxo (info)
+        //   5-19 = âmbar (atenção)
+        //   ≥20  = vermelho (urgente)
+        let badgeCls = 'app-sidebar-badge';
+        if(it.badge >= 20)      badgeCls += ' app-sidebar-badge-urgent';
+        else if(it.badge >= 5)  badgeCls += ' app-sidebar-badge-warn';
+        const b = mk('span', badgeCls);
         b.textContent = it.badge > 99 ? '99+' : it.badge;
         item.appendChild(b);
       }
@@ -19447,48 +19656,91 @@ function render(){
   // V15.10: Botão flutuante "🔧 Admin" REMOVIDO daqui — Jean pediu pra mover
   // pro dropdown do avatar (showUserAvatarMenu). Aparece só pra admin user.
 
-  // V14: Botão flutuante "Fale conosco" — APENAS DESKTOP (item 33).
-  // Em mobile fica poluído. Usuário pode acessar via Conta → Fale conosco.
+  // V15.12.75.143 — HELP HUB unificado.
+  // Antes V14/V15.10: 3 botões flutuantes separados (Fale conosco no canto
+  // inferior-esquerdo do canto direito, Atalhos circular ao lado, FAQ no
+  // canto superior direito). Cada um com estilo próprio, poluindo a tela.
+  //
+  // Agora: 1 único botão circular no canto inferior-direito que abre um
+  // popover com 3 opções (Fale conosco, Atalhos, FAQ). Mais limpo, mais
+  // discoverable (1 ponto fixo de "ajuda").
   if(isAuthed() && !isFocusMode()){
-    const feedbackBtn = mk('button','feedback-floating-btn desktop-only-fab');
-    feedbackBtn.title = 'Fale conosco — reportar problema, dar sugestão ou pedir ajuda';
-    feedbackBtn.innerHTML = '<span class="ffb-icon">💬</span><span class="ffb-label">Fale conosco</span>';
-    feedbackBtn.addEventListener('click',()=>{
-      try{ showFeedbackModal(); }catch(e){ alert('Não consegui abrir o feedback. Recarregue a página.'); }
-    });
-    APP.appendChild(feedbackBtn);
-  }
-
-  // V14: Botão flutuante de atalhos de teclado — APENAS DESKTOP (item 33).
-  // Atalhos de teclado não fazem sentido em mobile.
-  if(!isFocusMode()){
-    const shortcutsBtn = mk('button','shortcuts-floating-btn desktop-only-fab');
-    shortcutsBtn.title = 'Atalhos de teclado — pressione ? a qualquer momento';
-    shortcutsBtn.setAttribute('aria-label','Atalhos de teclado');
-    shortcutsBtn.innerHTML = '⌨';
-    shortcutsBtn.addEventListener('click',()=>{
-      try{ showShortcutsOverlay(); }catch(e){ console.warn(e); }
-    });
-    APP.appendChild(shortcutsBtn);
-  }
-
-  // V15.10: Botão flutuante FAQ — canto superior direito, abaixo da topbar.
-  // Discreto, com tooltip. Click abre popover com busca e categorias de FAQs.
-  // Some quando: pomodoro ativo, modo foco, ou já está na página de FAQ.
-  if(isAuthed() && !isFocusMode() && ST.view !== 'faq'){
-    const faqBtn = mk('button','faq-floating-btn');
-    faqBtn.type = 'button';
-    faqBtn.setAttribute('aria-label', 'Perguntas frequentes');
-    faqBtn.title = 'Tirar dúvidas — busca rápida no FAQ';
-    faqBtn.innerHTML = '<span style="font-size:13px">?</span>';
-    faqBtn.addEventListener('click', (e)=>{
-      e.stopPropagation();
-      if(typeof showFaqFloatPopover === 'function'){
-        showFaqFloatPopover(faqBtn);
+    const helpBtn = mk('button','help-hub-btn desktop-only-fab');
+    helpBtn.type = 'button';
+    helpBtn.title = 'Ajuda — Fale conosco, atalhos, FAQ';
+    helpBtn.setAttribute('aria-label', 'Central de ajuda');
+    helpBtn.innerHTML = lucideIcon('life-buoy', 20);
+    let helpPopover = null;
+    const closeHelpPopover = () => {
+      if(helpPopover){ helpPopover.remove(); helpPopover = null; }
+      document.removeEventListener('click', onHelpOutside);
+      document.removeEventListener('keydown', onHelpEsc);
+    };
+    const onHelpOutside = (ev) => {
+      if(helpPopover && !helpPopover.contains(ev.target) && ev.target !== helpBtn){
+        closeHelpPopover();
       }
+    };
+    const onHelpEsc = (ev) => {
+      if(ev.key === 'Escape') closeHelpPopover();
+    };
+    helpBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if(helpPopover){ closeHelpPopover(); return; }
+      helpPopover = mk('div','help-hub-popover');
+      helpPopover.innerHTML = `
+        <div class="help-hub-title">Como podemos ajudar?</div>
+        <button class="help-hub-item" data-action="feedback">
+          <span class="help-hub-item-ico">${lucideIcon('message-circle', 16)}</span>
+          <span class="help-hub-item-body">
+            <span class="help-hub-item-label">Fale conosco</span>
+            <span class="help-hub-item-desc">Reportar problema, dar sugestão</span>
+          </span>
+        </button>
+        <button class="help-hub-item" data-action="faq">
+          <span class="help-hub-item-ico">${lucideIcon('help-circle', 16)}</span>
+          <span class="help-hub-item-body">
+            <span class="help-hub-item-label">Tirar dúvidas (FAQ)</span>
+            <span class="help-hub-item-desc">Perguntas frequentes</span>
+          </span>
+        </button>
+        <button class="help-hub-item" data-action="shortcuts">
+          <span class="help-hub-item-ico">${lucideIcon('keyboard', 16)}</span>
+          <span class="help-hub-item-body">
+            <span class="help-hub-item-label">Atalhos de teclado</span>
+            <span class="help-hub-item-desc">Pressione ? a qualquer momento</span>
+          </span>
+        </button>
+      `;
+      helpPopover.querySelector('[data-action="feedback"]').addEventListener('click', () => {
+        closeHelpPopover();
+        try{ showFeedbackModal(); }catch(e){ alert('Não consegui abrir o feedback.'); }
+      });
+      helpPopover.querySelector('[data-action="faq"]').addEventListener('click', () => {
+        closeHelpPopover();
+        if(typeof showFaqFloatPopover === 'function'){
+          showFaqFloatPopover(helpBtn);
+        } else {
+          ST.view = 'faq'; render();
+        }
+      });
+      helpPopover.querySelector('[data-action="shortcuts"]').addEventListener('click', () => {
+        closeHelpPopover();
+        try{ showShortcutsOverlay(); }catch(e){ console.warn(e); }
+      });
+      APP.appendChild(helpPopover);
+      setTimeout(() => {
+        document.addEventListener('click', onHelpOutside);
+        document.addEventListener('keydown', onHelpEsc);
+      }, 0);
     });
-    APP.appendChild(faqBtn);
+    APP.appendChild(helpBtn);
   }
+
+  // V15.12.75.143 — Os 3 botões flutuantes antigos (feedback-floating-btn,
+  // shortcuts-floating-btn, faq-floating-btn) foram CONSOLIDADOS no help hub
+  // acima. Comportamento idêntico (todas as funções continuam acessíveis),
+  // só agrupados num único ponto da tela.
 
   // Reset hidden state quando navega — pomo float reaparece se rodando
   if(ST.view==='pomodoro')ST.pomoFloatHidden = false;
@@ -21831,21 +22083,20 @@ function renderTopbar(){
   colLeft.appendChild(brand);
 
   // V15.10: Links institucionais discretos (Sobre / Como usar) ao lado direito
-  // do brand. Sem ícone, fonte 12.5px, hover com underline + cor brand.
-  // Renderiza no topbar-col-center quando sidebar inativa, ou num bloco próprio
-  // quando sidebar ativa (já que o center fica escondido).
+  // do brand. Hover com underline + cor brand.
+  // V15.12.75.143 — Adicionados ícones Lucide pequenos (info, book-open) pra
+  // melhor escaneamento visual e coerência com o resto do app (lucide-style).
   function buildInstitutionalLinks(){
     const wrap = mk('div','topbar-inst-links');
     const items = [
-      {label:'Sobre o Gralia', desc:'História do projeto, missão e como surgiu', view:'about', tab:'sobre'},
-      {label:'Como usar', desc:'Tutorial visual de todos os recursos', view:'howToUse'},
+      {label:'Sobre o Gralia', desc:'História do projeto, missão e como surgiu', view:'about', tab:'sobre', icon:'info'},
+      {label:'Como usar', desc:'Tutorial visual de todos os recursos', view:'howToUse', icon:'book-open'},
     ];
     items.forEach(it => {
       const a = mk('button','topbar-inst-link');
       a.type = 'button';
-      a.textContent = it.label;
-      // V15.10: title nativo REMOVIDO — só o tooltip estilizado (.til-tip) aparece.
-      // Antes: dois tooltips simultâneos (nativo do navegador + card) ficava feio.
+      // V15.12.75.143 — Ícone + texto (antes só texto)
+      a.innerHTML = `<span class="til-ico">${lucideIcon(it.icon, 14)}</span><span class="til-label">${escapeHTML(it.label)}</span>`;
       const tip = mk('span','til-tip');
       tip.textContent = it.desc;
       a.appendChild(tip);
@@ -21922,16 +22173,14 @@ function renderTopbar(){
     if(bell) colRight.appendChild(bell);
   }
 
-  // Theme switch
+  // V15.12.75.143 — Theme switch minimalista (ícone Lucide sun/moon).
+  // Antes: pill 54x34 com gradient + emojis (destoava do resto).
   const currentTheme = localStorage.getItem('nexus_theme')||'light';
   const themeSwitch = mk('button','topbar-theme-switch'+(currentTheme==='dark'?' dark':''));
   themeSwitch.type='button';
   themeSwitch.setAttribute('aria-label', currentTheme==='dark'?'Mudar para modo claro':'Mudar para modo escuro');
-  themeSwitch.innerHTML = `
-    <span class="tts-icon tts-icon-sun">☀</span>
-    <span class="tts-thumb"></span>
-    <span class="tts-icon tts-icon-moon">🌙</span>
-  `;
+  themeSwitch.title = currentTheme==='dark' ? 'Modo claro' : 'Modo escuro';
+  themeSwitch.innerHTML = lucideIcon(currentTheme === 'dark' ? 'moon' : 'sun', 16);
   themeSwitch.addEventListener('click',()=>{toggleTheme();render();});
   colRight.appendChild(themeSwitch);
 
