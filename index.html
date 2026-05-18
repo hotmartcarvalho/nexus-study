@@ -50,19 +50,14 @@
 
 /* ============================================================================
    V15.12.75.147 — SISTEMA DE TEMAS DE COR
+   V15.12.75.150 — Steel (Azul Aço #2596be) substituído por Petroleum
+                    (Azul-Petróleo #1f5e6e). Aço era claro/feminino demais
+                    pro perfil; petróleo é mais escuro/sério.
    ============================================================================
    3 paletas trocáveis via data-accent no <html>:
      - "purple" (default) — Roxo Gralia (atual, gradient da logo #762ffb→#8c4dfb)
      - "graphite" — Cinza Espacial (grafite escuro, masculino, sem cor saturada)
-     - "steel" — Azul Aço (cor exata da logo #2596be, frio e técnico)
-
-   Cada paleta sobrescreve as 4 variáveis principais:
-     --gralia-purple        (cor principal — botões ativos, ícones ativos)
-     --gralia-purple-soft   (variação clara — gradientes, hovers)
-     --accent / --purple    (sinônimos pra compat com código legado)
-
-   Persistência: localStorage 'gralia_accent' + atributo data-accent no <html>.
-   Default = 'purple' (mantém estado atual de quem nunca trocou).
+     - "petroleum" — Azul-Petróleo (#1f5e6e, sério, escuro, "engineering blue")
 */
 :root[data-accent="purple"]{
   /* Default oficial — cores idênticas à logo (gradient #762ffb→#8c4dfb) */
@@ -88,22 +83,23 @@
   --purple-light:#252830;
   --purple-text:#c8cdd4;
 }
-:root[data-accent="steel"]{
-  /* Azul Aço — cor exata da logo (#2596be), frio e técnico */
-  --gralia-purple:#2596be;
-  --gralia-purple-soft:#3aaed4;
-  --gralia-purple-rgb:37,150,190;
-  --purple:#2596be;
-  --purple-light:#e0f1f7;
-  --purple-text:#0d4d68;
+:root[data-accent="petroleum"]{
+  /* V15.12.75.150 — Azul-Petróleo. Mais escuro e sério que o aço anterior,
+     com tom esverdeado discreto. Sensação "engineering blue", masculino. */
+  --gralia-purple:#1f5e6e;
+  --gralia-purple-soft:#2d7888;
+  --gralia-purple-rgb:31,94,110;
+  --purple:#1f5e6e;
+  --purple-light:#d8e9ed;
+  --purple-text:#0f3a45;
 }
-:root[data-accent="steel"][data-theme="dark"]{
-  --gralia-purple:#4ec3e6;
-  --gralia-purple-soft:#7ad0ec;
-  --gralia-purple-rgb:78,195,230;
-  --purple:#4ec3e6;
-  --purple-light:#0a2a36;
-  --purple-text:#9fd9ed;
+:root[data-accent="petroleum"][data-theme="dark"]{
+  --gralia-purple:#56a8b9;       /* mais claro em dark pra contraste */
+  --gralia-purple-soft:#7cc1d0;
+  --gralia-purple-rgb:86,168,185;
+  --purple:#56a8b9;
+  --purple-light:#0a2730;
+  --purple-text:#a8d5e0;
 }
 
 /* V15.12.75.147 — Overrides pros elementos que usam rgba(128,66,250,.X)
@@ -114,121 +110,187 @@
 
 /* === SIDEBAR === */
 :root[data-accent="graphite"] .app-sidebar-item.active,
-:root[data-accent="steel"] .app-sidebar-item.active{
+:root[data-accent="petroleum"] .app-sidebar-item.active{
   background:linear-gradient(90deg, rgba(var(--gralia-purple-rgb),.18) 0%, rgba(var(--gralia-purple-rgb),.04) 100%) !important;
   box-shadow:inset 0 0 0 1px rgba(var(--gralia-purple-rgb),.10) !important;
 }
 :root[data-accent="graphite"] .app-sidebar-badge,
-:root[data-accent="steel"] .app-sidebar-badge{
+:root[data-accent="petroleum"] .app-sidebar-badge{
   background:rgba(var(--gralia-purple-rgb),.10) !important;
   color:var(--gralia-purple) !important;
   border-color:rgba(var(--gralia-purple-rgb),.22) !important;
 }
 :root[data-accent="graphite"] .app-sidebar-badge-warn,
-:root[data-accent="steel"] .app-sidebar-badge-warn{
+:root[data-accent="petroleum"] .app-sidebar-badge-warn{
   background:rgba(var(--gralia-purple-rgb),.16) !important;
   border-color:rgba(var(--gralia-purple-rgb),.35) !important;
 }
 :root[data-accent="graphite"] .app-sidebar-badge-urgent,
-:root[data-accent="steel"] .app-sidebar-badge-urgent{
+:root[data-accent="petroleum"] .app-sidebar-badge-urgent{
   background:rgba(var(--gralia-purple-rgb),.22) !important;
   border-color:rgba(var(--gralia-purple-rgb),.48) !important;
 }
 :root[data-accent="graphite"] .app-sidebar-item.active::before,
-:root[data-accent="steel"] .app-sidebar-item.active::before{
+:root[data-accent="petroleum"] .app-sidebar-item.active::before{
   background:linear-gradient(180deg, var(--gralia-purple) 0%, var(--gralia-purple-soft) 100%) !important;
   box-shadow:0 0 8px rgba(var(--gralia-purple-rgb),.35) !important;
 }
 
 /* === BOTÕES PRIMÁRIOS === */
 :root[data-accent="graphite"] .btn-p,
-:root[data-accent="steel"] .btn-p,
+:root[data-accent="petroleum"] .btn-p,
 :root[data-accent="graphite"] .btn-primary,
-:root[data-accent="steel"] .btn-primary{
+:root[data-accent="petroleum"] .btn-primary{
   background:var(--gralia-purple) !important;
   border-color:var(--gralia-purple) !important;
 }
 :root[data-accent="graphite"] .btn-p:hover:not(:disabled),
-:root[data-accent="steel"] .btn-p:hover:not(:disabled){
+:root[data-accent="petroleum"] .btn-p:hover:not(:disabled){
   background:var(--gralia-purple-soft) !important;
   border-color:var(--gralia-purple-soft) !important;
 }
 :root[data-accent="graphite"] .btn-p.btn-lg,
-:root[data-accent="steel"] .btn-p.btn-lg{
+:root[data-accent="petroleum"] .btn-p.btn-lg{
   background:linear-gradient(135deg, var(--gralia-purple) 0%, var(--gralia-purple-soft) 100%) !important;
   box-shadow:0 2px 8px rgba(var(--gralia-purple-rgb),.25) !important;
 }
 
 /* === TOPBAR ELEMENTS === */
 :root[data-accent="graphite"] .credits-chip:hover,
-:root[data-accent="steel"] .credits-chip:hover,
+:root[data-accent="petroleum"] .credits-chip:hover,
 :root[data-accent="graphite"] .credits-chip,
-:root[data-accent="steel"] .credits-chip{
+:root[data-accent="petroleum"] .credits-chip{
   border-color:rgba(var(--gralia-purple-rgb),.30) !important;
 }
 :root[data-accent="graphite"] .topbar-inst-link:hover,
-:root[data-accent="steel"] .topbar-inst-link:hover{
+:root[data-accent="petroleum"] .topbar-inst-link:hover{
   color:var(--gralia-purple) !important;
 }
 :root[data-accent="graphite"] .topbar-inst-link .til-label::after,
-:root[data-accent="steel"] .topbar-inst-link .til-label::after{
+:root[data-accent="petroleum"] .topbar-inst-link .til-label::after{
   background:var(--gralia-purple) !important;
 }
 :root[data-accent="graphite"] .topbar-sidebar-toggle:hover,
-:root[data-accent="steel"] .topbar-sidebar-toggle:hover{
+:root[data-accent="petroleum"] .topbar-sidebar-toggle:hover{
   color:var(--gralia-purple) !important;
 }
 :root[data-accent="graphite"] .topbar-theme-switch:hover,
-:root[data-accent="steel"] .topbar-theme-switch:hover{
+:root[data-accent="petroleum"] .topbar-theme-switch:hover{
   border-color:var(--gralia-purple) !important;
 }
 
 /* === HELP HUB === */
 :root[data-accent="graphite"] .help-hub-btn:hover,
-:root[data-accent="steel"] .help-hub-btn:hover{
+:root[data-accent="petroleum"] .help-hub-btn:hover{
   border-color:var(--gralia-purple) !important;
   color:var(--gralia-purple) !important;
   box-shadow:0 6px 20px rgba(var(--gralia-purple-rgb),.18), 0 2px 6px rgba(0,0,0,.08) !important;
 }
 :root[data-accent="graphite"] .help-hub-item-ico,
-:root[data-accent="steel"] .help-hub-item-ico{
+:root[data-accent="petroleum"] .help-hub-item-ico{
   background:rgba(var(--gralia-purple-rgb),.08) !important;
   color:var(--gralia-purple) !important;
 }
 
 /* === SEARCH BTN (Buscar tudo) === */
 :root[data-accent="graphite"] .app-sidebar-search-btn:hover,
-:root[data-accent="steel"] .app-sidebar-search-btn:hover{
+:root[data-accent="petroleum"] .app-sidebar-search-btn:hover{
   border-color:var(--gralia-purple) !important;
 }
 
 /* === SIDEBAR TOGGLE (circular bottom-right) === */
 :root[data-accent="graphite"] .sidebar-collapse-toggle:hover,
-:root[data-accent="steel"] .sidebar-collapse-toggle:hover{
+:root[data-accent="petroleum"] .sidebar-collapse-toggle:hover{
   border-color:var(--gralia-purple) !important;
   color:var(--gralia-purple) !important;
 }
 
 /* === FAQ POPOVER === */
 :root[data-accent="graphite"] .faq-floating-btn:hover,
-:root[data-accent="steel"] .faq-floating-btn:hover{
+:root[data-accent="petroleum"] .faq-floating-btn:hover{
   border-color:var(--gralia-purple) !important;
   color:var(--gralia-purple) !important;
 }
 
 /* === AVATAR === */
 :root[data-accent="graphite"] .user-avatar-btn:hover,
-:root[data-accent="steel"] .user-avatar-btn:hover{
+:root[data-accent="petroleum"] .user-avatar-btn:hover{
   border-color:var(--gralia-purple) !important;
 }
 
 /* === LINKS GLOBAIS === */
 :root[data-accent="graphite"] a:not(.btn):not(.app-sidebar-item):not(.tab),
-:root[data-accent="steel"] a:not(.btn):not(.app-sidebar-item):not(.tab){
+:root[data-accent="petroleum"] a:not(.btn):not(.app-sidebar-item):not(.tab){
   color:var(--gralia-purple);
 }
 
 /* === MENTOR — bolhas NÃO mudam (identidade fixa Halsey/Drago) === */
+
+/* V15.12.75.150 — Reader (fonte aberta) — gradient header, badge pomo, etc.
+   ANTES: tudo hardcoded em rgba(128,66,250,X). AGORA: responde ao tema. */
+:root[data-accent="graphite"] .src-pomo-badge-rich,
+:root[data-accent="petroleum"] .src-pomo-badge-rich{
+  border-color:rgba(var(--gralia-purple-rgb),.22) !important;
+  box-shadow:0 4px 12px rgba(var(--gralia-purple-rgb),.10), 0 1px 3px rgba(0,0,0,.04) !important;
+}
+:root[data-accent="graphite"] .reader-header,
+:root[data-accent="petroleum"] .reader-header{
+  background:linear-gradient(135deg, rgba(var(--gralia-purple-rgb),.08), rgba(var(--gralia-purple-rgb),.02)) !important;
+}
+:root[data-accent="graphite"] .pf-stripe,
+:root[data-accent="petroleum"] .pf-stripe{
+  background:linear-gradient(90deg, var(--gralia-purple), rgba(var(--gralia-purple-rgb),.5)) !important;
+}
+
+/* === BOTÕES "ÍCONE" (32x32) DENTRO DO READER === */
+/* Hovers ficam coloridos com a paleta do tema, não roxo */
+:root[data-accent="graphite"] .reader-header button:hover,
+:root[data-accent="petroleum"] .reader-header button:hover{
+  background:rgba(var(--gralia-purple-rgb),.10) !important;
+  border-color:rgba(var(--gralia-purple-rgb),.40) !important;
+  color:var(--gralia-purple) !important;
+}
+
+/* === PINHAL + AI + outros — chips e cards roxos === */
+:root[data-accent="graphite"] .ai-cost-badge,
+:root[data-accent="petroleum"] .ai-cost-badge{
+  background:rgba(var(--gralia-purple-rgb),.10) !important;
+  color:var(--gralia-purple) !important;
+  border-color:rgba(var(--gralia-purple-rgb),.20) !important;
+}
+:root[data-accent="graphite"] .plan-card.recommended,
+:root[data-accent="petroleum"] .plan-card.recommended{
+  border-color:var(--gralia-purple) !important;
+  box-shadow:0 4px 16px rgba(var(--gralia-purple-rgb),.10) !important;
+}
+
+/* === FOCUS-TOC ITEMS === */
+:root[data-accent="graphite"] .focus-toc-item.on,
+:root[data-accent="petroleum"] .focus-toc-item.on{
+  background:rgba(var(--gralia-purple-rgb),.10) !important;
+  color:var(--gralia-purple) !important;
+}
+
+/* === SOURCE TOC === */
+:root[data-accent="graphite"] .source-toc-item.level-1,
+:root[data-accent="petroleum"] .source-toc-item.level-1{
+  border-left-color:var(--gralia-purple) !important;
+  background:linear-gradient(to right, rgba(var(--gralia-purple-rgb),.04), var(--surface) 30%) !important;
+}
+:root[data-accent="graphite"] .src-meta-toc,
+:root[data-accent="petroleum"] .src-meta-toc{
+  background:rgba(var(--gralia-purple-rgb),.10) !important;
+  color:var(--gralia-purple) !important;
+  border-color:rgba(var(--gralia-purple-rgb),.25) !important;
+}
+
+/* === SOURCE LIST — explain box === */
+:root[data-accent="graphite"] .fade > div[style*="rgba(128,66,250"],
+:root[data-accent="petroleum"] .fade > div[style*="rgba(128,66,250"]{
+  /* Inline styles têm prioridade — não dá pra sobrescrever direto.
+     Mas borderleft genérico cobre. */
+}
+
 /* ===== DARK theme ===== */
 :root[data-theme="dark"]{
   /* Base — cinzas neutros frios (inspiração GitHub/Linear dark) */
@@ -364,6 +426,60 @@ body.sidebar-collapsed .app-sidebar-item-label,
 body.sidebar-collapsed .app-sidebar-badge,
 body.sidebar-collapsed .app-sidebar-search-btn span:not(:first-child){
   display:none !important;
+}
+
+/* V15.12.75.150 — Tooltip estilizado pros itens da sidebar quando collapsed.
+   Substitui o `title` nativo (feio, lag). Aparece à direita do ícone com
+   animação suave. Quando sidebar aberta, fica oculto (label do item já é
+   visível ao lado do ícone). */
+.app-sidebar-tooltip{
+  display:none;
+}
+body.sidebar-collapsed .app-sidebar-tooltip{
+  display:inline-flex;
+  position:absolute;
+  left:calc(100% + 10px);
+  top:50%;
+  transform:translateY(-50%) translateX(-4px);
+  flex-direction:column;
+  gap:2px;
+  padding:8px 12px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  box-shadow:0 6px 18px rgba(0,0,0,.12),0 1px 3px rgba(0,0,0,.06);
+  font-size:12px;
+  font-weight:500;
+  color:var(--text);
+  white-space:nowrap;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .15s ease, transform .15s ease, visibility .15s;
+  z-index:610;
+  letter-spacing:0;
+}
+body.sidebar-collapsed .app-sidebar-tooltip b{
+  font-size:12.5px;
+  font-weight:700;
+  color:var(--text);
+  letter-spacing:-.1px;
+}
+body.sidebar-collapsed .app-sidebar-tooltip .ast-desc{
+  font-size:11px;
+  font-weight:400;
+  color:var(--text3);
+  letter-spacing:0;
+  margin-top:1px;
+}
+body.sidebar-collapsed .app-sidebar-item{
+  position:relative;     /* pra ::before do indicador active funcionar */
+}
+body.sidebar-collapsed .app-sidebar-item:hover .app-sidebar-tooltip{
+  opacity:1;
+  visibility:visible;
+  transform:translateY(-50%) translateX(0);
+  transition-delay:.10s;  /* atraso pequeno pra não disparar acidentalmente */
 }
 /* V15.12.75.146 — Esconde também label + chevron do botão "Mais" quando
    sidebar collapsed. Antes ficavam visíveis e o ícone (3 pontinhos / globe)
@@ -732,6 +848,23 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
     height:22px;
     background:var(--border);
   }
+  /* V15.12.75.150 — Quando sidebar collapsed: toggle fica EM CIMA da
+     "coluna" onde os ícones do sidebar aparecem (left:16px = mesma
+     posição central que os ícones a 56px de largura terão). Logo segue
+     centralizado em 264px. Antes toggle ficava grudado no logo, fora
+     da coluna dos ícones — visualmente desconectado. */
+  body.has-sidebar.sidebar-collapsed .topbar-sidebar-toggle{
+    position:absolute;
+    left:12px;
+    top:50%;
+    transform:translateY(-50%);
+    z-index:2;
+  }
+  /* Separador NÃO precisa quando toggle vira absolute (toggle não fica
+     mais grudado no logo). */
+  body.has-sidebar.sidebar-collapsed .topbar-sidebar-toggle-sep{
+    display:none;
+  }
   /* (antiga regra body.has-sidebar.sidebar-collapsed .topbar-col-left removida
       em V15.12 — largura agora é fixa independente do estado da sidebar) */
   body.has-sidebar .topbar-inner{
@@ -784,7 +917,10 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
 .bt-feature b{color:var(--text);font-weight:600}
 .bt-cta{margin-top:.75rem;padding-top:.625rem;border-top:1px solid var(--border);font-size:11.5px;color:var(--gralia-purple);font-weight:700;text-align:right}
 @media(max-width:640px){.brand-tooltip{display:none}}
-.brand-bird{height:44px;width:auto;display:block;flex-shrink:0;margin-right:-2px} /* V15.12.9: +10% (40→44px) */
+/* V15.12.75.150 — .brand-bird genérico REMOVIDO. Antes era 44px com margin
+   negativo, causava conflito com .brand .brand-bird (36px) e desalinhava.
+   Regra final agora vive só em .brand .brand-bird (logo da topbar) e
+   .app-sidebar-brand .brand-bird (logo da sidebar). */
 
 /* V15.12.75.145 — Toggle do sidebar na topbar (visível só quando sidebar fechado).
    Aparece à esquerda do logo, com linha vertical separadora. Quando o sidebar
@@ -819,8 +955,27 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
 }
 
 /* V15.12.75.146 — Logo topbar -20% (45→36px, max-width 200→160px).
-   V140 tinha ido +50% (30→45), agora -20%. Equilíbrio melhor. */
-.brand .brand-bird{height:36px;max-width:160px;object-fit:contain}
+   V140 tinha ido +50% (30→45), agora -20%. Equilíbrio melhor.
+   V15.12.75.150 — Centralização vertical forçada. Antes o `.brand-bird`
+   da linha 787 (height:44px com margin-right:-2px) podia conflitar com
+   o .brand .brand-bird, dando offset. Agora explicitamente vertical-align
+   middle + display:flex no .brand garante centralização exata. */
+.brand{
+  display:flex;
+  align-items:center;       /* já tinha, mas reforça */
+  justify-content:flex-start;
+  height:100%;              /* ocupa toda altura da topbar pra align-items funcionar */
+  gap:6px;
+  white-space:nowrap;
+  font-weight:700;
+  letter-spacing:-.5px;
+}
+.brand .brand-bird{
+  height:36px;max-width:160px;object-fit:contain;
+  display:block;            /* tira espaço fantasma de inline */
+  margin:0;                 /* zera margin-right:-2px legado */
+  vertical-align:middle;
+}
 .brand .brand-name{display:none}
 .brand .brand-name.brand-fallback.show{display:inline-flex}
 .brand-bird-dark{display:none}
@@ -2710,32 +2865,34 @@ html.dark .wfb-tag-ai{color:#b08aff}
 /* Dimensões e estilo (aplica mesmo quando display:none, pra evitar flash quando
    troca pra display:block).
    V15.12.75.114 — Tamanho reduzido: 96→80px (height) / 120→100px (max-width).
-   V15.12.75.146 — Mais -15%: 80→68px / 100→85px. */
+   V15.12.75.146 — Mais -15%: 80→68px / 100→85px.
+   V15.12.75.150 — +5% conforme feedback (68→71 / 85→89). */
 .dash-mascot-video{
-  height:68px;width:auto;max-width:85px;object-fit:contain;
+  height:71px;width:auto;max-width:89px;object-fit:contain;
   background:transparent;
   opacity:.95;transition:transform .35s ease, opacity .15s;
   user-select:none;pointer-events:none;
 }
 .dash-mascot-img{
-  height:68px;width:auto;max-width:85px;object-fit:contain;
+  height:71px;width:auto;max-width:89px;object-fit:contain;
   opacity:.95;transition:transform .35s ease, opacity .15s, height .35s ease, max-width .35s ease;
   user-select:none;-webkit-user-drag:none;cursor:default;
 }
 
 /* V15.12.75.105 — Mascote estático MESMO TAMANHO do vídeo.
    V15.12.75.114 — Reduzido pra 80×100 (era 96×120).
-   V15.12.75.146 — Mais -15% (80→68 / 100→85). */
+   V15.12.75.146 — Mais -15% (80→68 / 100→85).
+   V15.12.75.150 — +5% (68→71 / 85→89). */
 .dash-mascot.dash-mascot-static .dash-mascot-img{
-  height:68px;
-  max-width:85px;
+  height:71px;
+  max-width:89px;
   opacity:.85;
 }
 
 /* V15.12.28 → V15.12.40 OBSOLETO mas mantido por compat */
 .dash-mascot.dash-mascot-frozen .dash-mascot-video{
-  height:68px;
-  max-width:85px;
+  height:71px;
+  max-width:89px;
   opacity:.85;
   transition:height .35s ease, max-width .35s ease, opacity .35s ease;
 }
@@ -6535,8 +6692,33 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
   from{opacity:0;backdrop-filter:blur(0)}
   to{opacity:1;backdrop-filter:blur(6px)}
 }
-.help-hub-btn{
+/* V15.12.75.150 — Wrapper do help hub: contém o botão circular E uma
+   "pílula" com texto "Ajuda" sempre visível à esquerda. Antes só tinha
+   o botão circular com title nativo (browser-padrão, feio, só hover). */
+.help-hub-wrap{
   position:fixed;bottom:20px;right:20px;z-index:9200;
+  display:flex;align-items:center;gap:8px;
+}
+.help-hub-label{
+  display:inline-flex;align-items:center;
+  padding:6px 12px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:999px;
+  font-size:12px;font-weight:600;color:var(--text2);
+  letter-spacing:.1px;
+  box-shadow:0 4px 14px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.04);
+  white-space:nowrap;
+  user-select:none;
+  pointer-events:none;  /* só decorativo, clique vai no botão */
+  transition:color .15s ease, border-color .15s ease;
+}
+.help-hub-wrap:hover .help-hub-label{
+  color:var(--gralia-purple);
+  border-color:var(--gralia-purple);
+}
+.help-hub-btn{
+  position:relative;  /* não mais fixed — agora vive dentro do wrap */
   width:46px;height:46px;border-radius:50%;
   background:var(--surface);
   border:1px solid var(--border);
@@ -6556,13 +6738,13 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 .help-hub-btn svg{display:block}
 
 .help-hub-popover{
-  position:fixed;bottom:74px;right:20px;z-index:9100;
-  width:280px;
+  position:fixed;bottom:78px;right:20px;z-index:9100;
+  width:320px;                    /* V150: 280→320 — mais respiração */
   background:var(--surface);
   border:1px solid var(--border);
-  border-radius:14px;
-  box-shadow:0 12px 32px rgba(0,0,0,.14), 0 2px 8px rgba(0,0,0,.08);
-  padding:8px;
+  border-radius:16px;
+  box-shadow:0 16px 40px rgba(0,0,0,.16), 0 4px 10px rgba(0,0,0,.08);
+  padding:10px;                   /* V150: 8→10 */
   animation:help-hub-in .18s cubic-bezier(.34,1.56,.64,1);
 }
 @keyframes help-hub-in{
@@ -6570,30 +6752,35 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
   to{opacity:1;transform:translateY(0) scale(1)}
 }
 .help-hub-title{
-  font-size:10px;font-weight:700;color:var(--text3);
+  font-size:10.5px;font-weight:700;color:var(--text3);
   text-transform:uppercase;letter-spacing:.7px;
-  padding:8px 12px 6px;
+  padding:8px 14px 10px;
+  text-align:center;              /* V150: centralizado */
 }
 .help-hub-item{
-  width:100%;display:flex;gap:11px;align-items:center;
-  padding:9px 11px;
-  background:transparent;border:none;border-radius:9px;
+  width:100%;display:flex;gap:14px;align-items:center;  /* V150: gap maior */
+  padding:11px 13px;              /* V150: padding maior — itens mais altos */
+  background:transparent;border:none;border-radius:11px;
   cursor:pointer;font-family:inherit;color:var(--text);
   text-align:left;
-  transition:background .12s ease;
+  transition:background .12s ease, transform .12s ease;
+  min-height:54px;                /* V150: altura mínima padronizada */
 }
-.help-hub-item:hover{background:var(--surface2)}
+.help-hub-item:hover{
+  background:var(--surface2);
+  transform:translateX(2px);      /* V150: efeito slide igual sidebar */
+}
 .help-hub-item-ico{
-  width:30px;height:30px;border-radius:8px;
+  width:34px;height:34px;border-radius:10px;
   background:rgba(128,66,250,.08);
   color:var(--gralia-purple);
   display:flex;align-items:center;justify-content:center;
   flex-shrink:0;
 }
 .help-hub-item-ico svg{display:block}
-.help-hub-item-body{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
-.help-hub-item-label{font-size:12.5px;font-weight:600;color:var(--text)}
-.help-hub-item-desc{font-size:11px;color:var(--text3);line-height:1.4}
+.help-hub-item-body{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.help-hub-item-label{font-size:13px;font-weight:600;color:var(--text);line-height:1.2}
+.help-hub-item-desc{font-size:11.5px;color:var(--text3);line-height:1.35;letter-spacing:.05px}
 
 /* V15.12.75.143 — Os antigos floating btn (feedback, shortcuts, faq) podem
    ainda ser referenciados em outros pontos do código. Mantemos as classes
@@ -8493,7 +8680,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.149';
+window.GRALIA_VERSION = 'V15.12.75.150';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -13271,7 +13458,9 @@ const LUCIDE_ICONS = {
   'credit-card':      '<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>',
   'graduation-cap':   '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.66 4 3 6 3s6-1.34 6-3v-5"/>',
   'shield-check':     '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
-  'log-out':          '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>'
+  'log-out':          '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
+  // V15.12.75.150 — Sliders (Configurações)
+  'sliders':          '<line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/>'
 };
 
 // Helper: gera string SVG inline pronta pra setar via innerHTML.
@@ -16161,7 +16350,12 @@ function showUserAvatarMenu(anchor){
     {
       label: 'Conta',
       items: [
+        // V15.12.75.150 — Separado de Configurações.
+        // Conta e perfil = perfil pessoal, prova, assinatura, dados, etc.
         {icon:'user',     label:'Conta e perfil',       action:()=>{ ST.view = 'settings'; render(); }},
+        // V15.12.75.150 — NOVO item.
+        // Configurações = aparência (tema/paleta), notificações, privacidade.
+        {icon:'sliders',  label:'Configurações',         action:()=>{ ST.view = 'preferences'; render(); }},
         {icon:'credit-card', label:'Assinatura e planos', action:()=>{ ST.view = 'plans'; render(); }},
         {icon:'zap',      label:'Uso de créditos',      action:()=>{ ST.view = 'usage'; render(); }}
       ]
@@ -19612,12 +19806,16 @@ function buildAppSidebar(){
   // V15.12.75.145 — Helper de item da sidebar. Reutilizado tanto pelos
   // itens principais quanto pelos do flyout "Mais".
   // moreFlyout: referência ao flyout aberto (pra fechar quando navega).
+  // V15.12.75.150 — Tooltip CSS estilizado adicionado (.app-sidebar-tooltip)
+  // pra aparecer no hover quando sidebar collapsed. Substitui o title nativo
+  // (feio, padrão do browser). Estilo casado com a linha decorativa dos links
+  // institucionais da topbar.
   function buildSidebarItem(it, moreFlyout){
     const isActive = ST.view === it.view ||
       (it.view === 'methods' && METHOD_VIEWS.includes(ST.view));
     const item = mk('button','app-sidebar-item' + (isActive ? ' active' : ''));
     item.type = 'button';
-    item.title = it.label + (it.desc ? ' — ' + it.desc : '');
+    // V15.12.75.150 — Removido title (browser-nativo, feio). Tooltip estilizado abaixo.
     const ico = mk('span','app-sidebar-item-ico');
     if(typeof it.icon === 'string' && it.icon.startsWith('lucide:')){
       ico.innerHTML = lucideIcon(it.icon.slice(7), 18);
@@ -19629,6 +19827,13 @@ function buildAppSidebar(){
     lbl.textContent = it.label;
     item.appendChild(ico);
     item.appendChild(lbl);
+    // V15.12.75.150 — Tooltip estilizado (mostra label + desc se houver) —
+    // só visível quando sidebar collapsed via CSS.
+    if(!moreFlyout){
+      const tip = mk('span','app-sidebar-tooltip');
+      tip.innerHTML = `<b>${escapeHTML(it.label)}</b>${it.desc ? `<span class="ast-desc">${escapeHTML(it.desc)}</span>` : ''}`;
+      item.appendChild(tip);
+    }
     if(it.badge){
       let badgeCls = 'app-sidebar-badge';
       if(it.badge >= 20)      badgeCls += ' app-sidebar-badge-urgent';
@@ -19748,12 +19953,14 @@ function buildAppSidebar(){
       };
       const onFlyoutEsc = (ev) => { if(ev.key === 'Escape') closeFlyout(); };
 
-      // V15.12.75.149 — Hover (com 250ms delay) também abre — convenção tipo Notion/Linear
+      // V15.12.75.149 — Hover também abre — convenção Notion/Linear.
+      // V15.12.75.150 — Delay reduzido (250→150ms): user reclamou que demora
+      // a aparecer quando passa o mouse, especialmente no sidebar collapsed.
       moreBtn.addEventListener('mouseenter', () => {
         if(hoverCloseTimer){ clearTimeout(hoverCloseTimer); hoverCloseTimer = null; }
         if(flyout) return;
         if(hoverOpenTimer) clearTimeout(hoverOpenTimer);
-        hoverOpenTimer = setTimeout(() => { openFlyout(); hoverOpenTimer = null; }, 250);
+        hoverOpenTimer = setTimeout(() => { openFlyout(); hoverOpenTimer = null; }, 150);
       });
       moreBtn.addEventListener('mouseleave', () => {
         if(hoverOpenTimer){ clearTimeout(hoverOpenTimer); hoverOpenTimer = null; }
@@ -19785,7 +19992,29 @@ function buildAppSidebar(){
 
 /* RENDER */
 const APP = $('app');
+
+// V15.12.75.150 — Render debouncado pra evitar pisca-pisca quando múltiplas
+// promessas (syncDown + fetchQuota + fetchUserProfile + fetchSubscription)
+// chamam render() em paralelo no init. Antes: 4 renders em ~2s = tela
+// pulando 3-4 vezes ao abrir. Agora: agrupados em UM render só, após 60ms.
+// Uso: sempre que múltiplos callbacks async podem disparar render, usar
+// requestRender() em vez de render(). Pra renders síncronos imediatos
+// (clique, navegação), continuar usando render() direto.
+function requestRender(){
+  if(window._renderDebounceTimer) return; // já agendado, vai disparar em <60ms
+  window._renderDebounceTimer = setTimeout(() => {
+    window._renderDebounceTimer = null;
+    try{ render(); }catch(e){ console.warn('[requestRender]', e); }
+  }, 60);
+}
+
 function render(){
+  // V15.12.75.150 — Hook do debounce: cancela qualquer request pendente
+  // pra não ter render duplo (manual + debounced).
+  if(window._renderDebounceTimer){
+    clearTimeout(window._renderDebounceTimer);
+    window._renderDebounceTimer = null;
+  }
   // V15.12.75.68 — Tutorial auto: lógica ÚNICA e simples. Em todo render(),
   // checa se: user existe + recém-criado (<10min) + não viu tour + sem modal
   // + profile completo. Se sim, dispara. Cobre TODOS os caminhos (signup novo,
@@ -19944,7 +20173,7 @@ function render(){
   const pg = mk('div','page route-fade');
   const views = {
     dashboard:renderDashboard,sources:renderSources,methods:renderMethods,
-    pomodoro:renderPomodoro,pinhal:renderPinhal,settings:renderSettings,history:renderHistory,turbo:renderTurbo,eve:renderEve,imported:renderImported,review:renderReview,revgen:renderRevgen,
+    pomodoro:renderPomodoro,pinhal:renderPinhal,settings:renderSettings,preferences:renderSettings,history:renderHistory,turbo:renderTurbo,eve:renderEve,imported:renderImported,review:renderReview,revgen:renderRevgen,
     calibration:renderCalibration,examiner:renderExaminer,drill:renderDrill,
     elaborative:renderElaborative,practice:renderPractice,simulado:renderSimulado,
     'ai-favorites':renderAIFavorites,
@@ -20118,11 +20347,19 @@ function render(){
   // popover com 3 opções (Fale conosco, Atalhos, FAQ). Mais limpo, mais
   // discoverable (1 ponto fixo de "ajuda").
   if(isAuthed() && !isFocusMode()){
-    const helpBtn = mk('button','help-hub-btn desktop-only-fab');
+    // V15.12.75.150 — Wrapper: contém o botão circular E um label "Ajuda"
+    // sempre visível à esquerda. Antes só tinha title nativo (browser-padrão,
+    // só aparecia em hover, feio). Agora tem label permanente + tooltip mais
+    // rico no hover (com descrição "Fale conosco, atalhos, FAQ").
+    const helpWrap = mk('div','help-hub-wrap desktop-only-fab');
+    const helpBtn = mk('button','help-hub-btn');
     helpBtn.type = 'button';
-    helpBtn.title = 'Ajuda — Fale conosco, atalhos, FAQ';
-    helpBtn.setAttribute('aria-label', 'Central de ajuda');
+    helpBtn.setAttribute('aria-label', 'Central de ajuda — Fale conosco, atalhos, FAQ');
     helpBtn.innerHTML = lucideIcon('life-buoy', 20);
+    const helpLabel = mk('span','help-hub-label');
+    helpLabel.textContent = 'Ajuda';
+    helpWrap.appendChild(helpLabel);
+    helpWrap.appendChild(helpBtn);
     let helpPopover = null;
     let helpBackdrop = null;  // V15.12.75.147 — backdrop blur por trás do popover
     const closeHelpPopover = () => {
@@ -20188,7 +20425,7 @@ function render(){
         document.addEventListener('keydown', onHelpEsc);
       }, 0);
     });
-    APP.appendChild(helpBtn);
+    APP.appendChild(helpWrap);
   }
 
   // V15.12.75.143 — Os 3 botões flutuantes antigos (feedback-floating-btn,
@@ -33682,6 +33919,76 @@ function looksLikeMarkdown(text){
 // e fecha — volta direto pra leitura.
 // V15.12.75.101 — Popover de seleção de som ambiente. Ancorado ao botão 🎵.
 // Lista de tipos clicáveis + slider de volume. Auto-fecha ao clicar fora.
+// V15.12.75.150 — Popover de seleção rápida de tema (paleta de cor).
+// Usado dentro da toolbar do reader. User pediu pra ter o seletor de tema
+// acessível na fonte aberta, momento decisivo pra perceber se quer mudar.
+function showReaderThemePopover(anchorBtn){
+  const existing = document.getElementById('gralia-reader-theme-popover');
+  if(existing){ existing.remove(); return; }
+
+  const pop = mk('div');
+  pop.id = 'gralia-reader-theme-popover';
+  pop.style.cssText = 'position:fixed;z-index:99999;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.06);padding:.625rem;min-width:200px;font-family:inherit';
+
+  // Header
+  const title = mk('div');
+  title.style.cssText = 'font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:6px 8px 8px';
+  title.textContent = 'Paleta de cor';
+  pop.appendChild(title);
+
+  const currentAccent = localStorage.getItem('gralia_accent') || 'purple';
+  const palettes = [
+    { id:'purple',    label:'Roxo Gralia',     swatch:'linear-gradient(135deg,#8c4dfb 0%,#762ffb 100%)' },
+    { id:'graphite',  label:'Cinza Espacial',  swatch:'linear-gradient(135deg,#56606a 0%,#3a4148 100%)' },
+    { id:'petroleum', label:'Azul-Petróleo',   swatch:'linear-gradient(135deg,#2d7888 0%,#1f5e6e 100%)' }
+  ];
+  palettes.forEach(p => {
+    const isOn = currentAccent === p.id;
+    const row = mk('button');
+    row.type = 'button';
+    row.style.cssText = `display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;background:${isOn ? 'rgba(var(--gralia-purple-rgb),.08)' : 'transparent'};border:1px solid ${isOn ? 'rgba(var(--gralia-purple-rgb),.30)' : 'transparent'};border-radius:8px;cursor:pointer;font-family:inherit;text-align:left;transition:all .15s ease;margin-bottom:2px`;
+    row.innerHTML = `
+      <span style="width:22px;height:22px;border-radius:50%;background:${p.swatch};flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.12)"></span>
+      <span style="flex:1;font-size:12.5px;font-weight:${isOn ? '700' : '500'};color:${isOn ? 'var(--gralia-purple)' : 'var(--text)'}">${p.label}</span>
+      ${isOn ? '<span style="font-size:12px;color:var(--gralia-purple);font-weight:700">✓</span>' : ''}
+    `;
+    row.addEventListener('mouseenter', () => {
+      if(!isOn) row.style.background = 'var(--surface2)';
+    });
+    row.addEventListener('mouseleave', () => {
+      if(!isOn) row.style.background = 'transparent';
+    });
+    row.addEventListener('click', () => {
+      setAccent(p.id);
+      pop.remove();
+    });
+    pop.appendChild(row);
+  });
+
+  document.body.appendChild(pop);
+  // Posicionar (abre ABAIXO do botão, alinhado à direita)
+  const rect = anchorBtn.getBoundingClientRect();
+  const popRect = pop.getBoundingClientRect();
+  let top = rect.bottom + 6;
+  let left = Math.max(8, rect.right - popRect.width);
+  if(top + popRect.height > window.innerHeight - 8){
+    top = rect.top - popRect.height - 6;
+  }
+  pop.style.top = top + 'px';
+  pop.style.left = left + 'px';
+
+  // Fechar ao clicar fora
+  setTimeout(() => {
+    const close = (ev) => {
+      if(!pop.contains(ev.target) && ev.target !== anchorBtn){
+        pop.remove();
+        document.removeEventListener('click', close);
+      }
+    };
+    document.addEventListener('click', close);
+  }, 50);
+}
+
 function showAmbientSoundPopover(anchorBtn, onChange){
   // Remove popover existente
   const existing = document.getElementById('gralia-ambient-popover');
@@ -36280,7 +36587,10 @@ function showSourceReaderModal(src){
   // pomodoro no estilo do .pomo-float global (mais polido). User pediu pra
   // voltar info que tinha sido removida na V94.
   const header = mk('div','reader-header');
-  header.style.cssText = 'padding:1rem 1.5rem .875rem;background:linear-gradient(135deg,rgba(128,66,250,.08),rgba(128,66,250,.02));border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-shrink:0';
+  // V15.12.75.150 — Gradient usa rgba(var(--gralia-purple-rgb)) — responde
+  // ao tema (purple/graphite/petroleum). Antes: rgba(128,66,250,.X) hardcoded
+  // (sempre roxo, mesmo se user escolhesse outra paleta).
+  header.style.cssText = 'padding:1rem 1.5rem .875rem;background:linear-gradient(135deg,rgba(var(--gralia-purple-rgb),.08),rgba(var(--gralia-purple-rgb),.02));border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-shrink:0';
 
   const headLeft = mk('div');
   headLeft.style.cssText = 'flex:1;min-width:0';
@@ -36488,12 +36798,13 @@ function showSourceReaderModal(src){
 
   // V15.12.75.94 — Botão ℹ no header — declarado aqui mas anexado ao final
   // (no Grupo 3 de ações, depois do botão Foco)
+  // V15.12.75.150 — Tamanho 30px + vars
   const infoBtnH = mk('button');
   infoBtnH.type = 'button';
-  infoBtnH.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease;font-weight:700';
+  infoBtnH.style.cssText = 'width:30px;height:30px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease;font-weight:700';
   infoBtnH.innerHTML = 'ℹ';
   infoBtnH.title = 'Detalhes da fonte';
-  infoBtnH.addEventListener('mouseenter',()=>{infoBtnH.style.background='rgba(128,66,250,.10)';infoBtnH.style.borderColor='rgba(128,66,250,.40)';infoBtnH.style.color='var(--gralia-purple)';});
+  infoBtnH.addEventListener('mouseenter',()=>{infoBtnH.style.background='rgba(var(--gralia-purple-rgb),.10)';infoBtnH.style.borderColor='rgba(var(--gralia-purple-rgb),.40)';infoBtnH.style.color='var(--gralia-purple)';});
   infoBtnH.addEventListener('mouseleave',()=>{infoBtnH.style.background='var(--surface)';infoBtnH.style.borderColor='var(--border)';infoBtnH.style.color='var(--text2)';});
   infoBtnH.addEventListener('click', ()=>showSourceInfoModal(src));
 
@@ -36563,20 +36874,28 @@ function showSourceReaderModal(src){
 
   // V15.12.75.99 — Header SEM separadores verticais. User reportou aglomerado.
   // Solução: gap uniforme entre botões. Visual respira sem precisar de bars.
-  // Ordem: [⏮ ⏭] [📑] [picker][sair foco] [🎯 Foco] [ℹ ✏ ×]
-  //        ─grupo nav─ ─índice─ ─modo (só foco)─ ─toggle foco─ ─ações─
+  // V15.12.75.150 — Reorganizado em GRUPOS com separadores sutis pra reduzir
+  // sensação de "muita coisa". Botões reduzidos 32→30px. Hover usa var(--gralia-purple-rgb).
+  // Ordem final: [pomo badge] | [⏮ ⏭] | [📑 🎵 🎨] | [🎯 Foco] | [ℹ ✏ ×]
+  //                 grande          nav      conteúdo       modo       ações
 
   // V15.12.75.91 — Botões "início" e "fim"
   const mkNavBtn = (icon, title, onClick) => {
     const b = mk('button');
     b.type = 'button';
-    b.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease';
+    b.style.cssText = 'width:30px;height:30px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease';
     b.innerHTML = icon;
     b.title = title;
-    b.addEventListener('mouseenter',()=>{b.style.background='rgba(128,66,250,.10)';b.style.borderColor='rgba(128,66,250,.40)';b.style.color='var(--gralia-purple)';});
+    b.addEventListener('mouseenter',()=>{b.style.background='rgba(var(--gralia-purple-rgb),.10)';b.style.borderColor='rgba(var(--gralia-purple-rgb),.40)';b.style.color='var(--gralia-purple)';});
     b.addEventListener('mouseleave',()=>{b.style.background='var(--surface)';b.style.borderColor='var(--border)';b.style.color='var(--text2)';});
     b.addEventListener('click',onClick);
     return b;
+  };
+  // Helper de separador vertical entre grupos
+  const mkSep = () => {
+    const s = mk('span');
+    s.style.cssText = 'width:1px;height:18px;background:var(--border);margin:0 4px;flex-shrink:0;opacity:.55';
+    return s;
   };
   // V15.12.75.104 — Ícones SVG limpos pra navegação (substitui ⤒⤓ que user
   // achou feios). Seta com barra: traço horizontal indica o "limite" (topo
@@ -36587,6 +36906,8 @@ function showSourceReaderModal(src){
   const toEndBtn = mkNavBtn(iconToEnd, 'Pular pro fim (End)', () => content.scrollTo({top: content.scrollHeight, behavior: 'smooth'}));
   headBtns.appendChild(toStartBtn);
   headBtns.appendChild(toEndBtn);
+  // V15.12.75.150 — Separador visual entre grupo Nav e grupo Conteúdo
+  headBtns.appendChild(mkSep());
 
   // V15.12.75.98 — Slot pro botão "📑 Índice" (TOC toggle). Preenchido depois
   // que cleanedToc e sidebar existirem.
@@ -36595,13 +36916,14 @@ function showSourceReaderModal(src){
   headBtns.appendChild(tocBtnSlot);
 
   // V15.12.75.101 — Botão 🎵 Sons ambientes (chuva/café/lareira/vento)
+  // V15.12.75.150 — Tamanho 30px + cores via var(--gralia-purple-rgb)
   const ambientBtn = mk('button');
   ambientBtn.type = 'button';
-  ambientBtn.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease;position:relative';
+  ambientBtn.style.cssText = 'width:30px;height:30px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease;position:relative';
   const updateAmbientBtn = () => {
     const t = AmbientSound.getCurrentType();
     if(t && t !== 'none'){
-      ambientBtn.style.background = 'rgba(128,66,250,.14)';
+      ambientBtn.style.background = 'rgba(var(--gralia-purple-rgb),.14)';
       ambientBtn.style.borderColor = 'var(--gralia-purple)';
       ambientBtn.style.color = 'var(--gralia-purple)';
       const emojis = {rain:'🌧', coffee:'☕', fire:'🔥', wind:'💨', whitenoise:'⚪', brownnoise:'🟤', jazz:'🎷', blues:'🎸', guitar:'🪕'};
@@ -36618,8 +36940,8 @@ function showSourceReaderModal(src){
   updateAmbientBtn();
   ambientBtn.addEventListener('mouseenter', () => {
     if(AmbientSound.getCurrentType() === 'none'){
-      ambientBtn.style.background = 'rgba(128,66,250,.08)';
-      ambientBtn.style.borderColor = 'rgba(128,66,250,.40)';
+      ambientBtn.style.background = 'rgba(var(--gralia-purple-rgb),.08)';
+      ambientBtn.style.borderColor = 'rgba(var(--gralia-purple-rgb),.40)';
       ambientBtn.style.color = 'var(--gralia-purple)';
     }
   });
@@ -36630,19 +36952,43 @@ function showSourceReaderModal(src){
   });
   headBtns.appendChild(ambientBtn);
 
-  // V15.12.75.104 — widthPickerSlot REMOVIDO (picker de largura tirado).
-  // focusExitSlot agora vai no FINAL (depois de tudo) pra ser "primeiro à
-  // direita" no modo foco.
+  // V15.12.75.150 — Botão 🎨 Tema (palette) — abre popover com 3 cores
+  // (Roxo Gralia, Cinza Espacial, Azul-Petróleo). User pediu pra ter
+  // o seletor disponível na fonte aberta, momento decisivo pra perceber
+  // que tema não combina com perfil.
+  const themeBtn = mk('button');
+  themeBtn.type = 'button';
+  themeBtn.style.cssText = 'width:30px;height:30px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease;position:relative';
+  themeBtn.innerHTML = '🎨';
+  themeBtn.title = 'Mudar paleta de cor';
+  themeBtn.addEventListener('mouseenter', () => {
+    themeBtn.style.background = 'rgba(var(--gralia-purple-rgb),.10)';
+    themeBtn.style.borderColor = 'rgba(var(--gralia-purple-rgb),.40)';
+    themeBtn.style.color = 'var(--gralia-purple)';
+  });
+  themeBtn.addEventListener('mouseleave', () => {
+    themeBtn.style.background = 'var(--surface)';
+    themeBtn.style.borderColor = 'var(--border)';
+    themeBtn.style.color = 'var(--text2)';
+  });
+  themeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showReaderThemePopover(themeBtn);
+  });
+  headBtns.appendChild(themeBtn);
+  // V15.12.75.150 — Separador entre grupo Conteúdo e grupo Modo
+  headBtns.appendChild(mkSep());
 
   // V15.12.75.90 — Botão "modo foco": esconde header, marcadores e
   // distrações. Deixa só texto + barra fina de progresso.
   // V15.12.75.92 — Aplica classe de largura salva em DATA.config.readerFocusWidth.
+  // V15.12.75.150 — Border radius 8→7 (alinhado com outros), hover via var(--gralia-purple-rgb)
   const focusBtnH = mk('button','reader-focus-btn-toggle');
   focusBtnH.type = 'button';
-  focusBtnH.style.cssText = 'padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;gap:6px;transition:all .15s ease';
-  focusBtnH.innerHTML = '<span style="font-size:14px">🎯</span><span>Foco</span>';
+  focusBtnH.style.cssText = 'padding:5px 12px;height:30px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;gap:6px;transition:all .15s ease';
+  focusBtnH.innerHTML = '<span style="font-size:13px">🎯</span><span>Foco</span>';
   focusBtnH.title = 'Modo foco — esconde elementos pra concentrar na leitura (Esc sai)';
-  focusBtnH.addEventListener('mouseenter',()=>{focusBtnH.style.background='rgba(128,66,250,.08)';focusBtnH.style.borderColor='rgba(128,66,250,.40)';focusBtnH.style.color='var(--gralia-purple)';});
+  focusBtnH.addEventListener('mouseenter',()=>{focusBtnH.style.background='rgba(var(--gralia-purple-rgb),.08)';focusBtnH.style.borderColor='rgba(var(--gralia-purple-rgb),.40)';focusBtnH.style.color='var(--gralia-purple)';});
   focusBtnH.addEventListener('mouseleave',()=>{focusBtnH.style.background='var(--surface)';focusBtnH.style.borderColor='var(--border)';focusBtnH.style.color='var(--text2)';});
   focusBtnH.addEventListener('click',()=>{
     if(!DATA.config) DATA.config = {};
@@ -36696,6 +37042,8 @@ function showSourceReaderModal(src){
     }
   });
   headBtns.appendChild(focusBtnH);
+  // V15.12.75.150 — Separador entre Foco e Ações
+  headBtns.appendChild(mkSep());
 
   // V15.12.75.99 — Ações finais sem separador. Visual fica mais limpo.
   // V15.12.75.111 — markReadBtn vem antes do ℹ (mais proeminente quando habilitado)
@@ -36703,10 +37051,10 @@ function showSourceReaderModal(src){
   headBtns.appendChild(infoBtnH);
   const editBtnH = mk('button');
   editBtnH.type = 'button';
-  editBtnH.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease';
+  editBtnH.style.cssText = 'width:30px;height:30px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:12px;cursor:pointer;font-family:inherit;color:var(--text2);display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease';
   editBtnH.innerHTML = '✏️';
   editBtnH.title = 'Editar fonte';
-  editBtnH.addEventListener('mouseenter',()=>{editBtnH.style.background='rgba(128,66,250,.10)';editBtnH.style.borderColor='rgba(128,66,250,.40)';});
+  editBtnH.addEventListener('mouseenter',()=>{editBtnH.style.background='rgba(var(--gralia-purple-rgb),.10)';editBtnH.style.borderColor='rgba(var(--gralia-purple-rgb),.40)';});
   editBtnH.addEventListener('mouseleave',()=>{editBtnH.style.background='var(--surface)';editBtnH.style.borderColor='var(--border)';});
   editBtnH.addEventListener('click', ()=>{
     closeModal();
@@ -36715,7 +37063,7 @@ function showSourceReaderModal(src){
   headBtns.appendChild(editBtnH);
   const closeBtnH = mk('button','reader-btn-close-x');
   closeBtnH.type = 'button';
-  closeBtnH.style.cssText = 'width:32px;height:32px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:18px;cursor:pointer;font-family:inherit;color:var(--text2);line-height:1;display:flex;align-items:center;justify-content:center;transition:all .15s ease';
+  closeBtnH.style.cssText = 'width:30px;height:30px;background:var(--surface);border:1px solid var(--border);border-radius:7px;font-size:16px;cursor:pointer;font-family:inherit;color:var(--text2);line-height:1;display:flex;align-items:center;justify-content:center;transition:all .15s ease';
   closeBtnH.textContent = '×';
   closeBtnH.title = 'Fechar (Esc)';
   closeBtnH.addEventListener('mouseenter',()=>{closeBtnH.style.background='rgba(232,76,76,.08)';closeBtnH.style.borderColor='rgba(232,76,76,.30)';closeBtnH.style.color='var(--red-text)';});
@@ -36734,13 +37082,14 @@ function showSourceReaderModal(src){
   // V15.12.75.89 — Barra de progresso de leitura. Fica entre header e body,
   // não scrolla. Atualiza conforme o user rola o conteúdo.
   // V15.12.75.90 — Classes (.reader-progress, .progress-label) pra modo foco.
+  // V15.12.75.150 — Cores agora usam var(--gralia-purple-rgb) — respondem ao tema.
   const progressBar = mk('div','reader-progress');
-  progressBar.style.cssText = 'position:relative;height:32px;background:rgba(128,66,250,.05);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;padding:0 1rem;transition:all .25s ease';
+  progressBar.style.cssText = 'position:relative;height:32px;background:rgba(var(--gralia-purple-rgb),.05);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;padding:0 1rem;transition:all .25s ease';
   const progressTrack = mk('div');
-  progressTrack.style.cssText = 'position:absolute;left:0;right:0;top:0;height:3px;background:rgba(128,66,250,.14)';
+  progressTrack.style.cssText = 'position:absolute;left:0;right:0;top:0;height:3px;background:rgba(var(--gralia-purple-rgb),.14)';
   progressBar.appendChild(progressTrack);
   const progressFill = mk('div');
-  progressFill.style.cssText = 'position:absolute;left:0;top:0;height:3px;width:0%;background:linear-gradient(90deg, var(--gralia-purple) 0%, rgba(128,66,250,.85) 100%);transition:width .12s ease-out;box-shadow:0 0 10px rgba(128,66,250,.55)';
+  progressFill.style.cssText = 'position:absolute;left:0;top:0;height:3px;width:0%;background:linear-gradient(90deg, var(--gralia-purple) 0%, rgba(var(--gralia-purple-rgb),.85) 100%);transition:width .12s ease-out;box-shadow:0 0 10px rgba(var(--gralia-purple-rgb),.55)';
   progressBar.appendChild(progressFill);
   // V15.12.75.98 — Marcadores de seção REMOVIDOS da barra de progresso.
   // User pediu pra deixar só a linha de preenchimento limpa. O índice
@@ -39743,7 +40092,7 @@ function showTopicPicker(onPick){
   if(existing){existing.remove();}
 
   const overlay = mk('div','topic-picker-overlay');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.4);display:flex;align-items:flex-start;justify-content:center;padding-top:14vh;animation:fadeIn .12s ease';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:flex-start;justify-content:center;padding-top:14vh;animation:fadeIn .12s ease';
 
   const box = mk('div');
   box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:0;width:min(560px,92vw);max-height:70vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.25);animation:slideDown .15s ease';
@@ -44858,7 +45207,7 @@ function renderMentorPrinciples(m){
 // Modal de edição/criação de princípio
 function openPrincipleModal(existing, m, parentWrap){
   const overlay = mk('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99800;display:flex;align-items:center;justify-content:center;padding:1rem';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:99800;display:flex;align-items:center;justify-content:center;padding:1rem';
   const box = mk('div','card');
   box.style.cssText = 'max-width:480px;width:100%;padding:1.5rem';
   const title = mk('h3');
@@ -69320,16 +69669,24 @@ function buildDashboardScheduleCard(ctx){
 
 
 // V14: Auto-refresh do card "Agora" do cronograma.
-// Apenas 1 timer global. Re-render a cada 60s SE estiver na view schedule ou dashboard.
+// V15.12.75.150 — ANTES: chamava render() global a cada 60s = pisca-pisca
+// recorrente em qualquer ação ociosa do user. Era a causa principal da
+// sensação de "plataforma instável". AGORA: usa requestRender() debouncado
+// se estiver no dashboard, e SÓ se a aba estiver visível. Se aba estiver
+// oculta (other tab), pula o ciclo — economiza ciclos e evita re-render
+// invisível. Frequência reduzida de 60s pra 90s pra menos overhead.
 let _scheduleRefreshTimer = null;
 function setupScheduleAutoRefresh(){
   if(_scheduleRefreshTimer) return; // já rodando
   _scheduleRefreshTimer = setInterval(()=>{
+    // Não roda se aba oculta (browser pausa visualmente mesmo assim,
+    // mas evita rasgar bateria/CPU)
+    if(document.hidden) return;
     const v = ST.view;
     if(v === 'schedule' || v === 'dashboard'){
-      try{ render(); }catch(_){}
+      requestRender();
     }
-  }, 60 * 1000);
+  }, 90 * 1000);
 }
 
 // Integra com Pomodoro: clique em "Iniciar pomodoro" cria sessão com nome do bloco.
@@ -72912,11 +73269,21 @@ function renderEyeCare(){
 }
 
 function renderSettings(){
+  // V15.12.75.150 — Modo "preferences" (Configurações do app): filtra
+  // seções pra mostrar APENAS Aparência, Notificações, Privacidade.
+  // Quando ST.view === 'settings' (legado) mostra TUDO.
+  // Quando ST.view === 'preferences', mostra subset (config do app).
+  // Decidido com user: separar "Conta e Perfil" (=settings) de "Configurações"
+  // (=preferences) no menu do avatar, pra reduzir bagunça de scroll na página.
+  const isPreferencesMode = ST.view === 'preferences';
   const wrap = mk('div','fade settings-page-v2');
   // V14: Header compacto com toggle pra modo "denso" (fit mais info na tela)
   const headerRow = mk('div');
   headerRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:.75rem;flex-wrap:wrap';
-  const h = mk('h1');h.textContent='Conta';h.style.margin='0';
+  const h = mk('h1');
+  // V15.12.75.150 — Title muda conforme modo
+  h.textContent = isPreferencesMode ? 'Configurações' : 'Conta e Perfil';
+  h.style.margin='0';
   headerRow.appendChild(h);
   // Toggle modo compacto — esconde descrições longas
   const compactBtn = mk('button');
@@ -72946,13 +73313,20 @@ function renderSettings(){
 
   if(!DATA.settingsCompact){
     const sub = mk('p','txt2');sub.style.cssText='margin:0 0 1.25rem;font-size:13px;line-height:1.55;max-width:600px';
-    sub.textContent = 'Personalize seu perfil, preferências de estudo, aparência e dados. Use os links abaixo pra pular pra cada seção.';
+    // V15.12.75.150 — sub texto adaptado ao modo
+    sub.textContent = isPreferencesMode
+      ? 'Personalize a aparência (tema, paleta de cor) e como o app te notifica.'
+      : 'Seu perfil, assinatura, afiliados e dados. Use os links abaixo pra pular pra cada seção.';
     wrap.appendChild(sub);
   }
 
   // Índice de navegação rápida (chips clicáveis que rolam até a seção)
+  // V15.12.75.150 — Index filtrado conforme modo. Preferences mostra só
+  // 3 chips (Aparência, Notificações, Privacidade). Settings mostra todos
+  // os legados (Perfil, Assinatura, Afiliados, etc).
   const idx = mk('div','settings-index');
-  const indexItems = [
+  const PREFERENCES_TARGETS = ['sec-aparencia', 'sec-notif', 'sec-privacy'];
+  const allIndexItems = [
     {target:'sec-perfil', icon:'👤', label:'Perfil'},
     {target:'sec-subscription', icon:'💳', label:'Assinatura'},
     {target:'sec-affiliate', icon:'🤝', label:'Afiliados'},
@@ -72962,7 +73336,10 @@ function renderSettings(){
     {target:'sec-feedback', icon:'💬', label:'Fale conosco'},
     {target:'sec-dados', icon:'💾', label:'Dados'}
   ];
-  if(isAdminUser()){
+  const indexItems = isPreferencesMode
+    ? allIndexItems.filter(it => PREFERENCES_TARGETS.includes(it.target))
+    : allIndexItems;
+  if(isAdminUser() && !isPreferencesMode){
     indexItems.push({target:'sec-admin', icon:'🔧', label:'Admin'});
   }
   indexItems.forEach(it=>{
@@ -73079,7 +73456,8 @@ function renderSettings(){
   helpBtn.addEventListener('click',()=>{DATA.welcomeShown=false;save();render();});
   helpRow.appendChild(helpBtn);
   examCard.appendChild(helpRow);
-  wrap.appendChild(examCard);
+  // V15.12.75.150 — Perfil/Prova só em settings (Conta e Perfil)
+  if(!isPreferencesMode) wrap.appendChild(examCard);
 
   // Appearance & shortcuts card
   const uxCard = mk('div','card');uxCard.style.marginTop='1rem';
@@ -73120,9 +73498,9 @@ function renderSettings(){
   palRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.5rem';
   const currentAccent = localStorage.getItem('gralia_accent') || 'purple';
   const palettes = [
-    { id:'purple',   label:'Roxo Gralia',     swatch:'linear-gradient(135deg,#8c4dfb 0%,#762ffb 100%)', desc:'Cor original da logo' },
-    { id:'graphite', label:'Cinza Espacial',  swatch:'linear-gradient(135deg,#56606a 0%,#3a4148 100%)', desc:'Grafite minimalista' },
-    { id:'steel',    label:'Azul Aço',        swatch:'linear-gradient(135deg,#3aaed4 0%,#2596be 100%)', desc:'Azul da logo (#2596be)' }
+    { id:'purple',    label:'Roxo Gralia',     swatch:'linear-gradient(135deg,#8c4dfb 0%,#762ffb 100%)', desc:'Cor original da logo' },
+    { id:'graphite',  label:'Cinza Espacial',  swatch:'linear-gradient(135deg,#56606a 0%,#3a4148 100%)', desc:'Grafite minimalista' },
+    { id:'petroleum', label:'Azul-Petróleo',   swatch:'linear-gradient(135deg,#2d7888 0%,#1f5e6e 100%)', desc:'Azul-esverdeado sério' }
   ];
   palettes.forEach(p => {
     const card = mk('button');
@@ -73307,7 +73685,8 @@ function renderSettings(){
       fetchSubscription().then(()=>render()).catch(()=>{});
     }
 
-    wrap.appendChild(subCard);
+    // V15.12.75.150 — Assinatura só em settings
+    if(!isPreferencesMode) wrap.appendChild(subCard);
   }
 
   // ===== V13: Card de afiliados — só se logado =====
@@ -73370,7 +73749,8 @@ function renderSettings(){
     affHelp.textContent = 'Quando alguém clica no seu link, é creditado a você por 30 dias. Se essa pessoa virar assinante nesse período, você ganha comissão das 3 primeiras mensalidades. Pagamentos a partir de R$ 50 acumulados.';
     affCard.appendChild(affHelp);
 
-    wrap.appendChild(affCard);
+    // V15.12.75.150 — Afiliados só em settings
+    if(!isPreferencesMode) wrap.appendChild(affCard);
   }
 
   // ===== MINHA CONTA — only if auth is active =====
@@ -73430,7 +73810,8 @@ function renderSettings(){
     });
     accBtns.appendChild(logoutBtn);
     accCard.appendChild(accBtns);
-    wrap.appendChild(accCard);
+    // V15.12.75.150 — Minha conta só em settings
+    if(!isPreferencesMode) wrap.appendChild(accCard);
   }
 
   // === Configurações da IA — ADMIN ONLY ===
@@ -73466,7 +73847,8 @@ function renderSettings(){
     // V14: Botão "Testar conexão com a API" REMOVIDO da Conta — agora fica APENAS no
     // Painel admin pra evitar uso por usuário comum.
 
-    wrap.appendChild(apiCard);
+    // V15.12.75.150 — apiCard (config IA admin) só em settings
+    if(!isPreferencesMode) wrap.appendChild(apiCard);
   }
 
   const nCard = mk('div','card');nCard.style.marginTop='1rem';
@@ -73673,7 +74055,8 @@ function renderSettings(){
   });
   actions.appendChild(exp);actions.appendChild(imp);actions.appendChild(del);
   rCard.appendChild(actions);
-  wrap.appendChild(rCard);
+  // V15.12.75.150 — Dados (export/import/delete) só em settings
+  if(!isPreferencesMode) wrap.appendChild(rCard);
 
   // ==== Sobre o Gralia (acesso rápido pra Sobre/FAQ/Manual) ====
   const aboutCard = mk('div','card');aboutCard.style.marginTop='1rem';
@@ -73697,7 +74080,8 @@ function renderSettings(){
     aboutActions.appendChild(b);
   });
   aboutCard.appendChild(aboutActions);
-  wrap.appendChild(aboutCard);
+  // V15.12.75.150 — Sobre só em settings
+  if(!isPreferencesMode) wrap.appendChild(aboutCard);
 
   // ==== Feedback / Sugestões / NPS ====
   const fbCard = mk('div','card');fbCard.style.marginTop='1rem';
@@ -73734,7 +74118,8 @@ function renderSettings(){
   }
 
   fbCard.appendChild(fbActions);
-  wrap.appendChild(fbCard);
+  // V15.12.75.150 — Fale conosco só em settings
+  if(!isPreferencesMode) wrap.appendChild(fbCard);
 
   // ==== Modo Admin — APENAS pra usuários com email na whitelist ADMIN_EMAILS ====
   if(isAdminUser()){
@@ -74433,7 +74818,8 @@ GRANT EXECUTE ON FUNCTION ai_question_report(TEXT, TEXT) TO authenticated;
     poolRow.appendChild(prBtnRow);
     adminCard.appendChild(poolRow);
 
-    wrap.appendChild(adminCard);
+    // V15.12.75.150 — Admin só em settings
+    if(!isPreferencesMode) wrap.appendChild(adminCard);
   }
 
   // ==== Exportar Perfis ====
@@ -74447,7 +74833,8 @@ GRANT EXECUTE ON FUNCTION ai_question_report(TEXT, TEXT) TO authenticated;
     const expBtn = mkBtn('📦 Baixar todos os perfis (.md)','btn btn-p');
     expBtn.addEventListener('click',()=>exportAllTopicProfiles());
     expCard.appendChild(expBtn);
-    wrap.appendChild(expCard);
+    // V15.12.75.150 — Exportar perfis só em settings
+    if(!isPreferencesMode) wrap.appendChild(expCard);
   }
 
   return wrap;
@@ -77568,11 +77955,14 @@ function toggleTheme(){
 }
 
 // V15.12.75.147 — Sistema de paleta de cor (accent).
+// V15.12.75.150 — 'steel' renomeado pra 'petroleum' (Azul-Petróleo #1f5e6e).
 // Aplica/persiste atributo data-accent no <html>. 3 opções:
-//   'purple' (default, Roxo Gralia), 'graphite' (Cinza Espacial), 'steel' (Azul Aço).
-const VALID_ACCENTS = ['purple', 'graphite', 'steel'];
+//   'purple' (default, Roxo Gralia), 'graphite' (Cinza Espacial), 'petroleum' (Azul-Petróleo).
+const VALID_ACCENTS = ['purple', 'graphite', 'petroleum'];
 function applyAccent(){
   let accent = localStorage.getItem('gralia_accent') || 'purple';
+  // V15.12.75.150 — Migração: se o user tinha 'steel' salvo, mapear pra 'petroleum'
+  if(accent === 'steel') accent = 'petroleum';
   if(!VALID_ACCENTS.includes(accent)) accent = 'purple';
   document.documentElement.setAttribute('data-accent', accent);
 }
@@ -77718,7 +78108,7 @@ function showCommandPalette(){
   if(existing){existing.remove();return;}
 
   const overlay = mk('div','cmd-palette-overlay');
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.4);display:flex;align-items:flex-start;justify-content:center;padding-top:14vh;animation:fadeIn .12s ease';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:flex-start;justify-content:center;padding-top:14vh;animation:fadeIn .12s ease';
 
   const box = mk('div','cmd-palette-box');
   box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:0;width:min(560px,92vw);max-height:70vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.25);animation:slideDown .15s ease';
@@ -79945,28 +80335,32 @@ async function initAuth(){
       if(!ST.view || ST.view === 'settings' && !DATA.welcomeShown){
         ST.view = 'dashboard';
       }
+      // V15.12.75.150 — Cada uma dessas Promises pode resolver em momentos
+      // diferentes (200ms-2s). Antes, cada uma chamava render() direto =
+      // 3-4 piscadas ao abrir. Agora todas usam requestRender() (debounce 60ms),
+      // o que agrupa em UM render só. Tela estabiliza.
       // Carrega dados em background sem bloquear/perguntar
       syncDown().then(remote=>{
         if(remote){
           Object.assign(DATA,remote);
           save();
-          render();
+          requestRender();
         }
       }).catch(err=>{
         console.warn('[NEXUS] Initial syncDown (auto) failed:',err.message);
       });
-      fetchQuota().then(()=>render()).catch(()=>{});
+      fetchQuota().then(()=>requestRender()).catch(()=>{});
       // V15.12.11 (Fase B): sincroniza catálogo de custos com o servidor
       loadActionCatalog().catch(()=>{});
       fetchUserProfile(true).then(()=>{
-        render();
+        requestRender();
         // V15.12.44 — Sessão restaurada de user que ainda não tem username
         // (típico: logou via Google antes, fechou sem completar). Pede pra completar.
         setTimeout(() => maybePromptProfileSetup(), 2500);
       }).catch(()=>{});
       // V12: Carrega dados de assinatura do usuário + checa notificações
       fetchSubscription(true).then(()=>{
-        render();
+        requestRender();
         // Após carregar subscription, checa eventos pra notificar
         setTimeout(()=>checkSubscriptionNotifications(), 800);
       }).catch(()=>{});
