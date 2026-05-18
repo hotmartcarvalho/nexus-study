@@ -8759,7 +8759,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.165';
+window.GRALIA_VERSION = 'V15.12.75.166';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -56014,43 +56014,29 @@ function renderPinhal(){
       }, 0);
       zoomBtns.appendChild(expandBtn);
 
-      // V15.12.75.121 — Toggle de SOM DE MATA (varia por horário: dia/dawn/noite).
-      // V15.12.75.125 — Auto-init REMOVIDO. Antes: se o user tinha ativado uma
-      // vez, recarregava o som a cada visita à página (pesa). Agora: user
-      // precisa clicar pra ativar a cada vez (preferência intencional).
-      const matureTrees = mappedTrees.filter(t => t.type === 'ancient' || t.type === 'mature').length;
-      if(matureTrees >= 5){
-        if(!DATA.config) DATA.config = {};
-        const pickForestSound = () => {
-          const hr = new Date().getHours();
-          if(hr >= 0 && hr < 5)   return 'forest_night';
-          if(hr >= 5 && hr < 8)   return 'forest_dawn';
-          if(hr >= 8 && hr < 18)  return 'forest_day';
-          if(hr >= 18 && hr < 20) return 'forest_dawn';
-          return 'forest_night';
-        };
-        // V15.12.75.125 — Sempre inicia desligado (não persiste mais)
-        const matBtn = mk('button','forest-zoom-btn');
-        matBtn.type = 'button';
-        let soundOn = false;
-        matBtn.innerHTML = '🔈';
-        matBtn.title = 'Ativar som de mata (brisa + pássaros)';
-        matBtn.addEventListener('click', () => {
-          soundOn = !soundOn;
-          if(soundOn){
-            try{ AmbientSound.play(pickForestSound()); }catch(_){}
-            try{ AmbientSound.setVolume(0.25); }catch(_){}
-            matBtn.innerHTML = '🔊';
-            matBtn.title = 'Som de mata ATIVO — desativar';
-            matBtn.style.background = 'rgba(var(--gralia-purple-rgb),.55)';
-          } else {
-            try{ AmbientSound.stop(); }catch(_){}
-            matBtn.innerHTML = '🔈';
-            matBtn.title = 'Ativar som de mata (brisa + pássaros)';
-            matBtn.style.background = 'rgba(0,0,0,.55)';
-          }
+      // V15.12.75.166 — Botão "ocultar visualização" — só aparece pra users
+      // em nível avançado onde a cena pode pesar (mesmo critério: nível ≥5
+      // ou ≥8 árvores). User pediu pra mover o toggle das Configurações
+      // pra cá (contextual: vê o toggle exatamente onde a cena renderiza).
+      // Quando user clica, oculta a cena na hora e persiste o estado.
+      if(pinhalIsHeavy){
+        const hideBtn = mk('button','forest-zoom-btn');
+        hideBtn.type = 'button';
+        hideBtn.title = 'Ocultar visualização do pinhal (alivia o navegador)';
+        hideBtn.setAttribute('aria-label', 'Ocultar visualização');
+        hideBtn.innerHTML = '🌲'; // árvore com slash visual via title
+        hideBtn.style.cssText = 'position:relative';
+        // Pequeno X sobreposto pra indicar "ocultar"
+        const cross = mk('span');
+        cross.style.cssText = 'position:absolute;top:-2px;right:-2px;width:14px;height:14px;background:var(--gralia-purple);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;line-height:1;border:1.5px solid #fff';
+        cross.textContent = '×';
+        hideBtn.appendChild(cross);
+        hideBtn.addEventListener('click', () => {
+          DATA.config.showPinhalScene = false;
+          save();
+          render();
         });
-        zoomBtns.appendChild(matBtn);
+        zoomBtns.appendChild(hideBtn);
       }
 
       sceneWrap.appendChild(zoomBtns);
@@ -74266,34 +74252,9 @@ function renderSettings(){
   uxTip.innerHTML = 'Atalhos rápidos durante questões: <kbd>C</kbd> Certo · <kbd>E</kbd> Errado · <kbd>Espaço</kbd> próxima · <kbd>F</kbd> foco · <kbd>?</kbd> ajuda';
   uxCard.appendChild(uxTip);
 
-  // V15.12.75.165 — Toggle "Mostrar floresta visual do pinhal" — só aparece
-  // se user já está em nível avançado (5+) ou tem 8+ árvores (onde a cena
-  // SVG fica pesada em navegadores lentos).
-  try{
-    if(typeof Pinhal !== 'undefined'){
-      const pInfo = Pinhal.getLevel();
-      const pState = Pinhal.getState();
-      const showsToggle = pInfo.level >= 5 || (pState.trees && pState.trees.length >= 8);
-      if(showsToggle){
-        const sceneRow = mk('div','flex');
-        sceneRow.style.cssText = 'margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--border)';
-        const sceneLbl = mk('p','txt');
-        sceneLbl.style.flex='1';
-        sceneLbl.innerHTML = 'Mostrar floresta visual do pinhal <span style="font-size:11px;color:var(--text3);font-weight:400;display:block;margin-top:2px">A cena animada SVG pode pesar com muitas árvores. Desligue se notar lentidão.</span>';
-        const sceneChk = mk('input');
-        sceneChk.type = 'checkbox';
-        sceneChk.checked = (DATA.config.showPinhalScene !== false);
-        sceneChk.style.cssText = 'width:auto;cursor:pointer';
-        sceneChk.addEventListener('change', e => {
-          DATA.config.showPinhalScene = e.target.checked;
-          save();
-        });
-        sceneRow.appendChild(sceneLbl);
-        sceneRow.appendChild(sceneChk);
-        uxCard.appendChild(sceneRow);
-      }
-    }
-  }catch(_){}
+  // V15.12.75.166 — Toggle "Mostrar floresta visual do pinhal" REMOVIDO daqui.
+  // Movido pra dentro da tela do Pinhal (mais contextual — user vê o toggle
+  // exatamente onde a cena renderiza, decide ali mesmo).
 
   // V15.12.75.152 — Aparência só em Preferences (Configurações do app).
   // Antes aparecia em ambas (Conta e Perfil + Configurações) — duplicação.
