@@ -320,6 +320,40 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
+
+/* V15.12.75.171 — Gradient de fundo adaptativo (opcional).
+   Toggle em Configurações > Aparência. Quando body tem .bg-gradient, aparece
+   um gradient radial sutil usando o accent atual (--gralia-purple-rgb).
+   O efeito é discreto pra não cansar em sessões longas — opacidade baixa,
+   maioria do gradient sai do topo direito como nas referências de design.
+   Inspirado nas refs do user mas adaptado pras cores do Gralia (não copia
+   cores do concorrente, segue o accent ativo).
+   Light mode: gradient cresce, tinge fundo. Dark mode: mais sutil ainda. */
+body.bg-gradient{
+  background:
+    radial-gradient(ellipse 80% 60% at 90% 0%,
+      rgba(var(--gralia-purple-rgb), .12) 0%,
+      rgba(var(--gralia-purple-rgb), 0) 60%),
+    radial-gradient(ellipse 70% 50% at 10% 100%,
+      rgba(var(--gralia-purple-rgb), .06) 0%,
+      rgba(var(--gralia-purple-rgb), 0) 55%),
+    var(--bg);
+  background-attachment: fixed;
+}
+/* Dark mode: gradient mais sutil ainda (não polui o conforto noturno) */
+[data-theme="dark"] body.bg-gradient,
+body.bg-gradient[data-theme="dark"]{
+  background:
+    radial-gradient(ellipse 80% 60% at 90% 0%,
+      rgba(var(--gralia-purple-rgb), .06) 0%,
+      rgba(var(--gralia-purple-rgb), 0) 60%),
+    radial-gradient(ellipse 70% 50% at 10% 100%,
+      rgba(var(--gralia-purple-rgb), .03) 0%,
+      rgba(var(--gralia-purple-rgb), 0) 55%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
 button,textarea,input,select{font-family:inherit;font-size:inherit;color:inherit}
 button{cursor:pointer;transition:background .15s,border-color .15s,color .15s,opacity .15s}
 a{color:var(--accent)}
@@ -1416,6 +1450,98 @@ body[data-view="schedule"] .page{max-width:1180px}
 @media(min-width:1100px){
   body.has-sidebar:not(.sidebar-collapsed)[data-view="schedule"] .page{max-width:calc(1180px + 264px)}
   body.has-sidebar.sidebar-collapsed[data-view="schedule"] .page{max-width:calc(1180px + 64px)}
+}
+
+/* V15.12.75.171 — Páginas alargadas (user pediu inspiração em concorrente).
+   As listadas abaixo têm muitos cards/listas e ganham em ter mais espaço
+   horizontal. Importante: páginas de PRÁTICA (questão única, flashcard
+   isolado, pomodoro) continuam estreitas pra leitura confortável.
+   Lista alargada: dashboard, sources, methods, imported, srs, pinhal,
+   mapa, discover, groups. */
+body[data-view="dashboard"] .page,
+body[data-view="sources"] .page,
+body[data-view="methods"] .page,
+body[data-view="imported"] .page,
+body[data-view="srs"] .page,
+body[data-view="pinhal"] .page,
+body[data-view="mapa"] .page,
+body[data-view="discover"] .page,
+body[data-view="groups"] .page{
+  max-width:1180px;
+}
+@media(min-width:1280px){
+  body[data-view="dashboard"] .page,
+  body[data-view="sources"] .page,
+  body[data-view="methods"] .page,
+  body[data-view="imported"] .page,
+  body[data-view="srs"] .page,
+  body[data-view="pinhal"] .page,
+  body[data-view="mapa"] .page,
+  body[data-view="discover"] .page,
+  body[data-view="groups"] .page{
+    max-width:1240px;
+  }
+}
+@media(min-width:1500px){
+  body[data-view="dashboard"] .page,
+  body[data-view="sources"] .page,
+  body[data-view="methods"] .page,
+  body[data-view="imported"] .page,
+  body[data-view="srs"] .page,
+  body[data-view="pinhal"] .page,
+  body[data-view="mapa"] .page,
+  body[data-view="discover"] .page,
+  body[data-view="groups"] .page{
+    max-width:1320px;
+  }
+}
+@media(min-width:1100px){
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="dashboard"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="sources"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="methods"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="imported"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="srs"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="pinhal"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="mapa"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="discover"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="groups"] .page{
+    max-width:calc(1180px + 264px);
+  }
+  body.has-sidebar.sidebar-collapsed[data-view="dashboard"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="sources"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="methods"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="imported"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="srs"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="pinhal"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="mapa"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="discover"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="groups"] .page{
+    max-width:calc(1180px + 64px);
+  }
+}
+@media(min-width:1500px){
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="dashboard"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="sources"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="methods"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="imported"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="srs"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="pinhal"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="mapa"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="discover"] .page,
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="groups"] .page{
+    max-width:calc(1320px + 264px);
+  }
+  body.has-sidebar.sidebar-collapsed[data-view="dashboard"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="sources"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="methods"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="imported"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="srs"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="pinhal"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="mapa"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="discover"] .page,
+  body.has-sidebar.sidebar-collapsed[data-view="groups"] .page{
+    max-width:calc(1320px + 64px);
+  }
 }
 
 /* V14: Quick sidebar — barra lateral fixa no canto direito em desktop XL.
@@ -8759,7 +8885,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.167';
+window.GRALIA_VERSION = 'V15.12.75.171';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -9233,13 +9359,64 @@ async function publishNotebook(notebook, opts){
   };
   const { data, error } = await supa.from('shared_resources').insert(insertObj).select().single();
   if(error) throw new Error(error.message);
-  // Pinhal: publicar caderno = 25 XP (entre fonte e questão)
-  try{
-    if(typeof Pinhal !== 'undefined'){
-      Pinhal.award({action:'notebook_publish', xp:25, ctx: notebook.name || ''});
-    }
-  }catch(_){}
+  // V15.12.75.168 — XP de publicação REMOVIDO.
+  // Antes V167 dava +25 XP só por publicar (sem garantia de qualidade).
+  // Agora XP é dado por MÉRITO da comunidade:
+  //   - A cada 5 upvotes recebidos (checkNotebookCommunityMilestones)
+  //   - A cada 3 importações por outros users
+  // Lógica em checkNotebookCommunityMilestones() (chamada em renderNotebooks)
   return data;
+}
+
+// V15.12.75.168 — Verifica marcos de comunidade dos cadernos publicados pelo
+// user e concede XP retroativo. Cada milestone só é concedido UMA vez por
+// caderno (rastreio em DATA.notebookRewards). Roda silenciosamente em background.
+// Chamada quando user entra na página de cadernos (e periodicamente).
+async function checkNotebookCommunityMilestones(){
+  if(!supa || !AUTH.user) return;
+  if(typeof Pinhal === 'undefined') return;
+  try{
+    // Busca todos os cadernos publicados pelo user com contadores atuais
+    const { data, error } = await supa.from('shared_resources')
+      .select('id, title, votes_up, total_uses')
+      .eq('resource_type', 'caderno')
+      .eq('owner_id', AUTH.user.id)
+      .eq('is_public', true);
+    if(error || !data || data.length === 0) return;
+    if(!DATA.notebookRewards) DATA.notebookRewards = {};
+    let changed = false;
+    data.forEach(r => {
+      const tracked = DATA.notebookRewards[r.id] || { upvoteMilestones: 0, importMilestones: 0 };
+      // +5 XP a cada 5 upvotes (cap em 50 upvotes = 50 XP máximo por caderno)
+      const newUpMilestones = Math.min(10, Math.floor((r.votes_up || 0) / 5));
+      if(newUpMilestones > tracked.upvoteMilestones){
+        const earnedSteps = newUpMilestones - tracked.upvoteMilestones;
+        const xpGained = earnedSteps * 5;
+        Pinhal.award({
+          action: 'notebook_upvotes',
+          xp: xpGained,
+          ctx: `${r.title} · ${r.votes_up} 👍`
+        });
+        tracked.upvoteMilestones = newUpMilestones;
+        changed = true;
+      }
+      // +10 XP a cada 3 imports (cap em 30 imports = 100 XP máximo)
+      const newImpMilestones = Math.min(10, Math.floor((r.total_uses || 0) / 3));
+      if(newImpMilestones > tracked.importMilestones){
+        const earnedSteps = newImpMilestones - tracked.importMilestones;
+        const xpGained = earnedSteps * 10;
+        Pinhal.award({
+          action: 'notebook_imports',
+          xp: xpGained,
+          ctx: `${r.title} · ${r.total_uses} imports`
+        });
+        tracked.importMilestones = newImpMilestones;
+        changed = true;
+      }
+      DATA.notebookRewards[r.id] = tracked;
+    });
+    if(changed) save();
+  }catch(_){}
 }
 
 // Lista cadernos públicos com ordenação. sortBy:
@@ -9385,23 +9562,231 @@ function importCommunityNotebookSnapshot(resource){
     newQuestionIds.push(qId);
   });
   // Cria caderno local
+  // V15.12.75.168 — Campos padronizados com o sistema existente:
+  // importedFromResource (resource_id) + importedFromUser (username do autor).
+  // Antes V167 eu tinha usado importedFromResourceId mas o resto do código
+  // (renderSmartPublishButton, importacao tracking, etc) checa por
+  // importedFromResource. Padronização garante que o botão publicar NÃO
+  // aparece pra cadernos importados de outro user.
   const nb = {
     id: 'nb-'+now,
     name: (resource.payload.notebook_name || resource.title) + ' (importado)',
     description: resource.payload.notebook_description || resource.description || '',
     questionIds: newQuestionIds,
     createdAt: now,
-    importedFromResourceId: resource.id
+    importedFromResource: resource.id,
+    importedFromUser: resource.owner_username || null
   };
   DATA.notebooks.push(nb);
   save();
-  // Pinhal: importar caderno = 10 XP
-  try{
-    if(typeof Pinhal !== 'undefined'){
-      Pinhal.award({action:'notebook_import', xp:10, ctx: resource.title || ''});
-    }
-  }catch(_){}
+  // V15.12.75.168 — XP de importação REMOVIDO.
+  // Antes V167 dava +10 XP por importar — mas importar é ação passiva,
+  // não mérito. O autor do caderno é quem ganha XP via milestones de uso
+  // (checkNotebookCommunityMilestones).
   return {notebook: nb, questionsImported: newQuestionIds.length};
+}
+
+// =====================================================
+// V15.12.75.169 — GRUPOS: cadernos publicados por membros + desempenho
+// =====================================================
+
+// Lista cadernos publicados pelos membros de um grupo.
+// Retorna {items: []} com cadernos + agregados (attempters_count, avg_group_score).
+async function fetchGroupNotebooks(groupId){
+  if(!supa || !AUTH.user) return {items: []};
+  if(!groupId) return {items: []};
+  try{
+    const { data, error } = await supa.from('group_notebooks_view')
+      .select('*')
+      .eq('group_id', groupId)
+      .order('published_at', {ascending: false})
+      .limit(200);
+    if(error) return {error: error.message, items: []};
+    return {items: data || []};
+  }catch(err){
+    return {error: err.message, items: []};
+  }
+}
+
+// Ranking de um caderno específico DENTRO de um grupo.
+// Retorna lista ordenada por best_score, com nome do usuário.
+// Filtra automaticamente por share_performance=true via RLS.
+async function fetchGroupNotebookRanking(groupId, resourceId){
+  if(!supa || !AUTH.user) return {items: []};
+  if(!groupId || !resourceId) return {items: []};
+  try{
+    const { data, error } = await supa.from('group_notebook_attempts')
+      .select('id, user_id, attempts_count, questions_answered, correct_count, total_time_seconds, best_accuracy, best_score, last_attempt_at')
+      .eq('group_id', groupId)
+      .eq('resource_id', resourceId)
+      .order('best_score', {ascending: false})
+      .limit(50);
+    if(error) return {error: error.message, items: []};
+    // Hidrata usernames
+    const userIds = [...new Set((data || []).map(r => r.user_id))];
+    let userMap = {};
+    if(userIds.length > 0){
+      const { data: profs } = await supa.from('user_profiles')
+        .select('user_id, username, display_name')
+        .in('user_id', userIds);
+      (profs || []).forEach(p => { userMap[p.user_id] = p; });
+    }
+    const items = (data || []).map((r, idx) => ({
+      ...r,
+      rank: idx + 1,
+      username: userMap[r.user_id]?.username || null,
+      display_name: userMap[r.user_id]?.display_name || null,
+      is_me: r.user_id === AUTH.user.id,
+      avg_seconds_per_q: r.questions_answered > 0
+        ? Math.round(r.total_time_seconds / r.questions_answered)
+        : null
+    }));
+    return {items};
+  }catch(err){
+    return {error: err.message, items: []};
+  }
+}
+
+// Registra tentativa de prática num caderno do grupo (chamado ao finalizar prática).
+// Usa RPC pra calcular score combinado server-side de forma consistente.
+async function recordGroupNotebookAttempt(groupId, resourceId, questions, correct, timeSeconds){
+  if(!supa || !AUTH.user) return {error: 'Não autenticado'};
+  if(!groupId || !resourceId) return {error: 'Parâmetros inválidos'};
+  if(questions <= 0) return {error: 'Nenhuma questão respondida'};
+  try{
+    const { data, error } = await supa.rpc('upsert_group_notebook_attempt', {
+      p_group_id: groupId,
+      p_resource_id: resourceId,
+      p_questions: questions,
+      p_correct: correct,
+      p_time_seconds: Math.round(timeSeconds)
+    });
+    if(error) return {error: error.message};
+    return {attempt: data};
+  }catch(err){
+    return {error: err.message};
+  }
+}
+
+// Pega/atualiza opt-in de compartilhar desempenho do user num grupo específico.
+async function getShareGroupPerformance(groupId){
+  if(!supa || !AUTH.user || !groupId) return false;
+  try{
+    const { data, error } = await supa.from('group_members')
+      .select('share_performance')
+      .eq('group_id', groupId)
+      .eq('user_id', AUTH.user.id)
+      .maybeSingle();
+    if(error || !data) return false;
+    return !!data.share_performance;
+  }catch(_){ return false; }
+}
+
+async function setShareGroupPerformance(groupId, share){
+  if(!supa || !AUTH.user || !groupId) throw new Error('Parâmetros inválidos');
+  const { error } = await supa.from('group_members')
+    .update({ share_performance: !!share })
+    .eq('group_id', groupId)
+    .eq('user_id', AUTH.user.id);
+  if(error) throw new Error(error.message);
+  return true;
+}
+
+// Dashboard agregado do grupo — desempenho geral em todos os cadernos.
+// Retorna: total_attempts, total_questions, total_correct, avg_accuracy, top_members
+async function fetchGroupDashboard(groupId){
+  if(!supa || !AUTH.user || !groupId) return null;
+  try{
+    // Busca todos attempts visíveis (RLS já filtra opt-in)
+    const { data, error } = await supa.from('group_notebook_attempts')
+      .select('user_id, attempts_count, questions_answered, correct_count, total_time_seconds, best_score')
+      .eq('group_id', groupId);
+    if(error) return {error: error.message};
+    const rows = data || [];
+    // Agrega por usuário
+    const byUser = {};
+    rows.forEach(r => {
+      if(!byUser[r.user_id]){
+        byUser[r.user_id] = {
+          user_id: r.user_id,
+          attempts: 0,
+          questions: 0,
+          correct: 0,
+          time_seconds: 0,
+          notebooks_practiced: 0,
+          sum_score: 0
+        };
+      }
+      const u = byUser[r.user_id];
+      u.attempts += r.attempts_count || 0;
+      u.questions += r.questions_answered || 0;
+      u.correct += r.correct_count || 0;
+      u.time_seconds += r.total_time_seconds || 0;
+      u.notebooks_practiced += 1;
+      u.sum_score += r.best_score || 0;
+    });
+    // Hidrata usernames
+    const userIds = Object.keys(byUser);
+    let userMap = {};
+    if(userIds.length > 0){
+      const { data: profs } = await supa.from('user_profiles')
+        .select('user_id, username, display_name')
+        .in('user_id', userIds);
+      (profs || []).forEach(p => { userMap[p.user_id] = p; });
+    }
+    const members = Object.values(byUser).map(u => ({
+      ...u,
+      username: userMap[u.user_id]?.username || null,
+      display_name: userMap[u.user_id]?.display_name || null,
+      accuracy: u.questions > 0 ? Math.round((u.correct / u.questions) * 1000) / 10 : 0,
+      avg_score: u.notebooks_practiced > 0 ? Math.round((u.sum_score / u.notebooks_practiced) * 10) / 10 : 0
+    })).sort((a, b) => b.avg_score - a.avg_score);
+    // Totais do grupo
+    const totals = {
+      members_sharing: members.length,
+      total_attempts: members.reduce((s, m) => s + m.attempts, 0),
+      total_questions: members.reduce((s, m) => s + m.questions, 0),
+      total_correct: members.reduce((s, m) => s + m.correct, 0),
+      total_time_seconds: members.reduce((s, m) => s + m.time_seconds, 0)
+    };
+    totals.avg_accuracy = totals.total_questions > 0
+      ? Math.round((totals.total_correct / totals.total_questions) * 1000) / 10
+      : 0;
+    return { totals, members };
+  }catch(err){
+    return {error: err.message};
+  }
+}
+
+// =====================================================
+// V15.12.75.170 — LEADERBOARD DE GRUPOS (top 30 + posição dos meus grupos)
+// =====================================================
+
+// Busca top 30 grupos globais e a posição dos grupos do user via RPC única.
+// Retorna { top: [...], myGroups: [...] }.
+// Cache em memória pra evitar chamadas duplicadas no mesmo render.
+async function fetchGroupLeaderboard(opts){
+  if(!supa) return {top: [], myGroups: []};
+  opts = opts || {};
+  // Cache curto (60s) — leaderboard não muda a cada segundo
+  if(!opts.force && window._groupLeaderboardCache){
+    const cached = window._groupLeaderboardCache;
+    if(Date.now() - cached.at < 60 * 1000){
+      return cached.data;
+    }
+  }
+  try{
+    const { data, error } = await supa.rpc('get_group_leaderboard');
+    if(error) return {error: error.message, top: [], myGroups: []};
+    const result = {
+      top: (data && data.top) || [],
+      myGroups: (data && data.my_groups) || []
+    };
+    window._groupLeaderboardCache = { at: Date.now(), data: result };
+    return result;
+  }catch(err){
+    return {error: err.message, top: [], myGroups: []};
+  }
 }
 
 // V15: Admin marca uma fonte pública como validada (ou desfaz validação).
@@ -47163,6 +47548,17 @@ function renderNotebooks(wrap){
     ? (ST.notebookSubview==='practice'?'practice':'manage')
     : 'list';
 
+  // V15.12.75.168 — Verifica marcos de comunidade em background (não bloqueia UI).
+  // Concede XP retroativo pros cadernos que ganharam upvotes/imports
+  // desde a última verificação. Throttled pra rodar no máximo 1×/hora.
+  try{
+    const lastCheck = ST._lastNbMilestoneCheck || 0;
+    if(Date.now() - lastCheck > 3600 * 1000){
+      ST._lastNbMilestoneCheck = Date.now();
+      checkNotebookCommunityMilestones().catch(_=>{});
+    }
+  }catch(_){}
+
   if(view==='list')return renderNotebooksList(wrap);
   if(view==='manage')return renderNotebookManage(wrap);
   if(view==='practice')return renderNotebookPractice(wrap);
@@ -48252,18 +48648,15 @@ function renderNotebookManageIn(wrap,nb){
   const stats = mk('span','txt2');
   const pStats = notebookStatsHTML(nb.id);
   stats.innerHTML = pStats;
-  // V15.12.75.167 — Botão "Publicar pra comunidade" — só pra users autenticados
-  const publishBtn = mkBtn('🌐 Publicar pra comunidade','btn btn-sm');
-  publishBtn.style.cssText = 'font-size:11.5px;color:var(--gralia-purple);border-color:rgba(var(--gralia-purple-rgb),.40)';
-  publishBtn.title = 'Compartilhar este caderno pra outros usuários do Gralia';
-  publishBtn.addEventListener('click', () => showPublishNotebookModal(nb));
+  // V15.12.75.168 — Botão duplicado "Publicar pra comunidade" REMOVIDO.
+  // Já existe um botão "Smart Publish" (✓ Publicado / 🔄 Atualizar / 🌐 Publicar)
+  // no head principal (linha ~48214) que faz exatamente isso — e melhor,
+  // detecta se já publicado e ajusta estado. V167 adicionou um duplicado aqui
+  // por engano. Mantida só a chamada original.
   const practiceBtn = mkBtn('▶ Praticar caderno →','btn btn-p');
   practiceBtn.style.marginLeft='auto';
   practiceBtn.addEventListener('click',()=>startNotebookPractice(nb.id));
   ctr.appendChild(stats);
-  if(typeof isAuthed === 'function' && isAuthed()){
-    ctr.appendChild(publishBtn);
-  }
   ctr.appendChild(practiceBtn);
   wrap.appendChild(ctr);
 
@@ -48408,6 +48801,9 @@ function startNotebookPractice(notebookId){
   ST.notebookPracticeAnswered = false;
   ST.notebookPracticeAnswer = null;
   ST.notebookPracticeStats = {correct:0,total:0,answered:0};
+  // V15.12.75.169 — Marca timestamp pra calcular tempo total na finalização
+  // (usado pra registrar attempt em group_notebook_attempts).
+  ST.notebookPracticeStartedAt = Date.now();
   render();
 }
 
@@ -48479,6 +48875,33 @@ function renderNotebookPractice(wrap){
         Pinhal.award({action:'deck_complete', xp:75, ctx:nb.name || 'Caderno'});
       }
     }catch(_){}
+
+    // V15.12.75.169 — Registra attempt no grupo se este caderno foi acessado
+    // via aba "Cadernos do grupo". O contexto é setado em ST._groupPracticeContext
+    // quando user clica "▶ Praticar" num caderno do grupo. Após o registro,
+    // limpa o contexto. Tempo total calculado desde startNotebookPractice.
+    try{
+      const ctx = ST._groupPracticeContext;
+      if(ctx && stats.answered > 0 && ST.notebookPracticeStartedAt){
+        const elapsedMs = Date.now() - ST.notebookPracticeStartedAt;
+        const elapsedSec = Math.max(1, Math.round(elapsedMs / 1000));
+        recordGroupNotebookAttempt(
+          ctx.groupId,
+          ctx.resourceId,
+          stats.answered,
+          stats.correct,
+          elapsedSec
+        ).then(res => {
+          if(res && !res.error){
+            showToast('✓ Resultado registrado no ranking do grupo');
+          } else if(res && res.error){
+            console.warn('[group-attempt]', res.error);
+          }
+        }).catch(err => console.warn('[group-attempt]', err));
+        // Limpa contexto pra próxima prática não registrar novamente
+        ST._groupPracticeContext = null;
+      }
+    }catch(e){ console.warn('[group-attempt]', e); }
     const card = mk('div','card');card.style.cssText='text-align:center;padding:2rem 1rem';
     const big = mk('div');big.style.cssText='font-size:48px;margin-bottom:.5rem';big.textContent='🎉';
     card.appendChild(big);
@@ -69556,6 +69979,11 @@ function renderGroups(){
   const joinBtn = mkBtn('🔑 Entrar via código','btn');
   joinBtn.addEventListener('click', showJoinGroupModal);
   actionsRow.appendChild(joinBtn);
+  // V15.12.75.170 — Botão de leaderboard global de grupos
+  const lbBtn = mkBtn('🏆 Ranking de grupos','btn');
+  lbBtn.title = 'Top 30 grupos do Gralia com base no desempenho dos membros';
+  lbBtn.addEventListener('click', showGroupLeaderboardModal);
+  actionsRow.appendChild(lbBtn);
   wrap.appendChild(actionsRow);
 
   // Lista de grupos
@@ -69629,6 +70057,107 @@ function renderGroups(){
 }
 
 // Modal: criar grupo
+// V15.12.75.170 — Modal de ranking global de grupos.
+// Mostra top 30 + os grupos do user com suas posições.
+async function showGroupLeaderboardModal(){
+  const m = mk('div');
+  m.style.cssText = 'max-width:640px;width:100%;max-height:88vh;overflow-y:auto';
+
+  const h = mk('h3');
+  h.style.cssText = 'margin:0 0 .5rem;font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px';
+  h.innerHTML = '<span>🏆</span><span>Ranking de grupos</span>';
+  m.appendChild(h);
+
+  const sub = mk('p','txt3');
+  sub.style.cssText = 'margin:0 0 1rem;font-size:12.5px;line-height:1.5';
+  sub.innerHTML = 'Top 30 grupos do Gralia. Pontuação combina <b>acerto</b> (40%), <b>atividade dos últimos 30 dias</b> (40%) e <b>engajamento</b> (20% — % de membros ativos). Apenas dados de membros que autorizaram compartilhar desempenho são contabilizados.';
+  m.appendChild(sub);
+
+  const body = mk('div');
+  body.innerHTML = '<div class="txt3" style="padding:2rem 1rem;text-align:center">Carregando ranking global...</div>';
+  m.appendChild(body);
+
+  showModal(m);
+
+  const result = await fetchGroupLeaderboard({force: true});
+  body.innerHTML = '';
+
+  if(result.error){
+    body.innerHTML = `<div class="txt3" style="color:var(--red-text);padding:1rem">⚠️ ${escapeHTML(result.error)}</div>`;
+    return;
+  }
+
+  // === Seção "Meus grupos" (se o user está em algum grupo no ranking) ===
+  if(result.myGroups && result.myGroups.length > 0){
+    const mySection = mk('div');
+    mySection.style.cssText = 'margin-bottom:1.25rem';
+    const myTitle = mk('div');
+    myTitle.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem';
+    myTitle.textContent = '📍 Seus grupos';
+    mySection.appendChild(myTitle);
+    result.myGroups.forEach(g => {
+      mySection.appendChild(_buildLeaderboardRow(g, true));
+    });
+    body.appendChild(mySection);
+  }
+
+  // === Top 30 ===
+  const topTitle = mk('div');
+  topTitle.style.cssText = 'font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:center';
+  topTitle.innerHTML = `<span>🏆 Top 30 — Geral</span><span style="font-weight:600;text-transform:none;letter-spacing:0;font-size:11px;color:var(--text3)">${(result.top || []).length} ${(result.top || []).length === 1 ? 'grupo' : 'grupos'}</span>`;
+  body.appendChild(topTitle);
+
+  if(!result.top || result.top.length === 0){
+    const empty = mk('div');
+    empty.style.cssText = 'text-align:center;padding:2rem 1rem;color:var(--text3)';
+    empty.innerHTML = `
+      <div style="font-size:34px;margin-bottom:.5rem;opacity:.5">🏆</div>
+      <h3 style="margin:0 0 .375rem;font-size:13.5px;color:var(--text)">Ranking vazio</h3>
+      <p style="margin:0;font-size:11.5px;line-height:1.5;max-width:380px;margin:0 auto">Nenhum grupo tem membros que autorizaram compartilhar desempenho ainda. Quando isso mudar, os grupos vão aparecer aqui.</p>
+    `;
+    body.appendChild(empty);
+    return;
+  }
+
+  result.top.forEach(g => {
+    const isMine = (result.myGroups || []).some(mg => mg.group_id === g.group_id);
+    body.appendChild(_buildLeaderboardRow(g, isMine));
+  });
+}
+
+// Helper que monta uma linha do leaderboard
+function _buildLeaderboardRow(g, isMine){
+  const row = mk('div');
+  const bg = isMine ? 'rgba(var(--gralia-purple-rgb),.06)' : 'var(--surface2)';
+  const border = isMine ? 'var(--gralia-purple)' : 'var(--border)';
+  row.style.cssText = `display:grid;grid-template-columns:46px 1fr auto;gap:10px;padding:.625rem .875rem;background:${bg};border:1px solid ${border};border-radius:9px;margin-bottom:.4rem;align-items:center`;
+
+  const medal = g.rank === 1 ? '🥇' : g.rank === 2 ? '🥈' : g.rank === 3 ? '🥉' : `#${g.rank}`;
+  const medalSize = g.rank <= 3 ? '22' : '15';
+  const medalColor = g.rank <= 3 ? '#f59e0b' : 'var(--text2)';
+
+  row.innerHTML = `
+    <div style="font-size:${medalSize}px;font-weight:800;color:${medalColor};text-align:center">${medal}</div>
+    <div style="min-width:0">
+      <div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${escapeHTML(g.group_name || 'Grupo')}
+        ${isMine ? '<span style="font-size:9.5px;background:var(--gralia-purple);color:#fff;padding:1px 7px;border-radius:999px;margin-left:6px;letter-spacing:.3px;font-weight:700">SEU</span>' : ''}
+      </div>
+      <div style="font-size:10.5px;color:var(--text3);margin-top:2px;line-height:1.5">
+        👥 ${g.members_sharing || 0} compartilhando
+        ${g.members_active != null ? ` · 🎯 ${g.members_active} ativos` : ''}
+        ${g.accuracy_pct != null ? ` · ${g.accuracy_pct}% acerto` : ''}
+        ${g.questions_recent_30d != null ? ` · ${g.questions_recent_30d}q (30d)` : ''}
+      </div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:17px;font-weight:800;color:var(--gralia-purple);line-height:1;letter-spacing:-.3px">${g.score != null ? g.score : '—'}</div>
+      <div style="font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-top:2px">score</div>
+    </div>
+  `;
+  return row;
+}
+
 function showCreateGroupModal(){
   const m = mk('div');
   m.style.cssText = 'min-width:min(420px,90vw);max-width:480px';
@@ -69679,7 +70208,15 @@ function showCreateGroupModal(){
       ST.view = 'groupView';
       render();
     }catch(e){
-      alert('Erro: ' + (e.message||e));
+      // V15.12.75.169 — Tratar limite de 3 grupos amigável (trigger BEFORE INSERT
+      // em group_members dispara quando o user automaticamente vira owner do
+      // grupo criado e já tem 3 vínculos).
+      const msg = e.message || String(e);
+      if(msg.includes('LIMITE_GRUPOS')){
+        alert('Você já participa de 3 grupos — o máximo permitido. Saia de algum antes de criar outro.');
+      } else {
+        alert('Erro: ' + msg);
+      }
       create.disabled = false; create.textContent = 'Criar grupo';
     }
   });
@@ -69731,7 +70268,13 @@ function showJoinGroupModal(){
       ST.view = 'groupView';
       render();
     }catch(e){
-      alert('Erro: ' + (e.message||e));
+      // V15.12.75.169 — Mensagem amigável quando estoura limite 3 grupos
+      const msg = e.message || String(e);
+      if(msg.includes('LIMITE_GRUPOS')){
+        alert('Você já participa de 3 grupos — o máximo permitido. Saia de algum antes de entrar em outro.');
+      } else {
+        alert('Erro: ' + msg);
+      }
       join.disabled = false; join.textContent = 'Entrar';
     }
   });
@@ -69887,15 +70430,21 @@ function renderGroupView(){
 
   wrap.appendChild(headCard);
 
-  // === Tabs Ranking / Membros ===
+  // === Tabs Ranking / Membros / Cadernos / Dashboard ===
+  // V15.12.75.169 — Adicionadas abas "Cadernos do grupo" e "Dashboard".
   const tabsWrap = mk('div');
-  tabsWrap.style.cssText = 'display:flex;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:3px;margin-bottom:1rem;width:fit-content';
+  tabsWrap.style.cssText = 'display:flex;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:3px;margin-bottom:1rem;flex-wrap:wrap';
   const currentTab = GROUPS.currentTab || 'ranking';
-  ['ranking','members'].forEach(key=>{
+  const tabs = [
+    ['ranking',   '🏆 Ranking'],
+    ['notebooks', '📝 Cadernos'],
+    ['dashboard', '📊 Dashboard'],
+    ['members',   '👥 Membros']
+  ];
+  tabs.forEach(([key, lbl])=>{
     const b = mk('button');
     b.type = 'button';
     const isOn = currentTab === key;
-    const lbl = key === 'ranking' ? '🏆 Ranking' : '👥 Membros';
     b.style.cssText = `padding:7px 14px;border-radius:7px;border:none;background:${isOn?'var(--surface)':'transparent'};color:${isOn?'var(--text)':'var(--text3)'};font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .12s;${isOn?'box-shadow:0 1px 3px rgba(0,0,0,.06)':''}`;
     b.textContent = lbl;
     b.addEventListener('click',()=>{
@@ -69908,6 +70457,14 @@ function renderGroupView(){
 
   if(currentTab === 'members'){
     renderGroupMembers(wrap, group);
+    return wrap;
+  }
+  if(currentTab === 'notebooks'){
+    renderGroupNotebooks(wrap, group);
+    return wrap;
+  }
+  if(currentTab === 'dashboard'){
+    renderGroupDashboard(wrap, group);
     return wrap;
   }
 
@@ -70002,6 +70559,249 @@ function renderGroupView(){
   return wrap;
 }
 
+// V15.12.75.169 — Aba "Cadernos do grupo": lista cadernos publicados por
+// membros do grupo + ranking de desempenho dos membros por caderno.
+function renderGroupNotebooks(parent, group){
+  const card = mk('div','card');
+  card.style.cssText = 'padding:1.25rem 1.5rem';
+
+  const head = mk('div');
+  head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;flex-wrap:wrap;gap:10px';
+  head.innerHTML = '<h2 style="margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:6px"><span>📝</span><span>Cadernos do grupo</span></h2>';
+  card.appendChild(head);
+
+  const sub = mk('p','txt3');
+  sub.style.cssText = 'margin:0 0 1rem;font-size:12.5px;line-height:1.5';
+  sub.textContent = 'Cadernos publicados pelos membros deste grupo na comunidade. Pratique e dispute no ranking.';
+  card.appendChild(sub);
+
+  const listWrap = mk('div');
+  listWrap.innerHTML = '<div class="txt3" style="padding:1rem;text-align:center">Carregando cadernos...</div>';
+  card.appendChild(listWrap);
+  parent.appendChild(card);
+
+  fetchGroupNotebooks(group.id).then(result => {
+    listWrap.innerHTML = '';
+    if(result.error){
+      listWrap.innerHTML = `<div class="txt3" style="color:var(--red-text);padding:1rem">⚠️ ${escapeHTML(result.error)}</div>`;
+      return;
+    }
+    if(!result.items || result.items.length === 0){
+      const empty = mk('div');
+      empty.style.cssText = 'text-align:center;padding:2rem 1rem;color:var(--text3)';
+      empty.innerHTML = `
+        <div style="font-size:34px;margin-bottom:.5rem;opacity:.6">📝</div>
+        <h3 style="margin:0 0 .375rem;font-size:14px;color:var(--text)">Nenhum caderno publicado no grupo</h3>
+        <p style="margin:0;font-size:12px;line-height:1.5">Quando um membro publicar um caderno na comunidade, ele aparece aqui.</p>
+      `;
+      listWrap.appendChild(empty);
+      return;
+    }
+    result.items.forEach(nb => {
+      const item = mk('div');
+      const myAttempted = !!nb.attempters_count;
+      item.style.cssText = 'padding:.875rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:9px;margin-bottom:.5rem';
+
+      const top = mk('div');
+      top.style.cssText = 'display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start';
+
+      const left = mk('div');
+      left.style.flex = '1';
+      const isMine = nb.publisher_id === AUTH.user.id;
+      left.innerHTML = `
+        <div style="font-size:13.5px;font-weight:700;color:var(--text);line-height:1.3">
+          ${escapeHTML(nb.title)}
+          ${isMine ? '<span style="font-size:10px;font-weight:700;background:rgba(var(--gralia-purple-rgb),.12);color:var(--gralia-purple);padding:2px 7px;border-radius:999px;margin-left:6px">SEU</span>' : ''}
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px;line-height:1.5">
+          ${nb.question_count || 0} questões${nb.discipline ? ' · ' + escapeHTML(nb.discipline) : ''} · ${nb.attempters_count || 0} ${(nb.attempters_count||0)===1?'membro praticou':'membros praticaram'}
+          ${nb.avg_group_score !== null ? ` · 📊 média ${nb.avg_group_score}` : ''}
+        </div>
+      `;
+      top.appendChild(left);
+
+      const right = mk('div');
+      right.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex-shrink:0';
+      const rankBtn = mkBtn('🏆 Ranking', 'btn btn-sm');
+      rankBtn.style.cssText = 'font-size:11px;padding:4px 10px';
+      rankBtn.addEventListener('click', () => showGroupNotebookRankingModal(group.id, nb));
+      right.appendChild(rankBtn);
+      const practiceBtn = mkBtn('▶ Praticar', 'btn btn-sm btn-p');
+      practiceBtn.style.cssText = 'font-size:11px;padding:4px 10px';
+      practiceBtn.addEventListener('click', () => {
+        // Marca o caderno como "do grupo" no state pra que ao finalizar a prática
+        // o sistema registre o attempt em group_notebook_attempts (V169).
+        ST._groupPracticeContext = { groupId: group.id, resourceId: nb.resource_id };
+        // Reusa o modal de preview pra user importar e praticar
+        showResourcePreviewModal({
+          id: nb.resource_id,
+          resource_type: 'caderno',
+          title: nb.title,
+          description: nb.description,
+          discipline: nb.discipline,
+          question_count: nb.question_count,
+          owner_id: nb.publisher_id
+        });
+      });
+      right.appendChild(practiceBtn);
+
+      top.appendChild(right);
+      item.appendChild(top);
+      listWrap.appendChild(item);
+    });
+  });
+}
+
+// V15.12.75.169 — Modal de ranking de um caderno específico no grupo.
+async function showGroupNotebookRankingModal(groupId, notebook){
+  const m = mk('div');
+  m.style.cssText = 'max-width:560px;max-height:80vh;overflow-y:auto';
+  const h = mk('h3');
+  h.style.cssText = 'margin:0 0 4px;font-size:17px;font-weight:700;line-height:1.3';
+  h.innerHTML = `🏆 Ranking · ${escapeHTML(notebook.title)}`;
+  m.appendChild(h);
+  const sub = mk('p','txt3');
+  sub.style.cssText = 'margin:0 0 1rem;font-size:12px;line-height:1.5';
+  sub.textContent = 'Pontuação combinada: 60% acerto + 40% velocidade. Apenas membros que autorizaram compartilhar desempenho aparecem.';
+  m.appendChild(sub);
+
+  const body = mk('div');
+  body.innerHTML = '<div class="txt3" style="padding:1rem;text-align:center">Carregando ranking...</div>';
+  m.appendChild(body);
+  showModal(m);
+
+  const result = await fetchGroupNotebookRanking(groupId, notebook.resource_id);
+  body.innerHTML = '';
+  if(result.error){
+    body.innerHTML = `<div class="txt3" style="color:var(--red-text);padding:1rem">⚠️ ${escapeHTML(result.error)}</div>`;
+    return;
+  }
+  if(!result.items || result.items.length === 0){
+    body.innerHTML = '<div class="txt3" style="padding:1.5rem 1rem;text-align:center;line-height:1.5">Ninguém praticou este caderno ainda neste grupo, ou os membros não autorizaram compartilhar.<br><br>Seja o primeiro!</div>';
+    return;
+  }
+  result.items.forEach(r => {
+    const row = mk('div');
+    const meHighlight = r.is_me ? 'background:rgba(var(--gralia-purple-rgb),.06);border:1px solid var(--gralia-purple)' : 'background:var(--surface2);border:1px solid var(--border)';
+    row.style.cssText = `display:grid;grid-template-columns:36px 1fr auto;gap:10px;padding:.625rem .875rem;${meHighlight};border-radius:8px;margin-bottom:.4rem;align-items:center`;
+    const medal = r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : `#${r.rank}`;
+    const userName = r.display_name || r.username || 'Usuário';
+    row.innerHTML = `
+      <div style="font-size:${r.rank<=3?'20':'14'}px;font-weight:800;color:${r.rank<=3?'#f59e0b':'var(--text2)'};text-align:center">${medal}</div>
+      <div>
+        <div style="font-size:12.5px;font-weight:700;color:var(--text);line-height:1.3">${escapeHTML(userName)}${r.is_me?' <span style="font-size:10px;background:var(--gralia-purple);color:#fff;padding:1px 6px;border-radius:999px;margin-left:4px">VOCÊ</span>':''}</div>
+        <div style="font-size:10.5px;color:var(--text3);margin-top:2px;line-height:1.5">
+          ${r.attempts_count} ${r.attempts_count===1?'tentativa':'tentativas'} ·
+          🎯 ${Math.round((r.best_accuracy||0)*10)/10}% melhor acerto ·
+          ⏱ ${r.avg_seconds_per_q||'—'}s/q
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:16px;font-weight:800;color:var(--gralia-purple);line-height:1">${Math.round((r.best_score||0)*10)/10}</div>
+        <div style="font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-top:1px">score</div>
+      </div>
+    `;
+    body.appendChild(row);
+  });
+}
+
+// V15.12.75.169 — Dashboard agregado do grupo: estatísticas gerais + lista de membros.
+function renderGroupDashboard(parent, group){
+  const card = mk('div','card');
+  card.style.cssText = 'padding:1.25rem 1.5rem';
+
+  const head = mk('div');
+  head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;gap:10px';
+  head.innerHTML = '<h2 style="margin:0;font-size:17px;font-weight:700;display:flex;align-items:center;gap:6px"><span>📊</span><span>Dashboard do grupo</span></h2>';
+  card.appendChild(head);
+
+  const sub = mk('p','txt3');
+  sub.style.cssText = 'margin:0 0 1rem;font-size:12px;line-height:1.5';
+  sub.innerHTML = 'Agrega dados <b>apenas dos membros que autorizaram compartilhar desempenho</b>. Você pode ativar/desativar na aba "Membros" → ⚙️ Privacidade.';
+  card.appendChild(sub);
+
+  const body = mk('div');
+  body.innerHTML = '<div class="txt3" style="padding:1rem;text-align:center">Carregando dashboard...</div>';
+  card.appendChild(body);
+  parent.appendChild(card);
+
+  fetchGroupDashboard(group.id).then(data => {
+    body.innerHTML = '';
+    if(!data || data.error){
+      body.innerHTML = `<div class="txt3" style="color:var(--red-text);padding:1rem">⚠️ ${data?.error ? escapeHTML(data.error) : 'Falha ao carregar'}</div>`;
+      return;
+    }
+    if(data.totals.members_sharing === 0){
+      body.innerHTML = `
+        <div style="text-align:center;padding:2rem 1rem;color:var(--text3)">
+          <div style="font-size:36px;margin-bottom:.5rem;opacity:.5">📊</div>
+          <h3 style="margin:0 0 .5rem;font-size:14px;color:var(--text)">Sem dados ainda</h3>
+          <p style="margin:0;font-size:12px;line-height:1.5">Nenhum membro autorizou compartilhar desempenho, ou ninguém praticou cadernos do grupo ainda.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // === Cards de totais ===
+    const totalsGrid = mk('div');
+    totalsGrid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.625rem;margin-bottom:1.25rem';
+    const totalCards = [
+      ['👥', data.totals.members_sharing, 'Compartilhando'],
+      ['✏️', data.totals.total_questions, 'Questões respondidas'],
+      ['🎯', data.totals.avg_accuracy + '%', 'Média de acerto'],
+      ['⏱', Math.round(data.totals.total_time_seconds / 60) + ' min', 'Tempo total']
+    ];
+    totalCards.forEach(([icon, val, label]) => {
+      const c = mk('div');
+      c.style.cssText = 'padding:.75rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:9px;text-align:center';
+      c.innerHTML = `
+        <div style="font-size:20px;margin-bottom:2px">${icon}</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text);line-height:1.1;letter-spacing:-.3px">${val}</div>
+        <div style="font-size:9.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-top:3px">${label}</div>
+      `;
+      totalsGrid.appendChild(c);
+    });
+    body.appendChild(totalsGrid);
+
+    // === Lista de membros com desempenho ===
+    if(data.members.length > 0){
+      const memTitle = mk('div');
+      memTitle.style.cssText = 'font-size:11.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:.625rem;display:flex;align-items:center;justify-content:space-between';
+      memTitle.innerHTML = `<span>Ranking dos membros</span><span style="font-weight:600;text-transform:none;letter-spacing:0;font-size:11px;color:var(--text3)">${data.members.length} ${data.members.length===1?'membro':'membros'}</span>`;
+      body.appendChild(memTitle);
+
+      // Encontra score máximo pra desenhar barra proporcional
+      const maxScore = Math.max(1, ...data.members.map(m => m.avg_score));
+      data.members.forEach((m, idx) => {
+        const row = mk('div');
+        const isMe = m.user_id === AUTH.user.id;
+        row.style.cssText = `padding:.625rem .875rem;background:${isMe?'rgba(var(--gralia-purple-rgb),.05)':'var(--surface2)'};border:1px solid ${isMe?'var(--gralia-purple)':'var(--border)'};border-radius:8px;margin-bottom:.4rem`;
+        const userName = m.display_name || m.username || 'Usuário';
+        const pct = Math.round((m.avg_score / maxScore) * 100);
+        row.innerHTML = `
+          <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;align-items:baseline">
+            <div style="font-size:12.5px;color:var(--text);font-weight:600">
+              <span style="color:var(--text3);font-weight:700;margin-right:6px">#${idx+1}</span>
+              ${escapeHTML(userName)}${isMe?' <span style="font-size:9.5px;background:var(--gralia-purple);color:#fff;padding:1px 6px;border-radius:999px;margin-left:4px;letter-spacing:.3px">VOCÊ</span>':''}
+            </div>
+            <div style="font-size:13px;font-weight:800;color:var(--gralia-purple);letter-spacing:-.2px">${m.avg_score}</div>
+          </div>
+          <div style="height:5px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:5px">
+            <div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--gralia-purple),rgba(var(--gralia-purple-rgb),.7));border-radius:99px"></div>
+          </div>
+          <div style="font-size:10.5px;color:var(--text3);line-height:1.4">
+            ${m.notebooks_practiced} ${m.notebooks_practiced===1?'caderno':'cadernos'} ·
+            ${m.questions} questões ·
+            🎯 ${m.accuracy}% ·
+            ${Math.round(m.time_seconds/60)} min
+          </div>
+        `;
+        body.appendChild(row);
+      });
+    }
+  });
+}
+
 // V14: Lista de membros do grupo (aba)
 function renderGroupMembers(parent, group){
   const card = mk('div','card');
@@ -70023,6 +70823,47 @@ function renderGroupMembers(parent, group){
     head.appendChild(hint);
   }
   card.appendChild(head);
+
+  // V15.12.75.169 — Card de privacidade (opt-in compartilhar desempenho)
+  // Aparece pra TODOS os membros (não só admin/owner). Cada user controla
+  // sua própria visibilidade no ranking/dashboard do grupo.
+  const privCard = mk('div');
+  privCard.style.cssText = 'padding:.875rem 1rem;background:rgba(var(--gralia-purple-rgb),.04);border:1px solid rgba(var(--gralia-purple-rgb),.20);border-radius:9px;margin-bottom:1rem';
+  const privHead = mk('div');
+  privHead.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap';
+  const privLbl = mk('div');
+  privLbl.style.flex = '1';
+  privLbl.innerHTML = `
+    <div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:3px">⚙️ Compartilhar meu desempenho com o grupo</div>
+    <div style="font-size:11px;color:var(--text2);line-height:1.5">Permite que membros vejam seu ranking e estatísticas nos cadernos do grupo. Você pode mudar a qualquer momento.</div>
+  `;
+  privHead.appendChild(privLbl);
+  const privToggle = mk('input');
+  privToggle.type = 'checkbox';
+  privToggle.disabled = true;
+  privToggle.style.cssText = 'width:18px;height:18px;cursor:pointer;flex-shrink:0';
+  privHead.appendChild(privToggle);
+  privCard.appendChild(privHead);
+  card.appendChild(privCard);
+
+  // Carrega estado atual do toggle
+  getShareGroupPerformance(group.id).then(share => {
+    privToggle.checked = !!share;
+    privToggle.disabled = false;
+  });
+  privToggle.addEventListener('change', async (e) => {
+    const newVal = e.target.checked;
+    privToggle.disabled = true;
+    try{
+      await setShareGroupPerformance(group.id, newVal);
+      showToast(newVal ? '✓ Desempenho compartilhado' : '✓ Desempenho privado');
+    }catch(err){
+      privToggle.checked = !newVal;
+      alert('Erro: ' + err.message);
+    }finally{
+      privToggle.disabled = false;
+    }
+  });
 
   const list = mk('div');
   list.style.cssText = 'display:flex;flex-direction:column;gap:6px';
@@ -75053,6 +75894,26 @@ function renderSettings(){
   palTip.textContent = 'Algumas áreas detalhadas do app ainda mostram o roxo original — refinamento em andamento.';
   uxCard.appendChild(palTip);
 
+  // V15.12.75.171 — Toggle gradient de fundo (adapta às cores do accent atual)
+  const gradRow = mk('div');
+  gradRow.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:.875rem 1rem;background:rgba(var(--gralia-purple-rgb),.04);border:1px solid rgba(var(--gralia-purple-rgb),.18);border-radius:10px;margin-top:.875rem';
+  const gradLbl = mk('div');
+  gradLbl.style.flex = '1';
+  gradLbl.innerHTML = `
+    <div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:3px">🎨 Gradient de fundo</div>
+    <div style="font-size:11px;color:var(--text2);line-height:1.5">Aplica um leve brilho colorido nos cantos da tela, seguindo a cor que você escolheu acima. Sutil pra não cansar em sessões longas.</div>
+  `;
+  gradRow.appendChild(gradLbl);
+  const gradToggle = mk('input');
+  gradToggle.type = 'checkbox';
+  gradToggle.checked = localStorage.getItem('gralia_bg_gradient') === '1';
+  gradToggle.style.cssText = 'width:18px;height:18px;cursor:pointer;flex-shrink:0;margin-top:2px';
+  gradToggle.addEventListener('change', e => {
+    setBgGradient(e.target.checked);
+  });
+  gradRow.appendChild(gradToggle);
+  uxCard.appendChild(gradRow);
+
   // === Conforto visual (NOVO) — destaque dentro do card de aparência ===
   const eyeRow = mk('div','config-eye-care-cta');
   eyeRow.innerHTML = `
@@ -79483,6 +80344,18 @@ function setAccent(accent){
   try{ if(typeof render === 'function') render(); }catch(_){}
 }
 
+// V15.12.75.171 — Gradient de fundo opcional (adapta às cores do accent).
+// Estado salvo em localStorage 'gralia_bg_gradient' ('1' = on, qualquer outra = off).
+// Aplicado via classe body.bg-gradient — CSS faz o resto.
+function applyBgGradient(){
+  const on = localStorage.getItem('gralia_bg_gradient') === '1';
+  document.body.classList.toggle('bg-gradient', on);
+}
+function setBgGradient(on){
+  localStorage.setItem('gralia_bg_gradient', on ? '1' : '0');
+  applyBgGradient();
+}
+
 // --- Focus mode (zen) ---
 function applyFocusMode(){
   const enabled = localStorage.getItem('nexus_focus')==='1';
@@ -82101,6 +82974,7 @@ async function initAuth(){
 /* INIT */
 applyTheme();
 applyAccent();  // V15.12.75.147 — paleta de cor (Roxo/Grafite/Aço)
+applyBgGradient();  // V15.12.75.171 — gradient de fundo opcional
 applyFocusMode();
 
 // Captura erros não tratados pra evitar tela branca silenciosa.
