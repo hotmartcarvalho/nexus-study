@@ -427,6 +427,18 @@ body.sidebar-collapsed .app-sidebar-badge,
 body.sidebar-collapsed .app-sidebar-search-btn span:not(:first-child){
   display:none !important;
 }
+/* V15.12.75.156 — EXCEÇÃO: items dentro do flyout "Mais"/"Comunidade"
+   SEMPRE mostram label, mesmo com sidebar collapsed. O flyout é um
+   popover externo à sidebar (position:fixed), então não faz sentido
+   herdar a regra de esconder labels do collapsed. User reportou que
+   ficava só com ícones, igual ao menu — confuso. */
+body.sidebar-collapsed .app-sidebar-more-flyout .app-sidebar-item-label,
+body.sidebar-collapsed .app-sidebar-more-flyout .app-sidebar-badge{
+  display:inline-flex !important;
+}
+body.sidebar-collapsed .app-sidebar-more-flyout .app-sidebar-section-label{
+  display:block !important;
+}
 
 /* V15.12.75.150 — Tooltip estilizado pros itens da sidebar quando collapsed.
    Substitui o `title` nativo (feio, lag). Aparece à direita do ícone com
@@ -435,6 +447,21 @@ body.sidebar-collapsed .app-sidebar-search-btn span:not(:first-child){
 .app-sidebar-tooltip{
   display:none;
 }
+/* V15.12.75.155 — Tooltip sidebar — modelo unificado.
+   Antes só aparecia no collapsed. Agora aparece em AMBOS os estados,
+   mas com conteúdo diferente:
+     - Collapsed: nome da página (bold) + descrição (regular, menor)
+       — porque o nome não aparece ao lado do ícone, precisa mostrar
+     - Aberto: só descrição
+       — porque o nome já está visível no item
+   Visual idêntico ao label do help hub: dark, sem sombra, padding pequeno. */
+.app-sidebar-tooltip{
+  display:none;       /* default: oculto */
+}
+.app-sidebar-item{
+  position:relative;  /* pra tooltip absolute funcionar */
+}
+/* COLLAPSED: tooltip à direita, contém nome + descrição */
 body.sidebar-collapsed .app-sidebar-tooltip{
   display:inline-flex;
   position:absolute;
@@ -442,20 +469,13 @@ body.sidebar-collapsed .app-sidebar-tooltip{
   top:50%;
   transform:translateY(-50%);
   flex-direction:column;
-  gap:1px;
-  /* V15.12.75.154 — PADRONIZADO IDENTICAMENTE ao tooltip do help hub:
-     mesma padding, font-size, box-shadow, border-radius. Antes tinha
-     valores diferentes (8px 12px vs 6px 11px no help hub) — visualmente
-     o user notou diferença. Agora exatamente igual. */
+  gap:2px;
   padding:6px 11px;
   background:var(--text);
   border:none;
   color:var(--bg);
   border-radius:8px;
   box-shadow:none;
-  font-size:11px;
-  font-weight:500;
-  letter-spacing:.1px;
   white-space:nowrap;
   opacity:0;
   visibility:hidden;
@@ -464,26 +484,117 @@ body.sidebar-collapsed .app-sidebar-tooltip{
   z-index:610;
 }
 body.sidebar-collapsed .app-sidebar-tooltip b{
-  font-size:11px;
-  font-weight:500;            /* V154: mesmo weight do help hub — sem negrito grande */
+  font-size:11.5px;
+  font-weight:700;
   color:var(--bg);
   letter-spacing:.1px;
+  line-height:1.2;
 }
 body.sidebar-collapsed .app-sidebar-tooltip .ast-desc{
-  /* V154: descrição oculta pra ficar igual ao help hub (label simples só) */
-  display:none;
-}
-body.sidebar-collapsed .app-sidebar-item{
-  position:relative;     /* pra ::before do indicador active funcionar */
+  display:block;
+  font-size:10.5px;
+  font-weight:400;
+  color:var(--bg);
+  opacity:.75;
+  letter-spacing:.1px;
+  line-height:1.3;
 }
 body.sidebar-collapsed .app-sidebar-item:hover .app-sidebar-tooltip{
+  opacity:.95;
+  visibility:visible;
+  transition-delay:.15s;
+}
+
+/* ABERTO: tooltip à direita do item, contém só descrição (nome já visível).
+   V155 — só aparece se o item TEM descrição (.has-desc), senão fica oculto */
+body.has-sidebar:not(.sidebar-collapsed) .app-sidebar-item.has-desc .app-sidebar-tooltip{
+  display:inline-flex;
+  position:absolute;
+  left:calc(100% + 6px);
+  top:50%;
+  transform:translateY(-50%);
+  align-items:center;
+  padding:6px 11px;
+  background:var(--text);
+  color:var(--bg);
+  border-radius:8px;
+  box-shadow:none;
+  font-size:11px;
+  font-weight:500;
+  letter-spacing:.1px;
+  white-space:nowrap;
+  max-width:240px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .15s ease, visibility .15s;
+  z-index:610;
+}
+/* Aberto: nome oculto no tooltip (já aparece no item) */
+body.has-sidebar:not(.sidebar-collapsed) .app-sidebar-tooltip b{
+  display:none;
+}
+body.has-sidebar:not(.sidebar-collapsed) .app-sidebar-tooltip .ast-desc{
+  display:inline;
+  font-weight:500;
+  color:var(--bg);
+}
+body.has-sidebar:not(.sidebar-collapsed) .app-sidebar-item.has-desc:hover .app-sidebar-tooltip{
   opacity:.92;
   visibility:visible;
-  transition-delay:.10s;
+  transition-delay:.20s;   /* delay maior aberto: nome já visível, evita disparo acidental */
 }
-body.sidebar-collapsed .app-sidebar-item:hover .app-sidebar-tooltip:hover,
-body.sidebar-collapsed .app-sidebar-item.active:hover .app-sidebar-tooltip{
+
+/* V15.12.75.156 — Tooltip pros items DENTRO do flyout (Mais/Comunidade).
+   Comporta-se como o tooltip do menu aberto: mostra SÓ a descrição
+   (nome já visível dentro do flyout). Cobre os dois estados do sidebar
+   (collapsed e aberto), porque o flyout existe nos dois. */
+.app-sidebar-more-flyout .app-sidebar-item .app-sidebar-tooltip{
+  display:none;     /* reset — só aparece com has-desc + hover */
+}
+.app-sidebar-more-flyout .app-sidebar-item.has-desc .app-sidebar-tooltip{
+  display:inline-flex;
+  position:absolute;
+  left:calc(100% + 6px);
+  top:50%;
+  transform:translateY(-50%);
+  align-items:center;
+  padding:6px 11px;
+  background:var(--text);
+  color:var(--bg);
+  border-radius:8px;
+  box-shadow:none;
+  font-size:11px;
+  font-weight:500;
+  letter-spacing:.1px;
+  white-space:nowrap;
+  max-width:240px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .15s ease, visibility .15s;
+  z-index:620;       /* acima do flyout (que é 600) */
+  flex-direction:row !important;  /* sobrescreve direção col do collapsed base */
+}
+/* Dentro do flyout, sempre esconde o nome (já visível no item) */
+.app-sidebar-more-flyout .app-sidebar-tooltip b{
+  display:none !important;
+}
+.app-sidebar-more-flyout .app-sidebar-tooltip .ast-desc{
+  display:inline !important;
+  font-weight:500;
+  font-size:11px;
+  color:var(--bg);
   opacity:1;
+}
+.app-sidebar-more-flyout .app-sidebar-item.has-desc:hover .app-sidebar-tooltip{
+  opacity:.92;
+  visibility:visible;
+  transition-delay:.20s;
 }
 /* V15.12.75.146 — Esconde também label + chevron do botão "Mais" quando
    sidebar collapsed. Antes ficavam visíveis e o ícone (3 pontinhos / globe)
@@ -836,11 +947,27 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
     display:flex;
     width:264px;
     flex-shrink:0;
-    justify-content:center;
+    /* V15.12.75.157 — Alinhar à ESQUERDA (não centralizado).
+       Antes justify-content:center criava ~24px vazios em cada ponta
+       da coluna 264px — visualmente desconectado da sidebar.
+       Agora: tudo começa na esquerda, padding-left 14px (equivale ao
+       posicionamento dos ícones da sidebar collapsed: 64px/2 = 32px
+       centro, com ícone de 24px → começa em 20px; topbar começa em 14px
+       pra alinhar visualmente). */
+    justify-content:flex-start;
     align-items:center;
-    padding:0 16px;
+    padding:0 14px;
     box-sizing:border-box;
     position:relative;
+  }
+  /* V15.12.75.157 — Quando sidebar está collapsed (64px), a col-left
+     também encolhe pra acompanhar — toggle, logo e linhas ficam mais
+     próximos. Aberta: 264px (mesma largura da sidebar pra alinhamento
+     visual da borda direita). Collapsed: encolhe mas mantém ESPAÇO
+     suficiente pro logo + toggle + linhas + separação. */
+  body.has-sidebar.sidebar-collapsed .topbar-col-left{
+    width:auto;
+    min-width:240px;        /* garante espaço pros institucionais terem onde respirar */
   }
   /* V15.12.75.153 — ::after antigo (linha na borda direita da col-left,
      coincidindo com a borda da sidebar) REMOVIDO. Agora a linha direita
@@ -932,17 +1059,19 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
   border-color:var(--border);
 }
 .topbar-sidebar-toggle svg{display:block}
+/* V15.12.75.157 — Separadores: cor mais contrastada (border2 em vez de border)
+   pra serem visíveis no tema claro. Margens reduzidas pra layout mais
+   compacto e equilibrado entre toggle/logo/separadores. */
 .topbar-sidebar-toggle-sep{
   display:inline-block;
   width:1px;
-  height:22px;
-  background:var(--border);
-  margin:0 12px 0 8px;       /* entre toggle e logo: 8 esq (perto do toggle), 12 dir (perto do logo) */
+  height:20px;
+  background:var(--border2);
+  margin:0 10px;            /* V157: simétrica 10px de cada lado (antes 8/12) */
   flex-shrink:0;
 }
-/* V15.12.75.153 — Separador direito (depois do logo), margens invertidas */
 .topbar-sidebar-toggle-sep-right{
-  margin:0 8px 0 12px;       /* 12 esq (perto do logo), 8 dir (perto dos institucionais) */
+  margin:0 10px;            /* V157: simétrica também */
 }
 
 /* V15.12.75.146 — Logo topbar -20% (45→36px, max-width 200→160px).
@@ -7593,12 +7722,11 @@ body.pomo-float-visible .faq-floating-btn{display:none !important}
 /* V15.12.1: padding-left reduzido pra 16px — o gap de 24px ficava grande
    visualmente depois que a coluna do logo virou 264px (mesma largura da sidebar). */
 .topbar-inst-links{
-  display:flex;align-items:center;gap:18px;
+  display:flex;align-items:center;gap:14px;   /* V157: 18→14px mais compacto */
   flex-shrink:0;
   /* V15.12.75.154 — Padding reduzido (16→8px) pra dar espaçamento simétrico
-     com o toggle do sidebar à esquerda do logo. Agora a distância entre
-     a linha separadora (.topbar-sidebar-toggle-sep-right) e "Sobre" fica
-     igual à distância entre "Toggle" e a linha esquerda. */
+     com o toggle do sidebar à esquerda do logo.
+     V15.12.75.157 — Mantido em 8px (combina com margem 10px do sep). */
   padding-left:8px;
 }
 .topbar-inst-link{
@@ -8701,7 +8829,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.154';
+window.GRALIA_VERSION = 'V15.12.75.157';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -19839,11 +19967,16 @@ function buildAppSidebar(){
     item.appendChild(lbl);
     // V15.12.75.150 — Tooltip estilizado (mostra label + desc se houver) —
     // só visível quando sidebar collapsed via CSS.
-    if(!moreFlyout){
-      const tip = mk('span','app-sidebar-tooltip');
-      tip.innerHTML = `<b>${escapeHTML(it.label)}</b>${it.desc ? `<span class="ast-desc">${escapeHTML(it.desc)}</span>` : ''}`;
-      item.appendChild(tip);
-    }
+    // V15.12.75.155 — Estendido pra TAMBÉM aparecer no menu aberto, mostrando
+    // só a descrição (nome já está visível no item). Item ganha .has-desc se
+    // tem desc — controla se mostra tooltip no estado aberto.
+    // V15.12.75.156 — Tooltip TAMBÉM nos itens dentro do flyout (Mais/Comunidade)
+    // — user pediu pra ter "as dicas" também lá. Como o flyout sempre mostra
+    // o nome, a tooltip mostra só a descrição (igual menu aberto).
+    if(it.desc) item.classList.add('has-desc');
+    const tip = mk('span','app-sidebar-tooltip');
+    tip.innerHTML = `<b>${escapeHTML(it.label)}</b>${it.desc ? `<span class="ast-desc">${escapeHTML(it.desc)}</span>` : ''}`;
+    item.appendChild(tip);
     if(it.badge){
       let badgeCls = 'app-sidebar-badge';
       if(it.badge >= 20)      badgeCls += ' app-sidebar-badge-urgent';
