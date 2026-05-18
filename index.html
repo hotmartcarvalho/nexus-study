@@ -22,9 +22,13 @@
 <style>
 :root{
   /* ===== LIGHT theme (padrão) ===== */
-  /* Base — cinzas frios neutros, branco puro pra cards (sensação "premium") */
-  --bg:#f8f9fa;--surface:#ffffff;--surface2:#f1f3f5;--surface3:#e9ecef;
-  --border:rgba(16,20,24,.08);--border2:rgba(16,20,24,.14);
+  /* V15.12.75.172 — Fundo aveia substituiu o cinza-neutro pra criar separação
+     visual clara entre página e cards. --surface continua branco puro =
+     cards/sidebar/topbar viram "ilhas" sobre o fundo aveia. Gradient
+     diagonal mínimo aplicado por padrão (sup. direito mais quente,
+     inf. esquerdo mais frio neutro). */
+  --bg:#f4f1ec;--surface:#ffffff;--surface2:#fafaf7;--surface3:#eceae3;
+  --border:rgba(16,20,24,.06);--border2:rgba(16,20,24,.12);
   /* Text — hierarquia clara com contraste WCAG AA+ */
   --text:#111418;--text2:#525a62;--text3:#8a919a;
   /* Accent verde — tom mais moderno e saturado */
@@ -40,12 +44,16 @@
   /* Gralia brand colors — usar com moderação em superfícies de marca */
   --gralia-blue:#1a2a52;--gralia-purple:#7c5cff;--gralia-purple-soft:#9a7fff;
   --gralia-gradient:linear-gradient(135deg,#1a2a52 0%,#7c5cff 100%);
-  /* Border radius */
-  --r:10px;--rs:6px;
-  /* Shadows — sutis pra dar profundidade */
-  --shadow-sm:0 1px 2px rgba(16,20,24,.04);
-  --shadow-md:0 4px 12px rgba(16,20,24,.06);
-  --shadow-lg:0 8px 24px rgba(16,20,24,.08);
+  /* V15.12.75.172 — Border radius escalonado:
+     --rs (10px): pílulas pequenas, tags, inputs
+     --r  (16px): cards padrão (era 10px)
+     --r-lg (20px): cards principais (hero, painéis)
+     --r-xl (24px): containers de página (raros) */
+  --rs:10px;--r:16px;--r-lg:20px;--r-xl:24px;
+  /* Shadows — mais sutis ainda (cards já se separam pelo contraste com fundo aveia) */
+  --shadow-sm:0 1px 3px rgba(16,20,24,.04);
+  --shadow-md:0 2px 8px rgba(16,20,24,.05);
+  --shadow-lg:0 6px 20px rgba(16,20,24,.07);
 }
 
 /* ============================================================================
@@ -319,40 +327,33 @@
 /* Fallback: se por algum motivo data-theme não foi setado, herda os valores light do :root */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5}
-
-/* V15.12.75.171 — Gradient de fundo adaptativo (opcional).
-   Toggle em Configurações > Aparência. Quando body tem .bg-gradient, aparece
-   um gradient radial sutil usando o accent atual (--gralia-purple-rgb).
-   O efeito é discreto pra não cansar em sessões longas — opacidade baixa,
-   maioria do gradient sai do topo direito como nas referências de design.
-   Inspirado nas refs do user mas adaptado pras cores do Gralia (não copia
-   cores do concorrente, segue o accent ativo).
-   Light mode: gradient cresce, tinge fundo. Dark mode: mais sutil ainda. */
-body.bg-gradient{
+/* V15.12.75.172 — Body com gradient diagonal sutil PADRÃO.
+   Light: aveia (#f4f1ec) + canto sup. direito puxa tom mais quente (#fef5ea)
+   + canto inf. esquerdo puxa tom mais frio neutro (#eceef0).
+   Dark: gradient bem mais discreto (quase imperceptível) só pra adicionar
+   profundidade sem cansar à noite.
+   Substituiu o sistema antigo .bg-gradient opcional — gradient agora é
+   parte fundamental do design, não toggle. */
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
   background:
-    radial-gradient(ellipse 80% 60% at 90% 0%,
-      rgba(var(--gralia-purple-rgb), .12) 0%,
-      rgba(var(--gralia-purple-rgb), 0) 60%),
-    radial-gradient(ellipse 70% 50% at 10% 100%,
-      rgba(var(--gralia-purple-rgb), .06) 0%,
-      rgba(var(--gralia-purple-rgb), 0) 55%),
+    radial-gradient(ellipse 70% 50% at 100% 0%, #fef5ea 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 0% 100%, #eceef0 0%, transparent 55%),
     var(--bg);
-  background-attachment: fixed;
+  background-attachment:fixed;
+  color:var(--text);
+  min-height:100vh;
+  line-height:1.5;
 }
-/* Dark mode: gradient mais sutil ainda (não polui o conforto noturno) */
-[data-theme="dark"] body.bg-gradient,
-body.bg-gradient[data-theme="dark"]{
+[data-theme="dark"] body{
   background:
-    radial-gradient(ellipse 80% 60% at 90% 0%,
-      rgba(var(--gralia-purple-rgb), .06) 0%,
-      rgba(var(--gralia-purple-rgb), 0) 60%),
-    radial-gradient(ellipse 70% 50% at 10% 100%,
-      rgba(var(--gralia-purple-rgb), .03) 0%,
-      rgba(var(--gralia-purple-rgb), 0) 55%),
+    radial-gradient(ellipse 70% 50% at 100% 0%, rgba(124,92,255,.04) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 0% 100%, rgba(255,255,255,.02) 0%, transparent 55%),
     var(--bg);
-  background-attachment: fixed;
+  background-attachment:fixed;
 }
+/* V172 — REMOVIDO sistema antigo body.bg-gradient — gradient agora é padrão.
+   Toggle obsoleto será removido das Configurações. */
 
 button,textarea,input,select{font-family:inherit;font-size:inherit;color:inherit}
 button{cursor:pointer;transition:background .15s,border-color .15s,color .15s,opacity .15s}
@@ -2741,6 +2742,124 @@ html.dark .wfb-tag-ai{color:#b08aff}
 @media(max-width:540px){
   .dash-greeting .dg-time{font-size:22px}
   .dash-greeting > b{font-size:25px}
+}
+
+/* ============================================================================
+   V15.12.75.172 — PAINEL V172
+   Layout aprovado em mockup: header → KPIs → hero IA → atalhos → continue
+   → 3 colunas. Cards arredondados (16-20px), espaçamento generoso.
+   ============================================================================ */
+.dashboard-v172{display:flex;flex-direction:column;gap:14px}
+
+/* Header — saudação + 2 botões */
+.dash172-header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 22px;background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);flex-wrap:wrap}
+.dash172-header-left{display:flex;align-items:center;gap:14px;min-width:0;flex:1}
+.dash172-avatar{width:38px;height:38px;border-radius:13px;background:var(--gralia-gradient);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:17px;flex-shrink:0}
+.dash172-greeting{font-size:14px;font-weight:600;color:var(--text);line-height:1.3}
+.dash172-sub{font-size:11.5px;color:var(--text3);margin-top:2px}
+.dash172-header-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Botões V172 — estilizados local pra não impactar outros */
+.dash172-btn-primary{background:var(--gralia-gradient)!important;border:none!important;border-radius:14px;padding:9px 18px!important;font-size:12.5px!important;color:#fff!important;font-weight:600;cursor:pointer}
+.dash172-btn-primary:hover:not(:disabled){opacity:.92;background:var(--gralia-gradient)}
+.dash172-btn-ghost{background:var(--surface2)!important;border:none!important;border-radius:14px;padding:9px 16px!important;font-size:12.5px!important;color:var(--text2)!important;font-weight:500;cursor:pointer}
+.dash172-btn-ghost:hover:not(:disabled){background:var(--surface3)!important}
+.dash172-btn-lg{padding:11px 22px!important;font-size:13px!important;border-radius:14px}
+.dash172-btn-sm{padding:7px 14px!important;font-size:11.5px!important;border-radius:12px;white-space:nowrap}
+
+/* 4 KPI cards grid */
+.dash172-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:880px){.dash172-kpi-grid{grid-template-columns:repeat(2,1fr)}}
+.dash172-kpi{background:var(--surface);border-radius:var(--r);padding:18px;box-shadow:var(--shadow-sm)}
+.dash172-kpi-highlight{background:rgba(var(--gralia-purple-rgb),.06);border:1px solid rgba(var(--gralia-purple-rgb),.18);box-shadow:none}
+.dash172-kpi-label{font-size:10.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.dash172-kpi-highlight .dash172-kpi-label{color:var(--gralia-purple)}
+.dash172-kpi-value{font-size:28px;font-weight:700;color:var(--text);letter-spacing:-.6px;line-height:1}
+.dash172-kpi-highlight .dash172-kpi-value{color:var(--gralia-purple)}
+.dash172-kpi-sub{font-size:11px;color:var(--text2);margin-top:6px}
+
+/* Hero IA — sugestão grande */
+.dash172-hero{background:var(--surface);border-radius:var(--r-lg);padding:26px 28px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
+.dash172-hero::after{content:'';position:absolute;right:-30px;top:-30px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(var(--gralia-purple-rgb),.10),transparent 70%);pointer-events:none}
+.dash172-hero-eyebrow{font-size:10.5px;font-weight:600;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;position:relative;z-index:1}
+.dash172-hero-title{font-size:21px;font-weight:700;color:var(--text);letter-spacing:-.4px;line-height:1.25;margin-bottom:10px;max-width:640px;position:relative;z-index:1}
+.dash172-hero-desc{font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:18px;max-width:600px;position:relative;z-index:1}
+.dash172-hero-actions{display:flex;gap:10px;flex-wrap:wrap;position:relative;z-index:1}
+@media(max-width:600px){
+  .dash172-hero{padding:20px 22px}
+  .dash172-hero-title{font-size:18px}
+}
+
+/* Atalhos rápidos */
+.dash172-shortcuts{background:var(--surface);border-radius:var(--r-lg);padding:20px 22px;box-shadow:var(--shadow-sm)}
+.dash172-section-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px}
+.dash172-section-title-sm{font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px}
+.dash172-section-sub{font-size:11.5px;color:var(--text3);margin-top:2px;font-weight:400}
+.dash172-shortcuts-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+@media(max-width:880px){.dash172-shortcuts-grid{grid-template-columns:repeat(3,1fr)}}
+.dash172-shortcut{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--surface2);border-radius:14px;text-decoration:none;color:var(--text2);transition:transform .12s,background .15s;position:relative}
+.dash172-shortcut:hover{background:var(--surface3);transform:translateY(-1px)}
+.dash172-shortcut-icon{font-size:22px;line-height:1}
+.dash172-shortcut-label{font-size:11px;font-weight:500}
+.dash172-shortcut-badge{position:absolute;top:6px;right:6px;background:var(--red);color:#fff;font-size:9.5px;padding:1px 6px;border-radius:99px;font-weight:700}
+
+/* Continue praticando */
+.dash172-continue{background:var(--surface);border-radius:var(--r-lg);padding:22px 24px;box-shadow:var(--shadow-sm)}
+.dash172-continue-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:10px;flex-wrap:wrap}
+.dash172-continue-list{display:flex;flex-direction:column;gap:10px}
+.dash172-continue-item{display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--surface2);border-radius:14px}
+.dash172-continue-icon{width:40px;height:40px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.dash172-continue-txt{flex:1;min-width:0}
+.dash172-continue-title{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash172-continue-sub{font-size:11px;color:var(--text3);margin-top:1px}
+
+/* 3 colunas finais */
+.dash172-final-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:980px){.dash172-final-grid{grid-template-columns:1fr 1fr}.dash172-final-col{grid-column:span 2}}
+@media(max-width:640px){.dash172-final-grid{grid-template-columns:1fr}.dash172-final-col{grid-column:auto}}
+.dash172-final-card{background:var(--surface);border-radius:var(--r);padding:18px;box-shadow:var(--shadow-sm)}
+.dash172-final-col{display:flex;flex-direction:column;gap:10px}
+
+/* Disciplinas fracas */
+.dash172-weak-list{display:flex;flex-direction:column;gap:10px}
+.dash172-weak-row{padding:2px;border-radius:8px;transition:background .12s}
+.dash172-weak-row:hover{background:var(--surface2)}
+.dash172-weak-head{display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:4px}
+.dash172-weak-name{color:var(--text2)}
+.dash172-weak-pct{font-weight:600}
+.dash172-weak-bar{height:5px;background:var(--surface3);border-radius:99px;overflow:hidden}
+.dash172-weak-bar-fill{height:100%;border-radius:99px;transition:width .3s}
+
+/* Foco da semana */
+.dash172-week-chart{display:flex;align-items:flex-end;justify-content:space-between;gap:6px;height:75px}
+.dash172-week-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.dash172-week-bar{width:18px;min-height:2px;background:rgba(var(--gralia-purple-rgb),.30);border-radius:6px;transition:height .25s}
+.dash172-week-label{font-size:9.5px;color:var(--text3)}
+.dash172-week-footer{font-size:10.5px;color:var(--text2);margin-top:10px;line-height:1.4}
+
+/* Pinhal mini */
+.dash172-pinhal-mini{background:linear-gradient(135deg,rgba(var(--gralia-purple-rgb),.07),rgba(var(--gralia-purple-rgb),.02));border-radius:var(--r);padding:16px;border:1px solid rgba(var(--gralia-purple-rgb),.15);transition:transform .12s}
+.dash172-pinhal-mini:hover{transform:translateY(-1px)}
+.dash172-pinhal-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.dash172-pinhal-icon{font-size:18px}
+.dash172-pinhal-title{font-size:12.5px;font-weight:600;color:var(--purple-text)}
+.dash172-pinhal-sub{font-size:10.5px;color:var(--text2)}
+.dash172-pinhal-bar{height:6px;background:rgba(var(--gralia-purple-rgb),.12);border-radius:99px;overflow:hidden}
+.dash172-pinhal-fill{height:100%;background:var(--gralia-gradient);border-radius:99px}
+
+/* Notes da comunidade */
+.dash172-note-card{background:var(--surface);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:10px;transition:transform .12s,box-shadow .15s}
+.dash172-note-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
+.dash172-note-icon{font-size:16px;flex-shrink:0}
+.dash172-note-txt{font-size:11.5px;color:var(--text);line-height:1.4}
+
+.dash172-empty-mini{font-size:11.5px;color:var(--text3);text-align:center;padding:1rem .5rem;line-height:1.4}
+
+/* Em mobile: reduz padding e ajusta layout */
+@media(max-width:600px){
+  .dash172-header{padding:12px 16px;flex-direction:column;align-items:flex-start;gap:10px}
+  .dash172-header-actions{width:100%}
+  .dash172-header-actions > *{flex:1}
 }
 
 /* V15.12.27 (Rodada 2): Heatmap calendar-style (estilo GitHub contributions).
@@ -8885,7 +9004,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.171';
+window.GRALIA_VERSION = 'V15.12.75.172';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -24577,6 +24696,463 @@ function buildEmptyState(opts){
 }
 
 function renderDashboard(){
+  // V15.12.75.172 — Novo Painel: layout aprovado pelo user com mockup.
+  // Estrutura: header (saudação + 2 botões) → 4 KPIs → hero IA →
+  // atalhos rápidos → continue praticando → 3 colunas (disciplinas
+  // fracas + foco semana + Pinhal/comunidade).
+  // Função antiga preservada como renderDashboardLegacy() pra emergências.
+  try{
+    return renderDashboardV172();
+  }catch(err){
+    console.error('[V172] erro no painel novo, caindo no legado:', err);
+    return renderDashboardLegacy();
+  }
+}
+
+// ============================================================================
+// V15.12.75.172 — RENDER DASHBOARD V172
+// ============================================================================
+// Layout aprovado em mockup: header → 4 KPIs → hero IA → atalhos → continue
+// praticando → 3 colunas finais. Reutiliza dados de DATA (session, srs, pomo,
+// errors, config) e funções existentes (examCountdown, getDiscipline...).
+// CSS específico no bloco .dash172-* (ver abaixo da função).
+function renderDashboardV172(){
+  const wrap = mk('div','fade dashboard-page dashboard-v172');
+  const dataSession = DATA.session;
+  const dueSrs = (DATA.srs?.cards||[]).filter(c=>(c.nextReview||0)<=Date.now()).length;
+  const ec = examCountdown();
+
+  // Saudação personalizada
+  const profileName = (AUTH.profile && AUTH.profile.display_name) ? AUTH.profile.display_name.trim() : '';
+  const legacyName = (DATA.config.userName||'').trim();
+  const userName = profileName || legacyName;
+  const hour = new Date().getHours();
+  let timeGreeting = 'Olá';
+  if(hour<5)timeGreeting='Boa madrugada';
+  else if(hour<12)timeGreeting='Bom dia';
+  else if(hour<18)timeGreeting='Boa tarde';
+  else timeGreeting='Boa noite';
+
+  // ===== HEADER =====
+  const header = mk('div','dash172-header');
+  const headLeft = mk('div','dash172-header-left');
+  const avatar = mk('div','dash172-avatar');
+  avatar.textContent = userName ? userName.charAt(0).toUpperCase() : 'G';
+  headLeft.appendChild(avatar);
+  const headTxt = mk('div');
+  const greeting = mk('div','dash172-greeting');
+  greeting.textContent = userName ? `${timeGreeting}, ${userName}` : `${timeGreeting}, concurseiro(a)`;
+  headTxt.appendChild(greeting);
+  const sub = mk('div','dash172-sub');
+  const profExamName = (AUTH.profile && AUTH.profile.target_exam_name) || (DATA.config.examName||'').trim();
+  const subParts = ['Painel'];
+  if(profExamName){
+    if(ec.status === 'before') subParts.push(`${profExamName} em ${ec.label}`);
+    else subParts.push(profExamName);
+  }
+  sub.textContent = subParts.join(' · ');
+  headTxt.appendChild(sub);
+  headLeft.appendChild(headTxt);
+  header.appendChild(headLeft);
+
+  const headRight = mk('div','dash172-header-actions');
+  const aiBtn = mkBtn('🎯 Praticar IA','dash172-btn-ghost');
+  aiBtn.addEventListener('click', ()=>{ ST.view='methods'; render(); });
+  const importBtn = mkBtn('+ Importar','dash172-btn-primary');
+  importBtn.addEventListener('click', ()=>{ ST.view='sources'; ST.srcSubview='add'; render(); });
+  headRight.appendChild(aiBtn);
+  headRight.appendChild(importBtn);
+  header.appendChild(headRight);
+  wrap.appendChild(header);
+
+  // ===== 4 KPI CARDS =====
+  // Calcula stats reais a partir de DATA
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const yesterdayStart = todayStart.getTime() - 24*60*60*1000;
+  // Questões hoje (de session) — fallback simples
+  const questionsToday = dataSession.total || 0;
+  // Foco hoje (de pomo)
+  const todaySessions = ((DATA.pomo||{}).sessions||[]).filter(s=>s.date>=todayStart.getTime());
+  const todayFocusSec = todaySessions.reduce((a,s)=>a+(s.durationSec||0),0);
+  const todayFocusMin = Math.round(todayFocusSec/60);
+  const focusStr = todayFocusMin >= 60
+    ? `${Math.floor(todayFocusMin/60)}h ${(todayFocusMin%60).toString().padStart(2,'0')}`
+    : `${todayFocusMin} min`;
+  // Acerto 7d — calcula da session atual como proxy
+  const accuracyPct = dataSession.total > 0
+    ? Math.round((dataSession.correct / dataSession.total) * 100)
+    : null;
+
+  const kpiGrid = mk('div','dash172-kpi-grid');
+  kpiGrid.appendChild(_buildKpiCard('Hoje', `${questionsToday}`, 'questões', null, false));
+  kpiGrid.appendChild(_buildKpiCard('Acerto', accuracyPct !== null ? `${accuracyPct}%` : '—', accuracyPct !== null ? 'sessão atual' : 'sem dados ainda', null, false));
+  kpiGrid.appendChild(_buildKpiCard('Foco hoje', focusStr, `${todaySessions.length} pomodoro${todaySessions.length===1?'':'s'}`, null, false));
+  // KPI Prova — destacado se tem data
+  const examLabel = ec.status === 'before' ? `${ec.days} dias`
+    : ec.status === 'after' ? 'Já passou'
+    : 'Sem data';
+  const examSub = profExamName || 'Configure em Conta';
+  kpiGrid.appendChild(_buildKpiCard('Prova em', examLabel, examSub, null, true));
+  wrap.appendChild(kpiGrid);
+
+  // ===== HERO IA — sugestão de próxima ação =====
+  const suggestion = _computeDashboardSuggestion(dueSrs);
+  if(suggestion){
+    const hero = mk('div','dash172-hero');
+    hero.innerHTML = `
+      <div class="dash172-hero-eyebrow">Sugerido agora · IA</div>
+      <div class="dash172-hero-title">${escapeHTML(suggestion.title)}</div>
+      <div class="dash172-hero-desc">${escapeHTML(suggestion.desc)}</div>
+    `;
+    const heroActs = mk('div','dash172-hero-actions');
+    const goBtn = mkBtn(suggestion.cta || '▶ Começar agora','dash172-btn-primary dash172-btn-lg');
+    goBtn.addEventListener('click', suggestion.action);
+    heroActs.appendChild(goBtn);
+    if(suggestion.dismissable){
+      const later = mkBtn('Mais tarde','dash172-btn-ghost dash172-btn-lg');
+      later.addEventListener('click', ()=>{
+        ST._dashHeroDismissed = Date.now();
+        render();
+      });
+      heroActs.appendChild(later);
+    }
+    hero.appendChild(heroActs);
+    wrap.appendChild(hero);
+  }
+
+  // ===== ATALHOS RÁPIDOS =====
+  const shortcuts = mk('div','dash172-shortcuts');
+  shortcuts.innerHTML = '<div class="dash172-section-title">Atalhos rápidos</div>';
+  const shortcutsGrid = mk('div','dash172-shortcuts-grid');
+  const shortcutItems = [
+    {icon:'📝', label:'Cadernos',    view:'imported'},
+    {icon:'🎴', label:'Flashcards',  view:'srs', badge: dueSrs > 0 ? dueSrs : null},
+    {icon:'⚡', label:'Métodos',     view:'methods'},
+    {icon:'⏱',  label:'Pomodoro',   view:'pomodoro'},
+    {icon:'🗺️', label:'Mapa',        view:'mapa'},
+    {icon:'🌐', label:'Comunidade',  view:'discover'}
+  ];
+  shortcutItems.forEach(item => {
+    const a = mk('a','dash172-shortcut');
+    a.style.cursor = 'pointer';
+    a.innerHTML = `
+      <div class="dash172-shortcut-icon">${item.icon}</div>
+      <div class="dash172-shortcut-label">${item.label}</div>
+      ${item.badge ? `<div class="dash172-shortcut-badge">${item.badge}</div>` : ''}
+    `;
+    a.addEventListener('click', ()=>{ ST.view = item.view; render(); });
+    shortcutsGrid.appendChild(a);
+  });
+  shortcuts.appendChild(shortcutsGrid);
+  wrap.appendChild(shortcuts);
+
+  // ===== CONTINUE PRATICANDO =====
+  const continueBlock = _buildContinuePraticando();
+  if(continueBlock) wrap.appendChild(continueBlock);
+
+  // ===== 3 COLUNAS FINAIS =====
+  const finalRow = mk('div','dash172-final-grid');
+
+  // Col 1: Disciplinas mais fracas
+  const weakCard = _buildDisciplinasFracas();
+  finalRow.appendChild(weakCard);
+
+  // Col 2: Foco da semana
+  const weekCard = _buildFocoSemana();
+  finalRow.appendChild(weekCard);
+
+  // Col 3: Pinhal + comunidade
+  const pinhalCol = mk('div','dash172-final-col');
+  pinhalCol.appendChild(_buildPinhalMini());
+  // Notificações comunidade (mock por enquanto — quando V167+ estiver populado mostra dados reais)
+  const noteCard1 = mk('div','dash172-note-card');
+  noteCard1.innerHTML = '<span class="dash172-note-icon">👍</span><div class="dash172-note-txt">Você publica cadernos? <b>Habilite na comunidade</b></div>';
+  noteCard1.style.cursor = 'pointer';
+  noteCard1.addEventListener('click', ()=>{ ST.view='discover'; render(); });
+  pinhalCol.appendChild(noteCard1);
+  const noteCard2 = mk('div','dash172-note-card');
+  noteCard2.innerHTML = '<span class="dash172-note-icon">👥</span><div class="dash172-note-txt">Veja o ranking dos seus <b>grupos de estudo</b></div>';
+  noteCard2.style.cursor = 'pointer';
+  noteCard2.addEventListener('click', ()=>{ ST.view='groups'; render(); });
+  pinhalCol.appendChild(noteCard2);
+  finalRow.appendChild(pinhalCol);
+
+  wrap.appendChild(finalRow);
+
+  return wrap;
+}
+
+// ----- Helpers do dashboard V172 -----
+
+function _buildKpiCard(label, value, sub, deltaPct, highlighted){
+  const card = mk('div', 'dash172-kpi' + (highlighted ? ' dash172-kpi-highlight' : ''));
+  card.innerHTML = `
+    <div class="dash172-kpi-label">${escapeHTML(label)}</div>
+    <div class="dash172-kpi-value">${escapeHTML(value)}</div>
+    <div class="dash172-kpi-sub">${escapeHTML(sub||'')}</div>
+  `;
+  return card;
+}
+
+// Decide qual sugestão mostrar no hero. Prioridade:
+//   1. Flashcards vencidos (>= 3)
+//   2. Erros sem flashcard (>= 5)
+//   3. Sem prática hoje
+//   4. Continuar caderno em andamento
+function _computeDashboardSuggestion(dueSrs){
+  // Se user dispensou recentemente, esconde por 30 min
+  if(ST._dashHeroDismissed && Date.now() - ST._dashHeroDismissed < 30 * 60 * 1000){
+    return null;
+  }
+  // Flashcards vencidos
+  if(dueSrs >= 3){
+    return {
+      title: `Praticar ${dueSrs} flashcards vencidos antes da janela fechar`,
+      desc: 'Se você não revisar hoje, o intervalo SRS dobra e fica mais difícil reter. Estimativa de tempo proporcional ao número de cards.',
+      cta: '▶ Começar agora',
+      action: ()=>{ ST.view='srs'; render(); },
+      dismissable: true
+    };
+  }
+  // Erros sem flashcard
+  const errorsNoCard = (DATA.errors||[]).filter(e=>!e.hasCard).length;
+  if(errorsNoCard >= 5){
+    return {
+      title: `Converter ${errorsNoCard} erros recentes em flashcards`,
+      desc: 'Errar é normal. Mas erros sem flashcard saem da memória. Vamos transformar em revisão espaçada agora.',
+      cta: '▶ Ver erros',
+      action: ()=>{ ST.view='errors'; render(); },
+      dismissable: true
+    };
+  }
+  // Sem prática hoje + tem fontes
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const todaySessions = ((DATA.pomo||{}).sessions||[]).filter(s=>s.date>=todayStart.getTime());
+  if(todaySessions.length === 0 && (DATA.session.total||0) === 0){
+    if((DATA.sources||[]).length > 0){
+      return {
+        title: 'Começar sua primeira sessão de estudo hoje',
+        desc: 'Você ainda não estudou hoje. Um pomodoro de 25min ou uma rodada de questões já mantém o ritmo.',
+        cta: '▶ Praticar agora',
+        action: ()=>{ ST.view='methods'; render(); },
+        dismissable: true
+      };
+    } else {
+      return {
+        title: 'Importe sua primeira fonte de estudo',
+        desc: 'Gralia precisa de material pra começar a personalizar suas práticas. Cole texto, importe PDF, ou puxe questões.',
+        cta: '+ Adicionar fonte',
+        action: ()=>{ ST.view='sources'; ST.srcSubview='add'; render(); },
+        dismissable: false
+      };
+    }
+  }
+  // Default: continue praticando o último caderno
+  const lastNb = (DATA.notebooks||[]).slice().sort((a,b)=>(b.lastModifiedAt||0)-(a.lastModifiedAt||0))[0];
+  if(lastNb && lastNb.questionIds && lastNb.questionIds.length > 0){
+    return {
+      title: `Continue praticando "${lastNb.name}"`,
+      desc: `Você tem ${lastNb.questionIds.length} questão${lastNb.questionIds.length===1?'':'s'} neste caderno. Manter constância é mais valioso que estudar muito de uma vez.`,
+      cta: '▶ Praticar caderno',
+      action: ()=>{ ST.view='imported'; startNotebookPractice(lastNb.id); },
+      dismissable: true
+    };
+  }
+  return null;
+}
+
+// Card "Continue praticando" com top 3 atividades em andamento
+function _buildContinuePraticando(){
+  const items = [];
+  // Cadernos em andamento (com questões e ordenados por última modificação)
+  const nbs = (DATA.notebooks||[])
+    .filter(n => (n.questionIds||[]).length > 0)
+    .sort((a,b)=>(b.lastModifiedAt||0)-(a.lastModifiedAt||0))
+    .slice(0,2);
+  nbs.forEach(nb => {
+    const total = nb.questionIds.length;
+    const practiced = (DATA.importedQuestions||[])
+      .filter(q => nb.questionIds.includes(q.id) && (q.attempts||0) > 0).length;
+    items.push({
+      icon:'📝',
+      iconBg:'rgba(124,92,255,.10)',
+      title: nb.name,
+      sub: `${practiced}/${total} questões praticadas`,
+      cta: '▶ Continuar',
+      primary: true,
+      action: ()=>{ startNotebookPractice(nb.id); }
+    });
+  });
+  // Flashcards vencidos
+  const dueSrs = (DATA.srs?.cards||[]).filter(c=>(c.nextReview||0)<=Date.now()).length;
+  if(dueSrs > 0){
+    items.push({
+      icon:'🎴',
+      iconBg:'rgba(225,74,74,.08)',
+      title: `${dueSrs} flashcard${dueSrs===1?'':'s'} vencido${dueSrs===1?'':'s'}`,
+      sub: 'Revise pra não perder o intervalo SRS',
+      cta: 'Revisar',
+      primary: false,
+      action: ()=>{ ST.view='srs'; render(); }
+    });
+  }
+  if(items.length === 0) return null;
+
+  const card = mk('div','dash172-continue');
+  card.innerHTML = `
+    <div class="dash172-continue-head">
+      <div>
+        <div class="dash172-section-title">Continue praticando</div>
+        <div class="dash172-section-sub">${items.length} atividade${items.length===1?'':'s'} em andamento</div>
+      </div>
+    </div>
+  `;
+  const list = mk('div','dash172-continue-list');
+  items.slice(0, 3).forEach(it => {
+    const row = mk('div','dash172-continue-item');
+    const iconEl = mk('div','dash172-continue-icon');
+    iconEl.style.background = it.iconBg;
+    iconEl.textContent = it.icon;
+    row.appendChild(iconEl);
+    const txt = mk('div','dash172-continue-txt');
+    txt.innerHTML = `<div class="dash172-continue-title">${escapeHTML(it.title)}</div>
+      <div class="dash172-continue-sub">${escapeHTML(it.sub)}</div>`;
+    row.appendChild(txt);
+    const btn = mkBtn(it.cta, it.primary ? 'dash172-btn-primary dash172-btn-sm' : 'dash172-btn-ghost dash172-btn-sm');
+    btn.addEventListener('click', it.action);
+    row.appendChild(btn);
+    list.appendChild(row);
+  });
+  card.appendChild(list);
+  return card;
+}
+
+// Card "Disciplinas mais fracas" — top 3 com menor % de acerto
+function _buildDisciplinasFracas(){
+  const card = mk('div','dash172-final-card');
+  card.innerHTML = '<div class="dash172-section-title-sm">Disciplinas mais fracas</div>';
+
+  // Calcula % por disciplina a partir das questões praticadas
+  const stats = {};
+  (DATA.importedQuestions||[]).forEach(q => {
+    if(!q.disciplineId || !q.attempts) return;
+    if(!stats[q.disciplineId]) stats[q.disciplineId] = {attempts:0, correct:0};
+    stats[q.disciplineId].attempts += q.attempts;
+    stats[q.disciplineId].correct += (q.correctCount||0);
+  });
+  const arr = Object.entries(stats)
+    .filter(([_, s]) => s.attempts >= 3)
+    .map(([id, s]) => ({
+      id,
+      name: (DATA.disciplines||[]).find(d=>d.id===id)?.name || 'Disciplina',
+      pct: Math.round(s.correct/s.attempts*100)
+    }))
+    .sort((a,b)=>a.pct-b.pct)
+    .slice(0,3);
+
+  if(arr.length === 0){
+    const empty = mk('div','dash172-empty-mini');
+    empty.textContent = 'Pratique mais questões pra ver onde focar';
+    card.appendChild(empty);
+    return card;
+  }
+
+  const list = mk('div','dash172-weak-list');
+  arr.forEach(d => {
+    const color = d.pct < 60 ? 'var(--red)' : d.pct < 75 ? 'var(--amber)' : 'var(--accent)';
+    const row = mk('div','dash172-weak-row');
+    row.innerHTML = `
+      <div class="dash172-weak-head">
+        <span class="dash172-weak-name">${escapeHTML(d.name)}</span>
+        <span class="dash172-weak-pct" style="color:${color}">${d.pct}%</span>
+      </div>
+      <div class="dash172-weak-bar"><div class="dash172-weak-bar-fill" style="width:${d.pct}%;background:${color}"></div></div>
+    `;
+    row.style.cursor = 'pointer';
+    row.addEventListener('click', ()=>{
+      ST.view='mapa';
+      ST.mapDiscipline = d.id;
+      render();
+    });
+    list.appendChild(row);
+  });
+  card.appendChild(list);
+  return card;
+}
+
+// Card "Foco da semana" — barras com tempo de pomodoro por dia
+function _buildFocoSemana(){
+  const card = mk('div','dash172-final-card');
+  card.innerHTML = '<div class="dash172-section-title-sm">Foco da semana</div>';
+
+  const labels = ['D','S','T','Q','Q','S','S'];
+  const today = new Date();
+  // Calcula minutos por dia da semana atual (segunda a domingo)
+  const days = [];
+  for(let i = 6; i >= 0; i--){
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    d.setHours(0,0,0,0);
+    const next = new Date(d);
+    next.setDate(next.getDate() + 1);
+    const sessions = ((DATA.pomo||{}).sessions||[]).filter(s => s.date >= d.getTime() && s.date < next.getTime());
+    const minutes = Math.round(sessions.reduce((a,s)=>a+(s.durationSec||0),0)/60);
+    days.push({
+      label: labels[d.getDay()],
+      minutes,
+      isToday: i === 0
+    });
+  }
+  const max = Math.max(...days.map(d=>d.minutes), 1);
+
+  const chart = mk('div','dash172-week-chart');
+  days.forEach(d => {
+    const col = mk('div','dash172-week-col');
+    const h = Math.max(2, Math.round(d.minutes / max * 70));
+    col.innerHTML = `
+      <div class="dash172-week-bar" style="height:${h}%;${d.isToday ? 'background:linear-gradient(180deg,var(--gralia-purple),var(--gralia-purple-soft))' : ''}"></div>
+      <div class="dash172-week-label" style="${d.isToday?'color:var(--gralia-purple);font-weight:700':''}">${d.label}</div>
+    `;
+    chart.appendChild(col);
+  });
+  card.appendChild(chart);
+
+  const total = days.reduce((a,d)=>a+d.minutes,0);
+  const footer = mk('div','dash172-week-footer');
+  footer.textContent = total > 0
+    ? `${Math.round(total/60*10)/10}h totais esta semana`
+    : 'Sem foco registrado esta semana';
+  card.appendChild(footer);
+  return card;
+}
+
+// Card Pinhal mini — nível atual + progresso
+function _buildPinhalMini(){
+  const card = mk('div','dash172-pinhal-mini');
+  const pinhal = DATA.pinhal || {};
+  const xp = pinhal.totalXp || 0;
+  const level = pinhal.level || 1;
+  // Estimativa simples de XP pro próximo nível (sem depender da função interna)
+  const xpForNextLevel = level * 100;
+  const xpProgress = xp % xpForNextLevel;
+  const pct = Math.min(100, Math.round(xpProgress / xpForNextLevel * 100));
+
+  card.innerHTML = `
+    <div class="dash172-pinhal-head">
+      <span class="dash172-pinhal-icon">🌲</span>
+      <div>
+        <div class="dash172-pinhal-title">Pinhal · Nv ${level}</div>
+        <div class="dash172-pinhal-sub">${xpProgress}/${xpForNextLevel} XP</div>
+      </div>
+    </div>
+    <div class="dash172-pinhal-bar"><div class="dash172-pinhal-fill" style="width:${pct}%"></div></div>
+  `;
+  card.style.cursor = 'pointer';
+  card.addEventListener('click', ()=>{ ST.view='pinhal'; render(); });
+  return card;
+}
+
+function renderDashboardLegacy(){
   // V15.12.29 (Rodada 2): classe `dashboard-page` (além de `fade`) permite
   // adicionar regras de espaçamento específicas do Painel sem afetar outras
   // views do app que também usam `.fade`.
@@ -75894,25 +76470,9 @@ function renderSettings(){
   palTip.textContent = 'Algumas áreas detalhadas do app ainda mostram o roxo original — refinamento em andamento.';
   uxCard.appendChild(palTip);
 
-  // V15.12.75.171 — Toggle gradient de fundo (adapta às cores do accent atual)
-  const gradRow = mk('div');
-  gradRow.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:.875rem 1rem;background:rgba(var(--gralia-purple-rgb),.04);border:1px solid rgba(var(--gralia-purple-rgb),.18);border-radius:10px;margin-top:.875rem';
-  const gradLbl = mk('div');
-  gradLbl.style.flex = '1';
-  gradLbl.innerHTML = `
-    <div style="font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:3px">🎨 Gradient de fundo</div>
-    <div style="font-size:11px;color:var(--text2);line-height:1.5">Aplica um leve brilho colorido nos cantos da tela, seguindo a cor que você escolheu acima. Sutil pra não cansar em sessões longas.</div>
-  `;
-  gradRow.appendChild(gradLbl);
-  const gradToggle = mk('input');
-  gradToggle.type = 'checkbox';
-  gradToggle.checked = localStorage.getItem('gralia_bg_gradient') === '1';
-  gradToggle.style.cssText = 'width:18px;height:18px;cursor:pointer;flex-shrink:0;margin-top:2px';
-  gradToggle.addEventListener('change', e => {
-    setBgGradient(e.target.checked);
-  });
-  gradRow.appendChild(gradToggle);
-  uxCard.appendChild(gradRow);
+  // V15.12.75.172 — Toggle de gradient REMOVIDO. Gradient agora é parte
+  // fundamental do design (aplicado por padrão no body) e adapta ao tema
+  // light/dark automaticamente. Antes V171 oferecia toggle opcional.
 
   // === Conforto visual (NOVO) — destaque dentro do card de aparência ===
   const eyeRow = mk('div','config-eye-care-cta');
@@ -80344,17 +80904,11 @@ function setAccent(accent){
   try{ if(typeof render === 'function') render(); }catch(_){}
 }
 
-// V15.12.75.171 — Gradient de fundo opcional (adapta às cores do accent).
-// Estado salvo em localStorage 'gralia_bg_gradient' ('1' = on, qualquer outra = off).
-// Aplicado via classe body.bg-gradient — CSS faz o resto.
-function applyBgGradient(){
-  const on = localStorage.getItem('gralia_bg_gradient') === '1';
-  document.body.classList.toggle('bg-gradient', on);
-}
-function setBgGradient(on){
-  localStorage.setItem('gralia_bg_gradient', on ? '1' : '0');
-  applyBgGradient();
-}
+// V15.12.75.172 — Gradient agora é padrão no body (não mais toggle).
+// As funções abaixo viraram NO-OPs pra manter compatibilidade com chamadas
+// existentes. Storage antigo 'gralia_bg_gradient' é ignorado.
+function applyBgGradient(){ /* gradient sempre aplicado via CSS */ }
+function setBgGradient(_on){ /* no-op — gradient é parte do design */ }
 
 // --- Focus mode (zen) ---
 function applyFocusMode(){
