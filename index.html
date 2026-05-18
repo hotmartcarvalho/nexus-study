@@ -8759,7 +8759,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.161';
+window.GRALIA_VERSION = 'V15.12.75.162';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -34809,6 +34809,290 @@ const Pinhal = (() => {
     }
   }
 
+  // V15.12.75.162 — Sons sintéticos POR ESPÉCIE.
+  // Tocado quando user ABRE uma carta (showCardDetailModal). Diferente do
+  // toast (V160) que ainda usa som genérico por categoria.
+  // Cada espécie tem timbre/ritmo único que evoca o animal/planta real:
+  //   - Aves: chirps com curva de frequência específica (subindo/descendo)
+  //   - Mamíferos: notas graves com vibrato ou rugido (lowpass noise)
+  //   - Plantas: pads suaves de vento (filtered noise)
+  //   - Frutos: chime cristalino curto
+  // Web Audio puro — sem arquivos externos. Cai pro som de categoria se id
+  // desconhecido (segurança).
+  function playCardSpeciesSound(card){
+    if(!card || !card.id) return;
+    const ctx = getPinhalAudioCtx();
+    if(!ctx){ console.warn('[species-sound] ctx indisponível:', card.id); return; }
+    if(ctx.state !== 'running'){
+      ctx.resume().then(() => {
+        if(ctx.state === 'running') _doPlaySpeciesSound(ctx, card);
+        else console.warn('[species-sound] resume() chamou mas state=', ctx.state);
+      }).catch(err => console.warn('[species-sound] resume() falhou:', err));
+      return;
+    }
+    _doPlaySpeciesSound(ctx, card);
+  }
+
+  function _doPlaySpeciesSound(ctx, card){
+    const t0 = ctx.currentTime;
+
+    // === Helpers ===
+    // Nota com envelope ADSR
+    const note = (freq, startOff, dur, gain, type) => {
+      const osc = ctx.createOscillator();
+      osc.type = type || 'sine';
+      osc.frequency.value = freq;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t0 + startOff);
+      g.gain.linearRampToValueAtTime(gain, t0 + startOff + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + startOff + dur);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(t0 + startOff);
+      osc.stop(t0 + startOff + dur + 0.05);
+      return {osc, g};
+    };
+    // Sweep de frequência (sobe ou desce) — bom pra chirps de aves
+    const sweep = (freqStart, freqEnd, startOff, dur, gain, type) => {
+      const osc = ctx.createOscillator();
+      osc.type = type || 'sine';
+      osc.frequency.setValueAtTime(freqStart, t0 + startOff);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqEnd), t0 + startOff + dur);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t0 + startOff);
+      g.gain.linearRampToValueAtTime(gain, t0 + startOff + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + startOff + dur);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(t0 + startOff);
+      osc.stop(t0 + startOff + dur + 0.05);
+    };
+    // Nota com vibrato (oscilação de freq) — usada pra rugidos e canto
+    const vibrato = (freq, startOff, dur, gain, type, vibSpeed, vibDepth) => {
+      const osc = ctx.createOscillator();
+      osc.type = type || 'sine';
+      osc.frequency.value = freq;
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = vibSpeed || 6;
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = vibDepth || 8;
+      lfo.connect(lfoGain); lfoGain.connect(osc.frequency);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t0 + startOff);
+      g.gain.linearRampToValueAtTime(gain, t0 + startOff + 0.025);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + startOff + dur);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(t0 + startOff); lfo.start(t0 + startOff);
+      osc.stop(t0 + startOff + dur + 0.05); lfo.stop(t0 + startOff + dur + 0.05);
+    };
+    // Ruído filtrado — pra ventos, sussurros, rosnados
+    const noise = (startOff, dur, gain, lowpassHz, highpassHz) => {
+      const bufferSize = Math.floor(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for(let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      let last = src;
+      if(lowpassHz){
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass'; lp.frequency.value = lowpassHz;
+        last.connect(lp); last = lp;
+      }
+      if(highpassHz){
+        const hp = ctx.createBiquadFilter();
+        hp.type = 'highpass'; hp.frequency.value = highpassHz;
+        last.connect(hp); last = hp;
+      }
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t0 + startOff);
+      g.gain.linearRampToValueAtTime(gain, t0 + startOff + 0.05);
+      g.gain.exponentialRampToValueAtTime(0.001, t0 + startOff + dur);
+      last.connect(g); g.connect(ctx.destination);
+      src.start(t0 + startOff);
+      src.stop(t0 + startOff + dur + 0.05);
+    };
+
+    // === Sons por espécie ===
+    switch(card.id){
+      // ========== AVES ==========
+      case 'gralha_azul':
+        // Gralha-azul: 2 chirps roucos descendentes (kraa-kraa) com timbre brilhante
+        sweep(1200, 700, 0,    0.15, 0.10, 'sawtooth');
+        sweep(1100, 600, 0.22, 0.18, 0.10, 'sawtooth');
+        break;
+      case 'sabia_laranjeira':
+        // Sabiá: trinado melodioso (canto bonito) — 4 notas tipo flauta
+        note(880,    0,    0.16, 0.10, 'sine');
+        note(1108.7, 0.13, 0.14, 0.10, 'sine');
+        note(987.8,  0.25, 0.14, 0.10, 'sine');
+        note(1318.5, 0.37, 0.30, 0.11, 'sine');
+        break;
+      case 'tucano_verde':
+        // Tucano: pulsos graves repetidos (tec-tec-tec) — característico
+        note(360, 0,    0.08, 0.14, 'square');
+        note(360, 0.15, 0.08, 0.14, 'square');
+        note(380, 0.30, 0.10, 0.14, 'square');
+        break;
+      case 'tiriba':
+        // Tiriba (papagaio pequeno): chirps rápidos agudos em bando
+        sweep(1800, 1400, 0,    0.06, 0.09, 'triangle');
+        sweep(1900, 1500, 0.08, 0.06, 0.09, 'triangle');
+        sweep(1700, 1300, 0.16, 0.06, 0.09, 'triangle');
+        sweep(2000, 1600, 0.24, 0.08, 0.09, 'triangle');
+        break;
+      case 'sanhaco':
+        // Sanhaço: 3 chirps curtos doces ascendentes — voz fina
+        sweep(1500, 1900, 0,    0.09, 0.08, 'triangle');
+        sweep(1400, 1800, 0.12, 0.09, 0.08, 'triangle');
+        sweep(1600, 2100, 0.24, 0.12, 0.08, 'triangle');
+        break;
+      case 'jacutinga':
+        // Jacutinga: vocalização grave (gluk-gluk) tipo galináceo grande
+        sweep(280, 220, 0,    0.20, 0.13, 'sawtooth');
+        sweep(260, 200, 0.25, 0.18, 0.13, 'sawtooth');
+        break;
+      case 'cabure':
+        // Caburé (coruja): "tu-tu-tu-tu" suave repetitivo grave
+        note(440, 0,    0.10, 0.12, 'sine');
+        note(440, 0.18, 0.10, 0.12, 'sine');
+        note(440, 0.36, 0.10, 0.12, 'sine');
+        note(440, 0.54, 0.12, 0.12, 'sine');
+        break;
+      case 'macuco':
+        // Macuco: assobio noturno melancólico longo — 1 nota com vibrato lento
+        vibrato(523, 0, 0.7, 0.12, 'sine', 4, 12);
+        break;
+
+      // ========== MAMÍFEROS ==========
+      case 'cutia':
+        // Cutia: pequeno guincho curto roedor
+        sweep(1400, 2200, 0,    0.06, 0.09, 'square');
+        sweep(1500, 2300, 0.08, 0.06, 0.09, 'square');
+        break;
+      case 'quati':
+        // Quati: chiados curtos repetidos (focinho longo)
+        sweep(900, 600, 0,    0.10, 0.10, 'sawtooth');
+        sweep(950, 650, 0.13, 0.10, 0.10, 'sawtooth');
+        sweep(1000, 700, 0.26, 0.12, 0.10, 'sawtooth');
+        break;
+      case 'bugio':
+        // Bugio: rugido territorial GRAVE e longo (rola pela floresta)
+        vibrato(85, 0,   0.9, 0.18, 'sawtooth', 5, 6);
+        // Camada noise grave reforça (peito ressonando)
+        noise(0, 0.85, 0.08, 280, 80);
+        break;
+      case 'gato_mato':
+        // Gato-do-mato: rosnado curto grave + sibilo
+        vibrato(180, 0, 0.35, 0.14, 'sawtooth', 10, 12);
+        noise(0.05, 0.3, 0.06, 1200, 300);
+        break;
+      case 'onca_pintada':
+        // Onça: RUGIDO impressionante grave com vibrato + noise sub
+        vibrato(75, 0, 1.0, 0.20, 'sawtooth', 4, 5);
+        noise(0, 1.0, 0.10, 220, 60);
+        // Camada média pra dar corpo
+        vibrato(150, 0.05, 0.85, 0.10, 'sawtooth', 4.5, 8);
+        break;
+      case 'anta':
+        // Anta: assobio agudo curto característico (alarme)
+        sweep(2000, 2400, 0,    0.20, 0.11, 'sine');
+        sweep(2200, 1800, 0.25, 0.15, 0.10, 'sine');
+        break;
+
+      // ========== PLANTAS — pad de vento na floresta variando por planta ==========
+      case 'araucaria':
+        // Araucária: vento longo na copa (whoosh majestoso)
+        noise(0, 1.2, 0.10, 800, 200);
+        note(220, 0, 1.0, 0.05, 'sine');     // drone grave reforça
+        break;
+      case 'erva_mate':
+        // Erva-mate: sussurro de folhas + nota suave
+        noise(0, 0.8, 0.08, 2000, 600);
+        note(440, 0.1, 0.6, 0.06, 'sine');
+        break;
+      case 'imbuia':
+        // Imbuia (árvore nobre): drone grave longo (madeira ressonando)
+        note(110, 0, 1.1, 0.10, 'sine');
+        note(220, 0.05, 1.0, 0.06, 'sine');
+        noise(0, 1.0, 0.04, 400, 100);
+        break;
+      case 'xaxim':
+        // Xaxim (samambaia): som etéreo suave, alto
+        note(880, 0,    0.5, 0.07, 'sine');
+        note(1318, 0.15, 0.5, 0.05, 'sine');
+        noise(0, 0.6, 0.03, 3000, 1500);
+        break;
+      case 'bromelia':
+        // Bromélia: gotas d'água + chime cristalino (acumula água)
+        note(2093, 0,    0.18, 0.08, 'sine');
+        note(2637, 0.15, 0.18, 0.08, 'sine');
+        note(1760, 0.30, 0.30, 0.09, 'sine');
+        break;
+
+      // ========== FRUTOS — chime curto cristalino, variando timbre ==========
+      case 'pinhao':
+        // Pinhão: 2 notas curtas tipo "coletei" — caindo na cesta
+        note(880, 0,    0.10, 0.10, 'triangle');
+        note(659, 0.08, 0.15, 0.10, 'triangle');
+        break;
+      case 'pitanga':
+        // Pitanga: chime doce 3 notas ascendentes (frutinha doce)
+        note(1046, 0,    0.10, 0.09, 'sine');
+        note(1318, 0.08, 0.10, 0.09, 'sine');
+        note(1568, 0.16, 0.18, 0.10, 'sine');
+        break;
+      case 'guabiroba':
+        // Guabiroba: 2 notas cristalinas com pequeno gap
+        note(1175, 0,    0.13, 0.10, 'sine');
+        note(880,  0.15, 0.18, 0.10, 'sine');
+        break;
+      case 'araca':
+        // Araçá: chime curto agudo
+        note(1568, 0,    0.10, 0.09, 'triangle');
+        note(2093, 0.08, 0.18, 0.09, 'triangle');
+        break;
+      case 'jabuticaba':
+        // Jabuticaba: 4 "pings" curtos (fruta nasce em cachos)
+        note(1318, 0,    0.06, 0.08, 'sine');
+        note(1318, 0.09, 0.06, 0.08, 'sine');
+        note(1568, 0.18, 0.06, 0.08, 'sine');
+        note(1760, 0.27, 0.12, 0.09, 'sine');
+        break;
+
+      default:
+        // Fallback: som genérico por categoria
+        if(card.cat === 'ave'){
+          note(932.33, 0,    0.10, 0.10, 'triangle');
+          note(880.00, 0.08, 0.10, 0.10, 'triangle');
+          note(698.46, 0.16, 0.14, 0.10, 'triangle');
+        } else if(card.cat === 'mamifero'){
+          note(130.81, 0, 0.30, 0.14, 'sine');
+          note(261.63, 0, 0.28, 0.06, 'sine');
+        } else {
+          note(659.25, 0,    0.18, 0.10, 'sine');
+          note(880.00, 0.10, 0.22, 0.10, 'sine');
+        }
+        break;
+    }
+
+    // Lendária: adiciona chime brilhante POR CIMA do som da espécie
+    if(card.rar === 3){
+      const t1 = t0 + 0.05;
+      const shine = (freq, off, dur, gain) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, t1 + off);
+        g.gain.linearRampToValueAtTime(gain, t1 + off + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, t1 + off + dur);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(t1 + off); osc.stop(t1 + off + dur + 0.05);
+      };
+      shine(2093, 0.4,  0.25, 0.05);
+      shine(2637, 0.55, 0.30, 0.04);
+    }
+  }
+
   // Toast flutuante de XP ganho (canto inferior direito)
   function showXpToast(xpAmount, action, ctx){
     const existing = document.getElementById('pinhal-xp-toast-stack');
@@ -35333,17 +35617,15 @@ const Pinhal = (() => {
     const rarLabels = {1:'Comum', 2:'Rara', 3:'Lendária'};
     const color = rarColors[card.rar] || '#8042fa';
 
-    // V15.12.75.161 — Toca som da categoria ao ABRIR o card.
-    // Diferente do toast (V160) que toca quando o usuário GANHA a carta.
-    // Aqui é quando user CLICA pra ver detalhes — é o momento de "revelar"
-    // o animal/planta. Mesmo conjunto de sons sintéticos por categoria.
-    // Lendária toca chime especial mesmo se já tocou no toast (efeito mágico).
+    // V15.12.75.162 — Som SINTÉTICO por ESPÉCIE (não mais por categoria).
+    // Cada animal/planta/fruto tem timbre/ritmo único que evoca o ser real
+    // (sabiá com trinado melódico, onça com rugido grave, anta com assobio,
+    // bugio com rugido territorial, bromélia com gotas, etc).
+    // Tocado SÓ aqui (ao ABRIR a carta). O toast (ganhar) continua com
+    // som genérico por categoria — fica claro pro user a diferença entre
+    // os 2 momentos.
     try{
-      if(card.rar === 3) playPinhalSound('card_legendary');
-      else if(card.cat === 'ave') playPinhalSound('card_bird');
-      else if(card.cat === 'mamifero') playPinhalSound('card_mammal');
-      else if(card.cat === 'fruto') playPinhalSound('card_fruit');
-      else playPinhalSound('card_plant');
+      playCardSpeciesSound(card);
     }catch(_){}
 
     const m = mk('div');
