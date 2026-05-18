@@ -2532,6 +2532,26 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .dsc-sec b{color:var(--text2);font-weight:600}
 @keyframes gtoast-in{from{opacity:0;transform:translateX(40px) scale(.92)}to{opacity:1;transform:translateX(0) scale(1)}}
 @keyframes gtoast-out{to{opacity:0;transform:translateX(40px) scale(.92)}}
+
+/* V15.12.75.161 — Animação de "abrir/revelar" o card no modal de detalhes.
+   O emoji grande dá um pulse + escala — como um pacote sendo aberto. */
+@keyframes cardEmojiReveal{
+  0%   { transform: scale(.4) rotate(-12deg); opacity: 0; }
+  40%  { transform: scale(1.25) rotate(8deg); opacity: 1; }
+  65%  { transform: scale(.95) rotate(-3deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+/* Container geral do modal entra com fade + zoom suave */
+@keyframes cardModalReveal{
+  from { opacity: 0; transform: scale(.92) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+/* Brilho radial passa por trás do emoji (efeito "sorte") */
+@keyframes cardShine{
+  0%   { opacity: 0; transform: scale(.6); }
+  35%  { opacity: .65; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1.4); }
+}
 .goal-toast.out{animation:gtoast-out .25s ease-in forwards}
 .gtoast-emoji{font-size:32px;line-height:1;flex-shrink:0;animation:gtoast-emoji-bounce .6s ease-out}
 @keyframes gtoast-emoji-bounce{0%{transform:scale(.5)}55%{transform:scale(1.25)}100%{transform:scale(1)}}
@@ -8739,7 +8759,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.159';
+window.GRALIA_VERSION = 'V15.12.75.161';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -34707,16 +34727,26 @@ const Pinhal = (() => {
   }
   function playPinhalSound(kind){
     const ctx = getPinhalAudioCtx();
-    if(!ctx) return;
-    // Tenta resume sincronamente (funciona se chamada vier de user gesture)
-    if(ctx.state === 'suspended'){
-      try{ ctx.resume(); }catch(_){}
-    }
-    // Se ainda suspenso, agenda play pra quando unlock acontecer
-    if(ctx.state === 'suspended'){
-      console.warn('[pinhal-sound] AudioContext suspended; som ignorado:', kind);
+    if(!ctx){
+      console.warn('[pinhal-sound] AudioContext indisponível; som ignorado:', kind);
       return;
     }
+    // V15.12.75.160 — Tenta resume assíncrono (Promise) pra garantir
+    // que o ctx esteja "running" antes de criar notas. Browser pode
+    // ter o ctx em "interrupted" (mobile) ou "suspended" (sem gesture).
+    if(ctx.state !== 'running'){
+      ctx.resume().then(() => {
+        if(ctx.state === 'running') _doPlayPinhalSound(ctx, kind);
+        else console.warn('[pinhal-sound] resume() chamou mas state=', ctx.state, 'kind=', kind);
+      }).catch(err => {
+        console.warn('[pinhal-sound] resume() falhou:', err, 'kind=', kind);
+      });
+      return;
+    }
+    _doPlayPinhalSound(ctx, kind);
+  }
+  // Função separada pra tocar — chamada sincronamente ou via Promise do resume
+  function _doPlayPinhalSound(ctx, kind){
     const t0 = ctx.currentTime;
     // Função auxiliar: toca uma nota envelope ADSR curto
     const note = (freq, startOff, dur, gain, type) => {
@@ -35158,22 +35188,15 @@ const Pinhal = (() => {
     const rarLabels = {1:'Comum', 2:'Rara', 3:'Lendária'};
     const color = rarColors[card.rar] || '#8042fa';
 
-    // V15.12.75.159 — Tenta som REAL (.mp3 externo). Se não conseguir
-    // (DATA.config.cardRealSounds=false OU arquivo ainda não enviado pro
-    // Vercel OU erro de rede), CAI pro som sintético antigo.
+    // V15.12.75.160 — Volta pra som sintético puro. Tentativa de áudio
+    // real (.mp3) removida — user decidiu não usar arquivos externos
+    // por não achar bons sons CC0. Sintético é suficiente.
     try{
-      const playedReal = playCardRealSound(card);
-      if(!playedReal){
-        // Fallback: som sintético por categoria
-        if(card.rar === 3) playPinhalSound('card_legendary');
-        else if(card.cat === 'ave') playPinhalSound('card_bird');
-        else if(card.cat === 'mamifero') playPinhalSound('card_mammal');
-        else if(card.cat === 'fruto') playPinhalSound('card_fruit');
-        else playPinhalSound('card_plant');
-      } else if(card.rar === 3){
-        // Lendária: toca chime extra POR CIMA do som real (efeito de "raridade")
-        playPinhalSound('card_legendary');
-      }
+      if(card.rar === 3) playPinhalSound('card_legendary');
+      else if(card.cat === 'ave') playPinhalSound('card_bird');
+      else if(card.cat === 'mamifero') playPinhalSound('card_mammal');
+      else if(card.cat === 'fruto') playPinhalSound('card_fruit');
+      else playPinhalSound('card_plant');
     }catch(_){}
 
     // V15.12.75.147 — Empilhamento vertical pra múltiplas cartas.
@@ -35309,20 +35332,40 @@ const Pinhal = (() => {
     const rarColors = {1:'#10b981', 2:'#8042fa', 3:'#fbbf24'};
     const rarLabels = {1:'Comum', 2:'Rara', 3:'Lendária'};
     const color = rarColors[card.rar] || '#8042fa';
+
+    // V15.12.75.161 — Toca som da categoria ao ABRIR o card.
+    // Diferente do toast (V160) que toca quando o usuário GANHA a carta.
+    // Aqui é quando user CLICA pra ver detalhes — é o momento de "revelar"
+    // o animal/planta. Mesmo conjunto de sons sintéticos por categoria.
+    // Lendária toca chime especial mesmo se já tocou no toast (efeito mágico).
+    try{
+      if(card.rar === 3) playPinhalSound('card_legendary');
+      else if(card.cat === 'ave') playPinhalSound('card_bird');
+      else if(card.cat === 'mamifero') playPinhalSound('card_mammal');
+      else if(card.cat === 'fruto') playPinhalSound('card_fruit');
+      else playPinhalSound('card_plant');
+    }catch(_){}
+
     const m = mk('div');
-    m.style.cssText = 'max-width:380px;width:100%';
+    // V15.12.75.161 — Animação de revelação no modal inteiro
+    m.style.cssText = 'max-width:380px;width:100%;animation:cardModalReveal .35s cubic-bezier(.34,1.4,.64,1)';
 
     // V15.12.75.121 — Contexto integrado ao head em vez de caixa separada.
     // Antes (V120): caixa roxa pesada que destoava do minimalismo do modal.
     // Agora: linha curta acima do emoji, com tipografia leve e cor neutra que
     // segue a paleta da raridade do card. Visual coeso.
+    // V15.12.75.161 — Emoji ganha animação de "reveal" (escala+rotação pop)
+    // e brilho radial atrás imitando "abertura mágica de carta".
     const head = mk('div');
-    head.style.cssText = `text-align:center;padding:1.5rem 1rem 1.25rem;background:linear-gradient(135deg,${color}15,${color}05);border-radius:12px 12px 0 0;margin:-1.25rem -1.25rem 1rem`;
+    head.style.cssText = `text-align:center;padding:1.5rem 1rem 1.25rem;background:linear-gradient(135deg,${color}15,${color}05);border-radius:12px 12px 0 0;margin:-1.25rem -1.25rem 1rem;position:relative;overflow:hidden`;
     head.innerHTML = `
       <div style="font-size:10.5px;color:var(--text3);line-height:1.5;max-width:300px;margin:0 auto .875rem;font-weight:500;letter-spacing:.1px">
         Carta colecionável da fauna e flora da Mata de Araucárias — desbloqueada conforme você estuda.
       </div>
-      <div style="width:84px;height:84px;border-radius:18px;background:${color}1A;border:2px solid ${color}40;display:inline-flex;align-items:center;justify-content:center;font-size:44px;margin-bottom:.625rem;line-height:1">${card.emoji}</div>
+      <div style="position:relative;display:inline-block;margin-bottom:.625rem">
+        <div style="position:absolute;inset:-30px;border-radius:50%;background:radial-gradient(circle,${color}55 0%,${color}00 70%);animation:cardShine .9s ease-out;pointer-events:none"></div>
+        <div style="position:relative;width:84px;height:84px;border-radius:18px;background:${color}1A;border:2px solid ${color}40;display:inline-flex;align-items:center;justify-content:center;font-size:44px;line-height:1;animation:cardEmojiReveal .55s cubic-bezier(.34,1.56,.64,1)">${card.emoji}</div>
+      </div>
       <div style="font-size:10px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${rarLabels[card.rar]||'Comum'}</div>
       <h3 style="margin:0 0 2px;font-size:20px;font-weight:800;color:var(--text)">${escapeHTML(card.nome)}</h3>
       <div style="font-size:12.5px;color:var(--text2);font-style:italic">${escapeHTML(card.cientifico)}</div>`;
@@ -35446,95 +35489,10 @@ const Pinhal = (() => {
     {id:'anta', nome:'Anta', cientifico:'Tapirus terrestris', emoji:'🦏', cat:'mamifero', rar:3, desc:'Maior mamífero terrestre do Brasil. Dispersora de grandes sementes.', unlock:'Marco especial (1000 XP num dia)'}
   ];
 
-  // V15.12.75.159 — Mapeamento card → arquivo de som real (.mp3).
-  // Quando user organizar os arquivos, basta subi-los em /sounds/animals/
-  // no Vercel. O sistema tenta carregar o arquivo; se falhar (404 ou erro de
-  // rede), cai automaticamente pro som sintético em playPinhalSound().
-  // Default em true (toca se arquivos existirem). User pode desligar em
-  // Configurações → Notificações pra forçar sintético.
-  //
-  // Quando você adicionar áudios, certifique-se de que:
-  //   - São CC0 ou domínio público (Pixabay Sounds, Freesound CC0, Wikimedia)
-  //   - Curtos (1-3 segundos) e mp3/ogg/wav
-  //   - Volume normalizado (-3dBFS pico) pra não "estourar"
-  const CARD_SOUND_FILES = {
-    // === Aves (vocalização/canto) ===
-    'gralha_azul':      '/sounds/animals/gralha-azul.mp3',
-    'sabia_laranjeira': '/sounds/animals/sabia-laranjeira.mp3',
-    'tucano_verde':     '/sounds/animals/tucano.mp3',
-    'tiriba':           '/sounds/animals/tiriba.mp3',
-    'sanhaco':          '/sounds/animals/sanhaco.mp3',
-    'jacutinga':        '/sounds/animals/jacutinga.mp3',
-    'cabure':           '/sounds/animals/cabure.mp3',
-    'macuco':           '/sounds/animals/macuco.mp3',
-    // === Mamíferos (vocalização) ===
-    'cutia':            '/sounds/animals/cutia.mp3',
-    'quati':            '/sounds/animals/quati.mp3',
-    'bugio':            '/sounds/animals/bugio.mp3',
-    'gato_mato':        '/sounds/animals/gato-do-mato.mp3',
-    'onca_pintada':     '/sounds/animals/onca-pintada.mp3',
-    'anta':             '/sounds/animals/anta.mp3',
-    // === Plantas (compartilham som de floresta/vento) ===
-    'araucaria':        '/sounds/animals/floresta-vento.mp3',
-    'erva_mate':        '/sounds/animals/floresta-vento.mp3',
-    'imbuia':           '/sounds/animals/floresta-vento.mp3',
-    'xaxim':            '/sounds/animals/floresta-vento.mp3',
-    'bromelia':         '/sounds/animals/floresta-vento.mp3',
-    // === Frutos (compartilham som "colheita") ===
-    'pinhao':           '/sounds/animals/colheita.mp3',
-    'pitanga':          '/sounds/animals/colheita.mp3',
-    'guabiroba':        '/sounds/animals/colheita.mp3',
-    'araca':            '/sounds/animals/colheita.mp3',
-    'jabuticaba':       '/sounds/animals/colheita.mp3'
-  };
-
-  // Cache de Audio elements pra evitar criar/destruir constantemente
-  const _cardAudioCache = {};
-  // Cache negativo: arquivos que já falharam (não tenta de novo)
-  const _cardAudioFailed = new Set();
-
-  // V15.12.75.159 — Toca som REAL da carta (arquivo .mp3 externo).
-  // Retorna true se conseguiu tocar, false se deve cair pro fallback sintético.
-  // - card: objeto do card (precisa do id)
-  // - Se DATA.config.cardRealSounds === false, retorna false direto (forçar sintético)
-  // - Se arquivo já falhou antes, retorna false direto
-  // - Senão tenta carregar/tocar; em erro, marca como falhado e retorna false
-  function playCardRealSound(card){
-    if(!card || !card.id) return false;
-    // Toggle do usuário (default: true)
-    if(DATA.config && DATA.config.cardRealSounds === false) return false;
-    const url = CARD_SOUND_FILES[card.id];
-    if(!url) return false;  // sem mapeamento → fallback
-    if(_cardAudioFailed.has(url)) return false;  // já falhou → fallback
-    try{
-      let audio = _cardAudioCache[url];
-      if(!audio){
-        audio = new Audio(url);
-        audio.preload = 'auto';
-        audio.volume = 0.7;
-        // Se 404 ou erro de rede: marca como falhado pra próximas chamadas usarem sintético
-        audio.addEventListener('error', () => {
-          _cardAudioFailed.add(url);
-          delete _cardAudioCache[url];
-        }, {once: true});
-        _cardAudioCache[url] = audio;
-      } else {
-        audio.currentTime = 0;
-      }
-      const playPromise = audio.play();
-      if(playPromise && typeof playPromise.catch === 'function'){
-        playPromise.catch(() => {
-          // play() pode falhar por autoplay policy ou rede
-          _cardAudioFailed.add(url);
-          delete _cardAudioCache[url];
-        });
-      }
-      return true;
-    }catch(e){
-      _cardAudioFailed.add(url);
-      return false;
-    }
-  }
+  // V15.12.75.160 — Bloco CARD_SOUND_FILES + playCardRealSound REMOVIDO.
+  // Tentativa V159 de tocar .mp3 externo abandonada — user decidiu manter
+  // apenas sons sintéticos (não achou bons arquivos CC0). Som ao desbloquear
+  // carta volta a ser 100% sintético via playPinhalSound() em showCardUnlockToast.
 
   // Tenta desbloquear cards com base no estado atual.
   // Retorna array de cards recém-desbloqueados nesta chamada.
@@ -74146,28 +74104,8 @@ function renderSettings(){
   nr.appendChild(nLbl);nr.appendChild(nChk);
   nCard.appendChild(nr);
 
-  // V15.12.75.159 — Toggle "sons reais de animais ao desbloquear cards"
-  // Quando ON (default): tenta tocar .mp3 do animal/planta. Se arquivo
-  // não existir ou der erro, cai pro sintético.
-  // Quando OFF: força sintético (notas musicais) — útil pra quem prefere
-  // som mais sutil ou se incomoda com gritos de animais.
-  const nrCardSnd = mk('div','flex');
-  nrCardSnd.style.marginTop = '.5rem';
-  const nLbl2 = mk('p','txt');
-  nLbl2.style.flex='1';
-  nLbl2.innerHTML = 'Sons reais de animais ao ganhar cartas <span style="font-size:11px;color:var(--text3);font-weight:400">(canto do pássaro, rugido da onça, vento da floresta…)</span>';
-  const nChk2 = mk('input');
-  nChk2.type='checkbox';
-  // Default: true. Se nunca foi setado, considera true.
-  nChk2.checked = (DATA.config.cardRealSounds !== false);
-  nChk2.style.cssText = 'width:auto;cursor:pointer';
-  nChk2.addEventListener('change', e => {
-    DATA.config.cardRealSounds = e.target.checked;
-    save();
-  });
-  nrCardSnd.appendChild(nLbl2);
-  nrCardSnd.appendChild(nChk2);
-  nCard.appendChild(nrCardSnd);
+  // V15.12.75.160 — Toggle "Sons reais de animais" REMOVIDO.
+  // Tentativa V159 abandonada — só sintético agora, sem opção pro user.
 
   // V15.12.75.152 — Notificações só em Preferences
   if(isPreferencesMode) wrap.appendChild(nCard);
