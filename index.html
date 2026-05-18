@@ -444,13 +444,15 @@ body.sidebar-collapsed .app-sidebar-tooltip{
   flex-direction:column;
   gap:2px;
   padding:8px 12px;
-  background:var(--surface);
-  border:1px solid var(--border);
+  /* V15.12.75.152 — Dark com setinha — visual de tooltip padronizado
+     com o help hub. Antes era claro com borda (parecia card pequeno). */
+  background:var(--text);
+  border:none;
+  color:var(--bg);
   border-radius:8px;
-  box-shadow:0 6px 18px rgba(0,0,0,.12),0 1px 3px rgba(0,0,0,.06);
+  box-shadow:0 6px 18px rgba(0,0,0,.20),0 1px 3px rgba(0,0,0,.08);
   font-size:12px;
   font-weight:500;
-  color:var(--text);
   white-space:nowrap;
   opacity:0;
   visibility:hidden;
@@ -459,16 +461,27 @@ body.sidebar-collapsed .app-sidebar-tooltip{
   z-index:610;
   letter-spacing:0;
 }
+/* Setinha apontando pro ícone */
+body.sidebar-collapsed .app-sidebar-tooltip::before{
+  content:'';
+  position:absolute;
+  left:-5px;
+  top:50%;
+  transform:translateY(-50%) rotate(45deg);
+  width:10px;height:10px;
+  background:var(--text);
+}
 body.sidebar-collapsed .app-sidebar-tooltip b{
   font-size:12.5px;
   font-weight:700;
-  color:var(--text);
+  color:var(--bg);            /* V152: cor invertida pra tooltip dark */
   letter-spacing:-.1px;
 }
 body.sidebar-collapsed .app-sidebar-tooltip .ast-desc{
   font-size:11px;
   font-weight:400;
-  color:var(--text3);
+  color:var(--bg);            /* V152 */
+  opacity:.7;
   letter-spacing:0;
   margin-top:1px;
 }
@@ -6698,33 +6711,54 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
   from{opacity:0;backdrop-filter:blur(0)}
   to{opacity:1;backdrop-filter:blur(6px)}
 }
-/* V15.12.75.150 — Wrapper do help hub: contém o botão circular E uma
-   "pílula" com texto "Ajuda" sempre visível à esquerda. Antes só tinha
-   o botão circular com title nativo (browser-padrão, feio, só hover). */
+/* V15.12.75.152 — Tooltip do botão de ajuda flutuante.
+   Histórico:
+   - V150: pílula clara sempre visível → parecia OUTRO botão clicável
+   - V151: tooltip só no hover → user reclamou que pediu pra ser sempre visível
+   - V152 (atual): SEMPRE visível, mas com estilo claro de TOOLTIP (não botão):
+     - Fundo dark (var(--text)) → fica óbvio que é dica
+     - Texto branco
+     - Setinha apontando pro botão
+     - Sem cursor pointer, pointer-events:none (não clicável)
+     - Tamanho menor (font 11px) — visual de nota, não CTA */
 .help-hub-wrap{
   position:fixed;bottom:20px;right:20px;z-index:9200;
-  display:flex;align-items:center;gap:8px;
+  display:flex;align-items:center;
 }
 .help-hub-label{
+  position:absolute;
+  right:calc(100% + 12px);
+  top:50%;
+  transform:translateY(-50%);
   display:inline-flex;align-items:center;
-  padding:6px 12px;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:999px;
-  font-size:12px;font-weight:600;color:var(--text2);
+  padding:6px 11px;
+  background:var(--text);
+  color:var(--bg);
+  border-radius:8px;
+  font-size:11px;font-weight:500;
   letter-spacing:.1px;
-  box-shadow:0 4px 14px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.04);
+  box-shadow:0 3px 10px rgba(0,0,0,.18);
   white-space:nowrap;
   user-select:none;
-  pointer-events:none;  /* só decorativo, clique vai no botão */
-  transition:color .15s ease, border-color .15s ease;
+  pointer-events:none;            /* tooltip não captura clique */
+  opacity:.92;                    /* leve transparência indica "info" */
+  transition:opacity .15s ease;
+}
+.help-hub-label::after{
+  /* Setinha apontando pro botão (à direita) */
+  content:'';
+  position:absolute;
+  right:-4px;
+  top:50%;
+  transform:translateY(-50%) rotate(45deg);
+  width:8px;height:8px;
+  background:var(--text);
 }
 .help-hub-wrap:hover .help-hub-label{
-  color:var(--gralia-purple);
-  border-color:var(--gralia-purple);
+  opacity:1;                      /* fica 100% opaco no hover */
 }
 .help-hub-btn{
-  position:relative;  /* não mais fixed — agora vive dentro do wrap */
+  position:relative;
   width:46px;height:46px;border-radius:50%;
   background:var(--surface);
   border:1px solid var(--border);
@@ -6745,12 +6779,12 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 
 .help-hub-popover{
   position:fixed;bottom:78px;right:20px;z-index:9100;
-  width:320px;                    /* V150: 280→320 — mais respiração */
+  width:340px;                    /* V152: 320→340 — comporta 3 cards lado a lado */
   background:var(--surface);
   border:1px solid var(--border);
   border-radius:16px;
   box-shadow:0 16px 40px rgba(0,0,0,.16), 0 4px 10px rgba(0,0,0,.08);
-  padding:10px;                   /* V150: 8→10 */
+  padding:14px;                   /* V152: padding uniforme */
   animation:help-hub-in .18s cubic-bezier(.34,1.56,.64,1);
 }
 @keyframes help-hub-in{
@@ -6760,33 +6794,54 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 .help-hub-title{
   font-size:10.5px;font-weight:700;color:var(--text3);
   text-transform:uppercase;letter-spacing:.7px;
-  padding:8px 14px 10px;
-  text-align:center;              /* V150: centralizado */
+  padding:0 4px 12px;
+  text-align:center;
+}
+/* V15.12.75.152 — Container dos 3 itens em GRID 3 colunas (não mais lista
+   vertical). Layout uniforme: ícone grande em cima + label embaixo.
+   Resolve "tamanhos parecidos / sem scroll / melhor organizadas". */
+.help-hub-grid{
+  display:grid;
+  grid-template-columns:repeat(3, 1fr);
+  gap:8px;
 }
 .help-hub-item{
-  width:100%;display:flex;gap:14px;align-items:center;  /* V150: gap maior */
-  padding:11px 13px;              /* V150: padding maior — itens mais altos */
-  background:transparent;border:none;border-radius:11px;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  gap:8px;
+  padding:14px 8px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:12px;
   cursor:pointer;font-family:inherit;color:var(--text);
-  text-align:left;
-  transition:background .12s ease, transform .12s ease;
-  min-height:54px;                /* V150: altura mínima padronizada */
+  text-align:center;
+  transition:all .15s ease;
+  min-height:100px;               /* todas iguais */
 }
 .help-hub-item:hover{
-  background:var(--surface2);
-  transform:translateX(2px);      /* V150: efeito slide igual sidebar */
+  background:rgba(var(--gralia-purple-rgb),.08);
+  border-color:var(--gralia-purple);
+  transform:translateY(-2px);
+  box-shadow:0 4px 10px rgba(var(--gralia-purple-rgb),.10);
 }
 .help-hub-item-ico{
-  width:34px;height:34px;border-radius:10px;
-  background:rgba(var(--gralia-purple-rgb),.08);
+  width:40px;height:40px;border-radius:50%;
+  background:rgba(var(--gralia-purple-rgb),.10);
   color:var(--gralia-purple);
   display:flex;align-items:center;justify-content:center;
   flex-shrink:0;
+  transition:transform .15s ease;
 }
-.help-hub-item-ico svg{display:block}
-.help-hub-item-body{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
-.help-hub-item-label{font-size:13px;font-weight:600;color:var(--text);line-height:1.2}
-.help-hub-item-desc{font-size:11.5px;color:var(--text3);line-height:1.35;letter-spacing:.05px}
+.help-hub-item:hover .help-hub-item-ico{
+  transform:scale(1.08);
+  background:rgba(var(--gralia-purple-rgb),.18);
+}
+.help-hub-item-ico svg{display:block;width:18px;height:18px}
+.help-hub-item-body{display:flex;flex-direction:column;align-items:center;gap:2px}
+.help-hub-item-label{font-size:12px;font-weight:700;color:var(--text);line-height:1.2;letter-spacing:.1px}
+.help-hub-item-desc{
+  font-size:10px;color:var(--text3);line-height:1.3;letter-spacing:.05px;
+  display:none;                    /* V152: oculto no grid — só label */
+}
 
 /* V15.12.75.143 — Os antigos floating btn (feedback, shortcuts, faq) podem
    ainda ser referenciados em outros pontos do código. Mantemos as classes
@@ -8686,7 +8741,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.151';
+window.GRALIA_VERSION = 'V15.12.75.152';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -20363,7 +20418,7 @@ function render(){
     helpBtn.setAttribute('aria-label', 'Central de ajuda — Fale conosco, atalhos, FAQ');
     helpBtn.innerHTML = lucideIcon('life-buoy', 20);
     const helpLabel = mk('span','help-hub-label');
-    helpLabel.textContent = 'Ajuda';
+    helpLabel.textContent = 'Precisa de ajuda?';
     helpWrap.appendChild(helpLabel);
     helpWrap.appendChild(helpBtn);
     let helpPopover = null;
@@ -20386,29 +20441,31 @@ function render(){
       document.body.appendChild(helpBackdrop);
 
       helpPopover = mk('div','help-hub-popover');
+      // V15.12.75.152 — Layout: 3 cards iguais em grid (.help-hub-grid)
+      // em vez de lista vertical. Cada card centralizado (ícone em cima,
+      // label embaixo). Sem scroll, alturas idênticas, melhor escaneamento.
       helpPopover.innerHTML = `
         <div class="help-hub-title">Como podemos ajudar?</div>
-        <button class="help-hub-item" data-action="feedback">
-          <span class="help-hub-item-ico">${lucideIcon('message-circle', 16)}</span>
-          <span class="help-hub-item-body">
-            <span class="help-hub-item-label">Fale conosco</span>
-            <span class="help-hub-item-desc">Reportar problema, dar sugestão</span>
-          </span>
-        </button>
-        <button class="help-hub-item" data-action="faq">
-          <span class="help-hub-item-ico">${lucideIcon('help-circle', 16)}</span>
-          <span class="help-hub-item-body">
-            <span class="help-hub-item-label">Tirar dúvidas (FAQ)</span>
-            <span class="help-hub-item-desc">Perguntas frequentes</span>
-          </span>
-        </button>
-        <button class="help-hub-item" data-action="shortcuts">
-          <span class="help-hub-item-ico">${lucideIcon('keyboard', 16)}</span>
-          <span class="help-hub-item-body">
-            <span class="help-hub-item-label">Atalhos de teclado</span>
-            <span class="help-hub-item-desc">Pressione ? a qualquer momento</span>
-          </span>
-        </button>
+        <div class="help-hub-grid">
+          <button class="help-hub-item" data-action="feedback" title="Reportar problema, dar sugestão">
+            <span class="help-hub-item-ico">${lucideIcon('message-circle', 18)}</span>
+            <span class="help-hub-item-body">
+              <span class="help-hub-item-label">Fale conosco</span>
+            </span>
+          </button>
+          <button class="help-hub-item" data-action="faq" title="Perguntas frequentes">
+            <span class="help-hub-item-ico">${lucideIcon('help-circle', 18)}</span>
+            <span class="help-hub-item-body">
+              <span class="help-hub-item-label">FAQ</span>
+            </span>
+          </button>
+          <button class="help-hub-item" data-action="shortcuts" title="Pressione ? a qualquer momento">
+            <span class="help-hub-item-ico">${lucideIcon('keyboard', 18)}</span>
+            <span class="help-hub-item-body">
+              <span class="help-hub-item-label">Atalhos</span>
+            </span>
+          </button>
+        </div>
       `;
       helpPopover.querySelector('[data-action="feedback"]').addEventListener('click', () => {
         closeHelpPopover();
@@ -73564,7 +73621,9 @@ function renderSettings(){
   const uxTip = mk('p','txt3');uxTip.style.cssText='margin:.625rem 0 0;font-size:11.5px;line-height:1.5';
   uxTip.innerHTML = 'Atalhos rápidos durante questões: <kbd>C</kbd> Certo · <kbd>E</kbd> Errado · <kbd>Espaço</kbd> próxima · <kbd>F</kbd> foco · <kbd>?</kbd> ajuda';
   uxCard.appendChild(uxTip);
-  wrap.appendChild(uxCard);
+  // V15.12.75.152 — Aparência só em Preferences (Configurações do app).
+  // Antes aparecia em ambas (Conta e Perfil + Configurações) — duplicação.
+  if(isPreferencesMode) wrap.appendChild(uxCard);
 
   // Usage & budget card — ADMIN ONLY (usuários veem créditos restantes na chip da topbar)
   if(isAdminUser()){
@@ -73870,7 +73929,8 @@ function renderSettings(){
   });
   nr.appendChild(nLbl);nr.appendChild(nChk);
   nCard.appendChild(nr);
-  wrap.appendChild(nCard);
+  // V15.12.75.152 — Notificações só em Preferences
+  if(isPreferencesMode) wrap.appendChild(nCard);
 
   // V13: Card de Privacidade — controle do pool comunitário de questões IA
   const privCard = mk('div','card');privCard.style.marginTop='1rem';
@@ -73900,7 +73960,8 @@ function renderSettings(){
   });
   shareRow.appendChild(shareChk);
   privCard.appendChild(shareRow);
-  wrap.appendChild(privCard);
+  // V15.12.75.152 — Privacidade só em Preferences
+  if(isPreferencesMode) wrap.appendChild(privCard);
 
   const rCard = mk('div','card');rCard.style.marginTop='1rem';
   rCard.id = 'sec-dados';
@@ -74064,30 +74125,11 @@ function renderSettings(){
   // V15.12.75.150 — Dados (export/import/delete) só em settings
   if(!isPreferencesMode) wrap.appendChild(rCard);
 
-  // ==== Sobre o Gralia (acesso rápido pra Sobre/FAQ/Manual) ====
-  const aboutCard = mk('div','card');aboutCard.style.marginTop='1rem';
-  aboutCard.appendChild(sLabel('Sobre o Gralia'));
-  const aboutDesc = mk('p','txt2');aboutDesc.style.marginBottom='.875rem';
-  aboutDesc.textContent='Conheça o projeto, tire dúvidas no FAQ ou veja o manual rápido de uso.';
-  aboutCard.appendChild(aboutDesc);
-  const aboutActions = mk('div');aboutActions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
-  const aboutOpts = [
-    {tab:'sobre', label:'🪶 Sobre nós'},
-    {tab:'faq', label:'❓ Perguntas frequentes'},
-    {tab:'manual', label:'📖 Como usar (manual)'}
-  ];
-  aboutOpts.forEach(o=>{
-    const b = mkBtn(o.label, 'btn btn-sm');
-    b.addEventListener('click',()=>{
-      ST.aboutTab = o.tab;
-      ST.view = 'about';
-      render();
-    });
-    aboutActions.appendChild(b);
-  });
-  aboutCard.appendChild(aboutActions);
-  // V15.12.75.150 — Sobre só em settings
-  if(!isPreferencesMode) wrap.appendChild(aboutCard);
+  // V15.12.75.152 — Card "Sobre o Gralia" REMOVIDO de settings.
+  // Acesso já disponível em 2 lugares mais visíveis:
+  //   1) Topbar (links institucionais à direita do logo)
+  //   2) Avatar menu > Ajuda (Tutorial, Como usar, FAQ, Sobre)
+  // Manter em settings era 3ª duplicação → poluição visual desnecessária.
 
   // ==== Feedback / Sugestões / NPS ====
   const fbCard = mk('div','card');fbCard.style.marginTop='1rem';
