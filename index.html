@@ -8759,7 +8759,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.166';
+window.GRALIA_VERSION = 'V15.12.75.167';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -9167,6 +9167,243 @@ async function publishSource(sourceData, opts){
   return data;
 }
 
+// =====================================================
+// V15.12.75.167 — COMUNIDADE: publicar/votar/reportar caderno
+// =====================================================
+
+// Publica um caderno do user em shared_resources com resource_type='caderno'.
+// Snapshota as questões dentro do payload pra evitar dependência (questões
+// podem mudar/sumir). Limite: 200 questões por caderno publicado.
+async function publishNotebook(notebook, opts){
+  if(!supa || !AUTH.user) throw new Error('Não autenticado');
+  if(!AUTH.profile) throw new Error('Crie seu perfil em Configurações antes de publicar');
+  if(!notebook || !notebook.id) throw new Error('Caderno inválido');
+  opts = opts || {};
+  const title = (opts.title || notebook.name || '').trim().slice(0, 120);
+  if(title.length < 3) throw new Error('Título precisa ter ao menos 3 caracteres');
+  const description = (opts.description || notebook.description || '').trim().slice(0, 500);
+  // Snapshot das questões: pega do banco
+  const bank = DATA.importedQuestions || [];
+  const ids = notebook.questionIds || [];
+  if(ids.length === 0) throw new Error('Caderno vazio — adicione questões antes de publicar');
+  if(ids.length > 200) throw new Error('Máximo 200 questões por caderno publicado');
+  const questionsSnapshot = ids.map(qId => {
+    const q = bank.find(x => x.id === qId);
+    return q ? {
+      enunciado: q.enunciado,
+      alternativas: q.alternativas,
+      gabarito: q.gabarito,
+      explicacao: q.explicacao,
+      kind: q.kind,
+      banca: q.banca,
+      ano: q.ano,
+      orgao: q.orgao,
+      cargo: q.cargo,
+      disciplina: (DATA.disciplines||[]).find(d => d.id === q.disciplineId)?.name || q.discipline || null,
+      topic: q.topic || null,
+      difficulty: q.difficulty || null
+    } : null;
+  }).filter(Boolean);
+  if(questionsSnapshot.length === 0) throw new Error('Nenhuma questão válida no caderno');
+  // Disciplina principal: a mais frequente
+  const discCounts = {};
+  questionsSnapshot.forEach(q => {
+    if(q.disciplina) discCounts[q.disciplina] = (discCounts[q.disciplina] || 0) + 1;
+  });
+  const topDisc = Object.entries(discCounts).sort((a,b) => b[1] - a[1])[0];
+  const discipline = topDisc ? topDisc[0].slice(0, 80) : null;
+  const payload = {
+    local_id: notebook.id,
+    notebook_name: sanitizeContentForSharing(notebook.name || ''),
+    notebook_description: sanitizeContentForSharing(notebook.description || ''),
+    questions: questionsSnapshot,
+    discipline_counts: discCounts  // pra mostrar "Direito Penal · Constitucional · +2" na listagem
+  };
+  const tags = normalizeTagsList(opts.tags);
+  const insertObj = {
+    owner_id: AUTH.user.id,
+    resource_type: 'caderno',
+    title: sanitizeContentForSharing(title),
+    description: sanitizeContentForSharing(description) || null,
+    discipline,
+    tags,
+    payload,
+    question_count: questionsSnapshot.length,
+    is_public: true
+  };
+  const { data, error } = await supa.from('shared_resources').insert(insertObj).select().single();
+  if(error) throw new Error(error.message);
+  // Pinhal: publicar caderno = 25 XP (entre fonte e questão)
+  try{
+    if(typeof Pinhal !== 'undefined'){
+      Pinhal.award({action:'notebook_publish', xp:25, ctx: notebook.name || ''});
+    }
+  }catch(_){}
+  return data;
+}
+
+// Lista cadernos públicos com ordenação. sortBy:
+//   'recent' (default) | 'top_voted' | 'controversial' (mais reports)
+// disciplineFilter: nome exato da disciplina (ou null pra todas)
+async function fetchCommunityNotebooks(opts){
+  if(!supa) return {items: []};
+  opts = opts || {};
+  const sortBy = opts.sortBy || 'recent';
+  const limit = opts.limit || 50;
+  try{
+    let q = supa.from('shared_resources')
+      .select('id, owner_id, title, description, discipline, tags, question_count, payload, votes_up, votes_down, reports_count, auto_flagged_at, created_at, moderation_status')
+      .eq('resource_type', 'caderno')
+      .eq('is_public', true);
+    if(opts.discipline) q = q.eq('discipline', opts.discipline);
+    if(sortBy === 'top_voted'){
+      q = q.order('votes_up', {ascending: false}).order('created_at', {ascending: false});
+    } else if(sortBy === 'controversial'){
+      q = q.order('reports_count', {ascending: false}).order('votes_down', {ascending: false});
+    } else if(sortBy === 'least_voted'){
+      q = q.order('votes_up', {ascending: true}).order('created_at', {ascending: false});
+    } else {
+      q = q.order('created_at', {ascending: false});
+    }
+    q = q.limit(limit);
+    const { data, error } = await q;
+    if(error) return {error: error.message, items: []};
+    return {items: data || []};
+  }catch(err){
+    return {error: err.message, items: []};
+  }
+}
+
+// Busca votos do user atual em uma lista de resource IDs.
+// Retorna {resourceId: voteValue}. Útil pra mostrar estado dos botões.
+async function fetchMyVotesForResources(resourceIds){
+  if(!supa || !AUTH.user || !Array.isArray(resourceIds) || resourceIds.length === 0) return {};
+  try{
+    const { data, error } = await supa.from('shared_resource_votes')
+      .select('resource_id, vote')
+      .in('resource_id', resourceIds)
+      .eq('user_id', AUTH.user.id);
+    if(error) return {};
+    const map = {};
+    (data || []).forEach(v => { map[v.resource_id] = v.vote; });
+    return map;
+  }catch(_){ return {}; }
+}
+
+// Vota num resource. vote: 1 (up) | -1 (down) | 0 (remover voto).
+async function voteResource(resourceId, vote){
+  if(!supa || !AUTH.user) throw new Error('Faça login pra votar');
+  if(![1, -1, 0].includes(vote)) throw new Error('Voto inválido');
+  if(vote === 0){
+    const { error } = await supa.from('shared_resource_votes')
+      .delete()
+      .eq('resource_id', resourceId)
+      .eq('user_id', AUTH.user.id);
+    if(error) throw new Error(error.message);
+    return {removed: true};
+  }
+  // Upsert: tenta atualizar, senão insere
+  const { data: existing } = await supa.from('shared_resource_votes')
+    .select('id, vote')
+    .eq('resource_id', resourceId)
+    .eq('user_id', AUTH.user.id)
+    .maybeSingle();
+  if(existing){
+    if(existing.vote === vote) return {unchanged: true};
+    const { error } = await supa.from('shared_resource_votes')
+      .update({ vote, updated_at: new Date().toISOString() })
+      .eq('id', existing.id);
+    if(error) throw new Error(error.message);
+  } else {
+    const { error } = await supa.from('shared_resource_votes')
+      .insert({ resource_id: resourceId, user_id: AUTH.user.id, vote });
+    if(error) throw new Error(error.message);
+  }
+  return {vote};
+}
+
+// Reporta um resource. reason: string opcional.
+async function reportResource(resourceId, reason){
+  if(!supa || !AUTH.user) throw new Error('Faça login pra reportar');
+  reason = (reason || '').trim().slice(0, 280);
+  const { error } = await supa.from('shared_resource_reports')
+    .insert({ resource_id: resourceId, user_id: AUTH.user.id, reason: reason || null });
+  if(error){
+    if(error.code === '23505') throw new Error('Você já reportou este recurso');
+    throw new Error(error.message);
+  }
+  return {reported: true};
+}
+
+// Importa um caderno público pro user — clona pra DATA.notebooks + importa
+// questões pra DATA.importedQuestions com batch novo.
+function importCommunityNotebookSnapshot(resource){
+  if(!resource || !resource.payload || !Array.isArray(resource.payload.questions)){
+    throw new Error('Caderno inválido');
+  }
+  if(!DATA.notebooks) DATA.notebooks = [];
+  if(!DATA.importedQuestions) DATA.importedQuestions = [];
+  const batchId = 'imp-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);
+  const now = Date.now();
+  const newQuestionIds = [];
+  // Importa questões com batch único
+  resource.payload.questions.forEach((sq, idx) => {
+    const qId = 'q-imp-'+now+'-'+idx+'-'+Math.random().toString(36).slice(2,6);
+    // Resolve disciplineId pelo nome (cria disciplina se não existir)
+    let disciplineId = null;
+    if(sq.disciplina){
+      const existing = (DATA.disciplines||[]).find(d => d.name && d.name.toLowerCase() === sq.disciplina.toLowerCase());
+      if(existing){
+        disciplineId = existing.id;
+      } else {
+        if(!DATA.disciplines) DATA.disciplines = [];
+        const newDisc = { id: 'd-'+now+'-'+idx, name: sq.disciplina, createdAt: now };
+        DATA.disciplines.push(newDisc);
+        disciplineId = newDisc.id;
+      }
+    }
+    DATA.importedQuestions.push({
+      id: qId,
+      enunciado: sq.enunciado,
+      alternativas: sq.alternativas,
+      gabarito: sq.gabarito,
+      explicacao: sq.explicacao,
+      kind: sq.kind,
+      banca: sq.banca,
+      ano: sq.ano,
+      orgao: sq.orgao,
+      cargo: sq.cargo,
+      disciplineId,
+      discipline: sq.disciplina,
+      topic: sq.topic,
+      difficulty: sq.difficulty,
+      importBatchId: batchId,
+      importSource: 'community-notebook',
+      importedAt: now,
+      createdAt: now
+    });
+    newQuestionIds.push(qId);
+  });
+  // Cria caderno local
+  const nb = {
+    id: 'nb-'+now,
+    name: (resource.payload.notebook_name || resource.title) + ' (importado)',
+    description: resource.payload.notebook_description || resource.description || '',
+    questionIds: newQuestionIds,
+    createdAt: now,
+    importedFromResourceId: resource.id
+  };
+  DATA.notebooks.push(nb);
+  save();
+  // Pinhal: importar caderno = 10 XP
+  try{
+    if(typeof Pinhal !== 'undefined'){
+      Pinhal.award({action:'notebook_import', xp:10, ctx: resource.title || ''});
+    }
+  }catch(_){}
+  return {notebook: nb, questionsImported: newQuestionIds.length};
+}
+
 // V15: Admin marca uma fonte pública como validada (ou desfaz validação).
 // Atualiza shared_resources.moderation_status = 'approved' | 'pending'
 // e moderated_at + moderated_by pra auditoria.
@@ -9422,12 +9659,21 @@ async function searchPublicResources(filters){
       }
     }
 
+    // V15.12.75.167 — Sort por votos/reports é client-side (depois da
+    // hidratação). Pra fazer sentido, precisa ter um pool maior de itens.
+    // Quando o sort é "top_voted" etc, busca 3x mais e ordena.
+    const communityOrdering = ['top_voted','least_voted','most_downvoted','controversial'].includes(filters.sort);
+    const baseLimit = filters.limit || 20;
+    const fetchLimit = communityOrdering ? Math.min(baseLimit * 3, 100) : baseLimit;
+    // RPC: usa 'newest' como fallback pros sorts customizados (vamos reordenar
+    // depois client-side). RPC só conhece newest/most_useful/most_used.
+    const rpcSort = communityOrdering ? 'newest' : (filters.sort || 'newest');
     const { data, error } = await supa.rpc('search_public_resources', {
       p_type: filters.type || null,
       p_discipline: filters.discipline || null,
       p_search: filters.search || null,
-      p_sort: filters.sort || 'newest',
-      p_limit: filters.limit || 20,
+      p_sort: rpcSort,
+      p_limit: fetchLimit,
       p_offset: filters.offset || 0,
       p_tag: filters.tag || null
     });
@@ -9451,6 +9697,58 @@ async function searchPublicResources(filters){
         const status = item.moderation_status || 'pending';
         return status === filters.modStatus;
       });
+    }
+    // V15.12.75.167 — Hidrata campos de comunidade (votes_up, votes_down,
+    // reports_count, auto_flagged_at). A RPC search_public_resources não
+    // retorna esses campos — fazemos SELECT direto na tabela usando os IDs.
+    // Também pré-carrega os votos do user em ST._myVotes pra renderResourceCard
+    // saber qual botão pintar.
+    if(items.length > 0){
+      try{
+        const ids = items.map(i => i.id);
+        const { data: extras, error: extErr } = await supa.from('shared_resources')
+          .select('id, votes_up, votes_down, reports_count, auto_flagged_at')
+          .in('id', ids);
+        if(!extErr && extras){
+          const extraMap = {};
+          extras.forEach(e => { extraMap[e.id] = e; });
+          items.forEach(i => {
+            const ex = extraMap[i.id];
+            if(ex){
+              i.votes_up = ex.votes_up || 0;
+              i.votes_down = ex.votes_down || 0;
+              i.reports_count = ex.reports_count || 0;
+              i.auto_flagged_at = ex.auto_flagged_at;
+            } else {
+              // Sem registro — atribui 0 (campos podem não existir ainda se
+              // migration não rodou)
+              i.votes_up = i.votes_up || 0;
+              i.votes_down = i.votes_down || 0;
+              i.reports_count = i.reports_count || 0;
+            }
+          });
+        }
+        // Pré-carrega votos do user atual
+        if(AUTH.user){
+          const myVotes = await fetchMyVotesForResources(ids);
+          if(!ST._myVotes) ST._myVotes = {};
+          Object.assign(ST._myVotes, myVotes);
+        }
+      }catch(_){}
+    }
+    // V15.12.75.167 — Sort client-side por votos/reports (RPC só sabe newest/oldest)
+    if(filters.sort === 'top_voted'){
+      items.sort((a,b) => (b.votes_up||0) - (a.votes_up||0));
+    } else if(filters.sort === 'least_voted'){
+      items.sort((a,b) => (a.votes_up||0) - (b.votes_up||0));
+    } else if(filters.sort === 'controversial'){
+      items.sort((a,b) => (b.reports_count||0) - (a.reports_count||0));
+    } else if(filters.sort === 'most_downvoted'){
+      items.sort((a,b) => (b.votes_down||0) - (a.votes_down||0));
+    }
+    // Após reordenar, trim ao limite original (baseLimit) — fetchLimit era maior
+    if(communityOrdering){
+      items = items.slice(0, baseLimit);
     }
     return {items};
   }catch(err){
@@ -31537,22 +31835,50 @@ function showCreateNotebookFromIdsModal(questionIds, suggestedName, suggestedDes
 function listImportBatches(){
   const bank = DATA.importedQuestions || [];
   const grouped = {};
+  // V15.12.75.167 — Agora também agrega matérias (disciplineIds + contagens)
+  // por batch. User pediu pra ver as matérias da importação direto na listagem
+  // pra facilitar criação de cadernos temáticos.
   bank.forEach(q => {
     const bId = q.importBatchId;
-    if(!bId) return;  // questão sem batch (legacy ou IA) — não aparece
+    if(!bId) return;
     if(!grouped[bId]){
       grouped[bId] = {
         batchId: bId,
         importedAt: q.importedAt || q.createdAt || 0,
         importSource: q.importSource || 'imported',
         count: 0,
-        questionIds: []
+        questionIds: [],
+        disciplineCounts: {}  // {disciplineId: count}
       };
     }
     grouped[bId].count++;
     grouped[bId].questionIds.push(q.id);
+    const dId = q.disciplineId;
+    if(dId){
+      grouped[bId].disciplineCounts[dId] = (grouped[bId].disciplineCounts[dId] || 0) + 1;
+    }
   });
   return Object.values(grouped).sort((a,b)=>b.importedAt-a.importedAt);
+}
+
+// V15.12.75.167 — Resume matérias do batch como string legível ("Direito
+// Penal · Constitucional · +2 outras") ordenado por quantidade.
+// Retorna null se não tem nenhuma matéria identificada.
+function summarizeBatchDisciplines(batch, maxShow){
+  if(!batch || !batch.disciplineCounts) return null;
+  const entries = Object.entries(batch.disciplineCounts);
+  if(entries.length === 0) return null;
+  entries.sort((a,b) => b[1] - a[1]);
+  const max = maxShow || 2;
+  const names = entries.slice(0, max).map(([id]) => {
+    const d = (DATA.disciplines || []).find(x => x.id === id);
+    return d ? d.name : null;
+  }).filter(Boolean);
+  if(names.length === 0) return null;
+  const extra = entries.length - names.length;
+  let str = names.join(' · ');
+  if(extra > 0) str += ` · +${extra} outra${extra===1?'':'s'}`;
+  return str;
 }
 
 // V15.12.34 — Exclui questões e remove referências dos cadernos.
@@ -32071,7 +32397,10 @@ function showManageImportsModal(){
       const sourceLabels = { 'pdf-ai':'✨ PDF c/ IA', 'text':'📝 Texto', 'pdf':'📄 PDF', 'imported':'📋 Imp.' };
       const srcLbl = sourceLabels[b.importSource] || b.importSource;
       const left = mk('div');left.style.cssText='flex:1;min-width:0';
+      // V15.12.75.167 — Resumo das matérias da importação (top 2 + outras)
+      const disciplinesStr = summarizeBatchDisciplines(b, 2);
       left.innerHTML = `<div style="font-size:13px;color:var(--text);font-weight:600">${b.count} ${b.count===1?'questão':'questões'} · ${srcLbl}</div>
+        ${disciplinesStr ? `<div style="font-size:11.5px;color:var(--text2);margin-top:3px;line-height:1.3"><span style="color:var(--gralia-purple)">📚</span> ${escapeHTML(disciplinesStr)}</div>` : ''}
         <div style="font-size:11px;color:var(--text3);margin-top:2px">${dateStr}</div>`;
       item.appendChild(left);
       // V15.12.36 — Botão "Criar caderno desta importação"
@@ -40196,6 +40525,56 @@ function renderImportedList(wrap){
   headerRow.appendChild(headerActions);
   wrap.appendChild(headerRow);
 
+  // V15.12.75.167 — Painel "Importações recentes" — atalho pro user criar
+  // caderno temático rápido sem precisar abrir o modal "Gerenciar importações".
+  // Mostra TOP 3 batches mais recentes com matérias + botão "+ Caderno".
+  // Antes a ação só estava dentro do modal; user pediu pra deixar acessível
+  // direto na página.
+  try{
+    const recentBatches = listImportBatches().slice(0, 3);
+    if(recentBatches.length > 0){
+      const batchPanel = mk('div');
+      batchPanel.style.cssText = 'margin-bottom:1rem;padding:.75rem .875rem;background:linear-gradient(135deg,rgba(var(--gralia-purple-rgb),.04),rgba(var(--gralia-purple-rgb),.01));border:1px solid var(--border);border-radius:10px';
+      const panelHead = mk('div');
+      panelHead.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;gap:8px;flex-wrap:wrap';
+      const panelTitle = mk('div');
+      panelTitle.style.cssText = 'font-size:11.5px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:6px';
+      panelTitle.innerHTML = '<span style="font-size:13px">📦</span> Importações recentes';
+      panelHead.appendChild(panelTitle);
+      const seeAllBtn = mkBtn('Ver todas', 'btn btn-sm');
+      seeAllBtn.style.cssText = 'font-size:10.5px;padding:3px 8px';
+      seeAllBtn.addEventListener('click', () => showManageImportsModal());
+      panelHead.appendChild(seeAllBtn);
+      batchPanel.appendChild(panelHead);
+      // Lista compacta dos 3 batches
+      recentBatches.forEach(b => {
+        const row = mk('div');
+        row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:10px;padding:.5rem .625rem;background:var(--surface);border-radius:8px;margin-bottom:.4rem';
+        const sourceLabels = { 'pdf-ai':'✨ PDF c/ IA', 'text':'📝 Texto', 'pdf':'📄 PDF', 'imported':'📋 Imp.' };
+        const srcLbl = sourceLabels[b.importSource] || b.importSource;
+        const dateStr = new Date(b.importedAt).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'});
+        const disciplinesStr = summarizeBatchDisciplines(b, 2);
+        const left = mk('div');
+        left.style.cssText = 'flex:1;min-width:0';
+        left.innerHTML = `<div style="font-size:12.5px;color:var(--text);font-weight:600">${b.count} ${b.count===1?'questão':'questões'} · ${srcLbl}</div>
+          ${disciplinesStr ? `<div style="font-size:11px;color:var(--text2);margin-top:2px;line-height:1.3"><span style="color:var(--gralia-purple)">📚</span> ${escapeHTML(disciplinesStr)}</div>` : ''}
+          <div style="font-size:10.5px;color:var(--text3);margin-top:1px">${dateStr}</div>`;
+        row.appendChild(left);
+        const createNbBtn = mkBtn('+ Caderno', 'btn btn-sm');
+        createNbBtn.style.cssText = 'font-size:10.5px;padding:4px 10px;color:var(--gralia-purple);border-color:rgba(var(--gralia-purple-rgb),.40);flex-shrink:0';
+        createNbBtn.title = 'Criar caderno com as questões desta importação';
+        createNbBtn.addEventListener('click', () => {
+          const suggestedName = (disciplinesStr || srcLbl) + ' · ' + dateStr;
+          const suggestedDesc = `Caderno criado a partir da importação de ${b.count} ${b.count===1?'questão':'questões'} (${srcLbl}, ${dateStr}).`;
+          showCreateNotebookFromIdsModal(b.questionIds, suggestedName, suggestedDesc);
+        });
+        row.appendChild(createNbBtn);
+        batchPanel.appendChild(row);
+      });
+      wrap.appendChild(batchPanel);
+    }
+  }catch(_){}
+
   // V15.12.36 — Barra de ações em lote (só aparece se há seleção)
   const selIds = ST.bankSelectedIds || (ST.bankSelectedIds = {});
   const selectedCount = Object.keys(selIds).filter(id => selIds[id]).length;
@@ -47873,10 +48252,19 @@ function renderNotebookManageIn(wrap,nb){
   const stats = mk('span','txt2');
   const pStats = notebookStatsHTML(nb.id);
   stats.innerHTML = pStats;
+  // V15.12.75.167 — Botão "Publicar pra comunidade" — só pra users autenticados
+  const publishBtn = mkBtn('🌐 Publicar pra comunidade','btn btn-sm');
+  publishBtn.style.cssText = 'font-size:11.5px;color:var(--gralia-purple);border-color:rgba(var(--gralia-purple-rgb),.40)';
+  publishBtn.title = 'Compartilhar este caderno pra outros usuários do Gralia';
+  publishBtn.addEventListener('click', () => showPublishNotebookModal(nb));
   const practiceBtn = mkBtn('▶ Praticar caderno →','btn btn-p');
   practiceBtn.style.marginLeft='auto';
   practiceBtn.addEventListener('click',()=>startNotebookPractice(nb.id));
-  ctr.appendChild(stats);ctr.appendChild(practiceBtn);
+  ctr.appendChild(stats);
+  if(typeof isAuthed === 'function' && isAuthed()){
+    ctr.appendChild(publishBtn);
+  }
+  ctr.appendChild(practiceBtn);
   wrap.appendChild(ctr);
 
   qs.forEach(q=>{
@@ -58110,12 +58498,24 @@ function renderDiscover(){
   searchBar.appendChild(searchWrap);
 
   // Sort dropdown — visual mais limpo
+  // V15.12.75.167 — Novas opções de sort baseadas em votos/reports da comunidade.
+  // 'top_voted', 'least_voted', 'most_downvoted', 'controversial' usam campos
+  // hidratados em searchPublicResources (votes_up/votes_down/reports_count).
   const sortWrap = mk('div');
   sortWrap.style.cssText = 'position:relative;flex-shrink:0';
   const sortSel = mk('select');
-  ['newest','most_useful','most_used'].forEach(s=>{
+  const sortOptions = [
+    ['newest',          'Mais recentes'],
+    ['most_useful',     'Mais úteis'],
+    ['most_used',       'Mais usados'],
+    ['top_voted',       '👍 Mais votados'],
+    ['least_voted',     '👎 Menos votados'],
+    ['most_downvoted',  '👎 Mais negativados'],
+    ['controversial',   '🚩 Mais reportados']
+  ];
+  sortOptions.forEach(([s, label])=>{
     const o = document.createElement('option');o.value=s;
-    o.textContent = s==='newest'?'Mais recentes':s==='most_useful'?'Mais úteis':'Mais usados';
+    o.textContent = label;
     if(ST.discoverFilter.sort===s)o.selected=true;
     sortSel.appendChild(o);
   });
@@ -58703,6 +59103,101 @@ function renderResourceCard(item){
     stats.appendChild(pStat);
   }
   card.appendChild(stats);
+
+  // V15.12.75.167 — Linha de votos + reports (só se o resource já tem alguns,
+  // ou se o user pode votar/reportar). Mostra contagem + botões interativos.
+  if(item.votes_up !== undefined || item.votes_down !== undefined || item.reports_count !== undefined){
+    const voteRow = mk('div','rc-vote-row');
+    voteRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap';
+
+    const myVote = ST._myVotes && ST._myVotes[item.id]; // 1, -1, ou undefined
+    const isMine = AUTH.user && AUTH.user.id === item.owner_id;
+
+    // Botão upvote
+    const upBtn = mk('button','rc-vote-btn');
+    upBtn.type = 'button';
+    upBtn.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:${myVote===1?'rgba(var(--gralia-purple-rgb),.12)':'var(--surface2)'};border:1px solid ${myVote===1?'var(--gralia-purple)':'var(--border)'};border-radius:999px;font-size:11.5px;cursor:${isMine?'not-allowed':'pointer'};font-family:inherit;color:${myVote===1?'var(--gralia-purple)':'var(--text2)'};font-weight:${myVote===1?'700':'500'};opacity:${isMine?'.5':'1'}`;
+    upBtn.innerHTML = `👍 <b>${item.votes_up || 0}</b>`;
+    upBtn.title = isMine ? 'Você não pode votar no seu próprio caderno' : 'Útil';
+    if(!isMine){
+      upBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try{
+          const newVote = myVote === 1 ? 0 : 1;
+          await voteResource(item.id, newVote);
+          // Atualiza state local + counts otimisticamente
+          if(!ST._myVotes) ST._myVotes = {};
+          if(newVote === 0){
+            delete ST._myVotes[item.id];
+            if(myVote === 1) item.votes_up = Math.max(0, (item.votes_up||0) - 1);
+          } else {
+            ST._myVotes[item.id] = 1;
+            item.votes_up = (item.votes_up||0) + 1;
+            if(myVote === -1) item.votes_down = Math.max(0, (item.votes_down||0) - 1);
+          }
+          render();
+        }catch(err){ alert('Erro: ' + err.message); }
+      });
+    }
+    voteRow.appendChild(upBtn);
+
+    // Botão downvote
+    const downBtn = mk('button','rc-vote-btn');
+    downBtn.type = 'button';
+    downBtn.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:${myVote===-1?'rgba(232,76,76,.12)':'var(--surface2)'};border:1px solid ${myVote===-1?'#e84c4c':'var(--border)'};border-radius:999px;font-size:11.5px;cursor:${isMine?'not-allowed':'pointer'};font-family:inherit;color:${myVote===-1?'#c93838':'var(--text2)'};font-weight:${myVote===-1?'700':'500'};opacity:${isMine?'.5':'1'}`;
+    downBtn.innerHTML = `👎 <b>${item.votes_down || 0}</b>`;
+    downBtn.title = isMine ? 'Você não pode votar no seu próprio caderno' : 'Não útil';
+    if(!isMine){
+      downBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try{
+          const newVote = myVote === -1 ? 0 : -1;
+          await voteResource(item.id, newVote);
+          if(!ST._myVotes) ST._myVotes = {};
+          if(newVote === 0){
+            delete ST._myVotes[item.id];
+            if(myVote === -1) item.votes_down = Math.max(0, (item.votes_down||0) - 1);
+          } else {
+            ST._myVotes[item.id] = -1;
+            item.votes_down = (item.votes_down||0) + 1;
+            if(myVote === 1) item.votes_up = Math.max(0, (item.votes_up||0) - 1);
+          }
+          render();
+        }catch(err){ alert('Erro: ' + err.message); }
+      });
+    }
+    voteRow.appendChild(downBtn);
+
+    // Botão reportar (só se não for próprio)
+    if(!isMine && AUTH.user){
+      const reportBtn = mk('button','rc-vote-btn');
+      reportBtn.type = 'button';
+      reportBtn.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:999px;font-size:11.5px;cursor:pointer;font-family:inherit;color:var(--text3);margin-left:auto';
+      reportBtn.innerHTML = `🚩 Reportar`;
+      reportBtn.title = 'Reportar conteúdo inadequado, plágio ou erro grave';
+      reportBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const reason = prompt('Motivo do report (opcional, máx 280 caracteres):\n\nEx: conteúdo inadequado, plágio, questões com erro grave, spam.');
+        if(reason === null) return; // cancelado
+        reportResource(item.id, reason).then(() => {
+          showToast('✓ Report enviado. Admin vai analisar.');
+          item.reports_count = (item.reports_count || 0) + 1;
+        }).catch(err => alert('Erro: ' + err.message));
+      });
+      voteRow.appendChild(reportBtn);
+    }
+
+    // Indicador de reports (só visível pra admin ou se >= 3)
+    const showReports = (item.reports_count || 0) >= 3 || (typeof isAdminUser === 'function' && isAdminUser());
+    if(showReports && (item.reports_count || 0) > 0){
+      const repInd = mk('span');
+      repInd.style.cssText = 'font-size:11px;color:var(--red-text);font-weight:600;padding:2px 8px;background:rgba(232,76,76,.08);border-radius:999px;border:1px solid rgba(232,76,76,.20)';
+      repInd.textContent = `🚩 ${item.reports_count}`;
+      repInd.title = `${item.reports_count} report${item.reports_count===1?'':'s'} (visível pra admin / 3+)`;
+      voteRow.appendChild(repInd);
+    }
+    card.appendChild(voteRow);
+  }
 
   // V12: Badge "✓ Já importado" — usuário vê de cara que esse recurso já tá na conta dele.
   // Antes: ele clicava em importar e gerava duplicata sem perceber.
@@ -59748,6 +60243,81 @@ function showPublishNotebookModal(notebook){
       alert('Erro: ' + err.message);
     }
   });
+  showModal(m);
+}
+
+// V15.12.75.167 — Modal de publicação de CADERNO pra comunidade
+function showPublishNotebookModal(notebook){
+  if(!AUTH.profile){
+    alert('Crie seu perfil em Configurações antes de publicar materiais.');
+    return;
+  }
+  if(!notebook || !notebook.questionIds || notebook.questionIds.length === 0){
+    showToast('Caderno vazio — adicione questões antes de publicar', 'err');
+    return;
+  }
+  const m = mk('div');m.style.cssText='max-width:480px';
+  const h = mk('h2');h.style.cssText='margin:0 0 .25rem;font-size:18px';
+  h.textContent = '🌐 Publicar caderno';
+  m.appendChild(h);
+  const sub = mk('p','txt3');sub.style.cssText='margin:0 0 1rem;font-size:12.5px;line-height:1.5';
+  sub.textContent = `O caderno (${notebook.questionIds.length} ${notebook.questionIds.length===1?'questão':'questões'}) ficará visível pra outros usuários do Gralia. Você ganha 25 XP no Pinhal.`;
+  m.appendChild(sub);
+
+  const titleRow = mk('div');titleRow.style.marginBottom='.75rem';
+  titleRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Título público</label>';
+  const titleIn = mk('input');titleIn.type='text';titleIn.maxLength=120;titleIn.value=notebook.name||'';
+  titleIn.style.cssText='width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px;box-sizing:border-box';
+  titleRow.appendChild(titleIn);
+  m.appendChild(titleRow);
+
+  const descRow = mk('div');descRow.style.marginBottom='.75rem';
+  descRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Descrição (opcional)</label>';
+  const descIn = mk('textarea');descIn.rows=3;descIn.maxLength=500;descIn.value=notebook.description||'';
+  descIn.style.cssText='width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px;box-sizing:border-box;resize:vertical';
+  descIn.placeholder = 'Conte sobre este caderno pra outros usuários (assunto, banca, dificuldade…)';
+  descRow.appendChild(descIn);
+  m.appendChild(descRow);
+
+  const tagsRow = mk('div');tagsRow.style.marginBottom='1rem';
+  tagsRow.innerHTML = '<label style="display:block;font-size:11.5px;font-weight:700;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Tags (separadas por vírgula)</label>';
+  const tagsIn = mk('input');tagsIn.type='text';tagsIn.maxLength=200;
+  tagsIn.style.cssText='width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px;box-sizing:border-box';
+  tagsIn.placeholder = 'tributário, ICMS, fiscal';
+  tagsRow.appendChild(tagsIn);
+  m.appendChild(tagsRow);
+
+  const warn = mk('div');
+  warn.style.cssText = 'padding:8px 10px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.30);border-radius:8px;font-size:11.5px;color:var(--text2);line-height:1.45;margin-bottom:1rem';
+  warn.innerHTML = '⚠ <b>Atenção</b>: as questões serão "fotografadas" no momento da publicação. Edições futuras no seu caderno NÃO refletem no público (republique se quiser atualizar). Conteúdo abusivo ou cópia não autorizada pode ser removido pela moderação.';
+  m.appendChild(warn);
+
+  const btnRow = mk('div','flex');btnRow.style.cssText='gap:8px;justify-content:flex-end;flex-wrap:wrap';
+  const cancelBtn = mkBtn('Cancelar','btn');
+  cancelBtn.addEventListener('click', closeModal);
+  const okBtn = mkBtn('🌐 Publicar','btn btn-p');
+  okBtn.addEventListener('click', async () => {
+    try{
+      okBtn.disabled = true;
+      okBtn.textContent = 'Publicando...';
+      const result = await publishNotebook(notebook, {
+        title: titleIn.value,
+        description: descIn.value,
+        tags: tagsIn.value.split(',').map(t => t.trim()).filter(Boolean)
+      });
+      closeModal();
+      showToast('✓ Caderno publicado na comunidade!');
+      render();
+    }catch(err){
+      okBtn.disabled = false;
+      okBtn.textContent = '🌐 Publicar';
+      alert('Erro: ' + (err.message || 'falha ao publicar'));
+    }
+  });
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(okBtn);
+  m.appendChild(btnRow);
+
   showModal(m);
 }
 
@@ -64600,6 +65170,22 @@ function renderAdminDashboard(){
   wrap.appendChild(sharedModCard);
   loadAdminSharedExplanationModeration(sharedModBody);
 
+  // === V15.12.75.167 — Card: Cadernos publicados com reports ou votação negativa ===
+  const nbModCard = mk('section','admin-card');
+  nbModCard.appendChild(adminSectionLabel('📝 Moderação de cadernos da comunidade'));
+  const nbModHead = mk('h2','admin-section-title');
+  nbModHead.textContent = 'Cadernos com reports ou votação negativa';
+  nbModCard.appendChild(nbModHead);
+  const nbModHelp = mk('p');
+  nbModHelp.style.cssText = 'font-size:12px;color:var(--text2);margin:.25rem 0 .75rem;line-height:1.5';
+  nbModHelp.innerHTML = 'Cadernos publicados pela comunidade com 1+ reports ou mais downvotes que upvotes. Auto-flagged (3+ reports) aparecem destacados. Ações: <b>Despublicar</b> (vira privado, dono mantém local) ou <b>Excluir</b> (remove permanentemente).';
+  nbModCard.appendChild(nbModHelp);
+  const nbModBody = mk('div','admin-notebooks-mod-body');
+  nbModBody.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando cadernos...</div>';
+  nbModCard.appendChild(nbModBody);
+  wrap.appendChild(nbModCard);
+  loadAdminNotebookModeration(nbModBody);
+
   // === V15.12.68 — Card: Users rate-limited (anti-abuso) ===
   const rlCard = mk('section','admin-card');
   rlCard.appendChild(adminSectionLabel('🛡️ Anti-abuso — Rate limit'));
@@ -66528,6 +67114,241 @@ function buildAdminModerationActions(itemType, itemId, currentStatus, isReviewed
   actions.appendChild(delBtn);
 
   return actions;
+}
+
+// V15.12.75.167 — Lista cadernos publicados na comunidade com problemas
+// (reports >=1 OU votes_down > votes_up). Admin pode despublicar (vira
+// privado mas mantém o registro) ou excluir permanentemente.
+async function loadAdminNotebookModeration(container){
+  if(!supa){
+    container.innerHTML = '<div class="txt3">Supabase não inicializado.</div>';
+    return;
+  }
+  try{
+    const { data, error } = await supa
+      .from('shared_resources')
+      .select('id, owner_id, title, description, discipline, question_count, payload, votes_up, votes_down, reports_count, auto_flagged_at, is_public, moderation_status, created_at')
+      .eq('resource_type', 'caderno')
+      .order('reports_count', {ascending: false})
+      .order('votes_down', {ascending: false})
+      .limit(100);
+
+    if(error){
+      container.innerHTML = `<div class="txt3" style="color:var(--red-text)">Erro: ${escapeHTML(error.message)}</div>`;
+      return;
+    }
+
+    const all = data || [];
+    // Filtra: problemas reais (reports >= 1 OU votes_down > votes_up)
+    const problematic = all.filter(nb =>
+      (nb.reports_count || 0) >= 1 ||
+      (nb.votes_down || 0) > (nb.votes_up || 0)
+    );
+
+    if(problematic.length === 0){
+      container.innerHTML = '<div class="txt3" style="padding:1rem;text-align:center">Nenhum caderno com reports ou votação negativa significativa. 👍</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+
+    // Busca usernames dos donos pra exibir
+    const ownerIds = [...new Set(problematic.map(p => p.owner_id))];
+    let ownerNames = {};
+    if(ownerIds.length > 0){
+      const { data: profs } = await supa.from('user_profiles')
+        .select('user_id, username, display_name')
+        .in('user_id', ownerIds);
+      (profs || []).forEach(p => { ownerNames[p.user_id] = p; });
+    }
+
+    problematic.forEach(nb => {
+      const card = mk('div');
+      const isFlagged = !!nb.auto_flagged_at || (nb.reports_count || 0) >= 3;
+      const cardBorder = isFlagged ? 'rgba(232,76,76,.40)' : 'var(--border)';
+      const cardBg = isFlagged ? 'rgba(232,76,76,.04)' : 'var(--surface)';
+      card.style.cssText = `margin-bottom:.75rem;padding:.875rem 1rem;background:${cardBg};border:1px solid ${cardBorder};border-radius:10px`;
+
+      const head = mk('div');
+      head.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:.5rem;flex-wrap:wrap';
+      const headLeft = mk('div');
+      headLeft.style.flex = '1';
+      const owner = ownerNames[nb.owner_id];
+      const ownerLabel = owner ? `@${owner.username}` : nb.owner_id.slice(0,8) + '…';
+      headLeft.innerHTML = `
+        <div style="font-size:13.5px;font-weight:700;color:var(--text);margin-bottom:3px">
+          ${isFlagged ? '🚩 ' : ''}${escapeHTML(nb.title)}
+        </div>
+        <div style="font-size:11.5px;color:var(--text2);line-height:1.5">
+          Por <b>${escapeHTML(ownerLabel)}</b> · ${nb.question_count || 0} questões
+          ${nb.discipline ? ` · ${escapeHTML(nb.discipline)}` : ''}
+          · ${new Date(nb.created_at).toLocaleDateString('pt-BR')}
+        </div>
+      `;
+      head.appendChild(headLeft);
+
+      const stats = mk('div');
+      stats.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center';
+      const upBadge = mk('span');
+      upBadge.style.cssText = 'padding:3px 9px;background:rgba(40,170,80,.08);color:#2d8a4f;border:1px solid rgba(40,170,80,.25);border-radius:999px;font-size:11px;font-weight:600';
+      upBadge.textContent = `👍 ${nb.votes_up || 0}`;
+      stats.appendChild(upBadge);
+      const downBadge = mk('span');
+      downBadge.style.cssText = `padding:3px 9px;background:rgba(232,76,76,.08);color:var(--red-text);border:1px solid rgba(232,76,76,.25);border-radius:999px;font-size:11px;font-weight:${(nb.votes_down||0) > (nb.votes_up||0) ? '700':'600'}`;
+      downBadge.textContent = `👎 ${nb.votes_down || 0}`;
+      stats.appendChild(downBadge);
+      if((nb.reports_count || 0) > 0){
+        const repBadge = mk('span');
+        repBadge.style.cssText = `padding:3px 9px;background:rgba(232,76,76,.${isFlagged?'18':'10'});color:var(--red-text);border:1px solid rgba(232,76,76,.${isFlagged?'45':'30'});border-radius:999px;font-size:11px;font-weight:700`;
+        repBadge.textContent = `🚩 ${nb.reports_count}`;
+        stats.appendChild(repBadge);
+      }
+      if(!nb.is_public){
+        const unpubBadge = mk('span');
+        unpubBadge.style.cssText = 'padding:3px 9px;background:rgba(120,120,120,.10);color:var(--text3);border:1px solid var(--border);border-radius:999px;font-size:11px;font-weight:600';
+        unpubBadge.textContent = '🔒 Despublicado';
+        stats.appendChild(unpubBadge);
+      }
+      head.appendChild(stats);
+      card.appendChild(head);
+
+      if(nb.description){
+        const desc = mk('p');
+        desc.style.cssText = 'font-size:12px;color:var(--text2);margin:.5rem 0;line-height:1.5';
+        desc.textContent = nb.description.slice(0, 200) + (nb.description.length > 200 ? '…' : '');
+        card.appendChild(desc);
+      }
+
+      // Ações
+      const actions = mk('div');
+      actions.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:.5rem';
+
+      const viewBtn = mkBtn('👁️ Ver reports', 'btn btn-sm');
+      viewBtn.style.cssText = 'font-size:11px;padding:4px 10px';
+      viewBtn.addEventListener('click', () => showAdminNotebookReportsModal(nb));
+      actions.appendChild(viewBtn);
+
+      if(nb.is_public){
+        const unpubBtn = mkBtn('🔒 Despublicar', 'btn btn-sm');
+        unpubBtn.style.cssText = 'font-size:11px;padding:4px 10px;color:var(--amber-text);border-color:rgba(245,158,11,.40)';
+        unpubBtn.title = 'Tirar do feed público. Caderno fica no banco mas usuário não acha mais.';
+        unpubBtn.addEventListener('click', async () => {
+          if(!confirm(`Despublicar "${nb.title}"?\n\nO caderno some da comunidade mas dono mantém localmente.`)) return;
+          try{
+            const { error } = await supa.from('shared_resources')
+              .update({ is_public: false, moderation_status: 'unpublished' })
+              .eq('id', nb.id);
+            if(error) throw error;
+            showToast('✓ Caderno despublicado');
+            loadAdminNotebookModeration(container);
+          }catch(err){ alert('Erro: ' + err.message); }
+        });
+        actions.appendChild(unpubBtn);
+      } else {
+        const repubBtn = mkBtn('🌐 Republicar', 'btn btn-sm');
+        repubBtn.style.cssText = 'font-size:11px;padding:4px 10px';
+        repubBtn.addEventListener('click', async () => {
+          if(!confirm(`Republicar "${nb.title}"?`)) return;
+          try{
+            const { error } = await supa.from('shared_resources')
+              .update({ is_public: true, moderation_status: 'approved' })
+              .eq('id', nb.id);
+            if(error) throw error;
+            showToast('✓ Republicado');
+            loadAdminNotebookModeration(container);
+          }catch(err){ alert('Erro: ' + err.message); }
+        });
+        actions.appendChild(repubBtn);
+      }
+
+      const delBtn = mkBtn('🗑️ Excluir', 'btn btn-sm');
+      delBtn.style.cssText = 'font-size:11px;padding:4px 10px;color:var(--red-text);border-color:rgba(232,76,76,.40)';
+      delBtn.title = 'Remove permanentemente. Reports e votos também são apagados.';
+      delBtn.addEventListener('click', async () => {
+        if(!confirm(`EXCLUIR PERMANENTEMENTE "${nb.title}"?\n\nEsta ação não pode ser desfeita. Reports e votos serão apagados.`)) return;
+        try{
+          const { error } = await supa.from('shared_resources')
+            .delete()
+            .eq('id', nb.id);
+          if(error) throw error;
+          showToast('✓ Caderno excluído');
+          loadAdminNotebookModeration(container);
+        }catch(err){ alert('Erro: ' + err.message); }
+      });
+      actions.appendChild(delBtn);
+
+      card.appendChild(actions);
+      container.appendChild(card);
+    });
+
+  }catch(err){
+    container.innerHTML = `<div class="txt3" style="color:var(--red-text)">Erro: ${escapeHTML(err.message || 'falha desconhecida')}</div>`;
+  }
+}
+
+// V15.12.75.167 — Modal admin: mostra os reports individuais de um caderno
+async function showAdminNotebookReportsModal(notebook){
+  const m = mk('div');
+  m.style.cssText = 'max-width:540px;max-height:80vh;overflow-y:auto';
+  const h = mk('h3');h.style.cssText = 'margin:0 0 .5rem;font-size:16px;font-weight:700';
+  h.innerHTML = `🚩 Reports de "${escapeHTML(notebook.title)}"`;
+  m.appendChild(h);
+
+  const sub = mk('p','txt3');
+  sub.style.cssText = 'margin:0 0 1rem;font-size:12px';
+  sub.textContent = `${notebook.reports_count || 0} reports · ${notebook.votes_up || 0} 👍 · ${notebook.votes_down || 0} 👎`;
+  m.appendChild(sub);
+
+  const body = mk('div');
+  body.innerHTML = '<div class="admin-loading"><span class="loading-spinner"></span> Carregando...</div>';
+  m.appendChild(body);
+
+  showModal(m);
+
+  try{
+    const { data, error } = await supa.from('shared_resource_reports')
+      .select('id, user_id, reason, status, created_at')
+      .eq('resource_id', notebook.id)
+      .order('created_at', {ascending: false});
+    if(error){
+      body.innerHTML = `<div class="txt3" style="color:var(--red-text)">Erro: ${escapeHTML(error.message)}</div>`;
+      return;
+    }
+    if(!data || data.length === 0){
+      body.innerHTML = '<div class="txt3" style="padding:1rem;text-align:center">Nenhum report individual registrado (contador pode estar em 0).</div>';
+      return;
+    }
+    // Busca usernames dos reporters
+    const userIds = [...new Set(data.map(r => r.user_id))];
+    let userMap = {};
+    if(userIds.length > 0){
+      const { data: profs } = await supa.from('user_profiles')
+        .select('user_id, username')
+        .in('user_id', userIds);
+      (profs || []).forEach(p => { userMap[p.user_id] = p; });
+    }
+
+    body.innerHTML = '';
+    data.forEach(r => {
+      const item = mk('div');
+      item.style.cssText = 'padding:.75rem .875rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:.5rem';
+      const reporter = userMap[r.user_id];
+      const reporterLabel = reporter ? `@${reporter.username}` : r.user_id.slice(0,8) + '…';
+      const dt = new Date(r.created_at).toLocaleString('pt-BR', {dateStyle:'short', timeStyle:'short'});
+      item.innerHTML = `
+        <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:.375rem;font-size:11.5px;color:var(--text3)">
+          <b style="color:var(--text2)">${escapeHTML(reporterLabel)}</b>
+          <span>${dt}</span>
+        </div>
+        <div style="font-size:12.5px;color:var(--text);line-height:1.5">
+          ${r.reason ? escapeHTML(r.reason) : '<i style="color:var(--text3)">Sem motivo informado</i>'}
+        </div>
+      `;
+      body.appendChild(item);
+    });
+  }catch(err){
+    body.innerHTML = `<div class="txt3" style="color:var(--red-text)">Erro: ${escapeHTML(err.message)}</div>`;
+  }
 }
 
 async function loadAdminSharedExplanationModeration(container){
