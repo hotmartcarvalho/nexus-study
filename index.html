@@ -440,162 +440,72 @@ body.sidebar-collapsed .app-sidebar-more-flyout .app-sidebar-section-label{
   display:block !important;
 }
 
-/* V15.12.75.150 — Tooltip estilizado pros itens da sidebar quando collapsed.
-   Substitui o `title` nativo (feio, lag). Aparece à direita do ícone com
-   animação suave. Quando sidebar aberta, fica oculto (label do item já é
-   visível ao lado do ícone). */
+/* V15.12.75.158 — Tooltip do sidebar refatorado.
+   BUG anterior (V155-V157): tooltip era filho do item da sidebar,
+   posicionado absolute → ficava cortado pelo overflow-x:hidden do
+   .app-sidebar. User reportou que aparecia "metade preta" cortada
+   na borda, e que não funcionava no menu collapsed (mesmo motivo).
+   NOVA solução: singleton tooltip GLOBAL (position:fixed no body),
+   reposicionado via JS no mouseenter de cada item. Escapa do overflow
+   do sidebar, funciona em ambos os estados. CSS define só o visual. */
 .app-sidebar-tooltip{
-  display:none;
+  /* Tooltip "stub" no DOM do item (mantido pra compatibilidade JS),
+     mas oculto. O tooltip visível é #gralia-sidebar-tooltip global. */
+  display:none !important;
 }
-/* V15.12.75.155 — Tooltip sidebar — modelo unificado.
-   Antes só aparecia no collapsed. Agora aparece em AMBOS os estados,
-   mas com conteúdo diferente:
-     - Collapsed: nome da página (bold) + descrição (regular, menor)
-       — porque o nome não aparece ao lado do ícone, precisa mostrar
-     - Aberto: só descrição
-       — porque o nome já está visível no item
-   Visual idêntico ao label do help hub: dark, sem sombra, padding pequeno. */
-.app-sidebar-tooltip{
-  display:none;       /* default: oculto */
-}
-.app-sidebar-item{
-  position:relative;  /* pra tooltip absolute funcionar */
-}
-/* COLLAPSED: tooltip à direita, contém nome + descrição */
-body.sidebar-collapsed .app-sidebar-tooltip{
-  display:inline-flex;
-  position:absolute;
-  left:calc(100% + 10px);
-  top:50%;
-  transform:translateY(-50%);
-  flex-direction:column;
-  gap:2px;
-  padding:6px 11px;
+#gralia-sidebar-tooltip{
+  position:fixed;
+  z-index:9100;          /* acima da sidebar (199) e do flyout (600) */
   background:var(--text);
-  border:none;
   color:var(--bg);
   border-radius:8px;
+  padding:6px 11px;
   box-shadow:none;
+  font-family:inherit;
+  letter-spacing:.1px;
   white-space:nowrap;
+  max-width:280px;
+  pointer-events:none;
   opacity:0;
   visibility:hidden;
-  pointer-events:none;
   transition:opacity .15s ease, visibility .15s;
-  z-index:610;
 }
-body.sidebar-collapsed .app-sidebar-tooltip b{
+#gralia-sidebar-tooltip.show{
+  opacity:.94;
+  visibility:visible;
+}
+#gralia-sidebar-tooltip .gst-name{
+  display:block;
   font-size:11.5px;
   font-weight:700;
-  color:var(--bg);
-  letter-spacing:.1px;
   line-height:1.2;
+  color:var(--bg);
 }
-body.sidebar-collapsed .app-sidebar-tooltip .ast-desc{
+#gralia-sidebar-tooltip .gst-desc{
   display:block;
   font-size:10.5px;
   font-weight:400;
-  color:var(--bg);
-  opacity:.75;
-  letter-spacing:.1px;
   line-height:1.3;
-}
-body.sidebar-collapsed .app-sidebar-item:hover .app-sidebar-tooltip{
-  opacity:.95;
-  visibility:visible;
-  transition-delay:.15s;
-}
-
-/* ABERTO: tooltip à direita do item, contém só descrição (nome já visível).
-   V155 — só aparece se o item TEM descrição (.has-desc), senão fica oculto */
-body.has-sidebar:not(.sidebar-collapsed) .app-sidebar-item.has-desc .app-sidebar-tooltip{
-  display:inline-flex;
-  position:absolute;
-  left:calc(100% + 6px);
-  top:50%;
-  transform:translateY(-50%);
-  align-items:center;
-  padding:6px 11px;
-  background:var(--text);
+  opacity:.75;
+  margin-top:2px;
   color:var(--bg);
-  border-radius:8px;
-  box-shadow:none;
-  font-size:11px;
-  font-weight:500;
-  letter-spacing:.1px;
-  white-space:nowrap;
-  max-width:240px;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  opacity:0;
-  visibility:hidden;
-  pointer-events:none;
-  transition:opacity .15s ease, visibility .15s;
-  z-index:610;
 }
-/* Aberto: nome oculto no tooltip (já aparece no item) */
-body.has-sidebar:not(.sidebar-collapsed) .app-sidebar-tooltip b{
+#gralia-sidebar-tooltip.compact .gst-name{
+  /* Modo compacto: só descrição (nome já visível no item).
+     Esconde o nome, deixa só descrição em tamanho normal. */
   display:none;
 }
-body.has-sidebar:not(.sidebar-collapsed) .app-sidebar-tooltip .ast-desc{
-  display:inline;
+#gralia-sidebar-tooltip.compact .gst-desc{
+  font-size:11px;
   font-weight:500;
-  color:var(--bg);
-}
-body.has-sidebar:not(.sidebar-collapsed) .app-sidebar-item.has-desc:hover .app-sidebar-tooltip{
-  opacity:.92;
-  visibility:visible;
-  transition-delay:.20s;   /* delay maior aberto: nome já visível, evita disparo acidental */
+  opacity:1;
+  margin-top:0;
 }
 
-/* V15.12.75.156 — Tooltip pros items DENTRO do flyout (Mais/Comunidade).
-   Comporta-se como o tooltip do menu aberto: mostra SÓ a descrição
-   (nome já visível dentro do flyout). Cobre os dois estados do sidebar
-   (collapsed e aberto), porque o flyout existe nos dois. */
-.app-sidebar-more-flyout .app-sidebar-item .app-sidebar-tooltip{
-  display:none;     /* reset — só aparece com has-desc + hover */
-}
-.app-sidebar-more-flyout .app-sidebar-item.has-desc .app-sidebar-tooltip{
-  display:inline-flex;
-  position:absolute;
-  left:calc(100% + 6px);
-  top:50%;
-  transform:translateY(-50%);
-  align-items:center;
-  padding:6px 11px;
-  background:var(--text);
-  color:var(--bg);
-  border-radius:8px;
-  box-shadow:none;
-  font-size:11px;
-  font-weight:500;
-  letter-spacing:.1px;
-  white-space:nowrap;
-  max-width:240px;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  opacity:0;
-  visibility:hidden;
-  pointer-events:none;
-  transition:opacity .15s ease, visibility .15s;
-  z-index:620;       /* acima do flyout (que é 600) */
-  flex-direction:row !important;  /* sobrescreve direção col do collapsed base */
-}
-/* Dentro do flyout, sempre esconde o nome (já visível no item) */
-.app-sidebar-more-flyout .app-sidebar-tooltip b{
-  display:none !important;
-}
-.app-sidebar-more-flyout .app-sidebar-tooltip .ast-desc{
-  display:inline !important;
-  font-weight:500;
-  font-size:11px;
-  color:var(--bg);
-  opacity:1;
-}
-.app-sidebar-more-flyout .app-sidebar-item.has-desc:hover .app-sidebar-tooltip{
-  opacity:.92;
-  visibility:visible;
-  transition-delay:.20s;
-}
+/* V15.12.75.158 — Bloco "tooltip flyout" REMOVIDO completamente.
+   Todos os tooltips agora usam o mesmo singleton #gralia-sidebar-tooltip
+   definido no início desta seção. */
+
 /* V15.12.75.146 — Esconde também label + chevron do botão "Mais" quando
    sidebar collapsed. Antes ficavam visíveis e o ícone (3 pontinhos / globe)
    ficava desalinhado, encostado na esquerda. Esconder força centralização. */
@@ -8829,7 +8739,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.157';
+window.GRALIA_VERSION = 'V15.12.75.158';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -19836,6 +19746,60 @@ function showConfirmModal(config){
   showModal(m);
 }
 
+// V15.12.75.158 — Tooltip singleton global pros items da sidebar.
+// BUG anterior: tooltip era filho do item posicionado absolute, mas o
+// .app-sidebar tem overflow-x:hidden — então o tooltip era CORTADO ao
+// sair da borda direita do sidebar. Visualmente aparecia uma "metade
+// preta" colada na borda, como se faltasse algo.
+// Solução: singleton (#gralia-sidebar-tooltip) no body com position:fixed,
+// reposicionado via JS no hover de cada item. Escapa do overflow do sidebar.
+function _ensureSidebarTooltipEl(){
+  let el = document.getElementById('gralia-sidebar-tooltip');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'gralia-sidebar-tooltip';
+    el.innerHTML = '<span class="gst-name"></span><span class="gst-desc"></span>';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function showSidebarTooltip(anchorEl, opts){
+  if(!anchorEl) return;
+  const el = _ensureSidebarTooltipEl();
+  const nameEl = el.querySelector('.gst-name');
+  const descEl = el.querySelector('.gst-desc');
+  nameEl.textContent = opts.label || '';
+  descEl.textContent = opts.desc || '';
+  // Modo "compact" = só descrição visível (nome oculto via CSS)
+  el.classList.toggle('compact', !!opts.compact);
+  // Se não tem desc no modo compact, esconde
+  if(opts.compact && !opts.desc){
+    el.classList.remove('show');
+    return;
+  }
+  // Posicionar à DIREITA do anchor, centralizado verticalmente
+  const rect = anchorEl.getBoundingClientRect();
+  // Mede pra calcular posição (precisa estar visível pra ter rect)
+  el.style.left = '-9999px';
+  el.style.top = '0';
+  el.classList.add('show');
+  const tipRect = el.getBoundingClientRect();
+  let left = rect.right + 10;
+  let top = rect.top + (rect.height / 2) - (tipRect.height / 2);
+  // Se o tooltip cair fora da tela à direita, mostra à esquerda do anchor
+  if(left + tipRect.width > window.innerWidth - 8){
+    left = rect.left - tipRect.width - 10;
+  }
+  // Limita pra não sair do topo/base
+  top = Math.max(8, Math.min(window.innerHeight - tipRect.height - 8, top));
+  el.style.left = left + 'px';
+  el.style.top = top + 'px';
+}
+function hideSidebarTooltip(){
+  const el = document.getElementById('gralia-sidebar-tooltip');
+  if(el) el.classList.remove('show');
+}
+
 // V14: Sidebar lateral principal — substitui navegação central da topbar em desktop ≥1100px.
 // Mobile: oculta via CSS, navegação fica na topbar (hamburger + dropdown).
 // Estrutura: brand + grupos de itens + secundário (Sobre/FAQ/Como usar) + atalho Cmd+K.
@@ -19965,18 +19929,45 @@ function buildAppSidebar(){
     lbl.textContent = it.label;
     item.appendChild(ico);
     item.appendChild(lbl);
-    // V15.12.75.150 — Tooltip estilizado (mostra label + desc se houver) —
-    // só visível quando sidebar collapsed via CSS.
-    // V15.12.75.155 — Estendido pra TAMBÉM aparecer no menu aberto, mostrando
-    // só a descrição (nome já está visível no item). Item ganha .has-desc se
-    // tem desc — controla se mostra tooltip no estado aberto.
-    // V15.12.75.156 — Tooltip TAMBÉM nos itens dentro do flyout (Mais/Comunidade)
-    // — user pediu pra ter "as dicas" também lá. Como o flyout sempre mostra
-    // o nome, a tooltip mostra só a descrição (igual menu aberto).
+    // V15.12.75.158 — Tooltip refatorado pra usar SINGLETON global
+    // (#gralia-sidebar-tooltip no body), posicionado via JS.
+    // BUG anterior: tooltip era filho do item → cortado pelo overflow:hidden
+    // do .app-sidebar. Agora escapa do sidebar e aparece corretamente
+    // em ambos os estados (collapsed/aberto) e dentro do flyout.
     if(it.desc) item.classList.add('has-desc');
-    const tip = mk('span','app-sidebar-tooltip');
-    tip.innerHTML = `<b>${escapeHTML(it.label)}</b>${it.desc ? `<span class="ast-desc">${escapeHTML(it.desc)}</span>` : ''}`;
-    item.appendChild(tip);
+    // Guarda os dados pro singleton ler no hover
+    item.dataset.sidebarLabel = it.label;
+    if(it.desc) item.dataset.sidebarDesc = it.desc;
+    // Marca se o item vive dentro do flyout (impacta posicionamento e conteúdo)
+    if(moreFlyout) item.dataset.sidebarInFlyout = '1';
+    // Mouseenter: mostra tooltip
+    let _tipShowTimer = null;
+    item.addEventListener('mouseenter', () => {
+      const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+      const inFlyout = !!moreFlyout;
+      // Regras de exibição:
+      //   collapsed (fora do flyout): sempre mostra (nome + desc)
+      //   aberto (fora do flyout): só se tem desc (mostra só desc)
+      //   dentro do flyout: só se tem desc (mostra só desc)
+      const hasDesc = !!it.desc;
+      const shouldShow = isCollapsed && !inFlyout
+        ? true                        // collapsed: sempre
+        : hasDesc;                    // aberto ou flyout: precisa ter desc
+      if(!shouldShow) return;
+      if(_tipShowTimer) clearTimeout(_tipShowTimer);
+      const delay = (isCollapsed && !inFlyout) ? 150 : 200;
+      _tipShowTimer = setTimeout(() => {
+        showSidebarTooltip(item, {
+          label: it.label,
+          desc: it.desc,
+          compact: !isCollapsed || inFlyout  // compact = só descrição
+        });
+      }, delay);
+    });
+    item.addEventListener('mouseleave', () => {
+      if(_tipShowTimer){ clearTimeout(_tipShowTimer); _tipShowTimer = null; }
+      hideSidebarTooltip();
+    });
     if(it.badge){
       let badgeCls = 'app-sidebar-badge';
       if(it.badge >= 20)      badgeCls += ' app-sidebar-badge-urgent';
@@ -19995,6 +19986,8 @@ function buildAppSidebar(){
         ST.srsFocusActive = false;
         document.body.classList.remove('srs-focus-mode');
       }
+      // V15.12.75.158 — Esconde tooltip ao clicar (evita ficar preso após navegação)
+      hideSidebarTooltip();
       // Se item do flyout, fecha o popover antes de navegar
       if(moreFlyout && moreFlyout.parentNode){
         moreFlyout.remove();
