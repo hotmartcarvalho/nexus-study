@@ -47,6 +47,188 @@
   --shadow-md:0 4px 12px rgba(16,20,24,.06);
   --shadow-lg:0 8px 24px rgba(16,20,24,.08);
 }
+
+/* ============================================================================
+   V15.12.75.147 — SISTEMA DE TEMAS DE COR
+   ============================================================================
+   3 paletas trocáveis via data-accent no <html>:
+     - "purple" (default) — Roxo Gralia (atual, gradient da logo #762ffb→#8c4dfb)
+     - "graphite" — Cinza Espacial (grafite escuro, masculino, sem cor saturada)
+     - "steel" — Azul Aço (cor exata da logo #2596be, frio e técnico)
+
+   Cada paleta sobrescreve as 4 variáveis principais:
+     --gralia-purple        (cor principal — botões ativos, ícones ativos)
+     --gralia-purple-soft   (variação clara — gradientes, hovers)
+     --accent / --purple    (sinônimos pra compat com código legado)
+
+   Persistência: localStorage 'gralia_accent' + atributo data-accent no <html>.
+   Default = 'purple' (mantém estado atual de quem nunca trocou).
+*/
+:root[data-accent="purple"]{
+  /* Default oficial — cores idênticas à logo (gradient #762ffb→#8c4dfb) */
+  --gralia-purple:#8042fa;
+  --gralia-purple-soft:#8c4dfb;
+  --gralia-purple-rgb:128,66,250;
+}
+:root[data-accent="graphite"]{
+  /* Cinza espacial — inspiração iPhone "Space Gray".
+     Grafite escuro com toque azulado, masculino, premium. */
+  --gralia-purple:#3a4148;       /* cinza-grafite escuro principal */
+  --gralia-purple-soft:#56606a;  /* variação mais clara */
+  --gralia-purple-rgb:58,65,72;
+  --purple:#3a4148;
+  --purple-light:#e8eaed;
+  --purple-text:#1f2329;
+}
+:root[data-accent="graphite"][data-theme="dark"]{
+  --gralia-purple:#8a939e;       /* mais claro em dark pra contraste */
+  --gralia-purple-soft:#a7afba;
+  --gralia-purple-rgb:138,147,158;
+  --purple:#8a939e;
+  --purple-light:#252830;
+  --purple-text:#c8cdd4;
+}
+:root[data-accent="steel"]{
+  /* Azul Aço — cor exata da logo (#2596be), frio e técnico */
+  --gralia-purple:#2596be;
+  --gralia-purple-soft:#3aaed4;
+  --gralia-purple-rgb:37,150,190;
+  --purple:#2596be;
+  --purple-light:#e0f1f7;
+  --purple-text:#0d4d68;
+}
+:root[data-accent="steel"][data-theme="dark"]{
+  --gralia-purple:#4ec3e6;
+  --gralia-purple-soft:#7ad0ec;
+  --gralia-purple-rgb:78,195,230;
+  --purple:#4ec3e6;
+  --purple-light:#0a2a36;
+  --purple-text:#9fd9ed;
+}
+
+/* V15.12.75.147 — Overrides pros elementos que usam rgba(128,66,250,.X)
+   hardcoded (336 ocorrências no app — inviável trocar todas). As regras
+   abaixo cobrem os elementos visíveis mais críticos.
+   V15.12.75.149 — EXPANDIDO: agora cobre também botões primários, credits
+   chip, help-hub hover, search btn, theme switch, etc. */
+
+/* === SIDEBAR === */
+:root[data-accent="graphite"] .app-sidebar-item.active,
+:root[data-accent="steel"] .app-sidebar-item.active{
+  background:linear-gradient(90deg, rgba(var(--gralia-purple-rgb),.18) 0%, rgba(var(--gralia-purple-rgb),.04) 100%) !important;
+  box-shadow:inset 0 0 0 1px rgba(var(--gralia-purple-rgb),.10) !important;
+}
+:root[data-accent="graphite"] .app-sidebar-badge,
+:root[data-accent="steel"] .app-sidebar-badge{
+  background:rgba(var(--gralia-purple-rgb),.10) !important;
+  color:var(--gralia-purple) !important;
+  border-color:rgba(var(--gralia-purple-rgb),.22) !important;
+}
+:root[data-accent="graphite"] .app-sidebar-badge-warn,
+:root[data-accent="steel"] .app-sidebar-badge-warn{
+  background:rgba(var(--gralia-purple-rgb),.16) !important;
+  border-color:rgba(var(--gralia-purple-rgb),.35) !important;
+}
+:root[data-accent="graphite"] .app-sidebar-badge-urgent,
+:root[data-accent="steel"] .app-sidebar-badge-urgent{
+  background:rgba(var(--gralia-purple-rgb),.22) !important;
+  border-color:rgba(var(--gralia-purple-rgb),.48) !important;
+}
+:root[data-accent="graphite"] .app-sidebar-item.active::before,
+:root[data-accent="steel"] .app-sidebar-item.active::before{
+  background:linear-gradient(180deg, var(--gralia-purple) 0%, var(--gralia-purple-soft) 100%) !important;
+  box-shadow:0 0 8px rgba(var(--gralia-purple-rgb),.35) !important;
+}
+
+/* === BOTÕES PRIMÁRIOS === */
+:root[data-accent="graphite"] .btn-p,
+:root[data-accent="steel"] .btn-p,
+:root[data-accent="graphite"] .btn-primary,
+:root[data-accent="steel"] .btn-primary{
+  background:var(--gralia-purple) !important;
+  border-color:var(--gralia-purple) !important;
+}
+:root[data-accent="graphite"] .btn-p:hover:not(:disabled),
+:root[data-accent="steel"] .btn-p:hover:not(:disabled){
+  background:var(--gralia-purple-soft) !important;
+  border-color:var(--gralia-purple-soft) !important;
+}
+:root[data-accent="graphite"] .btn-p.btn-lg,
+:root[data-accent="steel"] .btn-p.btn-lg{
+  background:linear-gradient(135deg, var(--gralia-purple) 0%, var(--gralia-purple-soft) 100%) !important;
+  box-shadow:0 2px 8px rgba(var(--gralia-purple-rgb),.25) !important;
+}
+
+/* === TOPBAR ELEMENTS === */
+:root[data-accent="graphite"] .credits-chip:hover,
+:root[data-accent="steel"] .credits-chip:hover,
+:root[data-accent="graphite"] .credits-chip,
+:root[data-accent="steel"] .credits-chip{
+  border-color:rgba(var(--gralia-purple-rgb),.30) !important;
+}
+:root[data-accent="graphite"] .topbar-inst-link:hover,
+:root[data-accent="steel"] .topbar-inst-link:hover{
+  color:var(--gralia-purple) !important;
+}
+:root[data-accent="graphite"] .topbar-inst-link .til-label::after,
+:root[data-accent="steel"] .topbar-inst-link .til-label::after{
+  background:var(--gralia-purple) !important;
+}
+:root[data-accent="graphite"] .topbar-sidebar-toggle:hover,
+:root[data-accent="steel"] .topbar-sidebar-toggle:hover{
+  color:var(--gralia-purple) !important;
+}
+:root[data-accent="graphite"] .topbar-theme-switch:hover,
+:root[data-accent="steel"] .topbar-theme-switch:hover{
+  border-color:var(--gralia-purple) !important;
+}
+
+/* === HELP HUB === */
+:root[data-accent="graphite"] .help-hub-btn:hover,
+:root[data-accent="steel"] .help-hub-btn:hover{
+  border-color:var(--gralia-purple) !important;
+  color:var(--gralia-purple) !important;
+  box-shadow:0 6px 20px rgba(var(--gralia-purple-rgb),.18), 0 2px 6px rgba(0,0,0,.08) !important;
+}
+:root[data-accent="graphite"] .help-hub-item-ico,
+:root[data-accent="steel"] .help-hub-item-ico{
+  background:rgba(var(--gralia-purple-rgb),.08) !important;
+  color:var(--gralia-purple) !important;
+}
+
+/* === SEARCH BTN (Buscar tudo) === */
+:root[data-accent="graphite"] .app-sidebar-search-btn:hover,
+:root[data-accent="steel"] .app-sidebar-search-btn:hover{
+  border-color:var(--gralia-purple) !important;
+}
+
+/* === SIDEBAR TOGGLE (circular bottom-right) === */
+:root[data-accent="graphite"] .sidebar-collapse-toggle:hover,
+:root[data-accent="steel"] .sidebar-collapse-toggle:hover{
+  border-color:var(--gralia-purple) !important;
+  color:var(--gralia-purple) !important;
+}
+
+/* === FAQ POPOVER === */
+:root[data-accent="graphite"] .faq-floating-btn:hover,
+:root[data-accent="steel"] .faq-floating-btn:hover{
+  border-color:var(--gralia-purple) !important;
+  color:var(--gralia-purple) !important;
+}
+
+/* === AVATAR === */
+:root[data-accent="graphite"] .user-avatar-btn:hover,
+:root[data-accent="steel"] .user-avatar-btn:hover{
+  border-color:var(--gralia-purple) !important;
+}
+
+/* === LINKS GLOBAIS === */
+:root[data-accent="graphite"] a:not(.btn):not(.app-sidebar-item):not(.tab),
+:root[data-accent="steel"] a:not(.btn):not(.app-sidebar-item):not(.tab){
+  color:var(--gralia-purple);
+}
+
+/* === MENTOR — bolhas NÃO mudam (identidade fixa Halsey/Drago) === */
 /* ===== DARK theme ===== */
 :root[data-theme="dark"]{
   /* Base — cinzas neutros frios (inspiração GitHub/Linear dark) */
@@ -182,6 +364,37 @@ body.sidebar-collapsed .app-sidebar-item-label,
 body.sidebar-collapsed .app-sidebar-badge,
 body.sidebar-collapsed .app-sidebar-search-btn span:not(:first-child){
   display:none !important;
+}
+/* V15.12.75.146 — Esconde também label + chevron do botão "Mais" quando
+   sidebar collapsed. Antes ficavam visíveis e o ícone (3 pontinhos / globe)
+   ficava desalinhado, encostado na esquerda. Esconder força centralização. */
+body.sidebar-collapsed .app-sidebar-more .app-sidebar-item-label,
+body.sidebar-collapsed .app-sidebar-more-chevron{
+  display:none !important;
+}
+/* V15.12.75.149 — Pequeno indicador (dot duplo) no canto inferior-direito
+   do botão "Mais" quando sidebar collapsed. Sinaliza "este item abre
+   submenu" pro usuário entender que tem clicáveis escondidos. */
+body.sidebar-collapsed .app-sidebar-more{
+  position:relative;
+}
+body.sidebar-collapsed .app-sidebar-more::after{
+  content:'';
+  position:absolute;
+  bottom:4px;right:8px;
+  width:4px;height:4px;
+  border-radius:50%;
+  background:var(--text3);
+  opacity:.55;
+  box-shadow:6px 0 0 0 var(--text3);  /* segundo dot à direita */
+  pointer-events:none;
+  transition:background .15s ease, opacity .15s ease;
+}
+body.sidebar-collapsed .app-sidebar-more:hover::after,
+body.sidebar-collapsed .app-sidebar-more.more-open::after{
+  background:var(--gralia-purple);
+  opacity:1;
+  box-shadow:6px 0 0 0 var(--gralia-purple);
 }
 /* V15.12.75.145 — Quando collapsed, sidebar fica só com ícones.
    Padding-top normal (não precisa mais reservar espaço pro toggle interno,
@@ -494,6 +707,11 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
   /* V15.12.1: largura igualada à sidebar expandida (264px) pra que o divisor
      do bloco do logo coincida exatamente com a borda direita da sidebar.
      Antes era 240px e gerava um gap visual de 24px. */
+  /* V15.12.75.146 — Antes V12.1: border-right na col-left (linha de cima ao
+     baixo da topbar). Pedido: igualar visualmente ao separador entre o
+     toggle de sidebar e o logo (linha curta 22px, alinhada ao centro).
+     Removo o border-right e o separador real é adicionado via ::after
+     posicionado absolutamente no centro vertical da topbar. */
   body.has-sidebar .topbar-col-left{
     display:flex;
     width:264px;
@@ -502,7 +720,17 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
     align-items:center;
     padding:0 16px;
     box-sizing:border-box;
-    border-right:1px solid var(--border);
+    position:relative;
+  }
+  body.has-sidebar .topbar-col-left::after{
+    content:'';
+    position:absolute;
+    right:0;
+    top:50%;
+    transform:translateY(-50%);
+    width:1px;
+    height:22px;
+    background:var(--border);
   }
   /* (antiga regra body.has-sidebar.sidebar-collapsed .topbar-col-left removida
       em V15.12 — largura agora é fixa independente do estado da sidebar) */
@@ -590,9 +818,9 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
   flex-shrink:0;
 }
 
-/* V15.12.75.140 — Logo topbar +50% (30→45px, max-width 135→200px).
-   Antes V113: 30px/135 era pequena. Jean pediu mais presença. */
-.brand .brand-bird{height:45px;max-width:200px;object-fit:contain}
+/* V15.12.75.146 — Logo topbar -20% (45→36px, max-width 200→160px).
+   V140 tinha ido +50% (30→45), agora -20%. Equilíbrio melhor. */
+.brand .brand-bird{height:36px;max-width:160px;object-fit:contain}
 .brand .brand-name{display:none}
 .brand .brand-name.brand-fallback.show{display:inline-flex}
 .brand-bird-dark{display:none}
@@ -839,6 +1067,20 @@ html.dark .countdown-pill.countdown-near{color:#e8c068}
 /* Route transition — fade suave no conteúdo da página ao trocar */
 .route-fade{animation:route-in .28s ease}
 @keyframes route-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* V15.12.75.149 — Animação do menu do avatar (mais suave que slideDown puro).
+   Combina slide-down + scale-up + fade pra sensação "balança e assenta",
+   ancorada no canto superior-direito (transform-origin no JS inline). */
+@keyframes avatarMenuIn{
+  from{
+    opacity:0;
+    transform:translateY(-8px) scale(.94);
+  }
+  to{
+    opacity:1;
+    transform:translateY(0) scale(1);
+  }
+}
 
 /* Skeleton loaders — pro estado de carregamento */
 .skel{background:var(--surface2);border-radius:var(--rs);position:relative;overflow:hidden}
@@ -2467,35 +2709,33 @@ html.dark .wfb-tag-ai{color:#b08aff}
 
 /* Dimensões e estilo (aplica mesmo quando display:none, pra evitar flash quando
    troca pra display:block).
-   V15.12.75.114 — Tamanho reduzido: 96→80px (height) / 120→100px (max-width). */
+   V15.12.75.114 — Tamanho reduzido: 96→80px (height) / 120→100px (max-width).
+   V15.12.75.146 — Mais -15%: 80→68px / 100→85px. */
 .dash-mascot-video{
-  height:80px;width:auto;max-width:100px;object-fit:contain;
+  height:68px;width:auto;max-width:85px;object-fit:contain;
   background:transparent;
   opacity:.95;transition:transform .35s ease, opacity .15s;
   user-select:none;pointer-events:none;
 }
 .dash-mascot-img{
-  height:80px;width:auto;max-width:100px;object-fit:contain;
+  height:68px;width:auto;max-width:85px;object-fit:contain;
   opacity:.95;transition:transform .35s ease, opacity .15s, height .35s ease, max-width .35s ease;
   user-select:none;-webkit-user-drag:none;cursor:default;
 }
 
 /* V15.12.75.105 — Mascote estático MESMO TAMANHO do vídeo.
-   V15.12.75.114 — Reduzido pra 80×100 (era 96×120). Hover-to-play implementado
-   no JS: estado padrão = static, hover toca animação, fim/mouseleave volta. */
+   V15.12.75.114 — Reduzido pra 80×100 (era 96×120).
+   V15.12.75.146 — Mais -15% (80→68 / 100→85). */
 .dash-mascot.dash-mascot-static .dash-mascot-img{
-  height:80px;
-  max-width:100px;
+  height:68px;
+  max-width:85px;
   opacity:.85;
 }
 
-/* V15.12.28 → V15.12.40 OBSOLETO mas mantido por compat:
-   .dash-mascot-frozen não é mais usado (vídeo agora sempre vai pra imagem
-   estática). Regras desativadas. Removidas em rodada futura quando o tema
-   final estiver estável. */
+/* V15.12.28 → V15.12.40 OBSOLETO mas mantido por compat */
 .dash-mascot.dash-mascot-frozen .dash-mascot-video{
-  height:80px;
-  max-width:100px;
+  height:68px;
+  max-width:85px;
   opacity:.85;
   transition:height .35s ease, max-width .35s ease, opacity .35s ease;
 }
@@ -4148,9 +4388,10 @@ body.settings-compact .settings-page-v2{font-size:13px}
   display:inline-flex;align-items:center;gap:5px;
 }
 .mentor-agent-halsey{
-  background:rgba(58,90,138,.10);border:1px solid rgba(58,90,138,.35);color:#3a5a8a;
+  /* V15.12.75.148 — Cor azul-marinho institucional (PF). Antes: azul-grafite. */
+  background:rgba(30,58,95,.10);border:1px solid rgba(30,58,95,.35);color:#1e3a5f;
 }
-:root[data-theme="dark"] .mentor-agent-halsey{color:#92b0d8}
+:root[data-theme="dark"] .mentor-agent-halsey{color:#7faad4}
 .mentor-agent-drago{
   background:rgba(160,41,66,.10);border:1px solid rgba(160,41,66,.35);color:#a02942;
 }
@@ -4184,11 +4425,11 @@ body.settings-compact .settings-page-v2{font-size:13px}
   display:inline-flex;align-items:center;justify-content:center;
   width:28px;height:28px;border-radius:8px;font-size:14px;
 }
-.mentor-msg-mentor-avatar-halsey{background:rgba(58,90,138,.15);border:1px solid rgba(58,90,138,.35)}
+.mentor-msg-mentor-avatar-halsey{background:rgba(30,58,95,.15);border:1px solid rgba(30,58,95,.35)}
 .mentor-msg-mentor-avatar-drago{background:rgba(160,41,66,.15);border:1px solid rgba(160,41,66,.35)}
 .mentor-msg-mentor-name{font-size:12px;font-weight:700;letter-spacing:.2px}
-.mentor-msg-mentor-name-halsey{color:#3a5a8a}
-:root[data-theme="dark"] .mentor-msg-mentor-name-halsey{color:#92b0d8}
+.mentor-msg-mentor-name-halsey{color:#1e3a5f}
+:root[data-theme="dark"] .mentor-msg-mentor-name-halsey{color:#7faad4}
 .mentor-msg-mentor-name-drago{color:#a02942}
 :root[data-theme="dark"] .mentor-msg-mentor-name-drago{color:#e89bac}
 .mentor-msg-mentor-role{font-size:10.5px;color:var(--text3);font-weight:500}
@@ -4222,7 +4463,10 @@ body.settings-compact .settings-page-v2{font-size:13px}
   background:linear-gradient(135deg,rgba(128,66,250,.10),rgba(128,66,250,.02));
   border:1px solid rgba(128,66,250,.20);
   display:flex;align-items:center;justify-content:center;font-size:36px;
+  /* V15.12.75.146 — cor pro SVG do mic (era emoji antes) */
+  color:var(--gralia-purple);
 }
+.mentor-empty-icon svg{display:block}
 .mentor-empty-title{font-size:17px;font-weight:700;color:var(--text);margin:0}
 .mentor-empty-sub{font-size:13.5px;color:var(--text2);line-height:1.55;max-width:420px;margin:0}
 /* V15.12.75.138 — Removidas classes mentor-empty-quicks e mentor-quickbtn:
@@ -5139,7 +5383,9 @@ input[type="month"]::-webkit-calendar-picker-indicator{
 .icon-btn.del:hover{background:var(--red-light);color:var(--red-text)}
 
 /* Modal */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99000;display:flex;align-items:center;justify-content:center;padding:1rem;animation:fd .15s ease}
+/* V15.12.75.147 — Modal genérico ganha backdrop-filter blur (era só rgba sem blur).
+   Foca atenção nas modais que abrem em cima (feedback, atalhos, etc). */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:99000;display:flex;align-items:center;justify-content:center;padding:1rem;animation:fd .15s ease}
 .modal-bg.locked{cursor:default}
 /* V12: Sombra do modal locked agora é neutra (preta sutil) — antes era roxa, ficava com aparência de gamificação */
 .modal-bg.locked .modal{box-shadow:0 12px 40px rgba(0,0,0,.22),0 4px 12px rgba(0,0,0,.14)}
@@ -6276,8 +6522,21 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 }
 
 /* V15.12.75.143 — HELP HUB unificado (substitui 3 botões flutuantes antigos) */
+/* V15.12.75.147 — Backdrop blur por trás do popover */
+.help-hub-backdrop{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.22);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  z-index:9000;
+  animation:help-hub-backdrop-in .22s ease both;
+}
+@keyframes help-hub-backdrop-in{
+  from{opacity:0;backdrop-filter:blur(0)}
+  to{opacity:1;backdrop-filter:blur(6px)}
+}
 .help-hub-btn{
-  position:fixed;bottom:20px;right:20px;z-index:500;
+  position:fixed;bottom:20px;right:20px;z-index:9200;
   width:46px;height:46px;border-radius:50%;
   background:var(--surface);
   border:1px solid var(--border);
@@ -6297,7 +6556,7 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 .help-hub-btn svg{display:block}
 
 .help-hub-popover{
-  position:fixed;bottom:74px;right:20px;z-index:501;
+  position:fixed;bottom:74px;right:20px;z-index:9100;
   width:280px;
   background:var(--surface);
   border:1px solid var(--border);
@@ -6395,7 +6654,7 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 }
 
 /* ====== SHORTCUTS OVERLAY ====== */
-.shortcuts-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem}
+.shortcuts-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem;animation:help-hub-backdrop-in .22s ease both}
 .shortcuts-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.5rem 1.75rem;max-width:520px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.3)}
 .shortcuts-box .sk-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:1.25rem;padding-bottom:.875rem;border-bottom:1px solid var(--border)}
 .shortcuts-box .sk-section{margin-bottom:1.125rem}
@@ -7156,14 +7415,21 @@ body.pomo-float-visible .faq-floating-btn{display:none !important}
 }
 .topbar-inst-link:hover .til-ico{opacity:1}
 .topbar-inst-link svg{display:block}
-.topbar-inst-link::after{
-  content:'';position:absolute;left:24px;right:4px;bottom:2px;
+/* V15.12.75.149 — Linha decorativa de hover.
+   Antes: começava em left:24px (cobria parte do espaço do ícone, ficava off).
+   Agora: aplicada via .til-label::after, fica EXATAMENTE sob o texto. */
+.topbar-inst-link .til-label{
+  position:relative;
+  display:inline-block;
+}
+.topbar-inst-link .til-label::after{
+  content:'';position:absolute;left:0;right:0;bottom:-3px;
   height:1.5px;background:var(--gralia-purple);
   transform:scaleX(0);transform-origin:left;
   transition:transform .2s ease;
 }
 .topbar-inst-link:hover{color:var(--gralia-purple)}
-.topbar-inst-link:hover::after{transform:scaleX(1)}
+.topbar-inst-link:hover .til-label::after{transform:scaleX(1)}
 .topbar-inst-link .til-tip{
   position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%) translateY(-4px);
   background:var(--surface);border:1px solid var(--border);
@@ -7203,6 +7469,16 @@ body.pomo-float-visible .faq-floating-btn{display:none !important}
   box-shadow:0 4px 14px rgba(128,66,250,.18);
 }
 body.pomo-active .faq-floating-btn{display:none !important}
+
+/* V15.12.75.147 — Backdrop blur por trás do FAQ popover */
+.faq-popover-backdrop{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.22);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  z-index:840;
+  animation:help-hub-backdrop-in .22s ease both;
+}
 
 /* Popover do FAQ — abre ao clicar no botão */
 .faq-popover{
@@ -8217,7 +8493,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.145';
+window.GRALIA_VERSION = 'V15.12.75.149';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -12949,12 +13225,12 @@ const LUCIDE_ICONS = {
   'target':         '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
   'calendar':       '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
 
-  // V15.12.75.142 — Mentor: MANTIDO bicolor — representa os 2 mentores
-  // (Halsey azul-grafite + Drago carmim). Sem cor não faria sentido.
+  // V15.12.75.142 — Mentor: MANTIDO bicolor — representa os 2 mentores.
+  // V15.12.75.148 — Renomeados: Aragão (azul-marinho PF #1e3a5f) + Lobo (carmim BOPE #a02942).
   'messages-square':{
     body:   '',
     accent: '<path d="M14 9a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-1l-3 3v-3H6a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h8z"/>',
-    accentColor: '#3a5a8a',
+    accentColor: '#1e3a5f',
     accent2: '<path d="M18 14h.5a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H11a2 2 0 0 0-2 2v1"/>',
     accent2Color: '#a02942'
   },
@@ -12985,7 +13261,17 @@ const LUCIDE_ICONS = {
   'chevron-right':    '<path d="m9 18 6-6-6-6"/>',
   'arrow-left':       '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
   // V15.12.75.145 — Toggle sidebar (topbar fechada / sidebar aberta)
-  'sidebar':          '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>'
+  'sidebar':          '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>',
+  // V15.12.75.146 — Ícone search pra "Buscar tudo" do sidebar (era emoji)
+  'search':           '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>',
+  // V15.12.75.146 — Mic refinado pro mentor
+  'mic':              '<rect width="6" height="11" x="9" y="2" rx="3" ry="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
+  // V15.12.75.147 — Ícones pro avatar menu repaginado
+  'user':             '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  'credit-card':      '<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>',
+  'graduation-cap':   '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.66 4 3 6 3s6-1.34 6-3v-5"/>',
+  'shield-check':     '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  'log-out':          '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>'
 };
 
 // Helper: gera string SVG inline pronta pra setar via innerHTML.
@@ -15812,92 +16098,156 @@ function showUserAvatarMenu(anchor){
   const existing = document.querySelector('.user-avatar-menu');
   if(existing){existing.remove();return;}
 
+  // V15.12.75.147 — Menu do avatar repaginado.
+  // Antes: lista plana com emojis, sem hierarquia visual, fonts inconsistentes.
+  // Agora: estilo casado com o sidebar — ícones Lucide monocromáticos,
+  // seções com labels eyebrow uppercase, hover translateX(2px), tipografia
+  // padronizada com .app-sidebar-item. Profile card no topo continua, mais
+  // refinado.
   const menu = mk('div','user-avatar-menu');
-  menu.style.cssText = 'position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.08);min-width:240px;padding:.5rem;animation:slideDown .15s ease';
+  // V15.12.75.149 — Animação refinada: slide+scale+fade (mais suave que slideDown puro)
+  menu.style.cssText = 'position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 16px 40px rgba(0,0,0,.18),0 4px 10px rgba(0,0,0,.08);min-width:260px;padding:6px;transform-origin:top right;animation:avatarMenuIn .22s cubic-bezier(.25,.8,.3,1) both';
 
   const rect = anchor.getBoundingClientRect();
   menu.style.top = (rect.bottom + 8) + 'px';
   menu.style.right = Math.max(10, window.innerWidth - rect.right) + 'px';
 
-  // Header com nome
+  // ====== HEADER (profile card) ======
   const head = mk('div');
-  head.style.cssText = 'padding:.625rem .75rem;border-bottom:1px solid var(--border);margin-bottom:.375rem';
+  head.style.cssText = 'display:flex;gap:10px;align-items:flex-start;padding:10px 10px 12px;margin-bottom:4px;border-bottom:1px solid var(--border);position:relative';
+  // Mini avatar à esquerda
+  const miniAvatar = mk('div');
+  miniAvatar.style.cssText = `width:38px;height:38px;border-radius:50%;background:${getUserAvatarGradient()};display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;letter-spacing:.3px;flex-shrink:0`;
+  miniAvatar.textContent = getUserInitials();
+  head.appendChild(miniAvatar);
+  // Coluna textual
+  const headText = mk('div');
+  headText.style.cssText = 'flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;padding-right:22px';  // V149: padding-right pra dar espaço pro ×
   const nameEl = mk('div');
-  nameEl.style.cssText = 'font-size:13px;font-weight:700;color:var(--text);line-height:1.3';
+  nameEl.style.cssText = 'font-size:13px;font-weight:700;color:var(--text);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
   nameEl.textContent = (AUTH.profile?.display_name) || (AUTH.profile?.username) || 'Você';
-  head.appendChild(nameEl);
+  headText.appendChild(nameEl);
   if(AUTH.user?.email){
     const emailEl = mk('div');
-    emailEl.style.cssText = 'font-size:11px;color:var(--text3);line-height:1.3;margin-top:2px;word-break:break-all';
+    emailEl.style.cssText = 'font-size:11px;color:var(--text3);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
     emailEl.textContent = AUTH.user.email;
-    head.appendChild(emailEl);
+    headText.appendChild(emailEl);
   }
-  // Plano
   if(SUBSCRIPTION?.data?.plan_id){
     const plan = SUBSCRIPTION.data.plan_id;
     const planLabel = plan === 'trial' ? 'Trial' : plan === 'estudante' ? 'Estudante' : plan === 'concurseiro' ? 'Concurseiro+' : plan === 'pro' ? 'Pro' : plan;
     const planChip = mk('span');
-    planChip.style.cssText = 'display:inline-block;margin-top:6px;font-size:10.5px;font-weight:700;color:var(--gralia-purple);background:var(--accent-light);padding:2px 8px;border-radius:999px;letter-spacing:.3px';
+    planChip.style.cssText = 'display:inline-block;margin-top:3px;font-size:10px;font-weight:700;color:var(--gralia-purple);background:rgba(var(--gralia-purple-rgb),.10);border:1px solid rgba(var(--gralia-purple-rgb),.22);padding:1px 7px;border-radius:999px;letter-spacing:.3px;align-self:flex-start';
     planChip.textContent = planLabel;
-    head.appendChild(planChip);
+    headText.appendChild(planChip);
   }
+  head.appendChild(headText);
+  // V15.12.75.149 — Botão fechar (×) no canto superior-direito do header
+  const closeBtn = mk('button');
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Fechar menu');
+  closeBtn.title = 'Fechar';
+  closeBtn.style.cssText = 'position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:6px;background:transparent;border:none;cursor:pointer;font-family:inherit;font-size:14px;color:var(--text3);display:flex;align-items:center;justify-content:center;line-height:1;padding:0;transition:background .15s ease, color .15s ease';
+  closeBtn.innerHTML = '×';
+  closeBtn.addEventListener('mouseenter', () => { closeBtn.style.background = 'var(--surface2)'; closeBtn.style.color = 'var(--text)'; });
+  closeBtn.addEventListener('mouseleave', () => { closeBtn.style.background = 'transparent'; closeBtn.style.color = 'var(--text3)'; });
+  closeBtn.addEventListener('click', (e) => { e.stopPropagation(); menu.remove(); });
+  head.appendChild(closeBtn);
   menu.appendChild(head);
 
-  // V15.12.75.143 — Removido "Minhas metas" daqui — já existe no sidebar
-  // (Planejar → Metas). Duplicação causava ruído de navegação.
-  const items = [
-    {icon:'👤', label:'Conta e perfil', action:()=>{ ST.view = 'settings'; render(); }},
-    {icon:'💳', label:'Assinatura e planos', action:()=>{ ST.view = 'plans'; render(); }},
-    {icon:'⚡', label:'Uso de créditos', action:()=>{ ST.view = 'usage'; render(); }}
-  ];
-  if(typeof isAdminUser === 'function' && isAdminUser()){
-    // V15.10: Admin é o único caminho pro painel admin agora (botão flutuante removido).
-    // Marca com flag pra renderizar com destaque visual no dropdown.
-    items.push({icon:'🔧', label:'Painel admin', admin:true, action:()=>{ ST.view = 'admin'; render(); }});
-  }
-  items.push({type:'divider'});
-  items.push({icon:'🎓', label:'Tutorial visual', action:()=>{ if(typeof showVisualTutorial === 'function') showVisualTutorial(); }});
-  items.push({icon:'❓', label:'Como usar (texto)', action:()=>{ ST.view = 'howToUse'; render(); }});
-  // V15.12.75.143 — "Dicas das bancas" REMOVIDO daqui — movido pra sidebar
-  // (grupo Planejar). É conteúdo de planejamento, faz mais sentido lá.
-  items.push({icon:'💡', label:'FAQ', action:()=>{ ST.view = 'faq'; render(); }});
-  items.push({icon:'ℹ️', label:'Sobre o Gralia', action:()=>{ ST.view = 'about'; render(); }});
-  items.push({type:'divider'});
-  items.push({icon:'🚪', label:'Sair', action:async()=>{
-    if(!confirm('Sair da conta?')) return;
-    try{ await supa.auth.signOut(); }catch(e){}
-    location.reload();
-  }, danger:true});
-
-  items.forEach(it=>{
-    if(it.type === 'divider'){
-      const div = mk('div');
-      div.style.cssText = 'height:1px;background:var(--border);margin:.375rem 0';
-      menu.appendChild(div);
-      return;
+  // ====== ITEMS por seção ======
+  // Estrutura: lista de seções, cada uma com label + items (com ícone Lucide)
+  const sections = [
+    {
+      label: 'Conta',
+      items: [
+        {icon:'user',     label:'Conta e perfil',       action:()=>{ ST.view = 'settings'; render(); }},
+        {icon:'credit-card', label:'Assinatura e planos', action:()=>{ ST.view = 'plans'; render(); }},
+        {icon:'zap',      label:'Uso de créditos',      action:()=>{ ST.view = 'usage'; render(); }}
+      ]
+    },
+    {
+      label: 'Ajuda',
+      items: [
+        {icon:'graduation-cap', label:'Tutorial visual',    action:()=>{ if(typeof showVisualTutorial === 'function') showVisualTutorial(); }},
+        {icon:'book-open',      label:'Como usar (texto)',  action:()=>{ ST.view = 'howToUse'; render(); }},
+        {icon:'help-circle',    label:'FAQ',                action:()=>{ ST.view = 'faq'; render(); }},
+        {icon:'info',           label:'Sobre o Gralia',     action:()=>{ ST.view = 'about'; render(); }}
+      ]
     }
+  ];
+
+  // Admin no topo da seção Conta, se aplicável
+  if(typeof isAdminUser === 'function' && isAdminUser()){
+    sections[0].items.push({
+      icon:'shield-check',
+      label:'Painel admin',
+      action:()=>{ ST.view = 'admin'; render(); },
+      admin:true
+    });
+  }
+
+  // Builder de item — mesmo estilo do sidebar (.app-sidebar-item simplificado)
+  const buildAvatarItem = (it) => {
     const item = mk('button');
     item.type = 'button';
-    // V15.10: Admin destacado (cor âmbar) — único caminho pro painel agora
-    const adminStyle = it.admin
-      ? 'color:#a76e1a;background:linear-gradient(135deg,rgba(232,164,60,.10),rgba(232,164,60,.04));font-weight:700'
-      : `color:${it.danger?'var(--red-text)':'var(--text)'}`;
-    item.style.cssText = `display:flex;align-items:center;gap:10px;width:100%;padding:.5rem .75rem;background:transparent;border:none;border-radius:7px;cursor:pointer;font-family:inherit;font-size:13px;text-align:left;transition:background .12s;font-weight:500;${adminStyle}`;
+    const baseColor = it.danger
+      ? 'var(--red-text)'
+      : (it.admin ? '#a76e1a' : 'var(--text)');
+    const bg = it.admin
+      ? 'linear-gradient(90deg, rgba(232,164,60,.10) 0%, rgba(232,164,60,.02) 100%)'
+      : 'transparent';
+    item.style.cssText = `display:flex;align-items:center;gap:11px;width:100%;padding:.45rem .65rem;background:${bg};border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;text-align:left;color:${baseColor};transition:background .15s ease, color .15s ease, transform .15s ease;line-height:1.2`;
     const ico = mk('span');
-    ico.style.cssText = 'font-size:14px;width:18px;text-align:center;flex-shrink:0';
-    ico.textContent = it.icon;
+    ico.style.cssText = `display:inline-flex;align-items:center;justify-content:center;width:22px;flex-shrink:0;color:${it.danger ? 'var(--red-text)' : (it.admin ? '#a76e1a' : 'var(--text2)')};transition:color .15s ease`;
+    ico.innerHTML = lucideIcon(it.icon, 16);
     const lbl = mk('span');
+    lbl.style.cssText = 'flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
     lbl.textContent = it.label;
     item.appendChild(ico);
     item.appendChild(lbl);
-    item.addEventListener('mouseenter', ()=>{item.style.background = 'var(--surface2)';});
-    item.addEventListener('mouseleave', ()=>{item.style.background = 'transparent';});
+    item.addEventListener('mouseenter', ()=>{
+      item.style.background = it.admin ? 'linear-gradient(90deg, rgba(232,164,60,.16) 0%, rgba(232,164,60,.04) 100%)' : 'var(--surface2)';
+      item.style.transform = 'translateX(2px)';
+      if(!it.danger && !it.admin) ico.style.color = 'var(--text)';
+    });
+    item.addEventListener('mouseleave', ()=>{
+      item.style.background = bg;
+      item.style.transform = 'translateX(0)';
+      if(!it.danger && !it.admin) ico.style.color = 'var(--text2)';
+    });
     item.addEventListener('click', ()=>{
       menu.remove();
       try{ it.action(); }catch(e){console.warn('[avatar menu]', e);}
     });
-    menu.appendChild(item);
+    return item;
+  };
+
+  sections.forEach((sec, sIdx) => {
+    // Label da seção (eyebrow uppercase, mesmo estilo do sidebar)
+    const sLbl = mk('div');
+    sLbl.style.cssText = 'font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:8px 10px 4px;opacity:.75';
+    if(sIdx > 0) sLbl.style.borderTop = '1px solid var(--border)';
+    if(sIdx > 0) sLbl.style.marginTop = '4px';
+    sLbl.textContent = sec.label;
+    menu.appendChild(sLbl);
+    sec.items.forEach(it => menu.appendChild(buildAvatarItem(it)));
   });
+
+  // Sair (sempre no rodapé, com separador)
+  const logoutSep = mk('div');
+  logoutSep.style.cssText = 'height:1px;background:var(--border);margin:6px 8px';
+  menu.appendChild(logoutSep);
+  menu.appendChild(buildAvatarItem({
+    icon:'log-out',
+    label:'Sair',
+    danger:true,
+    action:async()=>{
+      if(!confirm('Sair da conta?')) return;
+      try{ await supa.auth.signOut(); }catch(e){}
+      location.reload();
+    }
+  }));
 
   document.body.appendChild(menu);
 
@@ -19181,10 +19531,16 @@ function buildAppSidebar(){
   // (Antes a brand era duplicada: sidebar + topbar, e sumia ao recolher.)
 
   // V14: Buscar tudo (Cmd+K) — vem ANTES dos grupos pra ser primeira ação visível
+  // V15.12.75.146 — Refinos pedidos:
+  //   - Margins simétricos (eram 8px 44px 8px 12px pra alinhar com o antigo
+  //     toggle que ficava no canto direito do header; toggle agora vive no
+  //     bottom, então simetria volta a fazer sentido). Margin igual aos items
+  //     do menu: 8px 12px (esq/dir) pra ocupar mais largura.
+  //   - Ícone Lucide `search` em vez de emoji 🔍 (coerência com resto do menu).
   const searchBtn = mk('button','app-sidebar-search-btn');
   searchBtn.type = 'button';
-  searchBtn.style.cssText = 'margin:8px 44px 8px 12px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:6px;color:var(--text2);font-size:12px;font-weight:500;transition:all .12s';
-  searchBtn.innerHTML = '<span style="font-size:13px">🔍</span><span style="flex:1;text-align:left">Buscar tudo</span><span style="display:inline-flex"><kbd style="font-size:9.5px;padding:1px 4px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:ui-monospace,monospace;color:var(--text3)">Ctrl K</kbd></span>';
+  searchBtn.style.cssText = 'margin:10px 12px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:8px;color:var(--text2);font-size:12px;font-weight:500;transition:all .12s;width:calc(100% - 24px)';
+  searchBtn.innerHTML = `<span class="app-sidebar-search-ico" style="display:inline-flex;align-items:center;color:var(--text3)">${lucideIcon('search', 14)}</span><span style="flex:1;text-align:left">Buscar tudo</span><span style="display:inline-flex"><kbd style="font-size:9.5px;padding:1px 4px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-family:ui-monospace,monospace;color:var(--text3)">Ctrl K</kbd></span>`;
   searchBtn.addEventListener('mouseenter', ()=>{searchBtn.style.borderColor='var(--gralia-purple)';searchBtn.style.color='var(--text)';});
   searchBtn.addEventListener('mouseleave', ()=>{searchBtn.style.borderColor='var(--border)';searchBtn.style.color='var(--text2)';});
   searchBtn.addEventListener('click',()=>{showCommandPalette();});
@@ -19343,22 +19699,10 @@ function buildAppSidebar(){
       moreBtn.appendChild(chevron);
 
       let flyout = null;
-      const closeFlyout = () => {
-        if(flyout){ flyout.remove(); flyout = null; }
-        document.removeEventListener('click', onFlyoutOutside);
-        document.removeEventListener('keydown', onFlyoutEsc);
-        moreBtn.classList.remove('more-open');
-      };
-      const onFlyoutOutside = (ev) => {
-        if(flyout && !flyout.contains(ev.target) && !moreBtn.contains(ev.target)){
-          closeFlyout();
-        }
-      };
-      const onFlyoutEsc = (ev) => { if(ev.key === 'Escape') closeFlyout(); };
-
-      moreBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if(flyout){ closeFlyout(); return; }
+      let hoverOpenTimer = null;
+      let hoverCloseTimer = null;
+      const openFlyout = () => {
+        if(flyout) return;
         flyout = mk('div','app-sidebar-more-flyout');
         const ftitle = mk('div','app-sidebar-more-flyout-title');
         ftitle.textContent = grp.items.length === 0 ? grp.label : `${grp.label} — Mais`;
@@ -19369,15 +19713,59 @@ function buildAppSidebar(){
         // Posicionar à direita do botão
         const rect = moreBtn.getBoundingClientRect();
         flyout.style.left = (rect.right + 6) + 'px';
-        // Alinha topo do flyout com topo do botão, mas garante não sair da tela
         const topPos = Math.min(rect.top, window.innerHeight - 320);
         flyout.style.top = Math.max(8, topPos) + 'px';
         document.body.appendChild(flyout);
         moreBtn.classList.add('more-open');
+        // V15.12.75.149 — Hover sobre o flyout cancela o close pendente
+        flyout.addEventListener('mouseenter', () => {
+          if(hoverCloseTimer){ clearTimeout(hoverCloseTimer); hoverCloseTimer = null; }
+        });
+        flyout.addEventListener('mouseleave', () => {
+          scheduleHoverClose();
+        });
         setTimeout(() => {
           document.addEventListener('click', onFlyoutOutside);
           document.addEventListener('keydown', onFlyoutEsc);
         }, 0);
+      };
+      const closeFlyout = () => {
+        if(flyout){ flyout.remove(); flyout = null; }
+        document.removeEventListener('click', onFlyoutOutside);
+        document.removeEventListener('keydown', onFlyoutEsc);
+        moreBtn.classList.remove('more-open');
+      };
+      const scheduleHoverClose = () => {
+        if(hoverOpenTimer){ clearTimeout(hoverOpenTimer); hoverOpenTimer = null; }
+        if(hoverCloseTimer) clearTimeout(hoverCloseTimer);
+        // 220ms de delay antes de fechar — dá tempo de mover o mouse pro flyout
+        hoverCloseTimer = setTimeout(() => { closeFlyout(); hoverCloseTimer = null; }, 220);
+      };
+      const onFlyoutOutside = (ev) => {
+        if(flyout && !flyout.contains(ev.target) && !moreBtn.contains(ev.target)){
+          closeFlyout();
+        }
+      };
+      const onFlyoutEsc = (ev) => { if(ev.key === 'Escape') closeFlyout(); };
+
+      // V15.12.75.149 — Hover (com 250ms delay) também abre — convenção tipo Notion/Linear
+      moreBtn.addEventListener('mouseenter', () => {
+        if(hoverCloseTimer){ clearTimeout(hoverCloseTimer); hoverCloseTimer = null; }
+        if(flyout) return;
+        if(hoverOpenTimer) clearTimeout(hoverOpenTimer);
+        hoverOpenTimer = setTimeout(() => { openFlyout(); hoverOpenTimer = null; }, 250);
+      });
+      moreBtn.addEventListener('mouseleave', () => {
+        if(hoverOpenTimer){ clearTimeout(hoverOpenTimer); hoverOpenTimer = null; }
+        if(flyout) scheduleHoverClose();
+      });
+      moreBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        // Cancela hover pendente
+        if(hoverOpenTimer){ clearTimeout(hoverOpenTimer); hoverOpenTimer = null; }
+        if(hoverCloseTimer){ clearTimeout(hoverCloseTimer); hoverCloseTimer = null; }
+        if(flyout){ closeFlyout(); return; }
+        openFlyout();
       });
       sec.appendChild(moreBtn);
     }
@@ -19736,15 +20124,11 @@ function render(){
     helpBtn.setAttribute('aria-label', 'Central de ajuda');
     helpBtn.innerHTML = lucideIcon('life-buoy', 20);
     let helpPopover = null;
+    let helpBackdrop = null;  // V15.12.75.147 — backdrop blur por trás do popover
     const closeHelpPopover = () => {
       if(helpPopover){ helpPopover.remove(); helpPopover = null; }
-      document.removeEventListener('click', onHelpOutside);
+      if(helpBackdrop){ helpBackdrop.remove(); helpBackdrop = null; }
       document.removeEventListener('keydown', onHelpEsc);
-    };
-    const onHelpOutside = (ev) => {
-      if(helpPopover && !helpPopover.contains(ev.target) && ev.target !== helpBtn){
-        closeHelpPopover();
-      }
     };
     const onHelpEsc = (ev) => {
       if(ev.key === 'Escape') closeHelpPopover();
@@ -19752,6 +20136,12 @@ function render(){
     helpBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       if(helpPopover){ closeHelpPopover(); return; }
+      // V15.12.75.147 — Backdrop: cobre toda a tela, desfoca o fundo,
+      // clique fecha. Mantém o helpBtn clicável (z-index acima).
+      helpBackdrop = mk('div','help-hub-backdrop');
+      helpBackdrop.addEventListener('click', () => closeHelpPopover());
+      document.body.appendChild(helpBackdrop);
+
       helpPopover = mk('div','help-hub-popover');
       helpPopover.innerHTML = `
         <div class="help-hub-title">Como podemos ajudar?</div>
@@ -19795,7 +20185,6 @@ function render(){
       });
       APP.appendChild(helpPopover);
       setTimeout(() => {
-        document.addEventListener('click', onHelpOutside);
         document.addEventListener('keydown', onHelpEsc);
       }, 0);
     });
@@ -34242,9 +34631,58 @@ const Pinhal = (() => {
     return { capped: false, xp: xpFinal, leveledUp, newLevel, newCards };
   }
 
+  // V15.12.75.147 — Reorganiza visualmente o stack de toasts de carta
+  // depois que uma sai (anima as restantes pra baixo).
+  // V15.12.75.149 — Quando libera espaço (toasts < MAX_VISIBLE), processa
+  // a fila se tiver carta pendente.
+  function _reflowPinhalCardStack(){
+    const STACK_BASE_BOTTOM = 80;
+    const STACK_STEP = 82;
+    const MAX_VISIBLE = 3;
+    const toasts = document.querySelectorAll('.pinhal-card-toast');
+    toasts.forEach((t, idx) => {
+      t.style.bottom = (STACK_BASE_BOTTOM + idx * STACK_STEP) + 'px';
+    });
+    // Tem fila? Mostra a próxima
+    if(window._pinhalQueue && window._pinhalQueue.length > 0 && toasts.length < MAX_VISIBLE){
+      const next = window._pinhalQueue.shift();
+      // Atualiza/remove o badge
+      _updatePinhalQueueBadge(-1, null);
+      // Pequeno delay pra animação do reflow terminar antes
+      setTimeout(() => showCardUnlockToast(next), 380);
+    }
+  }
+
+  // V15.12.75.149 — Badge "+N outras" no canto, mostra cartas pendentes.
+  // delta: +1 quando adiciona, -1 quando processa. card: pra preview rápido.
+  function _updatePinhalQueueBadge(delta, card){
+    let badge = document.querySelector('.pinhal-queue-badge');
+    const currentN = badge ? parseInt(badge.dataset.count || '0', 10) : 0;
+    const newN = Math.max(0, currentN + delta);
+    if(newN === 0){
+      if(badge) badge.remove();
+      return;
+    }
+    if(!badge){
+      badge = mk('div','pinhal-queue-badge');
+      // Posição: bem acima do stack visível (3 toasts × 82 + 80 + margem = ~340px)
+      badge.style.cssText = `
+        position:fixed;bottom:336px;left:24px;z-index:99950;
+        background:var(--surface);border:1.5px dashed var(--text3);
+        padding:6px 10px 6px 12px;border-radius:999px;
+        font-family:inherit;font-size:11.5px;font-weight:600;color:var(--text2);
+        box-shadow:0 4px 12px rgba(0,0,0,.10);
+        display:flex;align-items:center;gap:6px;
+        animation:fd .2s ease;
+      `;
+      document.body.appendChild(badge);
+    }
+    badge.dataset.count = newN;
+    badge.innerHTML = `<span style="font-size:13px">⋯</span><span>+${newN} ${newN === 1 ? 'carta' : 'cartas'} na fila</span>`;
+  }
+
   // V15.12.75.107 — Toast pequeno de card desbloqueado (canto inferior esquerdo).
   // Click expande pra modal com detalhes.
-  // V15.12.75.107 — Toast pequeno de card desbloqueado (canto inferior esquerdo).
   // V15.12.75.115 — Duração 10s + anel de countdown visível + som por categoria
   // + animações de entrada/saída mais fluidas + pausa no hover.
   function showCardUnlockToast(card){
@@ -34262,9 +34700,31 @@ const Pinhal = (() => {
       else playPinhalSound('card_plant');
     }catch(_){}
 
+    // V15.12.75.147 — Empilhamento vertical pra múltiplas cartas.
+    // Antes: todas no bottom:80px → sobrepunham (último cobria o anterior).
+    // Agora: calcula offset baseado em quantas cartas já estão na tela.
+    // Cada carta tem altura ~70px + 12px de gap = 82px de spacing.
+    // V15.12.75.149 — Cap visual: máx 3 cartas visíveis. Se chegar a 4ª,
+    // não cria toast novo — em vez disso, atualiza/cria indicador "+N outras"
+    // no canto que mostra cartas pendentes. User precisa fechar uma pra
+    // liberar slot. Evita lotar a tela com 5+ cards.
+    const STACK_BASE_BOTTOM = 80;
+    const STACK_STEP = 82;
+    const MAX_VISIBLE = 3;
+    const existingToasts = document.querySelectorAll('.pinhal-card-toast');
+    if(existingToasts.length >= MAX_VISIBLE){
+      // Lotado — só atualiza/cria o badge "+N outras"
+      _updatePinhalQueueBadge(1, card);
+      // Adiciona à fila pra processar quando uma sair
+      if(!window._pinhalQueue) window._pinhalQueue = [];
+      window._pinhalQueue.push(card);
+      return;
+    }
+    const bottomOffset = STACK_BASE_BOTTOM + (existingToasts.length * STACK_STEP);
+
     const TOTAL_MS = 10000;  // 10 segundos
-    const toast = mk('div');
-    toast.style.cssText = `position:fixed;bottom:80px;left:24px;z-index:99950;display:flex;align-items:center;gap:12px;padding:10px 16px 10px 12px;background:var(--surface);border:2px solid ${color};border-radius:14px;font-family:inherit;box-shadow:0 8px 24px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.10);cursor:pointer;max-width:340px;transition:transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease;opacity:0;transform:translateX(-30px) translateY(8px) scale(.92)`;
+    const toast = mk('div','pinhal-card-toast');  // V147: classe nomeada pra count
+    toast.style.cssText = `position:fixed;bottom:${bottomOffset}px;left:24px;z-index:99950;display:flex;align-items:center;gap:12px;padding:10px 16px 10px 12px;background:var(--surface);border:2px solid ${color};border-radius:14px;font-family:inherit;box-shadow:0 8px 24px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.10);cursor:pointer;max-width:340px;transition:transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease, bottom .35s cubic-bezier(.34,1.4,.64,1);opacity:0;transform:translateX(-30px) translateY(8px) scale(.92)`;
 
     // Anel de countdown: SVG circular ao redor do emoji
     // circunferência = 2πr; com r=22, c ≈ 138
@@ -34315,7 +34775,11 @@ const Pinhal = (() => {
       toast.style.transition = 'transform .45s cubic-bezier(.55,.06,.68,.19), opacity .35s ease';
       toast.style.opacity = '0';
       toast.style.transform = 'translateX(-40px) translateY(8px) scale(.92)';
-      setTimeout(() => { if(toast.parentNode) toast.remove(); }, 500);
+      setTimeout(() => {
+        if(toast.parentNode) toast.remove();
+        // V15.12.75.147 — Reflow do stack: cartas acima descem
+        _reflowPinhalCardStack();
+      }, 500);
     };
 
     // Hover pausa countdown (e o anel)
@@ -41723,6 +42187,218 @@ const MENTOR_DOSE_CATEGORIES = {
   study:    { label:'Estudo direto',       emoji:'📚', accent:'#8042fa' }
 };
 
+// V15.12.75.147 — Doses customizadas do user.
+// Retorna catálogo padrão + doses adicionadas pelo user (DATA.mentor.doses.custom).
+// Tem flag `source` pra distinguir: 'catalog' | 'user' | 'ia'.
+function getAllDoses(){
+  const customDoses = (DATA.mentor?.doses?.custom) || [];
+  return [
+    ...MENTOR_DOSES_CATALOG.map(d => ({ ...d, source: 'catalog' })),
+    ...customDoses.map(d => ({ ...d, source: d.source || 'user' }))
+  ];
+}
+
+// V15.12.75.147 — Adiciona dose customizada. Source pode ser 'user' (manual)
+// ou 'ia' (sugerida pelo mentor). Retorna o id criado.
+function addCustomDose({ category, emoji, label, timing, source }){
+  if(!DATA.mentor) DATA.mentor = {};
+  if(!DATA.mentor.doses) DATA.mentor.doses = { enabled: [], completedByDate: {}, custom: [] };
+  if(!DATA.mentor.doses.custom) DATA.mentor.doses.custom = [];
+  const id = 'custom_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+  DATA.mentor.doses.custom.push({
+    id,
+    category: category || 'study',
+    emoji: emoji || '✨',
+    label: label || 'Nova dose',
+    timing: timing || 'qualquer',
+    createdAt: Date.now(),
+    source: source || 'user'
+  });
+  // Ativa por padrão pra ficar visível imediatamente
+  if(!DATA.mentor.doses.enabled) DATA.mentor.doses.enabled = [];
+  if(!DATA.mentor.doses.enabled.includes(id)) DATA.mentor.doses.enabled.push(id);
+  try{ save(); }catch(_){}
+  return id;
+}
+
+// V15.12.75.147 — Remove dose customizada por id.
+function removeCustomDose(id){
+  if(!DATA.mentor?.doses?.custom) return;
+  DATA.mentor.doses.custom = DATA.mentor.doses.custom.filter(d => d.id !== id);
+  // Tira do enabled também
+  if(DATA.mentor.doses.enabled){
+    DATA.mentor.doses.enabled = DATA.mentor.doses.enabled.filter(eid => eid !== id);
+  }
+  try{ save(); }catch(_){}
+}
+
+// V15.12.75.147 — Modal pra adicionar dose customizada.
+// onAdded é callback chamado depois de salvar (re-render).
+function showAddCustomDoseModal(onAdded){
+  const overlay = mk('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:99700;display:flex;align-items:center;justify-content:center;padding:1rem;animation:fd .15s ease';
+
+  const box = mk('div','card');
+  box.style.cssText = 'max-width:440px;width:100%;max-height:90vh;overflow-y:auto;padding:1.5rem';
+
+  // Header
+  const head = mk('div');
+  head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem';
+  const title = mk('h3');
+  title.style.cssText = 'margin:0;font-size:16px;font-weight:700;color:var(--text)';
+  title.textContent = 'Nova dose de dopamina';
+  head.appendChild(title);
+  const closeBtn = mk('button');
+  closeBtn.type = 'button';
+  closeBtn.style.cssText = 'width:28px;height:28px;border-radius:6px;background:transparent;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-size:14px;color:var(--text2)';
+  closeBtn.innerHTML = '×';
+  closeBtn.addEventListener('click', () => overlay.remove());
+  head.appendChild(closeBtn);
+  box.appendChild(head);
+
+  // Descrição
+  const desc = mk('p','txt2');
+  desc.style.cssText = 'font-size:12.5px;margin:0 0 1.25rem;line-height:1.55';
+  desc.textContent = 'Adicione uma atividade saudável que retoma sua energia. Você pode habilitar/desabilitar depois.';
+  box.appendChild(desc);
+
+  // Form
+  const form = mk('div');
+  form.style.cssText = 'display:flex;flex-direction:column;gap:.875rem';
+
+  // Label (texto principal)
+  const labelGroup = mk('div');
+  labelGroup.innerHTML = `
+    <label style="display:block;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Descrição da dose</label>
+  `;
+  const labelInput = mk('input');
+  labelInput.type = 'text';
+  labelInput.placeholder = 'Ex: Caminhada pós-almoço com música';
+  labelInput.maxLength = 80;
+  labelInput.style.cssText = 'width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:13px;font-family:inherit';
+  labelGroup.appendChild(labelInput);
+  form.appendChild(labelGroup);
+
+  // Emoji
+  const emojiGroup = mk('div');
+  emojiGroup.innerHTML = `
+    <label style="display:block;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Emoji</label>
+  `;
+  const emojiInput = mk('input');
+  emojiInput.type = 'text';
+  emojiInput.placeholder = '✨';
+  emojiInput.maxLength = 4;
+  emojiInput.style.cssText = 'width:80px;padding:8px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:18px;text-align:center;font-family:inherit';
+  emojiGroup.appendChild(emojiInput);
+  form.appendChild(emojiGroup);
+
+  // Categoria
+  const catGroup = mk('div');
+  catGroup.innerHTML = `
+    <label style="display:block;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Categoria</label>
+  `;
+  const catRow = mk('div');
+  catRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px';
+  let selectedCat = 'study';
+  Object.entries(MENTOR_DOSE_CATEGORIES).forEach(([key, cat]) => {
+    const b = mk('button');
+    b.type = 'button';
+    b.dataset.cat = key;
+    const isOn = key === selectedCat;
+    b.style.cssText = `padding:6px 10px;border-radius:8px;border:1px solid ${isOn ? cat.accent : 'var(--border)'};background:${isOn ? cat.accent + '15' : 'transparent'};color:${isOn ? cat.accent : 'var(--text2)'};font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:all .15s`;
+    b.innerHTML = `<span>${cat.emoji}</span><span>${cat.label}</span>`;
+    b.addEventListener('click', () => {
+      selectedCat = key;
+      catRow.querySelectorAll('button').forEach(btn => {
+        const k = btn.dataset.cat;
+        const c = MENTOR_DOSE_CATEGORIES[k];
+        const on = k === selectedCat;
+        btn.style.border = `1px solid ${on ? c.accent : 'var(--border)'}`;
+        btn.style.background = on ? c.accent + '15' : 'transparent';
+        btn.style.color = on ? c.accent : 'var(--text2)';
+      });
+    });
+    catRow.appendChild(b);
+  });
+  catGroup.appendChild(catRow);
+  form.appendChild(catGroup);
+
+  // Timing
+  const timingGroup = mk('div');
+  timingGroup.innerHTML = `
+    <label style="display:block;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Período do dia</label>
+  `;
+  const timingRow = mk('div');
+  timingRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px';
+  const timingOpts = [
+    { id:'manha',    label:'☀ Manhã' },
+    { id:'tarde',    label:'🌤 Tarde' },
+    { id:'noite',    label:'🌙 Noite' },
+    { id:'qualquer', label:'· Qualquer hora' }
+  ];
+  let selectedTiming = 'qualquer';
+  timingOpts.forEach(opt => {
+    const b = mk('button');
+    b.type = 'button';
+    b.dataset.t = opt.id;
+    const isOn = opt.id === selectedTiming;
+    b.style.cssText = `padding:6px 10px;border-radius:8px;border:1px solid ${isOn ? 'var(--gralia-purple)' : 'var(--border)'};background:${isOn ? 'rgba(var(--gralia-purple-rgb),.10)' : 'transparent'};color:${isOn ? 'var(--gralia-purple)' : 'var(--text2)'};font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;transition:all .15s`;
+    b.textContent = opt.label;
+    b.addEventListener('click', () => {
+      selectedTiming = opt.id;
+      timingRow.querySelectorAll('button').forEach(btn => {
+        const tid = btn.dataset.t;
+        const on = tid === selectedTiming;
+        btn.style.border = `1px solid ${on ? 'var(--gralia-purple)' : 'var(--border)'}`;
+        btn.style.background = on ? 'rgba(var(--gralia-purple-rgb),.10)' : 'transparent';
+        btn.style.color = on ? 'var(--gralia-purple)' : 'var(--text2)';
+      });
+    });
+    timingRow.appendChild(b);
+  });
+  timingGroup.appendChild(timingRow);
+  form.appendChild(timingGroup);
+
+  box.appendChild(form);
+
+  // Footer com ações
+  const foot = mk('div');
+  foot.style.cssText = 'display:flex;gap:8px;margin-top:1.5rem;justify-content:flex-end';
+  const cancelBtn = mk('button');
+  cancelBtn.type = 'button';
+  cancelBtn.style.cssText = 'padding:8px 14px;background:transparent;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;color:var(--text2);font-weight:500';
+  cancelBtn.textContent = 'Cancelar';
+  cancelBtn.addEventListener('click', () => overlay.remove());
+  foot.appendChild(cancelBtn);
+
+  const saveBtn = mk('button');
+  saveBtn.type = 'button';
+  saveBtn.style.cssText = 'padding:8px 16px;background:var(--gralia-purple);border:1px solid var(--gralia-purple);border-radius:8px;cursor:pointer;font-family:inherit;font-size:12.5px;color:#fff;font-weight:600';
+  saveBtn.textContent = '+ Adicionar';
+  saveBtn.addEventListener('click', () => {
+    const label = labelInput.value.trim();
+    if(!label){ labelInput.focus(); labelInput.style.borderColor = 'var(--red-text)'; return; }
+    const emoji = emojiInput.value.trim() || '✨';
+    addCustomDose({
+      category: selectedCat,
+      emoji,
+      label,
+      timing: selectedTiming,
+      source: 'user'
+    });
+    overlay.remove();
+    if(typeof onAdded === 'function') onAdded();
+  });
+  foot.appendChild(saveBtn);
+  box.appendChild(foot);
+
+  overlay.appendChild(box);
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  setTimeout(() => labelInput.focus(), 50);
+}
+
 // V15.12.75.135 — Helpers de doses
 function getCurrentDayPeriod(){
   const hr = new Date().getHours();
@@ -41744,7 +42420,8 @@ function suggestMentorDosesForNow(m, max){
   const todayISO = getTodayDoseISO();
   const done = new Set((m.doses.completedByDate || {})[todayISO] || []);
   const period = getCurrentDayPeriod();
-  const candidates = MENTOR_DOSES_CATALOG.filter(d =>
+  // V15.12.75.147 — Considera catálogo + doses customizadas (user/IA)
+  const candidates = getAllDoses().filter(d =>
     enabled.has(d.id) &&
     !done.has(d.id) &&
     (d.timing === 'qualquer' || d.timing === period)
@@ -41793,32 +42470,39 @@ function toggleMentorDose(m, doseId){
   return true;
 }
 
-// V15.12.75.129 — Codinomes ficcionais inspirados em CoD/Ghost Recon.
-// Halsey "Cipher" = comandante tático/estratégico (analítico, frio, métricas).
-// Vargas "Drago" = operador de assalto (intenso, agressivo psicológico).
-// Operação Distintivo = nome da missão do user (extraído das anotações).
+// V15.12.75.129 — Codinomes ficcionais.
+// V15.12.75.148 — Renomeados pra arquétipos brasileiros mais identificáveis:
+//   - Halsey "Cipher" → Del. Marcos Aragão "Vetor"
+//     Arquétipo: Delegado Federal da PF (Comando de Operações Táticas/COT).
+//     Tom: analítico, autoridade adquirida, sóbrio. Cor: azul-marinho institucional.
+//   - Sgt. Vargas "Drago" → Sgt. Caio Lobo
+//     Arquétipo: Operador de elite (BOPE/CADAR/CORE) com pegada Goggins.
+//     Tom: intenso, físico, brutal sem caricatura. Cor: carmim profundo.
+// Operação X = nome da missão do user (extraído das anotações).
+// IMPORTANTE: as chaves de objeto ('halsey'/'drago') ficam por compat — são
+// IDs de persistência (DATA.mentor armazena conversas com essas keys).
 const MENTOR_AGENTS = {
   halsey: {
     id: 'halsey',
-    name: 'Cap. Halsey',
-    callsign: 'Cipher',
-    role: 'Comando Tático',
+    name: 'Del. Marcos Aragão',
+    callsign: 'Vetor',
+    role: 'Comando de Operações Táticas',
     avatar: '🎯',
-    accent: '#3a5a8a',   // azul-grafite
-    accentBg: 'rgba(58,90,138,.08)',
-    accentBorder: 'rgba(58,90,138,.30)',
-    bio: 'Estratégico, frio, foco em métricas e execução.'
+    accent: '#1e3a5f',   // azul-marinho institucional (PF)
+    accentBg: 'rgba(30,58,95,.08)',
+    accentBorder: 'rgba(30,58,95,.30)',
+    bio: 'Delegado Federal experiente. Estratégico, sóbrio, lê o quadro completo.'
   },
   drago: {
     id: 'drago',
-    name: 'Sgt. Vargas',
-    callsign: 'Drago',
-    role: 'Operador de Assalto',
+    name: 'Sgt. Caio Lobo',
+    callsign: 'Lobo',
+    role: 'Operador de Elite (BOPE/CADAR)',
     avatar: '🔥',
-    accent: '#a02942',   // vermelho-carmim
+    accent: '#a02942',   // vermelho-carmim BOPE
     accentBg: 'rgba(160,41,66,.08)',
     accentBorder: 'rgba(160,41,66,.30)',
-    bio: 'Intenso, brutal psicológico, combate a procrastinação.'
+    bio: 'Operacional puro. Intenso, físico, não negocia execução.'
   }
 };
 
@@ -42000,9 +42684,11 @@ function getMentorSnapshot(){
     }
   }
   // Labels das doses tomadas hoje (pros mentores referenciarem)
+  // V15.12.75.147 — Considera doses customizadas também
+  const _allDosesForLabel = getAllDoses();
   const dosesTodayLabels = dosesTodayList
     .map(id => {
-      const d = MENTOR_DOSES_CATALOG.find(x => x.id === id);
+      const d = _allDosesForLabel.find(x => x.id === id);
       return d ? d.label : null;
     })
     .filter(Boolean);
@@ -42181,29 +42867,31 @@ function mentorSystemPrompt(snap){
 
   return `Você está rodando como DOIS mentores ficcionais que respondem juntos num chat. Eles são:
 
-🎯 CAP. HALSEY (codinome CIPHER) — Comando Tático
-- Voz: fria, analítica, estratégica, cirúrgica.
-- Inspiração: Capt. Price (CoD MW) + Ghost (Ghost Recon).
+🎯 DEL. MARCOS ARAGÃO (codinome VETOR) — Comando de Operações Táticas / PF
+- Voz: fria, analítica, estratégica, cirúrgica. Autoridade vinda de anos na ponta.
+- Arquétipo: Delegado Federal experiente do COT (Comando de Operações Táticas) da Polícia Federal. Já comandou apreensões grandes, planejou operações de meses. Conhece o jogo a longo prazo.
 - Trata o user como operador em campo. Fala em métricas, protocolos, missões.
 - Reconhece vitórias REAIS sem fofura: "1 pomodoro é melhor que zero — sustenta o trilho."
 - Aponta falhas como problemas táticos a corrigir, não falhas morais.
-- Usa termos: operador, missão, protocolo, torre de controle, execução, briefing, contato.
+- Usa termos: operador, missão, protocolo, torre de controle, execução, briefing, contato, inteligência operacional.
 - Resposta típica: começa com leitura da situação, identifica padrão, sugere ação concreta.
 - Quando o user faz pouco mas é começo do dia, é paciente. Quando o user falha à noite com dia inteiro perdido, é direto.
+- Nunca grita. Fala como quem já viu de tudo e sabe que o trabalho vence o talento.
 
-🔥 SGT. VARGAS (codinome DRAGO) — Operador de Assalto
+🔥 SGT. CAIO LOBO — Operador de Elite (BOPE/CADAR/CORE)
 - Voz: intensa, brutal psicológico positivo, combativo.
-- Inspiração: Soap MacTavish + Reznov.
+- Arquétipo: Operador de elite tipo BOPE/CADAR/CORE, com pegada David Goggins. Já passou pelo CADAR (Curso de Ações de Comandos), conhece dor física e mental de quem foi até o limite.
 - Trata o user como irmão de pelotão. Cobra na cara, mas porque acredita.
 - Combate procrastinação, dopamina rápida, conforto, sabotagem mental.
 - Não romantiza falha. Não amolece. Mas também não destrói — cobra pra construir.
 - Usa palavras curtas, impactantes. Linhas separadas. Tom de cara que aguenta porrada.
+- Filosofia Goggins: "ninguém vai te salvar"; "acordar dolorido é o normal"; "callusing the mind".
 - Quando vê vitória real: reconhece com energia ("É ISSO. Continua.").
 - Quando vê desculpa: chama de desculpa.
 
 REGRAS CRÍTICAS DE COMPORTAMENTO:
-1. Vocês são DOIS personagens distintos. Halsey é tático. Drago é visceral. Não misture as vozes.
-2. Halsey fala primeiro (análise). Drago fala depois (cobrança/motivação direta).
+1. Vocês são DOIS personagens distintos. Aragão é tático/estratégico. Lobo é visceral/operacional. Não misture as vozes.
+2. Aragão fala primeiro (análise). Lobo fala depois (cobrança/motivação direta).
 3. NUNCA invente números, ações ou eventos que o user não relatou. Use APENAS o briefing real do app + o que o user escreveu.
 4. Se o user diz "fiz 3 pomos" e o briefing diz "0 pomos hoje", aponte a discrepância sem julgar — pode ter sido offline, pode ser engano.
 5. NÃO romantize falha. NÃO use frases motivacionais vazias tipo "amanhã é um novo dia!".
@@ -42244,25 +42932,45 @@ TIPOS DE RECOMPENSA:
 - "streak_shield": RARÍSSIMO. Só pra operador que demonstrou várias semanas de consistência e merece proteção pra um descanso. Use no máximo 1 vez por semana.
 
 QUEM CONCEDE:
-- Halsey concede com formalidade tática ("Reconhecimento operacional concedido — você executou acima do briefing").
-- Drago concede com intensidade ("É ISSO, operador. Bandeira fincada. Eu vi.").
-- Defina em "grantedBy" qual mentor está concedendo: "halsey" ou "drago".
+- Aragão concede com formalidade tática ("Reconhecimento operacional concedido — você executou acima do briefing").
+- Lobo concede com intensidade ("É ISSO, operador. Bandeira fincada. Eu vi.").
+- Defina em "grantedBy" qual mentor está concedendo: "halsey" ou "drago" (chaves internas, NÃO mude — o app usa essas chaves pra mapear cor e voz).
 
 FORMATO DE RESPOSTA (OBRIGATÓRIO):
 Você deve responder APENAS com um JSON válido com esta estrutura:
 {
-  "halsey": "texto da resposta do Halsey (200-500 palavras)",
-  "drago": "texto da resposta do Drago (150-400 palavras)",
+  "halsey": "texto da resposta do Del. Marcos Aragão / Vetor (200-500 palavras)",
+  "drago": "texto da resposta do Sgt. Caio Lobo (150-400 palavras)",
   "reward": {
     "type": "commendation" | "xp_bonus" | "streak_shield",
     "amount": 30,
     "reason": "motivo conciso (10-150 chars) — o que o operador fez de excepcional",
     "grantedBy": "halsey" | "drago"
+  },
+  "suggestedDose": {
+    "label": "frase curta (até 80 chars) descrevendo o micro-hábito",
+    "emoji": "1 emoji (ex: ☀)",
+    "category": "meals" | "physical" | "sensory" | "social" | "control" | "study",
+    "timing": "manha" | "tarde" | "noite" | "qualquer"
   }
 }
 
+V15.12.75.148 — IMPORTANTE: as chaves "halsey" e "drago" no JSON são IDs internos do sistema, NÃO mude. Mas o conteúdo de cada um agora é dos novos personagens:
+- "halsey" = fala do Del. Marcos Aragão (codinome Vetor)
+- "drago" = fala do Sgt. Caio Lobo
+
 O campo "reward" é OPCIONAL. Inclua APENAS quando os critérios acima forem cumpridos. Na grande maioria das respostas, NÃO inclua "reward".
 "amount" só é obrigatório se type="xp_bonus". Pra outros, omita.
+
+V15.12.75.147 — O campo "suggestedDose" também é OPCIONAL e RARO. Use quando:
+- O operador descreveu um hábito/ritual NOVO próprio que não está no catálogo dele
+- Você (mentor) identificou um micro-hábito que faria diferença na rotina dele
+- O hábito é REALISTA, especifico do contexto do operador, e saudável (não procrastinador)
+- Você está sugerindo algo que o operador pode adotar daqui pra frente
+NÃO use suggestedDose pra repetir o que já está no catálogo (sol matinal, jazz, banho gelado, etc).
+NÃO use mais de 1 vez por semana. Na maioria das respostas, NÃO inclua suggestedDose.
+Quando incluir, mencione brevemente na fala que adicionou: "Adicionei isso nas suas doses..."
+A dose adicionada é salva automaticamente nas doses do operador (categoria "Sua" - origem IA).
 
 Não inclua markdown fences (\`\`\`). Não inclua comentários. APENAS o JSON.
 Cada campo de texto é uma string com a fala COMPLETA daquele mentor. Pode ter \\n pra quebras de linha.
@@ -42384,10 +43092,38 @@ async function sendMentorMessage(userText, conv, snap){
       console.warn('[mentor-reward] falha ao normalizar reward proposta:', e);
     }
   }
+  // V15.12.75.147 — Mentor pode sugerir nova dose de dopamina.
+  // Se houver `suggestedDose`, salva automaticamente em DATA.mentor.doses.custom
+  // com source='ia'. Aparece na lista de doses do user na próxima abertura.
+  let suggestedDoseOut = null;
+  if(parsed.suggestedDose && typeof parsed.suggestedDose === 'object' && parsed.suggestedDose.label){
+    try{
+      // Sanity: label até 80 chars, emoji até 4, categoria válida, timing válido
+      const VALID_CATS = ['meals','physical','sensory','social','control','study'];
+      const VALID_TIMINGS = ['manha','tarde','noite','qualquer'];
+      const cat = VALID_CATS.includes(parsed.suggestedDose.category)
+        ? parsed.suggestedDose.category
+        : 'study';
+      const timing = VALID_TIMINGS.includes(parsed.suggestedDose.timing)
+        ? parsed.suggestedDose.timing
+        : 'qualquer';
+      const label = String(parsed.suggestedDose.label).slice(0, 80);
+      const emoji = String(parsed.suggestedDose.emoji || '✨').slice(0, 4);
+      // Evita duplicatas (label igual a alguma já existente)
+      const allLabels = getAllDoses().map(d => d.label.toLowerCase());
+      if(!allLabels.includes(label.toLowerCase())){
+        const newId = addCustomDose({ category: cat, emoji, label, timing, source: 'ia' });
+        suggestedDoseOut = { id: newId, category: cat, emoji, label, timing };
+      }
+    }catch(e){
+      console.warn('[mentor-suggestedDose] falha ao processar dose sugerida:', e);
+    }
+  }
   return {
     halsey: (parsed.halsey || '').trim(),
     drago: (parsed.drago || '').trim(),
-    reward: rewardOut
+    reward: rewardOut,
+    suggestedDose: suggestedDoseOut
   };
 }
 
@@ -42446,7 +43182,7 @@ async function summarizeMentorConversation(conv){
   }).filter(Boolean).join('\n\n');
   if(transcript.length < 100) return null;
 
-  const sys = `Você é um redator técnico que resume conversas operacionais entre um operador e seus mentores Halsey/Drago. Resuma em 3-5 linhas curtas, em terceira pessoa, capturando:
+  const sys = `Você é um redator técnico que resume conversas operacionais entre um operador e seus mentores Aragão (Vetor) e Lobo. Resuma em 3-5 linhas curtas, em terceira pessoa, capturando:
 1. Estado do operador no início da conversa (o que relatou)
 2. Padrões/problemas identificados pelos mentores
 3. Compromissos ou ações que o operador prometeu/aceitou
@@ -42619,7 +43355,7 @@ function showRewardAcceptModal(m, reward, onAccept, onDecline){
     console.warn('[mentor-reward] tipo desconhecido:', reward.type);
     return;
   }
-  const agentName = reward.grantedBy === 'drago' ? 'Sgt. Vargas (Drago)' : 'Cap. Halsey (Cipher)';
+  const agentName = reward.grantedBy === 'drago' ? 'Sgt. Caio Lobo' : 'Del. Marcos Aragão (Vetor)';
   const agentEmoji = reward.grantedBy === 'drago' ? '🔥' : '🎯';
   // Detalhe do que vai ganhar
   let effectLine;
@@ -42774,7 +43510,7 @@ function openMentorAdminPanel(m, conv, wrap){
     btn.type = 'button';
     const meta = MENTOR_REWARD_META[type];
     btn.style.cssText = `padding:.625rem .875rem;background:${meta.color}10;border:1px solid ${meta.color}40;border-radius:10px;cursor:pointer;font-family:inherit;font-size:13px;color:var(--text);text-align:left;display:flex;align-items:center;gap:10px;transition:all .15s ease`;
-    btn.innerHTML = `<span style="font-size:18px">${meta.emoji}</span><span style="flex:1"><b>${label}</b><div style="font-size:11px;color:var(--text3);font-weight:400;margin-top:2px">${escapeHTML(customReason)}${amount ? ` · +${amount} XP` : ''}</div></span><span style="color:${meta.color};font-size:11px;font-weight:700">${(agentId === 'drago' ? '🔥 Drago' : '🎯 Halsey')}</span>`;
+    btn.innerHTML = `<span style="font-size:18px">${meta.emoji}</span><span style="flex:1"><b>${label}</b><div style="font-size:11px;color:var(--text3);font-weight:400;margin-top:2px">${escapeHTML(customReason)}${amount ? ` · +${amount} XP` : ''}</div></span><span style="color:${meta.color};font-size:11px;font-weight:700">${(agentId === 'drago' ? '🔥 Lobo' : '🎯 Aragão')}</span>`;
     btn.addEventListener('click', () => {
       // Cria reward fake e abre modal de aceitação
       const reward = normalizeMentorReward({
@@ -42966,7 +43702,7 @@ function exportMentorConversation(conv){
     if(msg.role === 'user'){
       md += `## 👤 Operador\n\n${msg.text}\n\n`;
     } else if(msg.role === 'mentor' && !msg.isLoading && !msg.isError){
-      const agentName = msg.agent === 'drago' ? '🔥 Sgt. Vargas (Drago)' : '🎯 Cap. Halsey (Cipher)';
+      const agentName = msg.agent === 'drago' ? '🔥 Sgt. Caio Lobo' : '🎯 Del. Marcos Aragão (Vetor)';
       md += `## ${agentName}\n\n${msg.text}\n\n`;
     } else if(msg.role === 'mentor' && msg.isError){
       md += `## ⚠️ Erro\n\n${msg.text}\n\n`;
@@ -42998,7 +43734,7 @@ function exportAllMentorConversations(m){
       if(msg.role === 'user'){
         md += `**👤 Operador:**\n\n${msg.text}\n\n`;
       } else if(msg.role === 'mentor' && !msg.isLoading && !msg.isError){
-        const agentName = msg.agent === 'drago' ? '🔥 Drago' : '🎯 Halsey';
+        const agentName = msg.agent === 'drago' ? '🔥 Lobo' : '🎯 Aragão';
         md += `**${agentName}:**\n\n${msg.text}\n\n`;
       }
     });
@@ -43081,7 +43817,7 @@ function renderMentor(){
   hero.appendChild(heroRow);
   const heroLead = mk('p','mentor-hero-lead');
   // V15.12.75.131 — Lead menciona o "símbolo" final pra contextualizar a missão.
-  heroLead.textContent = `Sala de operações. Halsey analisa, Drago cobra. Objetivo: ${op.symbol}. Tudo que você compartilha aqui é privado.`;
+  heroLead.textContent = `Sala de operações. Aragão analisa, Lobo cobra. Objetivo: ${op.symbol}. Tudo que você compartilha aqui é privado.`;
   hero.appendChild(heroLead);
   wrap.appendChild(hero);
 
@@ -43143,8 +43879,8 @@ function renderMentor(){
       <span class="mentor-chat-status-label">Mentores em standby</span>
     </div>
     <div class="mentor-agents-row">
-      <span class="mentor-agent-chip mentor-agent-halsey">🎯 Halsey</span>
-      <span class="mentor-agent-chip mentor-agent-drago">🔥 Drago</span>
+      <span class="mentor-agent-chip mentor-agent-halsey">🎯 Aragão</span>
+      <span class="mentor-agent-chip mentor-agent-drago">🔥 Lobo</span>
     </div>
   `;
   // V15.12.75.134 — Botão de ações da conversa (⋯) à direita.
@@ -43297,9 +44033,9 @@ function renderMentor(){
       // (mentor-quickrow). Aqui sobra só o convite visual + instrução.
       const empty = mk('div','mentor-empty');
       empty.innerHTML = `
-        <div class="mentor-empty-icon">🎙</div>
+        <div class="mentor-empty-icon">${lucideIcon('mic', 36)}</div>
         <h3 class="mentor-empty-title">Aguardando relatório, operador.</h3>
-        <p class="mentor-empty-sub">Conte como está o seu dia, o que travou, o que cumpriu. Halsey e Drago vão analisar com base nos seus dados reais do app — ou use uma das sugestões abaixo.</p>
+        <p class="mentor-empty-sub">Conte como está o seu dia, o que travou, o que cumpriu. Aragão e Lobo vão analisar com base nos seus dados reais do app — ou use uma das sugestões abaixo.</p>
       `;
       chatStream.appendChild(empty);
       return;
@@ -43315,7 +44051,7 @@ function renderMentor(){
         // V15.12.75.139 — Célula de recompensa entre as bolhas
         const r = msg.reward;
         const meta = MENTOR_REWARD_META[r.type] || MENTOR_REWARD_META.commendation;
-        const agentName = r.grantedBy === 'drago' ? 'Sgt. Vargas (Drago)' : 'Cap. Halsey (Cipher)';
+        const agentName = r.grantedBy === 'drago' ? 'Sgt. Caio Lobo' : 'Del. Marcos Aragão (Vetor)';
         const agentEmoji = r.grantedBy === 'drago' ? '🔥' : '🎯';
         let effectText;
         if(r.type === 'xp_bonus'){
@@ -43481,8 +44217,17 @@ function renderMentor(){
           console.warn('[mentor-reward] reward proposta inválida:', validation.reason);
         }
       }
+      // V15.12.75.147 — Se IA sugeriu uma dose nova, ela já foi salva
+      // automaticamente em DATA.mentor.doses.custom (source='ia') no parser.
+      // Aqui só mostramos um toast pro user saber que isso aconteceu.
+      if(reply.suggestedDose){
+        try{
+          if(typeof showToast === 'function'){
+            showToast(`${reply.suggestedDose.emoji} Nova dose adicionada: "${reply.suggestedDose.label}"`, 4500);
+          }
+        }catch(_){}
+      }
     }catch(e){
-      // 5. Erro — substitui placeholders por mensagem de erro
       let errMsg = 'Falha no contato com a torre de controle.';
       if(e.code === 'credits') errMsg = 'Créditos insuficientes. Recarregue em Configurações → Plano pra reativar o canal.';
       else if(e.code === 'network') errMsg = 'Sem sinal de rede. Verifique a conexão e tente de novo.';
@@ -43613,12 +44358,14 @@ function renderMentor(){
     `;
   } else {
     // Renderiza lista compacta de sugestões + já feitas hoje
+    // V15.12.75.147 — Inclui doses customizadas
+    const _allDosesCompact = getAllDoses();
     const stats = getMentorDoseWeekStats(m);
     const doneTodayLabels = dosesDoneToday
-      .map(id => MENTOR_DOSES_CATALOG.find(d => d.id === id))
+      .map(id => _allDosesCompact.find(d => d.id === id))
       .filter(Boolean);
     // Header com counter
-    const totalAvail = MENTOR_DOSES_CATALOG.filter(d => (m.doses.enabled||[]).includes(d.id)).length;
+    const totalAvail = _allDosesCompact.filter(d => (m.doses.enabled||[]).includes(d.id)).length;
     let listHTML = `${dosesEyebrow}
       <div class="mentor-doses-counter">
         <b style="color:${doneTodayLabels.length > 0 ? '#10b981' : 'var(--text2)'}">${doneTodayLabels.length}</b>
@@ -43884,7 +44631,8 @@ function openDosesPanel(m, anchorWrap){
   const counter = mk('div');
   const updateCounter = () => {
     const enabledCount = (m.doses.enabled || []).length;
-    const total = MENTOR_DOSES_CATALOG.length;
+    // V15.12.75.147 — Total inclui doses customizadas (user/IA)
+    const total = getAllDoses().length;
     counter.style.cssText = 'font-size:13px;color:var(--text2)';
     counter.innerHTML = `<b style="color:var(--text)">${enabledCount}</b> de ${total} habilitadas`;
   };
@@ -43902,7 +44650,8 @@ function openDosesPanel(m, anchorWrap){
     return b;
   };
   actions.appendChild(mkActionBtn('Ativar todas', () => {
-    m.doses.enabled = MENTOR_DOSES_CATALOG.map(d => d.id);
+    // V15.12.75.147 — Inclui custom
+    m.doses.enabled = getAllDoses().map(d => d.id);
     try{ save(); }catch(_){}
     refreshList();
     updateCounter();
@@ -43932,9 +44681,11 @@ function openDosesPanel(m, anchorWrap){
 
   const refreshList = () => {
     listWrap.innerHTML = '';
+    // V15.12.75.147 — Combina catálogo + doses customizadas (user/IA)
+    const allDoses = getAllDoses();
     Object.keys(MENTOR_DOSE_CATEGORIES).forEach(catKey => {
       const cat = MENTOR_DOSE_CATEGORIES[catKey];
-      const doses = MENTOR_DOSES_CATALOG.filter(d => d.category === catKey);
+      const doses = allDoses.filter(d => d.category === catKey);
       if(doses.length === 0) return;
       // Header categoria
       const catBlock = mk('div');
@@ -43946,14 +44697,22 @@ function openDosesPanel(m, anchorWrap){
       catList.style.cssText = 'display:flex;flex-direction:column;gap:4px';
       doses.forEach(dose => {
         const enabled = (m.doses.enabled || []).includes(dose.id);
+        const isCustom = dose.source === 'user' || dose.source === 'ia';
         const row = mk('button');
         row.type = 'button';
-        row.style.cssText = `display:flex;align-items:center;gap:10px;padding:.5rem .75rem;background:${enabled ? 'rgba(128,66,250,.06)' : 'transparent'};border:1px solid ${enabled ? 'rgba(128,66,250,.25)' : 'var(--border)'};border-radius:8px;cursor:pointer;font-family:inherit;width:100%;text-align:left;transition:all .15s ease`;
+        row.style.cssText = `display:flex;align-items:center;gap:10px;padding:.5rem .75rem;background:${enabled ? 'rgba(var(--gralia-purple-rgb),.06)' : 'transparent'};border:1px solid ${enabled ? 'rgba(var(--gralia-purple-rgb),.25)' : 'var(--border)'};border-radius:8px;cursor:pointer;font-family:inherit;width:100%;text-align:left;transition:all .15s ease`;
         const badge = timingBadge(dose.timing);
+        // V15.12.75.147 — Marca origem: badge "Você" ou "IA" + botão remover
+        const sourceBadge = dose.source === 'ia'
+          ? '<span style="flex-shrink:0;font-size:9px;color:#a02942;background:rgba(160,41,66,.10);border:1px solid rgba(160,41,66,.25);font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.4px">IA</span>'
+          : dose.source === 'user'
+            ? '<span style="flex-shrink:0;font-size:9px;color:var(--gralia-purple);background:rgba(var(--gralia-purple-rgb),.10);border:1px solid rgba(var(--gralia-purple-rgb),.25);font-weight:700;padding:1px 6px;border-radius:4px;letter-spacing:.4px">VOCÊ</span>'
+            : '';
         row.innerHTML = `
           <span style="width:18px;height:18px;border-radius:5px;border:1.5px solid ${enabled ? 'var(--gralia-purple)' : 'var(--border)'};background:${enabled ? 'var(--gralia-purple)' : 'transparent'};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;color:#fff;font-weight:700;line-height:1">${enabled ? '✓' : ''}</span>
           <span style="font-size:14px;flex-shrink:0">${dose.emoji}</span>
           <span style="flex:1;font-size:13px;color:var(--text);line-height:1.4">${escapeHTML(dose.label)}</span>
+          ${sourceBadge}
           <span style="flex-shrink:0;font-size:10px;color:${badge.color};font-weight:600">${badge.label}</span>
         `;
         row.addEventListener('click', () => {
@@ -43965,11 +44724,45 @@ function openDosesPanel(m, anchorWrap){
           refreshList();
           updateCounter();
         });
+        // V15.12.75.147 — Botão remover só pra customizadas (user/ia)
+        if(isCustom){
+          const delBtn = mk('button');
+          delBtn.type = 'button';
+          delBtn.style.cssText = 'flex-shrink:0;margin-left:6px;width:22px;height:22px;border-radius:5px;background:transparent;border:1px solid var(--border);color:var(--text3);cursor:pointer;font-family:inherit;font-size:13px;display:inline-flex;align-items:center;justify-content:center;transition:all .15s ease';
+          delBtn.innerHTML = '×';
+          delBtn.title = 'Remover esta dose';
+          delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if(!confirm('Remover esta dose? Esta ação não pode ser desfeita.')) return;
+            removeCustomDose(dose.id);
+            refreshList();
+            updateCounter();
+          });
+          delBtn.addEventListener('mouseenter', () => { delBtn.style.borderColor = 'var(--red-text)'; delBtn.style.color = 'var(--red-text)'; });
+          delBtn.addEventListener('mouseleave', () => { delBtn.style.borderColor = 'var(--border)'; delBtn.style.color = 'var(--text3)'; });
+          // Insere antes do sourceBadge
+          row.appendChild(delBtn);
+        }
         catList.appendChild(row);
       });
       catBlock.appendChild(catList);
       listWrap.appendChild(catBlock);
     });
+
+    // V15.12.75.147 — Botão "+ Adicionar dose" no fim da lista
+    const addCard = mk('button');
+    addCard.type = 'button';
+    addCard.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:8px;padding:.75rem 1rem;background:transparent;border:1.5px dashed var(--border);border-radius:10px;cursor:pointer;font-family:inherit;width:100%;color:var(--gralia-purple);font-size:13px;font-weight:600;transition:all .15s ease;margin-top:.5rem';
+    addCard.innerHTML = `<span style="font-size:16px">+</span><span>Adicionar dose personalizada</span>`;
+    addCard.addEventListener('mouseenter', () => { addCard.style.background = 'rgba(var(--gralia-purple-rgb),.06)'; addCard.style.borderColor = 'var(--gralia-purple)'; addCard.style.borderStyle = 'solid'; });
+    addCard.addEventListener('mouseleave', () => { addCard.style.background = 'transparent'; addCard.style.borderColor = 'var(--border)'; addCard.style.borderStyle = 'dashed'; });
+    addCard.addEventListener('click', () => {
+      showAddCustomDoseModal(() => {
+        refreshList();
+        updateCounter();
+      });
+    });
+    listWrap.appendChild(addCard);
   };
   refreshList();
 
@@ -60395,12 +61188,15 @@ function renderEditals(){
   // V15.12.3: Abas "Meus" (locais) e "Comunidade" (públicos de todos os
   // usuários). Antes só tinha lista local. Jean pediu visão de TODOS os
   // editais publicados, organizados por banca/cargo/data.
-  if(!ST.editalsTab) ST.editalsTab = 'mine';
+  // V15.12.75.146 — "Da comunidade" agora vem em 1º + é tab default.
+  // Antes "Meus editais" era o default mas pra usuário novo a aba estava
+  // vazia. Comunidade é mais útil pra começar (descobrir conteúdo).
+  if(!ST.editalsTab) ST.editalsTab = 'community';
   const tabsRow = mk('div');
   tabsRow.style.cssText = 'display:flex;gap:6px;margin:1.25rem 0 1rem;border-bottom:1px solid var(--border);padding-bottom:0';
   const tabs = [
-    {key:'mine', label:'📁 Meus editais', count: (DATA.editals||[]).length},
-    {key:'community', label:'🌐 Da comunidade', count: null}
+    {key:'community', label:'🌐 Da comunidade', count: null},
+    {key:'mine', label:'📁 Meus editais', count: (DATA.editals||[]).length}
   ];
   tabs.forEach(t=>{
     const tb = mk('button');
@@ -60534,19 +61330,43 @@ function renderEditalsCommunity(parent){
       // Antes pedia total_uses (não existe na tabela — é calculado dentro
       // do RPC search_public_resources via JOIN com resource_imports).
       // Removido. owner_username agora vem do JOIN explícito com profiles.
-      const {data, error} = await supa
+      //
+      // V15.12.75.146 — Bug fix: erro "Could not find a relationship between
+      // 'shared_resources' and 'profiles' in the schema cache". A Postgres
+      // FK existe mas o PostgREST não cacheou a relação. Workaround: 2
+      // queries (uma na tabela, outra nos profiles pelos owner_ids
+      // coletados), depois merge no JS. Sem migration.
+      const {data: rawData, error} = await supa
         .from('shared_resources')
-        .select('id, owner_id, title, description, payload, created_at, moderation_status, profiles(username, display_name)')
+        .select('id, owner_id, title, description, payload, created_at, moderation_status')
         .eq('resource_type', 'edital')
         .eq('is_public', true)
         .order('created_at', {ascending:false})
         .limit(100);
       if(error) throw error;
-      let items = (data || []).map(it => ({
-        ...it,
-        owner_username: it.profiles?.username || null,
-        owner_display_name: it.profiles?.display_name || null
-      }));
+      const dataArr = rawData || [];
+      // Busca profiles dos owners únicos (1 query só)
+      const ownerIds = [...new Set(dataArr.map(d => d.owner_id).filter(Boolean))];
+      const profileMap = {};
+      if(ownerIds.length > 0){
+        const {data: profs, error: pErr} = await supa
+          .from('profiles')
+          .select('id, username, display_name')
+          .in('id', ownerIds);
+        if(!pErr && profs){
+          profs.forEach(p => { profileMap[p.id] = p; });
+        }
+        // Se erro nos profiles, segue sem (username fica null — fallback de
+        // exibição já cobre)
+      }
+      let items = dataArr.map(it => {
+        const prof = profileMap[it.owner_id] || {};
+        return {
+          ...it,
+          owner_username: prof.username || null,
+          owner_display_name: prof.display_name || null
+        };
+      });
 
       // Coleta opções únicas de banca/cargo dos payloads
       const bancas = new Set(['all']);
@@ -66205,9 +67025,21 @@ function showFaqFloatPopover(anchor){
   const existing = document.querySelector('.faq-popover');
   if(existing){
     existing.remove();
+    const oldBd = document.querySelector('.faq-popover-backdrop');
+    if(oldBd) oldBd.remove();
     _faqPopoverOpen = false;
     return;
   }
+
+  // V15.12.75.147 — Backdrop blur por trás do FAQ
+  const backdrop = mk('div','faq-popover-backdrop');
+  backdrop.addEventListener('click', () => {
+    const ex = document.querySelector('.faq-popover');
+    if(ex) ex.remove();
+    backdrop.remove();
+    _faqPopoverOpen = false;
+  });
+  document.body.appendChild(backdrop);
 
   const popover = mk('div','faq-popover');
 
@@ -66293,26 +67125,32 @@ function showFaqFloatPopover(anchor){
   // Foco no input ao abrir
   setTimeout(()=>search.focus(), 100);
 
+  // V15.12.75.147 — Helper pra fechar limpo (remove popover + backdrop)
+  const _closeFaqAll = () => {
+    popover.remove();
+    const bd = document.querySelector('.faq-popover-backdrop');
+    if(bd) bd.remove();
+    _faqPopoverOpen = false;
+  };
+
   // Click no "Ver FAQ completo" abre página
   setTimeout(()=>{
     const fullLink = document.getElementById('faq-pop-full');
     if(fullLink){
       fullLink.addEventListener('click', (e)=>{
         e.preventDefault();
-        popover.remove();
-        _faqPopoverOpen = false;
+        _closeFaqAll();
         ST.view = 'faq';
         render();
       });
     }
   }, 50);
 
-  // Click fora fecha
+  // Click fora fecha (mantém compat, mas backdrop já cobre isso)
   setTimeout(()=>{
     const closeOnOutside = (ev)=>{
       if(popover.contains(ev.target) || (anchor && anchor.contains(ev.target))) return;
-      popover.remove();
-      _faqPopoverOpen = false;
+      _closeFaqAll();
       document.removeEventListener('click', closeOnOutside);
     };
     document.addEventListener('click', closeOnOutside);
@@ -66321,8 +67159,7 @@ function showFaqFloatPopover(anchor){
   // ESC fecha
   const onEsc = (ev)=>{
     if(ev.key === 'Escape'){
-      popover.remove();
-      _faqPopoverOpen = false;
+      _closeFaqAll();
       document.removeEventListener('keydown', onEsc);
     }
   };
@@ -72268,6 +73105,62 @@ function renderSettings(){
   uxRow.appendChild(skBtn);
   uxCard.appendChild(uxRow);
 
+  // V15.12.75.147 — Seleção de paleta de cor
+  const palLabel = mk('div');
+  palLabel.style.cssText = 'font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin:1.25rem 0 .5rem';
+  palLabel.textContent = 'Paleta de cor';
+  uxCard.appendChild(palLabel);
+
+  const palDesc = mk('p','txt3');
+  palDesc.style.cssText = 'font-size:11.5px;margin:0 0 .75rem;line-height:1.5';
+  palDesc.textContent = 'Escolha a cor de destaque do app (botões ativos, ícones, badges). Aplicada imediatamente.';
+  uxCard.appendChild(palDesc);
+
+  const palRow = mk('div');
+  palRow.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;margin-bottom:.5rem';
+  const currentAccent = localStorage.getItem('gralia_accent') || 'purple';
+  const palettes = [
+    { id:'purple',   label:'Roxo Gralia',     swatch:'linear-gradient(135deg,#8c4dfb 0%,#762ffb 100%)', desc:'Cor original da logo' },
+    { id:'graphite', label:'Cinza Espacial',  swatch:'linear-gradient(135deg,#56606a 0%,#3a4148 100%)', desc:'Grafite minimalista' },
+    { id:'steel',    label:'Azul Aço',        swatch:'linear-gradient(135deg,#3aaed4 0%,#2596be 100%)', desc:'Azul da logo (#2596be)' }
+  ];
+  palettes.forEach(p => {
+    const card = mk('button');
+    card.type = 'button';
+    const isActive = currentAccent === p.id;
+    card.style.cssText = `
+      flex:1;min-width:140px;
+      display:flex;flex-direction:column;align-items:flex-start;gap:8px;
+      padding:12px;
+      background:${isActive ? 'rgba(var(--gralia-purple-rgb),.08)' : 'var(--surface2)'};
+      border:1.5px solid ${isActive ? 'var(--gralia-purple)' : 'var(--border)'};
+      border-radius:12px;cursor:pointer;font-family:inherit;
+      text-align:left;
+      transition:all .15s ease;
+    `;
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;width:100%">
+        <div style="width:36px;height:36px;border-radius:50%;background:${p.swatch};box-shadow:0 2px 8px rgba(0,0,0,.12);flex-shrink:0"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:600;color:var(--text)">${p.label}</div>
+          <div style="font-size:10.5px;color:var(--text3);margin-top:1px">${p.desc}</div>
+        </div>
+        ${isActive ? `<div style="color:var(--gralia-purple);font-weight:700;font-size:14px">✓</div>` : ''}
+      </div>
+    `;
+    card.addEventListener('click', () => {
+      setAccent(p.id);
+    });
+    palRow.appendChild(card);
+  });
+  uxCard.appendChild(palRow);
+
+  // V15.12.75.147 — Aviso honesto sobre cobertura
+  const palTip = mk('p','txt3');
+  palTip.style.cssText = 'font-size:10.5px;margin:.25rem 0 0;line-height:1.5;font-style:italic';
+  palTip.textContent = 'Algumas áreas detalhadas do app ainda mostram o roxo original — refinamento em andamento.';
+  uxCard.appendChild(palTip);
+
   // === Conforto visual (NOVO) — destaque dentro do card de aparência ===
   const eyeRow = mk('div','config-eye-care-cta');
   eyeRow.innerHTML = `
@@ -76674,6 +77567,22 @@ function toggleTheme(){
   try{ if(typeof render === 'function') render(); }catch(_){}
 }
 
+// V15.12.75.147 — Sistema de paleta de cor (accent).
+// Aplica/persiste atributo data-accent no <html>. 3 opções:
+//   'purple' (default, Roxo Gralia), 'graphite' (Cinza Espacial), 'steel' (Azul Aço).
+const VALID_ACCENTS = ['purple', 'graphite', 'steel'];
+function applyAccent(){
+  let accent = localStorage.getItem('gralia_accent') || 'purple';
+  if(!VALID_ACCENTS.includes(accent)) accent = 'purple';
+  document.documentElement.setAttribute('data-accent', accent);
+}
+function setAccent(accent){
+  if(!VALID_ACCENTS.includes(accent)) return;
+  localStorage.setItem('gralia_accent', accent);
+  applyAccent();
+  try{ if(typeof render === 'function') render(); }catch(_){}
+}
+
 // --- Focus mode (zen) ---
 function applyFocusMode(){
   const enabled = localStorage.getItem('nexus_focus')==='1';
@@ -79287,6 +80196,7 @@ async function initAuth(){
 
 /* INIT */
 applyTheme();
+applyAccent();  // V15.12.75.147 — paleta de cor (Roxo/Grafite/Aço)
 applyFocusMode();
 
 // Captura erros não tratados pra evitar tela branca silenciosa.
