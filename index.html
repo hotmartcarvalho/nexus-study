@@ -440,51 +440,50 @@ body.sidebar-collapsed .app-sidebar-tooltip{
   position:absolute;
   left:calc(100% + 10px);
   top:50%;
-  transform:translateY(-50%) translateX(-4px);
+  transform:translateY(-50%);
   flex-direction:column;
-  gap:2px;
-  padding:8px 12px;
-  /* V15.12.75.152 — Dark com setinha — visual de tooltip padronizado
-     com o help hub. Antes era claro com borda (parecia card pequeno).
-     V15.12.75.153 — Setinha REMOVIDA (user não pediu, achou poluído). */
+  gap:1px;
+  /* V15.12.75.154 — PADRONIZADO IDENTICAMENTE ao tooltip do help hub:
+     mesma padding, font-size, box-shadow, border-radius. Antes tinha
+     valores diferentes (8px 12px vs 6px 11px no help hub) — visualmente
+     o user notou diferença. Agora exatamente igual. */
+  padding:6px 11px;
   background:var(--text);
   border:none;
   color:var(--bg);
   border-radius:8px;
-  box-shadow:0 6px 18px rgba(0,0,0,.20),0 1px 3px rgba(0,0,0,.08);
-  font-size:12px;
+  box-shadow:none;
+  font-size:11px;
   font-weight:500;
+  letter-spacing:.1px;
   white-space:nowrap;
   opacity:0;
   visibility:hidden;
   pointer-events:none;
-  transition:opacity .15s ease, transform .15s ease, visibility .15s;
+  transition:opacity .15s ease, visibility .15s;
   z-index:610;
-  letter-spacing:0;
 }
-/* V15.12.75.153 — Setinha removida (user reclamou). */
 body.sidebar-collapsed .app-sidebar-tooltip b{
-  font-size:12.5px;
-  font-weight:700;
-  color:var(--bg);            /* V152: cor invertida pra tooltip dark */
-  letter-spacing:-.1px;
+  font-size:11px;
+  font-weight:500;            /* V154: mesmo weight do help hub — sem negrito grande */
+  color:var(--bg);
+  letter-spacing:.1px;
 }
 body.sidebar-collapsed .app-sidebar-tooltip .ast-desc{
-  font-size:11px;
-  font-weight:400;
-  color:var(--bg);            /* V152 */
-  opacity:.7;
-  letter-spacing:0;
-  margin-top:1px;
+  /* V154: descrição oculta pra ficar igual ao help hub (label simples só) */
+  display:none;
 }
 body.sidebar-collapsed .app-sidebar-item{
   position:relative;     /* pra ::before do indicador active funcionar */
 }
 body.sidebar-collapsed .app-sidebar-item:hover .app-sidebar-tooltip{
-  opacity:1;
+  opacity:.92;
   visibility:visible;
-  transform:translateY(-50%) translateX(0);
-  transition-delay:.10s;  /* atraso pequeno pra não disparar acidentalmente */
+  transition-delay:.10s;
+}
+body.sidebar-collapsed .app-sidebar-item:hover .app-sidebar-tooltip:hover,
+body.sidebar-collapsed .app-sidebar-item.active:hover .app-sidebar-tooltip{
+  opacity:1;
 }
 /* V15.12.75.146 — Esconde também label + chevron do botão "Mais" quando
    sidebar collapsed. Antes ficavam visíveis e o ícone (3 pontinhos / globe)
@@ -6749,12 +6748,12 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 
 .help-hub-popover{
   position:fixed;bottom:78px;right:20px;z-index:9100;
-  width:340px;                    /* V152: 320→340 — comporta 3 cards lado a lado */
+  width:320px;
   background:var(--surface);
   border:1px solid var(--border);
   border-radius:16px;
   box-shadow:0 16px 40px rgba(0,0,0,.16), 0 4px 10px rgba(0,0,0,.08);
-  padding:14px;                   /* V152: padding uniforme */
+  padding:10px;
   animation:help-hub-in .18s cubic-bezier(.34,1.56,.64,1);
 }
 @keyframes help-hub-in{
@@ -6764,54 +6763,36 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
 .help-hub-title{
   font-size:10.5px;font-weight:700;color:var(--text3);
   text-transform:uppercase;letter-spacing:.7px;
-  padding:0 4px 12px;
+  padding:8px 14px 10px;
   text-align:center;
 }
-/* V15.12.75.152 — Container dos 3 itens em GRID 3 colunas (não mais lista
-   vertical). Layout uniforme: ícone grande em cima + label embaixo.
-   Resolve "tamanhos parecidos / sem scroll / melhor organizadas". */
-.help-hub-grid{
-  display:grid;
-  grid-template-columns:repeat(3, 1fr);
-  gap:8px;
-}
+/* V15.12.75.154 — VOLTOU ao formato V151 (lista vertical com label + descrição).
+   V152 tentou grid 3 cards iguais mas user reclamou: "o jeito que estava
+   era melhor, eu não queria que fosse mudado". */
 .help-hub-item{
-  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
-  gap:8px;
-  padding:14px 8px;
-  background:var(--surface2);
-  border:1px solid var(--border);
-  border-radius:12px;
+  width:100%;display:flex;gap:14px;align-items:center;
+  padding:11px 13px;
+  background:transparent;border:none;border-radius:11px;
   cursor:pointer;font-family:inherit;color:var(--text);
-  text-align:center;
-  transition:all .15s ease;
-  min-height:100px;               /* todas iguais */
+  text-align:left;
+  transition:background .12s ease, transform .12s ease;
+  min-height:54px;
 }
 .help-hub-item:hover{
-  background:rgba(var(--gralia-purple-rgb),.08);
-  border-color:var(--gralia-purple);
-  transform:translateY(-2px);
-  box-shadow:0 4px 10px rgba(var(--gralia-purple-rgb),.10);
+  background:var(--surface2);
+  transform:translateX(2px);
 }
 .help-hub-item-ico{
-  width:40px;height:40px;border-radius:50%;
-  background:rgba(var(--gralia-purple-rgb),.10);
+  width:34px;height:34px;border-radius:10px;
+  background:rgba(var(--gralia-purple-rgb),.08);
   color:var(--gralia-purple);
   display:flex;align-items:center;justify-content:center;
   flex-shrink:0;
-  transition:transform .15s ease;
 }
-.help-hub-item:hover .help-hub-item-ico{
-  transform:scale(1.08);
-  background:rgba(var(--gralia-purple-rgb),.18);
-}
-.help-hub-item-ico svg{display:block;width:18px;height:18px}
-.help-hub-item-body{display:flex;flex-direction:column;align-items:center;gap:2px}
-.help-hub-item-label{font-size:12px;font-weight:700;color:var(--text);line-height:1.2;letter-spacing:.1px}
-.help-hub-item-desc{
-  font-size:10px;color:var(--text3);line-height:1.3;letter-spacing:.05px;
-  display:none;                    /* V152: oculto no grid — só label */
-}
+.help-hub-item-ico svg{display:block}
+.help-hub-item-body{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.help-hub-item-label{font-size:13px;font-weight:600;color:var(--text);line-height:1.2}
+.help-hub-item-desc{font-size:11.5px;color:var(--text3);line-height:1.35;letter-spacing:.05px}
 
 /* V15.12.75.143 — Os antigos floating btn (feedback, shortcuts, faq) podem
    ainda ser referenciados em outros pontos do código. Mantemos as classes
@@ -7614,7 +7595,11 @@ body.pomo-float-visible .faq-floating-btn{display:none !important}
 .topbar-inst-links{
   display:flex;align-items:center;gap:18px;
   flex-shrink:0;
-  padding-left:16px;
+  /* V15.12.75.154 — Padding reduzido (16→8px) pra dar espaçamento simétrico
+     com o toggle do sidebar à esquerda do logo. Agora a distância entre
+     a linha separadora (.topbar-sidebar-toggle-sep-right) e "Sobre" fica
+     igual à distância entre "Toggle" e a linha esquerda. */
+  padding-left:8px;
 }
 .topbar-inst-link{
   position:relative;
@@ -7689,44 +7674,48 @@ body.pomo-float-visible .faq-floating-btn{display:none !important}
 body.pomo-active .faq-floating-btn{display:none !important}
 
 /* V15.12.75.147 — Backdrop blur por trás do FAQ popover */
+/* V15.12.75.154 — FAQ popover REPOSICIONADO pra modal centralizado, mesmo
+   tamanho/estilo do .shortcuts-overlay e do feedback modal (3 popups
+   acessados via help hub agora têm padrão visual consistente). */
 .faq-popover-backdrop{
   position:fixed;inset:0;
-  background:rgba(0,0,0,.22);
+  background:rgba(0,0,0,.45);          /* V154: igual shortcuts */
   backdrop-filter:blur(6px);
   -webkit-backdrop-filter:blur(6px);
   z-index:840;
+  display:flex;align-items:center;justify-content:center;
+  padding:1rem;
   animation:help-hub-backdrop-in .22s ease both;
 }
 
-/* Popover do FAQ — abre ao clicar no botão */
+/* Popover do FAQ — V154: centralizado como modal */
 .faq-popover{
-  position:fixed;top:114px;right:20px;
-  width:380px;max-width:calc(100vw - 40px);max-height:70vh;
+  position:relative;
+  width:100%;max-width:520px;max-height:88vh;
   background:var(--surface);
   border:1px solid var(--border);
   border-radius:14px;
-  box-shadow:0 14px 40px rgba(0,0,0,.14),0 4px 12px rgba(0,0,0,.06);
+  box-shadow:0 14px 40px rgba(0,0,0,.30),0 4px 12px rgba(0,0,0,.06);
   z-index:850;
   display:flex;flex-direction:column;
   overflow:hidden;
   animation:faqPop .18s cubic-bezier(.25,.4,.25,1.1);
-  transform-origin:top right;
 }
 @keyframes faqPop{
   from{opacity:0;transform:translateY(-6px) scale(.97)}
   to{opacity:1;transform:translateY(0) scale(1)}
 }
 .faq-popover-head{
-  padding:14px 16px 10px;
+  padding:1.25rem 1.5rem 1rem;       /* V154: padding aumentado igual shortcuts */
   border-bottom:1px solid var(--border);
   flex-shrink:0;
 }
 .faq-popover-title{
-  font-size:14px;font-weight:700;color:var(--text);
+  font-size:17px;font-weight:700;color:var(--text);    /* V154: 14→17px igual outros */
   margin:0 0 4px;letter-spacing:-.01em;
 }
 .faq-popover-sub{
-  font-size:11.5px;color:var(--text3);margin:0;line-height:1.4;
+  font-size:12.5px;color:var(--text3);margin:0;line-height:1.4;
 }
 .faq-popover-search{
   width:100%;
@@ -7737,14 +7726,15 @@ body.pomo-active .faq-floating-btn{display:none !important}
   font-family:inherit;font-size:12.5px;
   color:var(--text);
   outline:none;
-  margin-top:10px;
+  margin-top:12px;
+  box-sizing:border-box;
   transition:border-color .15s;
 }
 .faq-popover-search:focus{border-color:var(--gralia-purple)}
 .faq-popover-body{
   flex:1;
   overflow-y:auto;
-  padding:8px 8px;
+  padding:.5rem .75rem;
 }
 .faq-popover-cat-label{
   font-size:10.5px;font-weight:700;color:var(--text3);
@@ -8711,7 +8701,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.153';
+window.GRALIA_VERSION = 'V15.12.75.154';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -20400,31 +20390,30 @@ function render(){
       document.body.appendChild(helpBackdrop);
 
       helpPopover = mk('div','help-hub-popover');
-      // V15.12.75.152 — Layout: 3 cards iguais em grid (.help-hub-grid)
-      // em vez de lista vertical. Cada card centralizado (ícone em cima,
-      // label embaixo). Sem scroll, alturas idênticas, melhor escaneamento.
+      // V15.12.75.154 — VOLTOU ao formato V151 (lista vertical com descrição).
       helpPopover.innerHTML = `
         <div class="help-hub-title">Como podemos ajudar?</div>
-        <div class="help-hub-grid">
-          <button class="help-hub-item" data-action="feedback" title="Reportar problema, dar sugestão">
-            <span class="help-hub-item-ico">${lucideIcon('message-circle', 18)}</span>
-            <span class="help-hub-item-body">
-              <span class="help-hub-item-label">Fale conosco</span>
-            </span>
-          </button>
-          <button class="help-hub-item" data-action="faq" title="Perguntas frequentes">
-            <span class="help-hub-item-ico">${lucideIcon('help-circle', 18)}</span>
-            <span class="help-hub-item-body">
-              <span class="help-hub-item-label">FAQ</span>
-            </span>
-          </button>
-          <button class="help-hub-item" data-action="shortcuts" title="Pressione ? a qualquer momento">
-            <span class="help-hub-item-ico">${lucideIcon('keyboard', 18)}</span>
-            <span class="help-hub-item-body">
-              <span class="help-hub-item-label">Atalhos</span>
-            </span>
-          </button>
-        </div>
+        <button class="help-hub-item" data-action="feedback">
+          <span class="help-hub-item-ico">${lucideIcon('message-circle', 16)}</span>
+          <span class="help-hub-item-body">
+            <span class="help-hub-item-label">Fale conosco</span>
+            <span class="help-hub-item-desc">Reportar problema, dar sugestão</span>
+          </span>
+        </button>
+        <button class="help-hub-item" data-action="faq">
+          <span class="help-hub-item-ico">${lucideIcon('help-circle', 16)}</span>
+          <span class="help-hub-item-body">
+            <span class="help-hub-item-label">Tirar dúvidas (FAQ)</span>
+            <span class="help-hub-item-desc">Perguntas frequentes</span>
+          </span>
+        </button>
+        <button class="help-hub-item" data-action="shortcuts">
+          <span class="help-hub-item-ico">${lucideIcon('keyboard', 16)}</span>
+          <span class="help-hub-item-body">
+            <span class="help-hub-item-label">Atalhos de teclado</span>
+            <span class="help-hub-item-desc">Pressione ? a qualquer momento</span>
+          </span>
+        </button>
       `;
       helpPopover.querySelector('[data-action="feedback"]').addEventListener('click', () => {
         closeHelpPopover();
@@ -23633,7 +23622,7 @@ function renderTutorialVisual(kind){
     wrap.innerHTML = `
       <div class="vt-mock-card" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.625rem .875rem;margin-bottom:.375rem">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-          <span style="width:8px;height:8px;border-radius:50%;background:#8042fa;display:inline-block;box-shadow:0 0 0 3px rgba(var(--gralia-purple-rgb),.18)"></span>
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--gralia-purple);display:inline-block;box-shadow:0 0 0 3px rgba(var(--gralia-purple-rgb),.18)"></span>
           <span style="font-size:12.5px;font-weight:700;color:var(--text);flex:1">Princípios Fundamentais</span>
           <span style="background:rgba(73,197,137,.15);color:#10b981;padding:2px 7px;border-radius:5px;font-size:10.5px;font-weight:800">85%</span>
         </div>
@@ -67419,26 +67408,40 @@ function showFaqFloatPopover(anchor){
     return;
   }
 
-  // V15.12.75.147 — Backdrop blur por trás do FAQ
+  // V15.12.75.154 — Modal centralizado (padronizado com Shortcuts e Feedback).
+  // Antes estava em position:fixed top-right (canto da tela), agora centraliza.
   const backdrop = mk('div','faq-popover-backdrop');
-  backdrop.addEventListener('click', () => {
-    const ex = document.querySelector('.faq-popover');
-    if(ex) ex.remove();
+  const closeAll = () => {
+    const pop = document.querySelector('.faq-popover');
+    if(pop) pop.remove();
     backdrop.remove();
     _faqPopoverOpen = false;
+  };
+  backdrop.addEventListener('click', (ev) => {
+    if(ev.target === backdrop) closeAll();
   });
-  document.body.appendChild(backdrop);
 
   const popover = mk('div','faq-popover');
 
-  // Header
+  // Header com botão close (V154 — antes não tinha)
   const head = mk('div','faq-popover-head');
+  const headTop = mk('div');
+  headTop.style.cssText = 'display:flex;align-items:flex-start;justify-content:space-between;gap:12px';
+  const titleWrap = mk('div');
   const title = mk('h3','faq-popover-title');
   title.textContent = '💡 Tirar dúvidas';
-  head.appendChild(title);
+  titleWrap.appendChild(title);
   const sub = mk('p','faq-popover-sub');
   sub.textContent = 'Busque por palavra ou navegue pelas categorias';
-  head.appendChild(sub);
+  titleWrap.appendChild(sub);
+  headTop.appendChild(titleWrap);
+  const closeBtn = mk('button','fmh-close');
+  closeBtn.type = 'button';
+  closeBtn.setAttribute('aria-label', 'Fechar');
+  closeBtn.textContent = '×';
+  closeBtn.addEventListener('click', closeAll);
+  headTop.appendChild(closeBtn);
+  head.appendChild(headTop);
   const search = mk('input','faq-popover-search');
   search.type = 'text';
   search.placeholder = 'Ex: créditos, flashcards, grupo...';
@@ -67454,7 +67457,10 @@ function showFaqFloatPopover(anchor){
   foot.innerHTML = 'Não achou? <a href="#" id="faq-pop-full">Ver FAQ completo →</a>';
   popover.appendChild(foot);
 
-  document.body.appendChild(popover);
+  // V15.12.75.154 — Popover vive DENTRO do backdrop (modal central),
+  // não mais em document.body direto. Backdrop é flex centered.
+  backdrop.appendChild(popover);
+  document.body.appendChild(backdrop);
   _faqPopoverOpen = true;
 
   // Render função (re-roda quando filtra)
@@ -73399,7 +73405,8 @@ function renderSettings(){
   wrap.appendChild(idx);
 
   // ===== CARD: Perfil social (username, nome exibido, visibilidade) =====
-  if(isAuthed()){
+  // V15.12.75.154 — Só em "Conta e Perfil", não em "Configurações"
+  if(isAuthed() && !isPreferencesMode){
     const socialCard = renderSocialProfileCard();
     if(socialCard) wrap.appendChild(socialCard);
   }
@@ -73661,7 +73668,8 @@ function renderSettings(){
   const usgBtn = mkBtn('💳 Ver análise de uso completa','btn btn-sm');
   usgBtn.addEventListener('click',()=>{ST.view='usage';render();});
   usgCard.appendChild(usgBtn);
-  wrap.appendChild(usgCard);
+  // V15.12.75.154 — Uso da IA (admin) só em settings
+  if(!isPreferencesMode) wrap.appendChild(usgCard);
   } // end if(isAdminUser()) — Usage & budget card
 
   // ===== MINHA ASSINATURA — só pra usuários logados =====
@@ -75540,9 +75548,9 @@ async function renderStoryCanvas(canvas, data){
 
   // Glow radial roxo no canto superior direito
   const glow1 = ctx.createRadialGradient(W*0.85, H*0.10, 0, W*0.85, H*0.10, W*0.7);
-  glow1.addColorStop(0, 'rgba(128, 66, 250, 0.32)');
-  glow1.addColorStop(0.4, 'rgba(128, 66, 250, 0.10)');
-  glow1.addColorStop(1, 'rgba(128, 66, 250, 0)');
+  glow1.addColorStop(0, 'rgba(var(--gralia-purple-rgb), 0.32)');
+  glow1.addColorStop(0.4, 'rgba(var(--gralia-purple-rgb), 0.10)');
+  glow1.addColorStop(1, 'rgba(var(--gralia-purple-rgb), 0)');
   ctx.fillStyle = glow1;
   ctx.fillRect(0, 0, W, H);
 
@@ -75566,9 +75574,9 @@ async function renderStoryCanvas(canvas, data){
 
   // === Borda fina no topo ===
   const topBorder = ctx.createLinearGradient(0, 0, W, 0);
-  topBorder.addColorStop(0, 'rgba(128, 66, 250, 0)');
-  topBorder.addColorStop(0.5, 'rgba(128, 66, 250, 0.8)');
-  topBorder.addColorStop(1, 'rgba(128, 66, 250, 0)');
+  topBorder.addColorStop(0, 'rgba(var(--gralia-purple-rgb), 0)');
+  topBorder.addColorStop(0.5, 'rgba(var(--gralia-purple-rgb), 0.8)');
+  topBorder.addColorStop(1, 'rgba(var(--gralia-purple-rgb), 0)');
   ctx.fillStyle = topBorder;
   ctx.fillRect(0, 0, W, 4);
 
@@ -75601,7 +75609,7 @@ async function renderStoryCanvas(canvas, data){
 
     // Desenha com glow roxo sutil
     ctx.save();
-    ctx.shadowColor = 'rgba(128, 66, 250, 0.40)';
+    ctx.shadowColor = 'rgba(var(--gralia-purple-rgb), 0.40)';
     ctx.shadowBlur = 36;
     ctx.drawImage(logoImg, logoX, logoYTop, logoW, logoH);
     ctx.restore();
@@ -75693,8 +75701,8 @@ async function renderStoryCanvas(canvas, data){
     statusColor='#f5c477';
   } else {
     statusText='NO RITMO';statusEmoji='⚖';
-    statusBg='rgba(128, 66, 250, 0.18)';
-    statusBorder='rgba(128, 66, 250, 0.55)';
+    statusBg='rgba(var(--gralia-purple-rgb), 0.18)';
+    statusBorder='rgba(var(--gralia-purple-rgb), 0.55)';
     statusColor='#bca0ff';
   }
   ctx.font = '700 30px Sora,system-ui,sans-serif';
@@ -75773,7 +75781,7 @@ async function renderStoryCanvas(canvas, data){
     const sx = 50 + i*statColW + statColW/2;
     ctx.font = '900 72px Sora,system-ui,sans-serif';
     // Sombra leve pro número se destacar
-    ctx.shadowColor = 'rgba(128, 66, 250, 0.3)';
+    ctx.shadowColor = 'rgba(var(--gralia-purple-rgb), 0.3)';
     ctx.shadowBlur = 16;
     ctx.fillStyle = '#ffffff';
     ctx.fillText(s.value, sx, totY);
@@ -75791,9 +75799,9 @@ async function renderStoryCanvas(canvas, data){
   const footLineW = 200;
   const footLineX = (W - footLineW)/2;
   const footLineGrad = ctx.createLinearGradient(footLineX, 0, footLineX+footLineW, 0);
-  footLineGrad.addColorStop(0, 'rgba(128, 66, 250, 0)');
-  footLineGrad.addColorStop(0.5, 'rgba(128, 66, 250, 0.6)');
-  footLineGrad.addColorStop(1, 'rgba(128, 66, 250, 0)');
+  footLineGrad.addColorStop(0, 'rgba(var(--gralia-purple-rgb), 0)');
+  footLineGrad.addColorStop(0.5, 'rgba(var(--gralia-purple-rgb), 0.6)');
+  footLineGrad.addColorStop(1, 'rgba(var(--gralia-purple-rgb), 0)');
   ctx.fillStyle = footLineGrad;
   ctx.fillRect(footLineX, footY - 30, footLineW, 2);
 
@@ -75830,8 +75838,8 @@ function drawProgressCard(ctx, x, y, w, h, emoji, label, done, target, pct){
   // Glow interno sutil baseado no progresso
   if(pct >= 75){
     const innerGlow = ctx.createRadialGradient(x+w/2, y+h/2, 0, x+w/2, y+h/2, w);
-    innerGlow.addColorStop(0, 'rgba(128, 66, 250, 0.15)');
-    innerGlow.addColorStop(1, 'rgba(128, 66, 250, 0)');
+    innerGlow.addColorStop(0, 'rgba(var(--gralia-purple-rgb), 0.15)');
+    innerGlow.addColorStop(1, 'rgba(var(--gralia-purple-rgb), 0)');
     ctx.fillStyle = innerGlow;
     roundRect(ctx, x, y, w, h, 32);
     ctx.fill();
@@ -75849,7 +75857,7 @@ function drawProgressCard(ctx, x, y, w, h, emoji, label, done, target, pct){
 
   // Big number "done"
   ctx.font = '900 96px Sora,system-ui,sans-serif';
-  ctx.shadowColor = 'rgba(128, 66, 250, 0.4)';
+  ctx.shadowColor = 'rgba(var(--gralia-purple-rgb), 0.4)';
   ctx.shadowBlur = 24;
   ctx.fillStyle = '#ffffff';
   ctx.fillText(done.toLocaleString('pt-BR'), x+32, y+220);
@@ -77642,7 +77650,8 @@ function showGoalConfigModal(){
 // Modal de feedback / sugestões
 function showFeedbackModal(){
   const m = mk('div');
-  m.style.cssText='max-width:480px;max-height:80vh;overflow-y:auto';
+  // V15.12.75.154 — Padronizado com FAQ e Shortcuts (520px max).
+  m.style.cssText='max-width:520px;width:100%;max-height:88vh;overflow-y:auto';
 
   const title = mk('h2');
   title.style.cssText='margin:0 0 .5rem;font-size:17px;font-weight:700';
