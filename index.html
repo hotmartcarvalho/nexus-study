@@ -8759,7 +8759,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.162';
+window.GRALIA_VERSION = 'V15.12.75.163';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -34920,17 +34920,33 @@ const Pinhal = (() => {
         sweep(1100, 600, 0.22, 0.18, 0.10, 'sawtooth');
         break;
       case 'sabia_laranjeira':
-        // Sabiá: trinado melodioso (canto bonito) — 4 notas tipo flauta
-        note(880,    0,    0.16, 0.10, 'sine');
-        note(1108.7, 0.13, 0.14, 0.10, 'sine');
-        note(987.8,  0.25, 0.14, 0.10, 'sine');
-        note(1318.5, 0.37, 0.30, 0.11, 'sine');
+        // V15.12.75.163 — Sabiá refeito: canto tipicamente é um trinado
+        // melódico com várias notas curtas ascendentes/descendentes,
+        // tipo flauta. Antes era 4 notas paradas — som "musical demais".
+        // Agora: padrão "tii-tu-tii-li" com curva real, harmônico fino
+        // pra dar timbre de assobio de pássaro (não de piano).
+        // Frase 1 — chamada (3 notas rápidas ascendentes)
+        sweep(1400, 1800, 0,    0.10, 0.09, 'sine');
+        sweep(1600, 2000, 0.12, 0.08, 0.09, 'sine');
+        sweep(1800, 2200, 0.22, 0.10, 0.09, 'sine');
+        // Pausa curta, depois frase 2 — resposta (2 notas descendentes longas)
+        sweep(2400, 1600, 0.42, 0.16, 0.11, 'sine');
+        sweep(1800, 1400, 0.62, 0.20, 0.11, 'sine');
+        // Harmônico suave (2x freq) pra dar brilho de assobio real
+        sweep(2800, 3600, 0,    0.10, 0.025, 'sine');
+        sweep(4800, 3200, 0.42, 0.16, 0.020, 'sine');
         break;
       case 'tucano_verde':
-        // Tucano: pulsos graves repetidos (tec-tec-tec) — característico
-        note(360, 0,    0.08, 0.14, 'square');
-        note(360, 0.15, 0.08, 0.14, 'square');
-        note(380, 0.30, 0.10, 0.14, 'square');
+        // V15.12.75.163 — Tucano refeito: o som real é um "kreck-kreck-kreck"
+        // grave repetido, áspero (não musical). Cada nota tem ataque seco
+        // + transiente curto. Antes era square parado — soava muito puro.
+        // Agora: noise filtrado grave (rosnado) + click curto + 3-4 repetições.
+        for(let i = 0; i < 4; i++){
+          const off = i * 0.16;
+          noise(off,        0.07, 0.16, 600, 200);   // rosnado curto grave
+          note(180, off,    0.05, 0.10, 'sawtooth'); // tom fundamental
+          note(360, off,    0.04, 0.05, 'square');   // harmônico áspero
+        }
         break;
       case 'tiriba':
         // Tiriba (papagaio pequeno): chirps rápidos agudos em bando
@@ -34975,10 +34991,44 @@ const Pinhal = (() => {
         sweep(1000, 700, 0.26, 0.12, 0.10, 'sawtooth');
         break;
       case 'bugio':
-        // Bugio: rugido territorial GRAVE e longo (rola pela floresta)
-        vibrato(85, 0,   0.9, 0.18, 'sawtooth', 5, 6);
-        // Camada noise grave reforça (peito ressonando)
-        noise(0, 0.85, 0.08, 280, 80);
+        // V15.12.75.163 — Bugio REFEITO. O rugido real é INCRIVELMENTE
+        // grave (50-100Hz), longo (5-15s na vida real), com forte
+        // "ressonância de garganta" — quase um motor diesel rosnando.
+        // Antes: 1 vibrato + noise leve. Agora:
+        //   - Drone fundamental 70Hz longo (1.2s)
+        //   - Camada 105Hz (5ª) reforça
+        //   - Camada 140Hz (oitava acima)
+        //   - Noise grave forte filtrado (peito ressoando)
+        //   - Modulação de freq lenta e profunda (rasgo)
+        //   - Ataque demorado (cresce em volume) — característico
+        const bugLen = 1.4;
+        // Camada 1: drone grave principal com vibrato profundo
+        {
+          const osc = ctx.createOscillator();
+          osc.type = 'sawtooth';
+          osc.frequency.value = 70;
+          const lfo = ctx.createOscillator();
+          lfo.frequency.value = 5;
+          const lfoG = ctx.createGain();
+          lfoG.gain.value = 10;
+          lfo.connect(lfoG); lfoG.connect(osc.frequency);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0, t0);
+          g.gain.linearRampToValueAtTime(0.22, t0 + 0.25);   // ataque demorado
+          g.gain.setValueAtTime(0.22, t0 + bugLen * 0.6);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + bugLen);
+          osc.connect(g); g.connect(ctx.destination);
+          osc.start(t0); lfo.start(t0);
+          osc.stop(t0 + bugLen + 0.05); lfo.stop(t0 + bugLen + 0.05);
+        }
+        // Camada 2: harmônico (~5ª acima) reforça corpo
+        vibrato(105, 0, bugLen, 0.10, 'sawtooth', 5, 8);
+        // Camada 3: oitava acima — dá presença
+        vibrato(140, 0.05, bugLen - 0.1, 0.07, 'square', 5, 6);
+        // Camada 4: noise grave filtrado (ressonância de peito)
+        noise(0, bugLen, 0.14, 240, 50);
+        // Camada 5: noise médio (textura áspera de voz)
+        noise(0.1, bugLen - 0.2, 0.06, 600, 200);
         break;
       case 'gato_mato':
         // Gato-do-mato: rosnado curto grave + sibilo
@@ -34986,16 +35036,70 @@ const Pinhal = (() => {
         noise(0.05, 0.3, 0.06, 1200, 300);
         break;
       case 'onca_pintada':
-        // Onça: RUGIDO impressionante grave com vibrato + noise sub
-        vibrato(75, 0, 1.0, 0.20, 'sawtooth', 4, 5);
-        noise(0, 1.0, 0.10, 220, 60);
-        // Camada média pra dar corpo
-        vibrato(150, 0.05, 0.85, 0.10, 'sawtooth', 4.5, 8);
+        // V15.12.75.163 — Onça REFEITA. O rugido de onça/jaguar tem
+        // características muito específicas: começa grave/rouco com sub-baixos
+        // (60-80Hz), tem componente de "serra" (sawtooth modulado), longa
+        // duração (1-2s), e a versão de fêmea/aviso tem pulso rítmico ("uagh-
+        // uagh-uagh"). Antes: vibrato simples + noise. Agora:
+        //   - Pulso duplo "uagh-uagh" característico
+        //   - Sub-baixo 55Hz pra dar peso
+        //   - Noise filtrado forte (textura de fera)
+        //   - Sawtooth modulado pra "serra" da garganta
+        const oncLen = 1.5;
+        // Pulso 1 "UAGH" (0-0.7s)
+        // Sub-baixo
+        {
+          const osc = ctx.createOscillator();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(55, t0);
+          osc.frequency.linearRampToValueAtTime(75, t0 + 0.10);   // sobe ataque
+          osc.frequency.linearRampToValueAtTime(60, t0 + 0.60);   // cai cauda
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0, t0);
+          g.gain.linearRampToValueAtTime(0.24, t0 + 0.10);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.65);
+          osc.connect(g); g.connect(ctx.destination);
+          osc.start(t0); osc.stop(t0 + 0.70);
+        }
+        // Camada média com vibrato (textura)
+        vibrato(110, 0, 0.65, 0.12, 'sawtooth', 18, 15);
+        // Camada noise (textura áspera)
+        noise(0, 0.7, 0.12, 280, 70);
+        noise(0.05, 0.5, 0.05, 800, 300);
+
+        // Pulso 2 "UAGH" (0.8-1.5s) — mais curto e menor (decaindo)
+        {
+          const osc = ctx.createOscillator();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(60, t0 + 0.85);
+          osc.frequency.linearRampToValueAtTime(80, t0 + 0.92);
+          osc.frequency.linearRampToValueAtTime(65, t0 + 1.40);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0, t0 + 0.85);
+          g.gain.linearRampToValueAtTime(0.18, t0 + 0.93);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 1.45);
+          osc.connect(g); g.connect(ctx.destination);
+          osc.start(t0 + 0.85); osc.stop(t0 + 1.50);
+        }
+        vibrato(115, 0.85, 0.55, 0.09, 'sawtooth', 18, 12);
+        noise(0.85, 0.60, 0.09, 280, 70);
         break;
       case 'anta':
-        // Anta: assobio agudo curto característico (alarme)
-        sweep(2000, 2400, 0,    0.20, 0.11, 'sine');
-        sweep(2200, 1800, 0.25, 0.15, 0.10, 'sine');
+        // V15.12.75.163 — Anta REFEITA. O assobio real da anta é AGUDO
+        // (3-5 kHz!), com frequência subindo e descendo rapidamente —
+        // soa quase como um pássaro estridente, não como um animal grande.
+        // Antes: 2 sweeps em 2kHz — graves demais. Agora:
+        //   - Frequência inicial alta (~3.5kHz) sobe e cai rápido
+        //   - 2-3 pulsos curtos seguidos (anta repete o assobio)
+        //   - Senoide pura (timbre limpo, "respirado")
+        // Pulso 1
+        sweep(3000, 4200, 0,    0.08, 0.10, 'sine');
+        sweep(4200, 2800, 0.08, 0.12, 0.09, 'sine');
+        // Pulso 2 (eco mais curto)
+        sweep(3200, 4000, 0.28, 0.07, 0.08, 'sine');
+        sweep(4000, 3000, 0.34, 0.09, 0.08, 'sine');
+        // Pulso 3 (curto final)
+        sweep(3400, 4400, 0.55, 0.10, 0.08, 'sine');
         break;
 
       // ========== PLANTAS — pad de vento na floresta variando por planta ==========
