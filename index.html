@@ -445,7 +445,8 @@ body.sidebar-collapsed .app-sidebar-tooltip{
   gap:2px;
   padding:8px 12px;
   /* V15.12.75.152 — Dark com setinha — visual de tooltip padronizado
-     com o help hub. Antes era claro com borda (parecia card pequeno). */
+     com o help hub. Antes era claro com borda (parecia card pequeno).
+     V15.12.75.153 — Setinha REMOVIDA (user não pediu, achou poluído). */
   background:var(--text);
   border:none;
   color:var(--bg);
@@ -461,16 +462,7 @@ body.sidebar-collapsed .app-sidebar-tooltip{
   z-index:610;
   letter-spacing:0;
 }
-/* Setinha apontando pro ícone */
-body.sidebar-collapsed .app-sidebar-tooltip::before{
-  content:'';
-  position:absolute;
-  left:-5px;
-  top:50%;
-  transform:translateY(-50%) rotate(45deg);
-  width:10px;height:10px;
-  background:var(--text);
-}
+/* V15.12.75.153 — Setinha removida (user reclamou). */
 body.sidebar-collapsed .app-sidebar-tooltip b{
   font-size:12.5px;
   font-weight:700;
@@ -851,33 +843,16 @@ body.sidebar-collapsed .app-sidebar-brand .brand-bird{height:31px} /* V15.12.9: 
     box-sizing:border-box;
     position:relative;
   }
-  body.has-sidebar .topbar-col-left::after{
-    content:'';
-    position:absolute;
-    right:0;
-    top:50%;
-    transform:translateY(-50%);
-    width:1px;
-    height:22px;
-    background:var(--border);
-  }
-  /* V15.12.75.150 — Quando sidebar collapsed: toggle fica EM CIMA da
-     "coluna" onde os ícones do sidebar aparecem (left:16px = mesma
-     posição central que os ícones a 56px de largura terão). Logo segue
-     centralizado em 264px. Antes toggle ficava grudado no logo, fora
-     da coluna dos ícones — visualmente desconectado. */
-  body.has-sidebar.sidebar-collapsed .topbar-sidebar-toggle{
-    position:absolute;
-    left:12px;
-    top:50%;
-    transform:translateY(-50%);
-    z-index:2;
-  }
-  /* Separador NÃO precisa quando toggle vira absolute (toggle não fica
-     mais grudado no logo). */
-  body.has-sidebar.sidebar-collapsed .topbar-sidebar-toggle-sep{
-    display:none;
-  }
+  /* V15.12.75.153 — ::after antigo (linha na borda direita da col-left,
+     coincidindo com a borda da sidebar) REMOVIDO. Agora a linha direita
+     do logo é um elemento real (.topbar-sidebar-toggle-sep-right), no
+     fluxo flex, perto do logo — não na borda da coluna. Visualmente:
+     [toggle] | logo | [sep direita]. Logo centralizada entre as 2 linhas. */
+  /* V15.12.75.150 — Quando sidebar collapsed: toggle ficava em absolute.
+     V15.12.75.153 — REMOVIDO: agora toggle vive na mesma posição em ambos
+     os estados (à esquerda do logo, no fluxo normal flex). Sidebar
+     collapsed/aberta não muda mais a posição do toggle.
+     Separador continua visível nos 2 lados do logo. */
   /* (antiga regra body.has-sidebar.sidebar-collapsed .topbar-col-left removida
       em V15.12 — largura agora é fixa independente do estado da sidebar) */
   body.has-sidebar .topbar-inner{
@@ -963,8 +938,12 @@ body.imported-focus-mode #app .page{padding-left:0 !important}
   width:1px;
   height:22px;
   background:var(--border);
-  margin:0 12px 0 8px;
+  margin:0 12px 0 8px;       /* entre toggle e logo: 8 esq (perto do toggle), 12 dir (perto do logo) */
   flex-shrink:0;
+}
+/* V15.12.75.153 — Separador direito (depois do logo), margens invertidas */
+.topbar-sidebar-toggle-sep-right{
+  margin:0 8px 0 12px;       /* 12 esq (perto do logo), 8 dir (perto dos institucionais) */
 }
 
 /* V15.12.75.146 — Logo topbar -20% (45→36px, max-width 200→160px).
@@ -6744,16 +6723,7 @@ html.dark .admin-floating-btn{background:linear-gradient(135deg,rgba(232,164,60,
   opacity:.92;                    /* leve transparência indica "info" */
   transition:opacity .15s ease;
 }
-.help-hub-label::after{
-  /* Setinha apontando pro botão (à direita) */
-  content:'';
-  position:absolute;
-  right:-4px;
-  top:50%;
-  transform:translateY(-50%) rotate(45deg);
-  width:8px;height:8px;
-  background:var(--text);
-}
+/* V15.12.75.153 — Setinha REMOVIDA (user não pediu, achou poluído). */
 .help-hub-wrap:hover .help-hub-label{
   opacity:1;                      /* fica 100% opaco no hover */
 }
@@ -8741,7 +8711,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.152';
+window.GRALIA_VERSION = 'V15.12.75.153';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -19755,23 +19725,12 @@ function buildAppSidebar(){
   const sb = mk('aside','app-sidebar');
 
   // V15.12.75.145 — Toggle do sidebar reformulado. Posição: canto inferior-direito
-  // do sidebar (círculo). Só aparece quando sidebar está ABERTO. Quando fechado,
-  // o controle vive na TOPBAR (.topbar-sidebar-toggle) ao lado do logo.
+  // V15.12.75.153 — Toggle interno do sidebar REMOVIDO.
+  // Antes V145-V152 tinha um botão circular no canto inferior-direito do
+  // sidebar pra recolher. Agora o toggle único vive na topbar (à esquerda
+  // do logo) e funciona pros 2 estados (recolher/expandir). User pediu
+  // "mesma posição, só mostra um ou outro por vez".
   const isCollapsed = !!DATA.sidebarCollapsed;
-  if(!isCollapsed){
-    const toggleBtn = mk('button','sidebar-collapse-toggle');
-    toggleBtn.type = 'button';
-    toggleBtn.setAttribute('aria-label', 'Recolher menu');
-    toggleBtn.title = 'Recolher menu';
-    toggleBtn.innerHTML = lucideIcon('arrow-left', 15);
-    toggleBtn.addEventListener('click',()=>{
-      DATA.sidebarCollapsed = true;
-      save();
-      document.body.classList.add('sidebar-collapsed');
-      render();
-    });
-    sb.appendChild(toggleBtn);
-  }
 
   // Aplica classe ao body conforme estado salvo
   if(DATA.sidebarCollapsed){
@@ -22835,28 +22794,45 @@ function renderTopbar(){
   // Info alinhada na esquerda da coluna direita (após fim do conteúdo)
   const colLeft = mk('div','topbar-col-left');
 
-  // V15.12.75.145 — Toggle do sidebar APENAS QUANDO FECHADO. Aparece ao lado
-  // do logo (à esquerda), com pequena linha vertical separando. Símbolo:
-  // retângulo com barra lateral (=ícone "abrir painel"). Quando aberto,
-  // este botão some — o toggle vive dentro do sidebar (circular bottom-right).
-  if(DATA.sidebarCollapsed && isAuthed()){
+  // V15.12.75.153 — Toggle do sidebar SEMPRE na topbar à esquerda do logo,
+  // independente do estado. Histórico:
+  //   - V145: toggle pra ABRIR ficava na topbar, toggle pra FECHAR ficava
+  //     dentro do sidebar (canto inferior-direito circular)
+  //   - V153: user pediu "mesma posição, só mostra um ou outro" — agora
+  //     ambos os estados usam o MESMO botão na topbar (ícone muda).
+  // Também: linha vertical de cada lado do logo (separa toggle do logo,
+  // e logo dos links institucionais à direita) — logo fica CENTRALIZADA
+  // entre as duas linhas.
+  if(isAuthed()){
     const sbToggle = mk('button','topbar-sidebar-toggle');
     sbToggle.type = 'button';
-    sbToggle.setAttribute('aria-label','Abrir menu lateral');
-    sbToggle.title = 'Abrir menu lateral';
-    sbToggle.innerHTML = lucideIcon('sidebar', 18);
+    const isCollapsed = !!DATA.sidebarCollapsed;
+    sbToggle.setAttribute('aria-label', isCollapsed ? 'Abrir menu lateral' : 'Recolher menu lateral');
+    sbToggle.title = isCollapsed ? 'Abrir menu lateral' : 'Recolher menu lateral';
+    // V153 — Ícone muda conforme estado (panel-left-open / panel-left-close)
+    sbToggle.innerHTML = lucideIcon(isCollapsed ? 'panel-left-open' : 'panel-left-close', 18);
     sbToggle.addEventListener('click', () => {
-      DATA.sidebarCollapsed = false;
+      DATA.sidebarCollapsed = !DATA.sidebarCollapsed;
       save();
-      document.body.classList.remove('sidebar-collapsed');
+      if(DATA.sidebarCollapsed){
+        document.body.classList.add('sidebar-collapsed');
+      } else {
+        document.body.classList.remove('sidebar-collapsed');
+      }
       render();
     });
     colLeft.appendChild(sbToggle);
-    // Linha vertical separadora entre toggle e logo
-    const sep = mk('span','topbar-sidebar-toggle-sep');
-    colLeft.appendChild(sep);
+    // Linha vertical separadora ESQUERDA (entre toggle e logo)
+    const sepL = mk('span','topbar-sidebar-toggle-sep');
+    colLeft.appendChild(sepL);
   }
   colLeft.appendChild(brand);
+  // V15.12.75.153 — Linha vertical separadora DIREITA (depois do logo)
+  // — logo fica visualmente centralizada entre as duas linhas.
+  if(isAuthed()){
+    const sepR = mk('span','topbar-sidebar-toggle-sep topbar-sidebar-toggle-sep-right');
+    colLeft.appendChild(sepR);
+  }
 
   // V15.10: Links institucionais discretos (Sobre / Como usar) ao lado direito
   // do brand. Hover com underline + cor brand.
