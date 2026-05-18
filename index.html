@@ -8759,7 +8759,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.164';
+window.GRALIA_VERSION = 'V15.12.75.165';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -34966,9 +34966,15 @@ const Pinhal = (() => {
         sweep(1600, 2100, 0.24, 0.12, 0.08, 'triangle');
         break;
       case 'jacutinga':
-        // Jacutinga: vocalização grave (gluk-gluk) tipo galináceo grande
-        sweep(280, 220, 0,    0.20, 0.13, 'sawtooth');
-        sweep(260, 200, 0.25, 0.18, 0.13, 'sawtooth');
+        // V15.12.75.165 — Refeito. Sawtooth grave antes virou "vibração ralada".
+        // Nova abordagem: 2 notas curtas graves em triangle (musical/suave),
+        // como um "wok-wok" sutil. Imita o tom grave do galináceo sem
+        // o timbre áspero.
+        note(250, 0,    0.18, 0.12, 'triangle');
+        note(220, 0.22, 0.20, 0.12, 'triangle');
+        // Harmônico suave (uma oitava acima) pra dar corpo
+        note(500, 0,    0.15, 0.04, 'sine');
+        note(440, 0.22, 0.18, 0.04, 'sine');
         break;
       case 'cabure':
         // Caburé (coruja): "tu-tu-tu-tu" suave repetitivo grave
@@ -34995,55 +35001,67 @@ const Pinhal = (() => {
         sweep(1000, 700, 0.26, 0.12, 0.10, 'sawtooth');
         break;
       case 'bugio':
-        // V15.12.75.164 — Bugio REFEITO de novo. Versões V162-163 com
-        // sawtooth+noise viraram "serra elétrica" — chato no ouvido.
-        // Nova abordagem: representação ESTILIZADA — não tenta reproduzir
-        // o rugido áspero real (que é irritante de propósito na natureza).
-        // Resultado: "uivo" longo melódico grave com vibrato suave,
-        // como vocalização que ecoa pela mata. Onda triangle (suave),
-        // sem noise, sem sawtooth.
-        // Camada 1: tom fundamental grave 110Hz com curva (sobe e cai)
-        {
-          const osc = ctx.createOscillator();
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(110, t0);
-          osc.frequency.linearRampToValueAtTime(140, t0 + 0.4);   // sobe no meio
-          osc.frequency.linearRampToValueAtTime(105, t0 + 1.1);   // desce no fim
-          // Vibrato suave (4Hz, profundidade pequena 3Hz)
-          const lfo = ctx.createOscillator();
-          lfo.frequency.value = 4;
-          const lfoG = ctx.createGain();
-          lfoG.gain.value = 3;
-          lfo.connect(lfoG); lfoG.connect(osc.frequency);
-          const g = ctx.createGain();
-          g.gain.setValueAtTime(0, t0);
-          g.gain.linearRampToValueAtTime(0.16, t0 + 0.25);    // ataque suave
-          g.gain.setValueAtTime(0.16, t0 + 0.8);
-          g.gain.exponentialRampToValueAtTime(0.001, t0 + 1.2);
-          osc.connect(g); g.connect(ctx.destination);
-          osc.start(t0); lfo.start(t0);
-          osc.stop(t0 + 1.25); lfo.stop(t0 + 1.25);
-        }
-        // Camada 2: oitava acima (220Hz) — dá presença "peitoral"
-        // mas suave (gain baixo)
+        // V15.12.75.165 — Bugio REFEITO de novo. V164 ainda incomodou
+        // (110Hz grave com vibrato = "zumbido vocal"). Agora abordagem
+        // mais suave/musical: nota grave média (~165Hz) descendente,
+        // SEM vibrato, sine puro. Sugere vocalização do macaco mas
+        // não tenta imitar — é uma "presença sonora" do bugio.
+        // Camada 1: nota principal — sobe e desce melodicamente
         {
           const osc = ctx.createOscillator();
           osc.type = 'sine';
-          osc.frequency.setValueAtTime(220, t0);
-          osc.frequency.linearRampToValueAtTime(280, t0 + 0.4);
-          osc.frequency.linearRampToValueAtTime(210, t0 + 1.1);
+          osc.frequency.setValueAtTime(165, t0);
+          osc.frequency.linearRampToValueAtTime(196, t0 + 0.35);   // sobe (G3)
+          osc.frequency.linearRampToValueAtTime(146, t0 + 1.0);    // desce (D3)
           const g = ctx.createGain();
           g.gain.setValueAtTime(0, t0);
-          g.gain.linearRampToValueAtTime(0.05, t0 + 0.3);
-          g.gain.exponentialRampToValueAtTime(0.001, t0 + 1.15);
+          g.gain.linearRampToValueAtTime(0.16, t0 + 0.2);
+          g.gain.setValueAtTime(0.16, t0 + 0.7);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 1.1);
           osc.connect(g); g.connect(ctx.destination);
-          osc.start(t0); osc.stop(t0 + 1.2);
+          osc.start(t0); osc.stop(t0 + 1.15);
+        }
+        // Camada 2: oitava acima (330Hz → 292Hz) — corpo musical
+        {
+          const osc = ctx.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(330, t0);
+          osc.frequency.linearRampToValueAtTime(392, t0 + 0.35);
+          osc.frequency.linearRampToValueAtTime(292, t0 + 1.0);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0, t0);
+          g.gain.linearRampToValueAtTime(0.06, t0 + 0.25);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 1.05);
+          osc.connect(g); g.connect(ctx.destination);
+          osc.start(t0); osc.stop(t0 + 1.10);
         }
         break;
       case 'gato_mato':
-        // Gato-do-mato: rosnado curto grave + sibilo
-        vibrato(180, 0, 0.35, 0.14, 'sawtooth', 10, 12);
-        noise(0.05, 0.3, 0.06, 1200, 300);
+        // V15.12.75.165 — Refeito. Sawtooth com vibrato 10Hz + noise era
+        // áspero. Agora: nota grave curta tipo "miado descendente" suave
+        // (sine), com pequeno vibrato musical. Estilo "gato selvagem
+        // discreto" — não rosnado.
+        {
+          const osc = ctx.createOscillator();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, t0);
+          osc.frequency.exponentialRampToValueAtTime(290, t0 + 0.35);
+          // Vibrato muito sutil (5Hz, 4Hz profundidade)
+          const lfo = ctx.createOscillator();
+          lfo.frequency.value = 5;
+          const lfoG = ctx.createGain();
+          lfoG.gain.value = 4;
+          lfo.connect(lfoG); lfoG.connect(osc.frequency);
+          const g = ctx.createGain();
+          g.gain.setValueAtTime(0, t0);
+          g.gain.linearRampToValueAtTime(0.13, t0 + 0.05);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + 0.40);
+          osc.connect(g); g.connect(ctx.destination);
+          osc.start(t0); lfo.start(t0);
+          osc.stop(t0 + 0.45); lfo.stop(t0 + 0.45);
+        }
+        // Harmônico oitava acima (corpo)
+        note(880, 0, 0.30, 0.04, 'sine');
         break;
       case 'onca_pintada':
         // V15.12.75.164 — Onça REFEITA de novo. As versões anteriores
@@ -55850,9 +55868,56 @@ function renderPinhal(){
   // V15.12.75.109 — Cena panorâmica da floresta (vem ANTES do grid de slots).
   // V15.12.75.110 — Usa buildForestScene antiga (V15.11) que é mais polida.
   // V15.12.75.111 — Usa CSS .forest-scene-card que tem suporte a fullscreen.
-  // Botão ⛶ expande a cena pra ocupar a tela toda (igual perfil antigo).
+  // V15.12.75.165 — Renderização CONDICIONADA. A partir do nível 5
+  // ("Bicho-do-Mato"), o usuário pode ter muitas árvores com estágios
+  // avançados (mature/ancient) — renderização vira pesada em navegadores
+  // mais lentos. Solução: toggle DATA.config.showPinhalScene (default ON).
+  // Quando OFF, mostra placeholder leve com botão pra reativar pontualmente.
+  // Toggle só aparece nas Configurações se user já atingiu o nível limite.
+  const PINHAL_HEAVY_LEVEL = 5;
+  const PINHAL_HEAVY_TREE_COUNT = 8;
+  const pinhalIsHeavy = info.level >= PINHAL_HEAVY_LEVEL ||
+    (state.trees && state.trees.length >= PINHAL_HEAVY_TREE_COUNT);
+  const sceneEnabled = !pinhalIsHeavy || (DATA.config.showPinhalScene !== false);
   try{
-    const stageToType = {1:'seed', 2:'seed', 3:'young', 4:'mature', 5:'ancient'};
+    if(!sceneEnabled){
+      // Placeholder leve — sem render da scene SVG
+      const placeholder = mk('div','forest-scene-placeholder');
+      placeholder.style.cssText = 'margin-bottom:1.25rem;padding:2rem 1.5rem;background:linear-gradient(135deg,rgba(var(--gralia-purple-rgb),.06),rgba(var(--gralia-purple-rgb),.02));border:1px dashed var(--border2);border-radius:14px;text-align:center';
+      const phIcon = mk('div');
+      phIcon.style.cssText = 'font-size:38px;line-height:1;margin-bottom:.5rem;opacity:.7';
+      phIcon.textContent = '🌲';
+      placeholder.appendChild(phIcon);
+      const phTitle = mk('div');
+      phTitle.style.cssText = 'font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px';
+      phTitle.textContent = 'Visualização da floresta desativada';
+      placeholder.appendChild(phTitle);
+      const phDesc = mk('p','txt2');
+      phDesc.style.cssText = 'font-size:12.5px;line-height:1.5;margin:0 auto 1rem;max-width:380px';
+      phDesc.textContent = `Você tem ${state.trees.length} árvores e a cena pode ficar pesada em alguns navegadores. Ative só quando quiser ver.`;
+      placeholder.appendChild(phDesc);
+      const phActions = mk('div');
+      phActions.style.cssText = 'display:flex;gap:8px;justify-content:center;flex-wrap:wrap';
+      const showOnceBtn = mkBtn('🌲 Mostrar pinhal agora', 'btn btn-sm btn-p');
+      showOnceBtn.addEventListener('click', () => {
+        // Mostra desta vez sem alterar a config — vira true até trocar de aba
+        window._pinhalForceShow = true;
+        render();
+      });
+      const enableAlwaysBtn = mkBtn('Sempre mostrar', 'btn btn-sm');
+      enableAlwaysBtn.addEventListener('click', () => {
+        DATA.config.showPinhalScene = true;
+        save();
+        render();
+      });
+      phActions.appendChild(showOnceBtn);
+      phActions.appendChild(enableAlwaysBtn);
+      placeholder.appendChild(phActions);
+      wrap.appendChild(placeholder);
+    } else if(sceneEnabled || window._pinhalForceShow){
+      // Reset force-show após uso (volta a respeitar o toggle no próximo render)
+      window._pinhalForceShow = false;
+      const stageToType = {1:'seed', 2:'seed', 3:'young', 4:'mature', 5:'ancient'};
     const mappedTrees = (state.trees || []).map((t, idx) => ({
       ...t,
       id: t.id || ('tree_'+idx),
@@ -55998,6 +56063,7 @@ function renderPinhal(){
         sceneWrap.appendChild(empty);
       }
       wrap.appendChild(sceneWrap);
+      }
     }
   }catch(e){ console.warn('[forest-scene]', e); }
 
@@ -74199,6 +74265,36 @@ function renderSettings(){
   const uxTip = mk('p','txt3');uxTip.style.cssText='margin:.625rem 0 0;font-size:11.5px;line-height:1.5';
   uxTip.innerHTML = 'Atalhos rápidos durante questões: <kbd>C</kbd> Certo · <kbd>E</kbd> Errado · <kbd>Espaço</kbd> próxima · <kbd>F</kbd> foco · <kbd>?</kbd> ajuda';
   uxCard.appendChild(uxTip);
+
+  // V15.12.75.165 — Toggle "Mostrar floresta visual do pinhal" — só aparece
+  // se user já está em nível avançado (5+) ou tem 8+ árvores (onde a cena
+  // SVG fica pesada em navegadores lentos).
+  try{
+    if(typeof Pinhal !== 'undefined'){
+      const pInfo = Pinhal.getLevel();
+      const pState = Pinhal.getState();
+      const showsToggle = pInfo.level >= 5 || (pState.trees && pState.trees.length >= 8);
+      if(showsToggle){
+        const sceneRow = mk('div','flex');
+        sceneRow.style.cssText = 'margin-top:.875rem;padding-top:.875rem;border-top:1px solid var(--border)';
+        const sceneLbl = mk('p','txt');
+        sceneLbl.style.flex='1';
+        sceneLbl.innerHTML = 'Mostrar floresta visual do pinhal <span style="font-size:11px;color:var(--text3);font-weight:400;display:block;margin-top:2px">A cena animada SVG pode pesar com muitas árvores. Desligue se notar lentidão.</span>';
+        const sceneChk = mk('input');
+        sceneChk.type = 'checkbox';
+        sceneChk.checked = (DATA.config.showPinhalScene !== false);
+        sceneChk.style.cssText = 'width:auto;cursor:pointer';
+        sceneChk.addEventListener('change', e => {
+          DATA.config.showPinhalScene = e.target.checked;
+          save();
+        });
+        sceneRow.appendChild(sceneLbl);
+        sceneRow.appendChild(sceneChk);
+        uxCard.appendChild(sceneRow);
+      }
+    }
+  }catch(_){}
+
   // V15.12.75.152 — Aparência só em Preferences (Configurações do app).
   // Antes aparecia em ambas (Conta e Perfil + Configurações) — duplicação.
   if(isPreferencesMode) wrap.appendChild(uxCard);
