@@ -22,12 +22,12 @@
 <style>
 :root{
   /* ===== LIGHT theme (padrão) ===== */
-  /* V15.12.75.172 — Fundo aveia substituiu o cinza-neutro pra criar separação
-     visual clara entre página e cards. --surface continua branco puro =
-     cards/sidebar/topbar viram "ilhas" sobre o fundo aveia. Gradient
-     diagonal mínimo aplicado por padrão (sup. direito mais quente,
-     inf. esquerdo mais frio neutro). */
-  --bg:#f4f1ec;--surface:#ffffff;--surface2:#fafaf7;--surface3:#eceae3;
+  /* V15.12.75.173 — Fundo cinza azulado (#eef0f4) substituiu o aveia (V172).
+     Mais contrastado vs branco dos cards, mantém sensação neutra (não bege).
+     Mesh blobs sutis aplicados no body (roxo+azul+lavanda, opacidades 4-7%)
+     pra adicionar profundidade sem brilho colorido óbvio.
+     --surface segue branco puro — cards continuam destacados como ilhas. */
+  --bg:#eef0f4;--surface:#ffffff;--surface2:#f5f7fa;--surface3:#e6e9ee;
   --border:rgba(16,20,24,.06);--border2:rgba(16,20,24,.12);
   /* Text — hierarquia clara com contraste WCAG AA+ */
   --text:#111418;--text2:#525a62;--text3:#8a919a;
@@ -327,18 +327,20 @@
 /* Fallback: se por algum motivo data-theme não foi setado, herda os valores light do :root */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
-/* V15.12.75.172 — Body com gradient diagonal sutil PADRÃO.
-   Light: aveia (#f4f1ec) + canto sup. direito puxa tom mais quente (#fef5ea)
-   + canto inf. esquerdo puxa tom mais frio neutro (#eceef0).
-   Dark: gradient bem mais discreto (quase imperceptível) só pra adicionar
-   profundidade sem cansar à noite.
-   Substituiu o sistema antigo .bg-gradient opcional — gradient agora é
-   parte fundamental do design, não toggle. */
+/* V15.12.75.173 — Mesh blobs sutis no body como design padrão.
+   3 blobs em posições não-óbvias (não centralizados nos cantos):
+     - Roxo top-right (78%/18%, 7% opacidade)
+     - Azul bot-left (22%/72%, 5% opacidade)
+     - Lavanda corner-right (92%/88%, 4% opacidade)
+   Substituiu o gradient diagonal da V172. Fora do padrão "diagonal sup→inf"
+   pra ter um look mais orgânico/contemporâneo.
+   Dark mode: mesh praticamente imperceptível, só pra adicionar profundidade. */
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
   background:
-    radial-gradient(ellipse 70% 50% at 100% 0%, #fef5ea 0%, transparent 55%),
-    radial-gradient(ellipse 60% 50% at 0% 100%, #eceef0 0%, transparent 55%),
+    radial-gradient(circle 380px at 78% 18%, rgba(124,92,255,.07), transparent 50%),
+    radial-gradient(circle 320px at 22% 72%, rgba(70,130,200,.05), transparent 55%),
+    radial-gradient(circle 200px at 92% 88%, rgba(200,140,255,.04), transparent 50%),
     var(--bg);
   background-attachment:fixed;
   color:var(--text);
@@ -347,13 +349,11 @@ body{
 }
 [data-theme="dark"] body{
   background:
-    radial-gradient(ellipse 70% 50% at 100% 0%, rgba(124,92,255,.04) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 50% at 0% 100%, rgba(255,255,255,.02) 0%, transparent 55%),
+    radial-gradient(circle 380px at 78% 18%, rgba(124,92,255,.04), transparent 50%),
+    radial-gradient(circle 320px at 22% 72%, rgba(70,130,200,.03), transparent 55%),
     var(--bg);
   background-attachment:fixed;
 }
-/* V172 — REMOVIDO sistema antigo body.bg-gradient — gradient agora é padrão.
-   Toggle obsoleto será removido das Configurações. */
 
 button,textarea,input,select{font-family:inherit;font-size:inherit;color:inherit}
 button{cursor:pointer;transition:background .15s,border-color .15s,color .15s,opacity .15s}
@@ -1453,96 +1453,28 @@ body[data-view="schedule"] .page{max-width:1180px}
   body.has-sidebar.sidebar-collapsed[data-view="schedule"] .page{max-width:calc(1180px + 64px)}
 }
 
-/* V15.12.75.171 — Páginas alargadas (user pediu inspiração em concorrente).
-   As listadas abaixo têm muitos cards/listas e ganham em ter mais espaço
-   horizontal. Importante: páginas de PRÁTICA (questão única, flashcard
-   isolado, pomodoro) continuam estreitas pra leitura confortável.
-   Lista alargada: dashboard, sources, methods, imported, srs, pinhal,
-   mapa, discover, groups. */
-body[data-view="dashboard"] .page,
-body[data-view="sources"] .page,
-body[data-view="methods"] .page,
-body[data-view="imported"] .page,
-body[data-view="srs"] .page,
-body[data-view="pinhal"] .page,
-body[data-view="mapa"] .page,
-body[data-view="discover"] .page,
-body[data-view="groups"] .page{
-  max-width:1180px;
+/* V15.12.75.173 — Páginas alargadas REMOVIDAS (V171 → V172 esticava 9 views
+   pra 1180-1320px). User pediu pra reduzir e liberar lateral, pois layout
+   multi-coluna fica responsabilidade de cada página. Voltam ao max-width
+   padrão (740-920px). Refinamento de layout multicoluna fica pra cada
+   página individualmente em versões futuras.
+   EXCEÇÃO: Painel (dashboard) usa max-width maior pq o layout V173 tem
+   colunas internas (KPIs + lateral gralha/frase, agenda, etc) que precisam
+   de espaço pra respirar. Largura ~1080-1180px é confortável. */
+body[data-view="dashboard"] .page{max-width:1080px}
+@media(min-width:1280px){body[data-view="dashboard"] .page{max-width:1140px}}
+@media(min-width:1500px){body[data-view="dashboard"] .page{max-width:1180px}}
+@media(min-width:1100px){
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="dashboard"] .page{max-width:calc(1080px + 264px)}
+  body.has-sidebar.sidebar-collapsed[data-view="dashboard"] .page{max-width:calc(1080px + 64px)}
 }
 @media(min-width:1280px){
-  body[data-view="dashboard"] .page,
-  body[data-view="sources"] .page,
-  body[data-view="methods"] .page,
-  body[data-view="imported"] .page,
-  body[data-view="srs"] .page,
-  body[data-view="pinhal"] .page,
-  body[data-view="mapa"] .page,
-  body[data-view="discover"] .page,
-  body[data-view="groups"] .page{
-    max-width:1240px;
-  }
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="dashboard"] .page{max-width:calc(1140px + 264px)}
+  body.has-sidebar.sidebar-collapsed[data-view="dashboard"] .page{max-width:calc(1140px + 64px)}
 }
 @media(min-width:1500px){
-  body[data-view="dashboard"] .page,
-  body[data-view="sources"] .page,
-  body[data-view="methods"] .page,
-  body[data-view="imported"] .page,
-  body[data-view="srs"] .page,
-  body[data-view="pinhal"] .page,
-  body[data-view="mapa"] .page,
-  body[data-view="discover"] .page,
-  body[data-view="groups"] .page{
-    max-width:1320px;
-  }
-}
-@media(min-width:1100px){
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="dashboard"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="sources"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="methods"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="imported"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="srs"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="pinhal"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="mapa"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="discover"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="groups"] .page{
-    max-width:calc(1180px + 264px);
-  }
-  body.has-sidebar.sidebar-collapsed[data-view="dashboard"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="sources"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="methods"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="imported"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="srs"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="pinhal"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="mapa"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="discover"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="groups"] .page{
-    max-width:calc(1180px + 64px);
-  }
-}
-@media(min-width:1500px){
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="dashboard"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="sources"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="methods"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="imported"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="srs"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="pinhal"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="mapa"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="discover"] .page,
-  body.has-sidebar:not(.sidebar-collapsed)[data-view="groups"] .page{
-    max-width:calc(1320px + 264px);
-  }
-  body.has-sidebar.sidebar-collapsed[data-view="dashboard"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="sources"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="methods"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="imported"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="srs"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="pinhal"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="mapa"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="discover"] .page,
-  body.has-sidebar.sidebar-collapsed[data-view="groups"] .page{
-    max-width:calc(1320px + 64px);
-  }
+  body.has-sidebar:not(.sidebar-collapsed)[data-view="dashboard"] .page{max-width:calc(1180px + 264px)}
+  body.has-sidebar.sidebar-collapsed[data-view="dashboard"] .page{max-width:calc(1180px + 64px)}
 }
 
 /* V14: Quick sidebar — barra lateral fixa no canto direito em desktop XL.
@@ -2745,11 +2677,11 @@ html.dark .wfb-tag-ai{color:#b08aff}
 }
 
 /* ============================================================================
-   V15.12.75.172 — PAINEL V172
-   Layout aprovado em mockup: header → KPIs → hero IA → atalhos → continue
-   → 3 colunas. Cards arredondados (16-20px), espaçamento generoso.
+   V15.12.75.173 — PAINEL V173 (CSS)
+   Layout aprovado em mockup. Estrutura: header → linha 2 (KPIs+Hero | Gralha+Frase)
+   → agenda → meta → continue → 3 cols → timeline+seguindo.
    ============================================================================ */
-.dashboard-v172{display:flex;flex-direction:column;gap:14px}
+.dashboard-v172{display:flex;flex-direction:column;gap:12px}
 
 /* Header — saudação + 2 botões */
 .dash172-header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 22px;background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-sm);flex-wrap:wrap}
@@ -2759,7 +2691,7 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .dash172-sub{font-size:11.5px;color:var(--text3);margin-top:2px}
 .dash172-header-actions{display:flex;gap:8px;flex-wrap:wrap}
 
-/* Botões V172 — estilizados local pra não impactar outros */
+/* Botões V172 — locais */
 .dash172-btn-primary{background:var(--gralia-gradient)!important;border:none!important;border-radius:14px;padding:9px 18px!important;font-size:12.5px!important;color:#fff!important;font-weight:600;cursor:pointer}
 .dash172-btn-primary:hover:not(:disabled){opacity:.92;background:var(--gralia-gradient)}
 .dash172-btn-ghost{background:var(--surface2)!important;border:none!important;border-radius:14px;padding:9px 16px!important;font-size:12.5px!important;color:var(--text2)!important;font-weight:500;cursor:pointer}
@@ -2767,95 +2699,150 @@ html.dark .wfb-tag-ai{color:#b08aff}
 .dash172-btn-lg{padding:11px 22px!important;font-size:13px!important;border-radius:14px}
 .dash172-btn-sm{padding:7px 14px!important;font-size:11.5px!important;border-radius:12px;white-space:nowrap}
 
-/* 4 KPI cards grid */
-.dash172-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-@media(max-width:880px){.dash172-kpi-grid{grid-template-columns:repeat(2,1fr)}}
-.dash172-kpi{background:var(--surface);border-radius:var(--r);padding:18px;box-shadow:var(--shadow-sm)}
+/* V173 Linha 2: [stack KPIs+Hero] + [card lateral Gralha+Frase] */
+.dash172-row2{display:grid;grid-template-columns:1.5fr 1fr;gap:12px}
+@media(max-width:880px){.dash172-row2{grid-template-columns:1fr}}
+.dash172-col-stack{display:flex;flex-direction:column;gap:12px;min-width:0}
+
+/* 4 KPIs grid */
+.dash172-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media(max-width:680px){.dash172-kpi-grid{grid-template-columns:repeat(2,1fr)}}
+.dash172-kpi{background:var(--surface);border-radius:14px;padding:13px;box-shadow:var(--shadow-sm)}
 .dash172-kpi-highlight{background:rgba(var(--gralia-purple-rgb),.06);border:1px solid rgba(var(--gralia-purple-rgb),.18);box-shadow:none}
-.dash172-kpi-label{font-size:10.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.dash172-kpi-label{font-size:9.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
 .dash172-kpi-highlight .dash172-kpi-label{color:var(--gralia-purple)}
-.dash172-kpi-value{font-size:28px;font-weight:700;color:var(--text);letter-spacing:-.6px;line-height:1}
+.dash172-kpi-value{font-size:20px;font-weight:700;color:var(--text);letter-spacing:-.3px;line-height:1}
 .dash172-kpi-highlight .dash172-kpi-value{color:var(--gralia-purple)}
-.dash172-kpi-sub{font-size:11px;color:var(--text2);margin-top:6px}
+.dash172-kpi-sub{font-size:10px;color:var(--text2);margin-top:4px}
 
-/* Hero IA — sugestão grande */
-.dash172-hero{background:var(--surface);border-radius:var(--r-lg);padding:26px 28px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
-.dash172-hero::after{content:'';position:absolute;right:-30px;top:-30px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(var(--gralia-purple-rgb),.10),transparent 70%);pointer-events:none}
-.dash172-hero-eyebrow{font-size:10.5px;font-weight:600;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;position:relative;z-index:1}
-.dash172-hero-title{font-size:21px;font-weight:700;color:var(--text);letter-spacing:-.4px;line-height:1.25;margin-bottom:10px;max-width:640px;position:relative;z-index:1}
-.dash172-hero-desc{font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:18px;max-width:600px;position:relative;z-index:1}
-.dash172-hero-actions{display:flex;gap:10px;flex-wrap:wrap;position:relative;z-index:1}
-@media(max-width:600px){
-  .dash172-hero{padding:20px 22px}
-  .dash172-hero-title{font-size:18px}
-}
+/* Hero IA */
+.dash172-hero{background:var(--surface);border-radius:var(--r);padding:18px 20px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
+.dash172-hero::after{content:'';position:absolute;right:-30px;top:-30px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle,rgba(var(--gralia-purple-rgb),.10),transparent 70%);pointer-events:none}
+.dash172-hero-eyebrow{font-size:9.5px;font-weight:600;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;position:relative;z-index:1}
+.dash172-hero-title{font-size:18px;font-weight:700;color:var(--text);letter-spacing:-.3px;line-height:1.3;margin-bottom:8px;position:relative;z-index:1}
+.dash172-hero-desc{font-size:12px;color:var(--text2);line-height:1.55;margin-bottom:14px;position:relative;z-index:1}
+.dash172-hero-actions{display:flex;gap:8px;flex-wrap:wrap;position:relative;z-index:1}
 
-/* Atalhos rápidos */
-.dash172-shortcuts{background:var(--surface);border-radius:var(--r-lg);padding:20px 22px;box-shadow:var(--shadow-sm)}
-.dash172-section-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px}
-.dash172-section-title-sm{font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px}
-.dash172-section-sub{font-size:11.5px;color:var(--text3);margin-top:2px;font-weight:400}
-.dash172-shortcuts-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
-@media(max-width:880px){.dash172-shortcuts-grid{grid-template-columns:repeat(3,1fr)}}
-.dash172-shortcut{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--surface2);border-radius:14px;text-decoration:none;color:var(--text2);transition:transform .12s,background .15s;position:relative}
-.dash172-shortcut:hover{background:var(--surface3);transform:translateY(-1px)}
-.dash172-shortcut-icon{font-size:22px;line-height:1}
-.dash172-shortcut-label{font-size:11px;font-weight:500}
-.dash172-shortcut-badge{position:absolute;top:6px;right:6px;background:var(--red);color:#fff;font-size:9.5px;padding:1px 6px;border-radius:99px;font-weight:700}
+/* V173 — Card Gralha + Frase do dia (lateral direito da linha 2) */
+.dash172-mascote-card{background:var(--surface);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column}
+.dash172-mascote-box{width:80px;height:80px;border-radius:18px;margin:8px auto 8px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#fef3e6,#f3e9d8);border:1px solid rgba(var(--gralia-purple-rgb),.10);position:relative;overflow:hidden}
+.dash172-mascote-img,.dash172-mascote-video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;transition:opacity .3s ease}
+.dash172-mascote-img.dash172-mascote-dark{display:none}
+[data-theme="dark"] .dash172-mascote-img.dash172-mascote-light{display:none}
+[data-theme="dark"] .dash172-mascote-img.dash172-mascote-dark{display:block}
+.dash172-mascote-static .dash172-mascote-video{opacity:0;pointer-events:none}
+.dash172-mascote-playing .dash172-mascote-img{opacity:0}
+.dash172-mascote-lbl{text-align:center;font-size:10.5px;color:var(--text3);margin-bottom:12px;line-height:1.3}
+.dash172-frase-box{border-top:1px solid var(--border);padding-top:12px;margin-top:auto}
+.dash172-frase-eyebrow{font-size:9.5px;font-weight:700;color:var(--gralia-purple);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+.dash172-frase-txt{font-size:12.5px;color:var(--text);line-height:1.55;font-style:italic}
+.dash172-frase-author{font-size:10.5px;color:var(--text3);margin-top:5px}
+
+/* V173 — Agenda do dia */
+.dash172-agenda-card{background:var(--surface);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow-sm)}
+.dash172-agenda-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.dash172-agenda-item{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:10px;margin-bottom:6px}
+.dash172-agenda-item.dash172-agenda-done{opacity:.55}
+.dash172-agenda-item.dash172-agenda-now{background:linear-gradient(135deg,rgba(var(--gralia-purple-rgb),.10),rgba(var(--gralia-purple-rgb),.04));border:1px solid rgba(var(--gralia-purple-rgb),.25);padding:10px 12px}
+.dash172-agenda-bar{width:3px;align-self:stretch;border-radius:99px;min-height:32px;flex-shrink:0}
+.dash172-agenda-bar-done{background:var(--accent)}
+.dash172-agenda-bar-now{background:var(--gralia-purple);width:4px}
+.dash172-agenda-bar-next{background:var(--border)}
+.dash172-agenda-body{flex:1;min-width:0}
+.dash172-agenda-time{font-size:10.5px;color:var(--text3);font-weight:500}
+.dash172-agenda-time.done{color:var(--accent);font-weight:600}
+.dash172-agenda-time.now{color:var(--gralia-purple);font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-size:9.5px}
+.dash172-agenda-title{font-size:13px;font-weight:600;color:var(--text);margin-top:2px}
+.dash172-agenda-title-sec{font-size:12px;color:var(--text2);margin-top:1px}
+.dash172-agenda-sub{font-size:10.5px;color:var(--text2);margin-top:2px}
+.dash172-agenda-check{font-size:10px;color:var(--text3);align-self:center}
+.dash172-agenda-btn{background:var(--surface)!important;border:1px solid rgba(var(--gralia-purple-rgb),.30)!important;border-radius:10px!important;padding:6px 10px!important;font-size:10.5px!important;color:var(--gralia-purple)!important;font-weight:600!important;cursor:pointer;align-self:center;flex-shrink:0}
+.dash172-agenda-empty{padding:.25rem 0}
+.dash172-link{color:var(--gralia-purple);text-decoration:underline;font-weight:500}
+
+/* V173 — Meta da semana */
+.dash172-meta-card{background:linear-gradient(135deg,rgba(14,159,110,.06),rgba(14,159,110,.02));border-radius:var(--r);padding:16px 18px;border:1px solid rgba(14,159,110,.18);cursor:pointer;transition:transform .12s,box-shadow .15s}
+.dash172-meta-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
+.dash172-meta-card.dash172-meta-empty{background:var(--surface);border:1px solid var(--border);cursor:default}
+.dash172-meta-card.dash172-meta-empty:hover{transform:none;box-shadow:var(--shadow-sm)}
+.dash172-meta-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px}
+.dash172-meta-sub{font-size:10.5px;color:var(--text2);margin-top:2px}
+.dash172-meta-badge{font-size:9.5px;color:var(--accent-text);background:#fff;padding:3px 9px;border-radius:99px;font-weight:700;flex-shrink:0}
+.dash172-meta-bars{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:520px){.dash172-meta-bars{grid-template-columns:1fr}}
+.dash172-meta-bar-head{display:flex;justify-content:space-between;font-size:10.5px;margin-bottom:3px}
+.dash172-meta-bar-head>span:first-child{color:var(--text2)}
+.dash172-meta-bar-pct{font-weight:600;color:var(--text2)}
+.dash172-meta-bar{height:5px;background:rgba(14,159,110,.12);border-radius:99px;overflow:hidden}
+.dash172-meta-bar-fill{height:100%;border-radius:99px;transition:width .4s}
 
 /* Continue praticando */
-.dash172-continue{background:var(--surface);border-radius:var(--r-lg);padding:22px 24px;box-shadow:var(--shadow-sm)}
-.dash172-continue-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:10px;flex-wrap:wrap}
-.dash172-continue-list{display:flex;flex-direction:column;gap:10px}
-.dash172-continue-item{display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--surface2);border-radius:14px}
-.dash172-continue-icon{width:40px;height:40px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.dash172-section-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:0}
+.dash172-section-title-sm{font-size:11.5px;font-weight:600;color:var(--text);margin-bottom:10px}
+.dash172-section-sub{font-size:10.5px;color:var(--text3);margin-top:1px;font-weight:400}
+.dash172-continue{background:var(--surface);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow-sm)}
+.dash172-continue-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px;flex-wrap:wrap}
+.dash172-continue-list{display:flex;flex-direction:column;gap:8px}
+.dash172-continue-item{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--surface2);border-radius:12px}
+.dash172-continue-icon{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
 .dash172-continue-txt{flex:1;min-width:0}
-.dash172-continue-title{font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dash172-continue-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.dash172-continue-title{font-size:12px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash172-continue-sub{font-size:10.5px;color:var(--text3);margin-top:1px}
 
-/* 3 colunas finais */
-.dash172-final-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-@media(max-width:980px){.dash172-final-grid{grid-template-columns:1fr 1fr}.dash172-final-col{grid-column:span 2}}
-@media(max-width:640px){.dash172-final-grid{grid-template-columns:1fr}.dash172-final-col{grid-column:auto}}
-.dash172-final-card{background:var(--surface);border-radius:var(--r);padding:18px;box-shadow:var(--shadow-sm)}
-.dash172-final-col{display:flex;flex-direction:column;gap:10px}
+/* 3 colunas */
+.dash172-final-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media(max-width:880px){.dash172-final-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:540px){.dash172-final-grid{grid-template-columns:1fr}}
+.dash172-final-card{background:var(--surface);border-radius:14px;padding:14px;box-shadow:var(--shadow-sm)}
 
 /* Disciplinas fracas */
-.dash172-weak-list{display:flex;flex-direction:column;gap:10px}
-.dash172-weak-row{padding:2px;border-radius:8px;transition:background .12s}
+.dash172-weak-list{display:flex;flex-direction:column;gap:8px}
+.dash172-weak-row{padding:2px;border-radius:6px;transition:background .12s;cursor:pointer}
 .dash172-weak-row:hover{background:var(--surface2)}
-.dash172-weak-head{display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:4px}
+.dash172-weak-head{display:flex;justify-content:space-between;font-size:10.5px;margin-bottom:3px}
 .dash172-weak-name{color:var(--text2)}
 .dash172-weak-pct{font-weight:600}
-.dash172-weak-bar{height:5px;background:var(--surface3);border-radius:99px;overflow:hidden}
+.dash172-weak-bar{height:4px;background:var(--surface3);border-radius:99px;overflow:hidden}
 .dash172-weak-bar-fill{height:100%;border-radius:99px;transition:width .3s}
 
 /* Foco da semana */
-.dash172-week-chart{display:flex;align-items:flex-end;justify-content:space-between;gap:6px;height:75px}
-.dash172-week-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
-.dash172-week-bar{width:18px;min-height:2px;background:rgba(var(--gralia-purple-rgb),.30);border-radius:6px;transition:height .25s}
-.dash172-week-label{font-size:9.5px;color:var(--text3)}
-.dash172-week-footer{font-size:10.5px;color:var(--text2);margin-top:10px;line-height:1.4}
+.dash172-week-chart{display:flex;align-items:flex-end;justify-content:space-between;gap:5px;height:60px}
+.dash172-week-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end}
+.dash172-week-bar{width:14px;min-height:2px;background:rgba(var(--gralia-purple-rgb),.30);border-radius:5px;transition:height .25s}
+.dash172-week-label{font-size:9px;color:var(--text3)}
+.dash172-week-footer{font-size:10px;color:var(--text2);margin-top:8px;line-height:1.4}
 
 /* Pinhal mini */
-.dash172-pinhal-mini{background:linear-gradient(135deg,rgba(var(--gralia-purple-rgb),.07),rgba(var(--gralia-purple-rgb),.02));border-radius:var(--r);padding:16px;border:1px solid rgba(var(--gralia-purple-rgb),.15);transition:transform .12s}
+.dash172-pinhal-mini{background:linear-gradient(135deg,rgba(var(--gralia-purple-rgb),.07),rgba(var(--gralia-purple-rgb),.02));border-radius:14px;padding:14px;border:1px solid rgba(var(--gralia-purple-rgb),.15);transition:transform .12s;cursor:pointer}
 .dash172-pinhal-mini:hover{transform:translateY(-1px)}
-.dash172-pinhal-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.dash172-pinhal-icon{font-size:18px}
-.dash172-pinhal-title{font-size:12.5px;font-weight:600;color:var(--purple-text)}
-.dash172-pinhal-sub{font-size:10.5px;color:var(--text2)}
-.dash172-pinhal-bar{height:6px;background:rgba(var(--gralia-purple-rgb),.12);border-radius:99px;overflow:hidden}
+.dash172-pinhal-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.dash172-pinhal-icon{font-size:16px}
+.dash172-pinhal-title{font-size:11.5px;font-weight:600;color:var(--purple-text)}
+.dash172-pinhal-sub{font-size:10px;color:var(--text2)}
+.dash172-pinhal-bar{height:5px;background:rgba(var(--gralia-purple-rgb),.12);border-radius:99px;overflow:hidden;margin-bottom:8px}
 .dash172-pinhal-fill{height:100%;background:var(--gralia-gradient);border-radius:99px}
 
-/* Notes da comunidade */
-.dash172-note-card{background:var(--surface);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:10px;transition:transform .12s,box-shadow .15s}
-.dash172-note-card:hover{transform:translateY(-1px);box-shadow:var(--shadow-md)}
-.dash172-note-icon{font-size:16px;flex-shrink:0}
-.dash172-note-txt{font-size:11.5px;color:var(--text);line-height:1.4}
+/* V173 — Linha final: timeline + seguindo */
+.dash172-last-row{display:grid;grid-template-columns:1.4fr 1fr;gap:12px}
+@media(max-width:880px){.dash172-last-row{grid-template-columns:1fr}}
+.dash172-timeline-wrap > .activity-card-v2{margin-bottom:0!important;border-radius:var(--r)!important}
 
-.dash172-empty-mini{font-size:11.5px;color:var(--text3);text-align:center;padding:1rem .5rem;line-height:1.4}
+/* Card Seguindo */
+.dash172-following-card{background:var(--surface);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow-sm);height:fit-content}
+.dash172-following-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.dash172-following-link{font-size:10.5px;color:var(--gralia-purple);cursor:pointer;font-weight:500;text-decoration:none}
+.dash172-following-link:hover{text-decoration:underline}
+.dash172-following-list{display:flex;flex-direction:column;gap:8px}
+.dash172-following-row{display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;background:var(--surface2);cursor:pointer;transition:transform .12s,background .15s}
+.dash172-following-row:hover{transform:translateX(2px);background:var(--surface3)}
+.dash172-following-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;flex-shrink:0}
+.dash172-following-txt{flex:1;min-width:0}
+.dash172-following-name{font-size:11.5px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash172-following-meta{font-size:10px;color:var(--text3);margin-top:1px}
 
-/* Em mobile: reduz padding e ajusta layout */
+.dash172-empty-mini{font-size:11.5px;color:var(--text3);text-align:center;padding:1rem .5rem;line-height:1.5}
+
+/* Mobile: empilha header */
 @media(max-width:600px){
   .dash172-header{padding:12px 16px;flex-direction:column;align-items:flex-start;gap:10px}
   .dash172-header-actions{width:100%}
@@ -9004,7 +8991,7 @@ const SUPABASE_CONFIG = {
 };
 
 // V15.12.75.63 — Versão global pra rastreio no console (graliaDebug.state()).
-window.GRALIA_VERSION = 'V15.12.75.172';
+window.GRALIA_VERSION = 'V15.12.75.173';
 
 // Global Supabase client — initialized once, reused everywhere
 let supa = null;
@@ -24710,12 +24697,19 @@ function renderDashboard(){
 }
 
 // ============================================================================
-// V15.12.75.172 — RENDER DASHBOARD V172
+// V15.12.75.173 — RENDER DASHBOARD V173 (aprovado em mockup)
 // ============================================================================
-// Layout aprovado em mockup: header → 4 KPIs → hero IA → atalhos → continue
-// praticando → 3 colunas finais. Reutiliza dados de DATA (session, srs, pomo,
-// errors, config) e funções existentes (examCountdown, getDiscipline...).
-// CSS específico no bloco .dash172-* (ver abaixo da função).
+// Estrutura: header → linha (KPIs 4 + Hero IA empilhados | Gralha + Frase) →
+// agenda → meta → continue praticando → 3 cols (fracas + foco + Pinhal) →
+// timeline reusando buildActivityTimeline() + card Seguindo.
+// Refinamentos vs V172:
+//   - Atalhos rápidos REMOVIDOS
+//   - Hero IA reposicionado (debaixo dos KPIs, não mais standalone)
+//   - Gralha + frase do dia juntos no card lateral
+//   - Agenda do dia em card próprio (com pomodoro contextual)
+//   - Meta da semana com 3 progress bars (foco + questões + flashcards)
+//   - Timeline reusa estilo antigo (activity-card-v2 — clicável, chain, filtros)
+//   - Card Seguindo no rodapé direito (feed estilo Instagram)
 function renderDashboardV172(){
   const wrap = mk('div','fade dashboard-page dashboard-v172');
   const dataSession = DATA.session;
@@ -24765,37 +24759,36 @@ function renderDashboardV172(){
   header.appendChild(headRight);
   wrap.appendChild(header);
 
-  // ===== 4 KPI CARDS =====
-  // Calcula stats reais a partir de DATA
+  // ===== LINHA 2: [KPIs + Hero IA empilhados] | [Gralha + Frase] =====
+  const row2 = mk('div','dash172-row2');
+
+  // Coluna esquerda: KPIs em grid + Hero IA empilhados
+  const col2L = mk('div','dash172-col-stack');
+
+  // 4 KPIs
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
-  const yesterdayStart = todayStart.getTime() - 24*60*60*1000;
-  // Questões hoje (de session) — fallback simples
   const questionsToday = dataSession.total || 0;
-  // Foco hoje (de pomo)
   const todaySessions = ((DATA.pomo||{}).sessions||[]).filter(s=>s.date>=todayStart.getTime());
   const todayFocusSec = todaySessions.reduce((a,s)=>a+(s.durationSec||0),0);
   const todayFocusMin = Math.round(todayFocusSec/60);
   const focusStr = todayFocusMin >= 60
     ? `${Math.floor(todayFocusMin/60)}h ${(todayFocusMin%60).toString().padStart(2,'0')}`
     : `${todayFocusMin} min`;
-  // Acerto 7d — calcula da session atual como proxy
   const accuracyPct = dataSession.total > 0
     ? Math.round((dataSession.correct / dataSession.total) * 100)
     : null;
 
   const kpiGrid = mk('div','dash172-kpi-grid');
   kpiGrid.appendChild(_buildKpiCard('Hoje', `${questionsToday}`, 'questões', null, false));
-  kpiGrid.appendChild(_buildKpiCard('Acerto', accuracyPct !== null ? `${accuracyPct}%` : '—', accuracyPct !== null ? 'sessão atual' : 'sem dados ainda', null, false));
-  kpiGrid.appendChild(_buildKpiCard('Foco hoje', focusStr, `${todaySessions.length} pomodoro${todaySessions.length===1?'':'s'}`, null, false));
-  // KPI Prova — destacado se tem data
-  const examLabel = ec.status === 'before' ? `${ec.days} dias`
-    : ec.status === 'after' ? 'Já passou'
-    : 'Sem data';
-  const examSub = profExamName || 'Configure em Conta';
+  kpiGrid.appendChild(_buildKpiCard('Acerto', accuracyPct !== null ? `${accuracyPct}%` : '—', accuracyPct !== null ? 'sessão' : 'sem dados', null, false));
+  kpiGrid.appendChild(_buildKpiCard('Foco hoje', focusStr, `${todaySessions.length} pomo${todaySessions.length===1?'':'s'}`, null, false));
+  const examLabel = ec.status === 'before' ? `${ec.days}d`
+    : ec.status === 'after' ? 'Passou' : 'Sem data';
+  const examSub = profExamName || 'Configure';
   kpiGrid.appendChild(_buildKpiCard('Prova em', examLabel, examSub, null, true));
-  wrap.appendChild(kpiGrid);
+  col2L.appendChild(kpiGrid);
 
-  // ===== HERO IA — sugestão de próxima ação =====
+  // Hero IA
   const suggestion = _computeDashboardSuggestion(dueSrs);
   if(suggestion){
     const hero = mk('div','dash172-hero');
@@ -24817,72 +24810,58 @@ function renderDashboardV172(){
       heroActs.appendChild(later);
     }
     hero.appendChild(heroActs);
-    wrap.appendChild(hero);
+    col2L.appendChild(hero);
   }
+  row2.appendChild(col2L);
 
-  // ===== ATALHOS RÁPIDOS =====
-  const shortcuts = mk('div','dash172-shortcuts');
-  shortcuts.innerHTML = '<div class="dash172-section-title">Atalhos rápidos</div>';
-  const shortcutsGrid = mk('div','dash172-shortcuts-grid');
-  const shortcutItems = [
-    {icon:'📝', label:'Cadernos',    view:'imported'},
-    {icon:'🎴', label:'Flashcards',  view:'srs', badge: dueSrs > 0 ? dueSrs : null},
-    {icon:'⚡', label:'Métodos',     view:'methods'},
-    {icon:'⏱',  label:'Pomodoro',   view:'pomodoro'},
-    {icon:'🗺️', label:'Mapa',        view:'mapa'},
-    {icon:'🌐', label:'Comunidade',  view:'discover'}
-  ];
-  shortcutItems.forEach(item => {
-    const a = mk('a','dash172-shortcut');
-    a.style.cursor = 'pointer';
-    a.innerHTML = `
-      <div class="dash172-shortcut-icon">${item.icon}</div>
-      <div class="dash172-shortcut-label">${item.label}</div>
-      ${item.badge ? `<div class="dash172-shortcut-badge">${item.badge}</div>` : ''}
-    `;
-    a.addEventListener('click', ()=>{ ST.view = item.view; render(); });
-    shortcutsGrid.appendChild(a);
-  });
-  shortcuts.appendChild(shortcutsGrid);
-  wrap.appendChild(shortcuts);
+  // Coluna direita: Gralha + Frase do dia (mesmo card)
+  const col2R = _buildMascoteFraseCard();
+  row2.appendChild(col2R);
+
+  wrap.appendChild(row2);
+
+  // ===== AGENDA DO DIA =====
+  const agendaCard = _buildAgendaDoDia();
+  if(agendaCard) wrap.appendChild(agendaCard);
+
+  // ===== META DA SEMANA =====
+  const metaCard = _buildMetaDaSemana();
+  if(metaCard) wrap.appendChild(metaCard);
 
   // ===== CONTINUE PRATICANDO =====
   const continueBlock = _buildContinuePraticando();
   if(continueBlock) wrap.appendChild(continueBlock);
 
-  // ===== 3 COLUNAS FINAIS =====
+  // ===== 3 COLUNAS — FRACAS / FOCO SEMANA / PINHAL =====
   const finalRow = mk('div','dash172-final-grid');
-
-  // Col 1: Disciplinas mais fracas
-  const weakCard = _buildDisciplinasFracas();
-  finalRow.appendChild(weakCard);
-
-  // Col 2: Foco da semana
-  const weekCard = _buildFocoSemana();
-  finalRow.appendChild(weekCard);
-
-  // Col 3: Pinhal + comunidade
-  const pinhalCol = mk('div','dash172-final-col');
-  pinhalCol.appendChild(_buildPinhalMini());
-  // Notificações comunidade (mock por enquanto — quando V167+ estiver populado mostra dados reais)
-  const noteCard1 = mk('div','dash172-note-card');
-  noteCard1.innerHTML = '<span class="dash172-note-icon">👍</span><div class="dash172-note-txt">Você publica cadernos? <b>Habilite na comunidade</b></div>';
-  noteCard1.style.cursor = 'pointer';
-  noteCard1.addEventListener('click', ()=>{ ST.view='discover'; render(); });
-  pinhalCol.appendChild(noteCard1);
-  const noteCard2 = mk('div','dash172-note-card');
-  noteCard2.innerHTML = '<span class="dash172-note-icon">👥</span><div class="dash172-note-txt">Veja o ranking dos seus <b>grupos de estudo</b></div>';
-  noteCard2.style.cursor = 'pointer';
-  noteCard2.addEventListener('click', ()=>{ ST.view='groups'; render(); });
-  pinhalCol.appendChild(noteCard2);
-  finalRow.appendChild(pinhalCol);
-
+  finalRow.appendChild(_buildDisciplinasFracas());
+  finalRow.appendChild(_buildFocoSemana());
+  finalRow.appendChild(_buildPinhalMini());
   wrap.appendChild(finalRow);
+
+  // ===== LINHA FINAL: TIMELINE + SEGUINDO =====
+  const lastRow = mk('div','dash172-last-row');
+  // Timeline reusa função antiga (activity-card-v2) — clicável, com chain, filtros
+  try{
+    const timeline = buildActivityTimeline();
+    if(timeline){
+      // Wrappa pra controlar tamanho
+      const tlWrap = mk('div','dash172-timeline-wrap');
+      tlWrap.appendChild(timeline);
+      lastRow.appendChild(tlWrap);
+    }
+  }catch(err){
+    console.warn('[V173] timeline falhou:', err);
+  }
+  // Card Seguindo
+  const followCard = _buildSeguindoFeed();
+  if(followCard) lastRow.appendChild(followCard);
+  wrap.appendChild(lastRow);
 
   return wrap;
 }
 
-// ----- Helpers do dashboard V172 -----
+// ----- Helpers do dashboard V173 -----
 
 function _buildKpiCard(label, value, sub, deltaPct, highlighted){
   const card = mk('div', 'dash172-kpi' + (highlighted ? ' dash172-kpi-highlight' : ''));
@@ -24894,45 +24873,256 @@ function _buildKpiCard(label, value, sub, deltaPct, highlighted){
   return card;
 }
 
-// Decide qual sugestão mostrar no hero. Prioridade:
-//   1. Flashcards vencidos (>= 3)
-//   2. Erros sem flashcard (>= 5)
-//   3. Sem prática hoje
-//   4. Continuar caderno em andamento
+// V173 — Card lateral com mascote (vídeo hover) + frase do dia
+function _buildMascoteFraseCard(){
+  const card = mk('div','dash172-mascote-card');
+
+  // Mascote — reusa BRAND.mascotLogo + mascotVideo (sistema antigo do Painel)
+  const mascotBox = mk('div','dash172-mascote-box');
+  const reducedMotion = (typeof window.matchMedia === 'function')
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reducedMotion || !BRAND || !BRAND.mascotVideo){
+    mascotBox.innerHTML = `
+      <img src="${BRAND?.mascotLogo || ''}" alt="" class="dash172-mascote-img dash172-mascote-light">
+      <img src="${BRAND?.mascotLogoDark || ''}" alt="" class="dash172-mascote-img dash172-mascote-dark">
+    `;
+  } else {
+    mascotBox.classList.add('dash172-mascote-static');
+    mascotBox.innerHTML = `
+      <video class="dash172-mascote-video" muted playsinline preload="metadata" aria-hidden="true">
+        <source src="${BRAND.mascotVideo}" type="video/webm">
+      </video>
+      <img src="${BRAND.mascotLogo}" alt="" class="dash172-mascote-img dash172-mascote-light">
+      <img src="${BRAND.mascotLogoDark}" alt="" class="dash172-mascote-img dash172-mascote-dark">
+    `;
+    // Hover-to-play (mesmo padrão do legacy)
+    setTimeout(() => {
+      const v = mascotBox.querySelector('.dash172-mascote-video');
+      if(!v) return;
+      let playing = false;
+      let videoOk = true;
+      const goStatic = () => {
+        try{ v.style.opacity = '0'; }catch(_){}
+        setTimeout(()=>{
+          mascotBox.classList.remove('dash172-mascote-playing');
+          mascotBox.classList.add('dash172-mascote-static');
+          try{ v.pause && v.pause(); v.currentTime = 0; }catch(_){}
+          playing = false;
+        }, 300);
+      };
+      v.addEventListener('ended', goStatic);
+      v.addEventListener('error', ()=>{ videoOk = false; });
+      mascotBox.addEventListener('mouseenter', ()=>{
+        if(!videoOk || playing) return;
+        playing = true;
+        mascotBox.classList.remove('dash172-mascote-static');
+        mascotBox.classList.add('dash172-mascote-playing');
+        try{ v.style.opacity = '1'; v.play && v.play().catch(()=>{videoOk=false;}); }catch(_){}
+      });
+      mascotBox.addEventListener('mouseleave', ()=>{
+        if(playing) goStatic();
+      });
+    }, 0);
+  }
+  card.appendChild(mascotBox);
+
+  const mascoteLbl = mk('div','dash172-mascote-lbl');
+  mascoteLbl.textContent = 'A gralha te observa';
+  card.appendChild(mascoteLbl);
+
+  // Frase do dia — rotativa por dia (não chama API)
+  const phrase = _getFraseDoDia();
+  const phraseBox = mk('div','dash172-frase-box');
+  phraseBox.innerHTML = `
+    <div class="dash172-frase-eyebrow">💭 Frase do dia</div>
+    <div class="dash172-frase-txt">"${escapeHTML(phrase.text)}"</div>
+    <div class="dash172-frase-author">— ${escapeHTML(phrase.author)}</div>
+  `;
+  card.appendChild(phraseBox);
+  return card;
+}
+
+// V173 — Pool de frases motivacionais. Rotação por dia do ano (determinística).
+const DASH_PHRASES = [
+  {text:'A persistência é o caminho do êxito.', author:'Charles Chaplin'},
+  {text:'O sucesso é a soma de pequenos esforços repetidos dia após dia.', author:'Robert Collier'},
+  {text:'Estudar é o que torna o impossível possível.', author:'Provérbio'},
+  {text:'Disciplina é fazer o que precisa ser feito mesmo quando não dá vontade.', author:'Anônimo'},
+  {text:'A diferença entre o impossível e o possível está na determinação.', author:'Tommy Lasorda'},
+  {text:'Se você quer alcançar algo grande, comece pequeno mas comece já.', author:'Anônimo'},
+  {text:'O cansaço de hoje é a aprovação de amanhã.', author:'Concurseiro'},
+  {text:'Não conte os dias, faça os dias contarem.', author:'Muhammad Ali'},
+  {text:'O esforço de hoje é o sucesso de amanhã.', author:'Anônimo'},
+  {text:'Quem estuda vence, quem desiste perde.', author:'Provérbio'},
+  {text:'Cada questão respondida é um passo a mais para a vaga.', author:'Concurseiro'},
+  {text:'A vitória pertence ao mais perseverante.', author:'Napoleão Bonaparte'},
+  {text:'A constância vence a intensidade.', author:'Bruce Lee'},
+  {text:'Pequenos progressos diários somam grandes resultados.', author:'Anônimo'},
+  {text:'A jornada de mil milhas começa com um único passo.', author:'Lao-Tzu'}
+];
+
+function _getFraseDoDia(){
+  // Rotaciona por dia do ano — mesmo dia, mesma frase pra todos os usuários
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24));
+  return DASH_PHRASES[dayOfYear % DASH_PHRASES.length];
+}
+
+// V173 — Card Agenda do dia. Tenta ler de schedule, senão mostra empty amigável.
+// Destaca atividade "agora" com botão pomodoro.
+function _buildAgendaDoDia(){
+  const card = mk('div','dash172-agenda-card');
+  const head = mk('div','dash172-agenda-head');
+  head.innerHTML = '<div class="dash172-section-title">📅 Agenda de hoje</div>';
+  card.appendChild(head);
+
+  // Tenta ler atividades do schedule. Não temos schedule estruturado por hora
+  // ainda — mostra empty state convidativo.
+  // (Em versão futura: integrar com DATA.schedule quando user definir horários.)
+  const todayItems = _getAgendaItems();
+  if(!todayItems || todayItems.length === 0){
+    const empty = mk('div','dash172-agenda-empty');
+    empty.innerHTML = `
+      <div style="font-size:11.5px;color:var(--text2);line-height:1.6;padding:1rem 0">
+        Sem atividades agendadas pra hoje.<br>
+        <a class="dash172-link" style="cursor:pointer">Configure seu cronograma</a> pra ver atividades aqui.
+      </div>
+    `;
+    const link = empty.querySelector('.dash172-link');
+    if(link) link.addEventListener('click', ()=>{ ST.view='schedule'; render(); });
+    card.appendChild(empty);
+    return card;
+  }
+
+  todayItems.forEach(it => {
+    const row = mk('div', 'dash172-agenda-item dash172-agenda-' + it.status);
+    let html = `<div class="dash172-agenda-bar dash172-agenda-bar-${it.status}"></div>
+      <div class="dash172-agenda-body">`;
+    if(it.status === 'done'){
+      html += `<div class="dash172-agenda-time done">${escapeHTML(it.time)} — concluído</div>
+        <div class="dash172-agenda-title">${escapeHTML(it.title)}</div>`;
+    } else if(it.status === 'now'){
+      html += `<div class="dash172-agenda-time now">● AGORA</div>
+        <div class="dash172-agenda-title">${escapeHTML(it.title)}</div>
+        <div class="dash172-agenda-sub">${escapeHTML(it.sub || '')}</div>`;
+    } else {
+      html += `<div class="dash172-agenda-time">${escapeHTML(it.time)} — próxima</div>
+        <div class="dash172-agenda-title-sec">${escapeHTML(it.title)}</div>`;
+    }
+    html += '</div>';
+    row.innerHTML = html;
+    if(it.status === 'now' && it.isStudy){
+      const btn = mkBtn('⏱ Pomodoro', 'dash172-agenda-btn');
+      btn.addEventListener('click', ()=>{ ST.view='pomodoro'; render(); });
+      row.appendChild(btn);
+    } else if(it.status === 'done'){
+      const check = mk('div','dash172-agenda-check');
+      check.textContent = '✓';
+      row.appendChild(check);
+    }
+    card.appendChild(row);
+  });
+  return card;
+}
+
+// Detecta atividades do dia. Por enquanto retorna [] até user ter schedule
+// estruturado por hora. Mantém a estrutura pronta pra plugar DATA.schedule
+// quando ela existir.
+function _getAgendaItems(){
+  // Placeholder — retorna array vazio sempre. UI mostra empty state.
+  // Quando schedule por hora for implementado, retornar:
+  // [{time:'09:00', title:'D.Tributário', status:'done'|'now'|'next',
+  //   isStudy:true, sub:'Iniciado 14:30 · 50min restantes'}]
+  return [];
+}
+
+// V173 — Card Meta da semana com 3 barras (foco, questões, flashcards)
+function _buildMetaDaSemana(){
+  if(!DATA.goals){
+    // Empty state convidando a configurar
+    const card = mk('div','dash172-meta-card dash172-meta-empty');
+    card.innerHTML = `
+      <div class="dash172-section-title">🎯 Meta da semana</div>
+      <div class="dash172-empty-mini" style="padding:1rem 0;text-align:center">
+        Defina suas metas semanais ou mensais pra acompanhar progresso aqui.<br>
+        <a class="dash172-link" style="cursor:pointer">Configurar meta →</a>
+      </div>
+    `;
+    const link = card.querySelector('.dash172-link');
+    if(link) link.addEventListener('click', ()=>{ ST.view='goals'; render(); });
+    return card;
+  }
+
+  const g = DATA.goals;
+  try{ if(typeof maybeRenewGoalPeriod === 'function') maybeRenewGoalPeriod(g); }catch(_){}
+  let view = null;
+  try{ if(typeof goalDailyView === 'function') view = goalDailyView(g); }catch(_){}
+  const periodLbl = g.period === 'weekly' ? 'Meta semanal' : 'Meta mensal';
+  const qDone = (view && view.qDone) || 0;
+  const qTarget = g.questionsTarget || 0;
+  const pDone = (view && view.pDone) || 0;
+  const pTarget = g.pomosTarget || 0;
+  const pctQ = qTarget > 0 ? Math.min(100, Math.round(qDone / qTarget * 100)) : 0;
+  const pctP = pTarget > 0 ? Math.min(100, Math.round(pDone / pTarget * 100)) : 0;
+  const totalPct = Math.round((pctQ + pctP) / 2);
+
+  const card = mk('div','dash172-meta-card');
+  card.innerHTML = `
+    <div class="dash172-meta-head">
+      <div>
+        <div class="dash172-section-title">🎯 ${escapeHTML(periodLbl)}</div>
+        <div class="dash172-meta-sub">${qTarget} questões · ${pTarget} pomos</div>
+      </div>
+      <div class="dash172-meta-badge">${totalPct}%</div>
+    </div>
+    <div class="dash172-meta-bars">
+      <div class="dash172-meta-bar-item">
+        <div class="dash172-meta-bar-head"><span>⏱ Pomodoros</span><span class="dash172-meta-bar-pct">${pDone}/${pTarget}</span></div>
+        <div class="dash172-meta-bar"><div class="dash172-meta-bar-fill" style="width:${pctP}%;background:${pctP>=80?'var(--accent)':pctP>=50?'var(--amber)':'var(--red)'}"></div></div>
+      </div>
+      <div class="dash172-meta-bar-item">
+        <div class="dash172-meta-bar-head"><span>✏️ Questões</span><span class="dash172-meta-bar-pct">${qDone}/${qTarget}</span></div>
+        <div class="dash172-meta-bar"><div class="dash172-meta-bar-fill" style="width:${pctQ}%;background:${pctQ>=80?'var(--accent)':pctQ>=50?'var(--amber)':'var(--red)'}"></div></div>
+      </div>
+    </div>
+  `;
+  card.style.cursor = 'pointer';
+  card.addEventListener('click', ()=>{ ST.view='goals'; render(); });
+  return card;
+}
+
+// V173 — Sugestão de próxima ação (algoritmo de prioridade)
 function _computeDashboardSuggestion(dueSrs){
-  // Se user dispensou recentemente, esconde por 30 min
   if(ST._dashHeroDismissed && Date.now() - ST._dashHeroDismissed < 30 * 60 * 1000){
     return null;
   }
-  // Flashcards vencidos
   if(dueSrs >= 3){
     return {
       title: `Praticar ${dueSrs} flashcards vencidos antes da janela fechar`,
-      desc: 'Se você não revisar hoje, o intervalo SRS dobra e fica mais difícil reter. Estimativa de tempo proporcional ao número de cards.',
+      desc: 'Se você não revisar hoje, o intervalo SRS dobra e fica mais difícil reter.',
       cta: '▶ Começar agora',
       action: ()=>{ ST.view='srs'; render(); },
       dismissable: true
     };
   }
-  // Erros sem flashcard
   const errorsNoCard = (DATA.errors||[]).filter(e=>!e.hasCard).length;
   if(errorsNoCard >= 5){
     return {
       title: `Converter ${errorsNoCard} erros recentes em flashcards`,
-      desc: 'Errar é normal. Mas erros sem flashcard saem da memória. Vamos transformar em revisão espaçada agora.',
+      desc: 'Erros sem flashcard saem da memória. Vamos transformar em revisão espaçada.',
       cta: '▶ Ver erros',
       action: ()=>{ ST.view='errors'; render(); },
       dismissable: true
     };
   }
-  // Sem prática hoje + tem fontes
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
   const todaySessions = ((DATA.pomo||{}).sessions||[]).filter(s=>s.date>=todayStart.getTime());
   if(todaySessions.length === 0 && (DATA.session.total||0) === 0){
     if((DATA.sources||[]).length > 0){
       return {
         title: 'Começar sua primeira sessão de estudo hoje',
-        desc: 'Você ainda não estudou hoje. Um pomodoro de 25min ou uma rodada de questões já mantém o ritmo.',
+        desc: 'Um pomodoro de 25min ou uma rodada de questões já mantém o ritmo.',
         cta: '▶ Praticar agora',
         action: ()=>{ ST.view='methods'; render(); },
         dismissable: true
@@ -24940,19 +25130,18 @@ function _computeDashboardSuggestion(dueSrs){
     } else {
       return {
         title: 'Importe sua primeira fonte de estudo',
-        desc: 'Gralia precisa de material pra começar a personalizar suas práticas. Cole texto, importe PDF, ou puxe questões.',
+        desc: 'Gralia precisa de material pra personalizar suas práticas. Cole texto, importe PDF, ou puxe questões.',
         cta: '+ Adicionar fonte',
         action: ()=>{ ST.view='sources'; ST.srcSubview='add'; render(); },
         dismissable: false
       };
     }
   }
-  // Default: continue praticando o último caderno
   const lastNb = (DATA.notebooks||[]).slice().sort((a,b)=>(b.lastModifiedAt||0)-(a.lastModifiedAt||0))[0];
   if(lastNb && lastNb.questionIds && lastNb.questionIds.length > 0){
     return {
       title: `Continue praticando "${lastNb.name}"`,
-      desc: `Você tem ${lastNb.questionIds.length} questão${lastNb.questionIds.length===1?'':'s'} neste caderno. Manter constância é mais valioso que estudar muito de uma vez.`,
+      desc: `Você tem ${lastNb.questionIds.length} questão${lastNb.questionIds.length===1?'':'s'} neste caderno. Constância é mais valiosa que volume.`,
       cta: '▶ Praticar caderno',
       action: ()=>{ ST.view='imported'; startNotebookPractice(lastNb.id); },
       dismissable: true
@@ -24961,10 +25150,8 @@ function _computeDashboardSuggestion(dueSrs){
   return null;
 }
 
-// Card "Continue praticando" com top 3 atividades em andamento
 function _buildContinuePraticando(){
   const items = [];
-  // Cadernos em andamento (com questões e ordenados por última modificação)
   const nbs = (DATA.notebooks||[])
     .filter(n => (n.questionIds||[]).length > 0)
     .sort((a,b)=>(b.lastModifiedAt||0)-(a.lastModifiedAt||0))
@@ -24983,7 +25170,6 @@ function _buildContinuePraticando(){
       action: ()=>{ startNotebookPractice(nb.id); }
     });
   });
-  // Flashcards vencidos
   const dueSrs = (DATA.srs?.cards||[]).filter(c=>(c.nextReview||0)<=Date.now()).length;
   if(dueSrs > 0){
     items.push({
@@ -25027,12 +25213,9 @@ function _buildContinuePraticando(){
   return card;
 }
 
-// Card "Disciplinas mais fracas" — top 3 com menor % de acerto
 function _buildDisciplinasFracas(){
   const card = mk('div','dash172-final-card');
-  card.innerHTML = '<div class="dash172-section-title-sm">Disciplinas mais fracas</div>';
-
-  // Calcula % por disciplina a partir das questões praticadas
+  card.innerHTML = '<div class="dash172-section-title-sm">Disciplinas fracas</div>';
   const stats = {};
   (DATA.importedQuestions||[]).forEach(q => {
     if(!q.disciplineId || !q.attempts) return;
@@ -25049,14 +25232,12 @@ function _buildDisciplinasFracas(){
     }))
     .sort((a,b)=>a.pct-b.pct)
     .slice(0,3);
-
   if(arr.length === 0){
     const empty = mk('div','dash172-empty-mini');
-    empty.textContent = 'Pratique mais questões pra ver onde focar';
+    empty.textContent = 'Pratique mais pra ver onde focar';
     card.appendChild(empty);
     return card;
   }
-
   const list = mk('div','dash172-weak-list');
   arr.forEach(d => {
     const color = d.pct < 60 ? 'var(--red)' : d.pct < 75 ? 'var(--amber)' : 'var(--accent)';
@@ -25080,14 +25261,11 @@ function _buildDisciplinasFracas(){
   return card;
 }
 
-// Card "Foco da semana" — barras com tempo de pomodoro por dia
 function _buildFocoSemana(){
   const card = mk('div','dash172-final-card');
   card.innerHTML = '<div class="dash172-section-title-sm">Foco da semana</div>';
-
   const labels = ['D','S','T','Q','Q','S','S'];
   const today = new Date();
-  // Calcula minutos por dia da semana atual (segunda a domingo)
   const days = [];
   for(let i = 6; i >= 0; i--){
     const d = new Date(today);
@@ -25097,14 +25275,9 @@ function _buildFocoSemana(){
     next.setDate(next.getDate() + 1);
     const sessions = ((DATA.pomo||{}).sessions||[]).filter(s => s.date >= d.getTime() && s.date < next.getTime());
     const minutes = Math.round(sessions.reduce((a,s)=>a+(s.durationSec||0),0)/60);
-    days.push({
-      label: labels[d.getDay()],
-      minutes,
-      isToday: i === 0
-    });
+    days.push({label: labels[d.getDay()], minutes, isToday: i === 0});
   }
   const max = Math.max(...days.map(d=>d.minutes), 1);
-
   const chart = mk('div','dash172-week-chart');
   days.forEach(d => {
     const col = mk('div','dash172-week-col');
@@ -25116,7 +25289,6 @@ function _buildFocoSemana(){
     chart.appendChild(col);
   });
   card.appendChild(chart);
-
   const total = days.reduce((a,d)=>a+d.minutes,0);
   const footer = mk('div','dash172-week-footer');
   footer.textContent = total > 0
@@ -25126,17 +25298,14 @@ function _buildFocoSemana(){
   return card;
 }
 
-// Card Pinhal mini — nível atual + progresso
 function _buildPinhalMini(){
   const card = mk('div','dash172-pinhal-mini');
   const pinhal = DATA.pinhal || {};
   const xp = pinhal.totalXp || 0;
   const level = pinhal.level || 1;
-  // Estimativa simples de XP pro próximo nível (sem depender da função interna)
   const xpForNextLevel = level * 100;
   const xpProgress = xp % xpForNextLevel;
   const pct = Math.min(100, Math.round(xpProgress / xpForNextLevel * 100));
-
   card.innerHTML = `
     <div class="dash172-pinhal-head">
       <span class="dash172-pinhal-icon">🌲</span>
@@ -25150,6 +25319,86 @@ function _buildPinhalMini(){
   card.style.cursor = 'pointer';
   card.addEventListener('click', ()=>{ ST.view='pinhal'; render(); });
   return card;
+}
+
+// V173 — Card "Seguindo" com atividade recente de quem o user segue.
+// Lê do Supabase. Mostra empty se não segue ninguém.
+function _buildSeguindoFeed(){
+  const card = mk('div','dash172-following-card');
+  card.innerHTML = `
+    <div class="dash172-following-head">
+      <div class="dash172-section-title">Seguindo</div>
+      <a class="dash172-following-link">Ver tudo</a>
+    </div>
+  `;
+  const link = card.querySelector('.dash172-following-link');
+  if(link) link.addEventListener('click', ()=>{ ST.view='discover'; ST.discoverTab='people'; render(); });
+
+  const list = mk('div','dash172-following-list');
+  list.innerHTML = '<div class="dash172-empty-mini" style="padding:.75rem 0">Carregando...</div>';
+  card.appendChild(list);
+
+  // Carrega async (não bloqueia render do painel)
+  setTimeout(async ()=>{
+    if(!supa || !AUTH.user){
+      list.innerHTML = `<div class="dash172-empty-mini" style="padding:.75rem 0;line-height:1.5">Faça login pra seguir pessoas e ver atividade aqui.</div>`;
+      return;
+    }
+    try{
+      const { data, error } = await supa.from('follows')
+        .select('followed_id')
+        .eq('follower_id', AUTH.user.id)
+        .eq('status', 'accepted')
+        .limit(20);
+      if(error || !data || data.length === 0){
+        list.innerHTML = `<div class="dash172-empty-mini" style="padding:.75rem 0;line-height:1.5">Você ainda não segue ninguém.<br><a class="dash172-link" style="cursor:pointer">Descobrir pessoas →</a></div>`;
+        const l = list.querySelector('.dash172-link');
+        if(l) l.addEventListener('click', ()=>{ ST.view='discover'; ST.discoverTab='people'; render(); });
+        return;
+      }
+      const ids = data.map(f => f.followed_id);
+      // Pega perfis
+      const { data: profs } = await supa.from('user_profiles')
+        .select('user_id, username, display_name')
+        .in('user_id', ids)
+        .limit(5);
+      list.innerHTML = '';
+      if(!profs || profs.length === 0){
+        list.innerHTML = '<div class="dash172-empty-mini" style="padding:.75rem 0">Sem atividade recente</div>';
+        return;
+      }
+      profs.slice(0, 4).forEach(p => {
+        const row = mk('div','dash172-following-row');
+        const init = (p.display_name || p.username || '?').charAt(0).toUpperCase();
+        row.innerHTML = `
+          <div class="dash172-following-avatar" style="background:${_avatarGradient(p.username)}">${init}</div>
+          <div class="dash172-following-txt">
+            <div class="dash172-following-name">@${escapeHTML(p.username || '')}</div>
+            <div class="dash172-following-meta">Ativo recentemente</div>
+          </div>
+        `;
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', ()=>{
+          if(typeof navigateToProfile === 'function') navigateToProfile(p.username);
+        });
+        list.appendChild(row);
+      });
+    }catch(err){
+      console.warn('[V173] seguindo falhou:', err);
+      list.innerHTML = '<div class="dash172-empty-mini" style="padding:.75rem 0">Falha ao carregar</div>';
+    }
+  }, 50);
+
+  return card;
+}
+
+// Helper local pra gradient de avatar (usa o mesmo padrão do avatarGradient global se existir)
+function _avatarGradient(seed){
+  if(typeof avatarGradient === 'function') return avatarGradient(seed);
+  const hash = (seed||'').split('').reduce((acc,ch)=>acc+ch.charCodeAt(0),0);
+  const h1 = (hash*37) % 360;
+  const h2 = (h1+45) % 360;
+  return `linear-gradient(135deg, hsl(${h1},65%,55%) 0%, hsl(${h2},70%,60%) 100%)`;
 }
 
 function renderDashboardLegacy(){
